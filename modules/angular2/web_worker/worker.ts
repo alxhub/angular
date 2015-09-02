@@ -14,7 +14,6 @@ export * from '../src/core/zone';
 // Do not export render in web_worker
 // export * from '../src/core/render';
 // Add special import for just render API
-export * from '../src/core/application_ref';
 export * from '../src/core/application_tokens';
 export * from '../src/core/render/api';
 export * from '../src/core/directives';
