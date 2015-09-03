@@ -4,7 +4,6 @@
  * Maps application URLs into application states, to support deep-linking and navigation.
  */
 
-
 export {Router, RootRouter} from './src/router/router';
 export {RouterOutlet} from './src/router/router_outlet';
 export {
@@ -67,9 +66,11 @@ import {RouterLink} from './src/router/router_link';
 import {RouteRegistry} from './src/router/route_registry';
 import {Pipeline} from './src/router/pipeline';
 import {Location} from './src/router/location';
-import {APP_COMPONENT} from './src/core/application_tokens';
-import {Binding} from './core';
-import {CONST_EXPR} from './src/core/facade/lang';
+import {bind, OpaqueToken, Binding} from './core';
+import {CONST_EXPR, Type} from './src/core/facade/lang';
+
+export const ROUTER_PRIMARY_COMPONENT: OpaqueToken =
+    CONST_EXPR(new OpaqueToken('RouterPrimaryComponent'));
 
 export const ROUTER_DIRECTIVES: any[] = CONST_EXPR([RouterOutlet, RouterLink]);
 
@@ -100,16 +101,20 @@ export const ROUTER_BINDINGS: any[] = CONST_EXPR([
   Pipeline,
   CONST_EXPR(new Binding(LocationStrategy, {toClass: PathLocationStrategy})),
   Location,
-  CONST_EXPR(
-      new Binding(Router,
-                  {
-                    toFactory: routerFactory,
-                    deps: CONST_EXPR([RouteRegistry, Pipeline, Location, APP_COMPONENT])
-                  }))
+  CONST_EXPR(new Binding(
+      Router,
+      {
+        toFactory: routerFactory,
+        deps: CONST_EXPR([RouteRegistry, Pipeline, Location, ROUTER_PRIMARY_COMPONENT])
+      }))
 ]);
 
 export interface InjectableReference {}
 
-function routerFactory(registry, pipeline, location, appRoot) {
-  return new RootRouter(registry, pipeline, location, appRoot);
+function routerFactory(registry, pipeline, location, primaryComponent) {
+  return new RootRouter(registry, pipeline, location, primaryComponent);
+}
+
+export function routerBindings(primaryComponent: Type): Array<any> {
+  return [ROUTER_BINDINGS, bind(ROUTER_PRIMARY_COMPONENT).toValue(primaryComponent)];
 }

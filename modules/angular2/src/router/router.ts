@@ -441,12 +441,12 @@ export class RootRouter extends Router {
   _location: Location;
 
   constructor(registry: RouteRegistry, pipeline: Pipeline, location: Location,
-              hostComponent: Type) {
-    super(registry, pipeline, null, hostComponent);
+              primaryComponent: Type) {
+    super(registry, pipeline, null, primaryComponent);
     this._location = location;
     this._location.subscribe((change) => this.navigate(change['url'], isPresent(change['pop'])));
 
-    this.registry.configFromComponent(hostComponent);
+    this.registry.configFromComponent(primaryComponent);
     this.navigate(location.path());
   }
 
