@@ -2321,8 +2321,7 @@ class DirectiveThrowingAnError {
 
 @Component({
   selector: 'component-with-template',
-  directives: [NgFor],
-  template: `No View Decorator: <div *ng-for="#item of items">{{item}}</div>`
+  directives: [NgFor], template: `No View Decorator: <div *ng-for="#item of items">{{item}}</div>`
 })
 class ComponentWithTemplate {
   items = [1, 2, 3];

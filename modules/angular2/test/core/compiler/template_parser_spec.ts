@@ -553,8 +553,7 @@ There is no directive with "exportAs" set to "dirA" at TestComp > div:nth-child(
             selector: '[a]',
             isComponent: true,
             type: new CompileTypeMetadata({name: 'DirA'}),
-            exportAs: 'dirA',
-            template: new CompileTemplateMetadata({ngContentSelectors: []})
+            exportAs: 'dirA', template: new CompileTemplateMetadata({ngContentSelectors: []})
           });
           expect(humanizeTemplateAsts(parse('<div a #a></div>', [dirA])))
               .toEqual([
@@ -687,8 +686,8 @@ There is no directive with "exportAs" set to "dirA" at TestComp > div:nth-child(
     });
 
     describe('content projection', () => {
-      function createComp(selector: string,
-                          ngContentSelectors: string[]): CompileDirectiveMetadata {
+      function createComp(selector: string, ngContentSelectors: string[]):
+          CompileDirectiveMetadata {
         return CompileDirectiveMetadata.create({
           selector: selector,
           isComponent: true,
