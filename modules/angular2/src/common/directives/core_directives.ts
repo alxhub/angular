@@ -10,40 +10,17 @@ import {NgSwitch, NgSwitchWhen, NgSwitchDefault} from './ng_switch';
  * application.
  *
  * This collection can be used to quickly enumerate all the built-in directives in the `directives`
- * property of the `@View` annotation.
+ * property of the `@Component` or `@View` annotations.
  *
- * ### Example ([live demo](http://plnkr.co/edit/yakGwpCdUkg0qfzX5m8g?p=preview))
+ * ### Example
  *
  * Instead of writing:
  *
- * ```typescript
- * import {NgClass, NgIf, NgFor, NgSwitch, NgSwitchWhen, NgSwitchDefault} from 'angular2/angular2';
- * import {OtherDirective} from './myDirectives';
- *
- * @Component({
- *   selector: 'my-component',
- *   templateUrl: 'myComponent.html',
- *   directives: [NgClass, NgIf, NgFor, NgSwitch, NgSwitchWhen, NgSwitchDefault, OtherDirective]
- * })
- * export class MyComponent {
- *   ...
- * }
- * ```
+ * {@example core/ts/core_directives/without.ts region='without'}
+ * 
  * one could import all the core directives at once:
  *
- * ```typescript
- * import {CORE_DIRECTIVES} from 'angular2/angular2';
- * import {OtherDirective} from './myDirectives';
- *
- * @Component({
- *   selector: 'my-component',
- *   templateUrl: 'myComponent.html',
- *   directives: [CORE_DIRECTIVES, OtherDirective]
- * })
- * export class MyComponent {
- *   ...
- * }
- * ```
+ * {@example core/ts/core_directives/with.ts region='with'}
  */
 export const CORE_DIRECTIVES: Type[] =
     CONST_EXPR([NgClass, NgFor, NgIf, NgStyle, NgSwitch, NgSwitchWhen, NgSwitchDefault]);
