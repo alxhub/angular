@@ -23,7 +23,7 @@ TemplateCompiler createTemplateCompiler(AssetReader reader,
   var _urlResolver = const TransformerUrlResolver();
 
   var templateParser = new TemplateParser(new ng.Parser(new ng.Lexer()),
-      new DomElementSchemaRegistry(), _htmlParser);
+      new DomElementSchemaRegistry(), _htmlParser, null);
 
   var cdCompiler = changeDetectionConfig != null
       ? new ChangeDetectionCompiler(changeDetectionConfig)

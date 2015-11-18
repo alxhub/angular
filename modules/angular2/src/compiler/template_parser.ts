@@ -13,7 +13,8 @@ import {
   assertionsEnabled,
   isBlank
 } from 'angular2/src/facade/lang';
-import {Injectable} from 'angular2/src/core/di';
+import {Injectable, Injector, OpaqueToken} from 'angular2/src/core/di';
+import {CONST_EXPR} from 'angular2/src/facade/lang';
 import {BaseException} from 'angular2/src/facade/exceptions';
 import {Parser, AST, ASTWithSource} from 'angular2/src/core/change_detection/change_detection';
 import {TemplateBinding} from 'angular2/src/core/change_detection/parser/ast';
@@ -26,6 +27,8 @@ import {
   BoundEventAst,
   VariableAst,
   TemplateAst,
+  TemplateAstVisitor,
+  templateVisitAll,
   TextAst,
   BoundTextAst,
   EmbeddedTemplateAst,
@@ -76,10 +79,17 @@ const STYLE_PREFIX = 'style';
 
 var TEXT_CSS_SELECTOR = CssSelector.parse('*')[0];
 
+export const TEMPLATE_TRANSFORMS = CONST_EXPR(new OpaqueToken('TemplateTransforms'));
+
 @Injectable()
 export class TemplateParser {
+  transforms: TemplateAstVisitor[];
+  
   constructor(private _exprParser: Parser, private _schemaRegistry: ElementSchemaRegistry,
-              private _htmlParser: HtmlParser) {}
+              private _htmlParser: HtmlParser, injector: Injector) {
+    let transforms = isPresent(injector) ? injector.getOptional(TEMPLATE_TRANSFORMS) : null;
+    this.transforms = isPresent(transforms) ? transforms : [];
+  }
 
   parse(template: string, directives: CompileDirectiveMetadata[],
         sourceInfo: string): TemplateAst[] {
@@ -90,6 +100,9 @@ export class TemplateParser {
       var errorString = parseVisitor.errors.join('\n');
       throw new BaseException(`Template parse errors:\n${errorString}`);
     }
+    this.transforms.forEach((transform: TemplateAstVisitor) => {
+      result = templateVisitAll(transform, result);
+    });
     return result;
   }
 }
