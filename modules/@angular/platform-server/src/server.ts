@@ -9,8 +9,10 @@
 import {PlatformLocation} from '@angular/common';
 import {platformCoreDynamic} from '@angular/compiler';
 import {APP_BOOTSTRAP_LISTENER, Injectable, InjectionToken, Injector, NgModule, PLATFORM_INITIALIZER, PlatformRef, Provider, RootRenderer, createPlatformFactory, isDevMode, platformCore} from '@angular/core';
-import {BrowserModule, DOCUMENT} from '@angular/platform-browser';
 
+import {BrowserModule, DOCUMENT} from '@angular/platform-browser';
+import {HttpModule} from '@angular/http';
+import {SERVER_HTTP_PROVIDERS} from './http';
 import {ServerPlatformLocation} from './location';
 import {Parse5DomAdapter, parseDocument} from './parse5_adapter';
 import {PlatformState} from './platform_state';
@@ -85,9 +87,8 @@ export const INITIAL_CONFIG = new InjectionToken<PlatformConfig>('Server.INITIAL
  */
 @NgModule({
   exports: [BrowserModule],
-  providers: [
-    SERVER_RENDER_PROVIDERS,
-  ]
+  imports: [HttpModule],
+  providers: [SERVER_RENDER_PROVIDERS, SERVER_HTTP_PROVIDERS],
 })
 export class ServerModule {
 }
