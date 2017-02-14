@@ -102,7 +102,7 @@ export class HttpAfterExampleModule {
 export function main() {
   if (getDOM().supportsDOMEvents()) return;  // NODE only
 
-  describe('platform-server integration', () => {
+  fdescribe('platform-server integration', () => {
     beforeEach(() => {
       if (getPlatform()) destroyPlatform();
     });
@@ -171,6 +171,17 @@ export function main() {
            platform.bootstrapModule(ExampleModule).then(appRef => {
              const location: PlatformLocation = appRef.injector.get(PlatformLocation);
              expect(location.pathname).toBe('/');
+             platform.destroy();
+           });
+         }));
+      it('is set from INITIAL_CONFIG.url when present', async(() => {
+           const platform = platformDynamicServer(
+               [{provide: INITIAL_CONFIG, useValue: {document: '<app></app>', url: 'http://test.com/path/subpath?query#hash'}}]);
+           platform.bootstrapModule(ExampleModule).then(appRef => {
+             const location: PlatformLocation = appRef.injector.get(PlatformLocation);
+             expect(location.pathname).toBe('/path/subpath');
+             expect(location.search).toBe('?query');
+             expect(location.hash).toBe('#hash');
              platform.destroy();
            });
          }));

@@ -20,6 +20,7 @@ import {ALLOW_MULTIPLE_PLATFORMS, DebugDomRootRenderer} from './private_import_c
 import {SharedStylesHost, getDOM} from './private_import_platform-browser';
 import {ServerRootRenderer} from './server_renderer';
 import {ServerStylesHost} from './styles_host';
+import {PlatformConfig, INITIAL_CONFIG} from './tokens';
 
 
 function notSupported(feature: string): Error {
@@ -64,23 +65,6 @@ export const SERVER_RENDER_PROVIDERS: Provider[] = [
 ];
 
 /**
- * Config object passed to initialize the platform.
- *
- * @experimental
- */
-export interface PlatformConfig {
-  document?: string;
-  url?: string;
-}
-
-/**
- * The DI token for setting the initial config for the platform.
- *
- * @experimental
- */
-export const INITIAL_CONFIG = new InjectionToken<PlatformConfig>('Server.INITIAL_CONFIG');
-
-/**
  * The ng module for the server.
  *
  * @experimental
@@ -93,7 +77,7 @@ export const INITIAL_CONFIG = new InjectionToken<PlatformConfig>('Server.INITIAL
 export class ServerModule {
 }
 
-function _document(injector: Injector) {
+export function _document(injector: Injector) {
   let config: PlatformConfig|null = injector.get(INITIAL_CONFIG, null);
   if (config && config.document) {
     return parseDocument(config.document);
