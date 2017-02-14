@@ -9,9 +9,9 @@
 import {PlatformLocation} from '@angular/common';
 import {platformCoreDynamic} from '@angular/compiler';
 import {APP_BOOTSTRAP_LISTENER, Injectable, InjectionToken, Injector, NgModule, PLATFORM_INITIALIZER, PlatformRef, Provider, RootRenderer, createPlatformFactory, isDevMode, platformCore} from '@angular/core';
-
-import {BrowserModule, DOCUMENT} from '@angular/platform-browser';
 import {HttpModule} from '@angular/http';
+import {BrowserModule, DOCUMENT} from '@angular/platform-browser';
+
 import {SERVER_HTTP_PROVIDERS} from './http';
 import {ServerPlatformLocation} from './location';
 import {Parse5DomAdapter, parseDocument} from './parse5_adapter';
