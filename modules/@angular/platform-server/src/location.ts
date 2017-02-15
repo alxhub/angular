@@ -29,7 +29,7 @@ export class ServerPlatformLocation implements PlatformLocation {
   private _hash: string = '';
   private _hashUpdate = new Subject<LocationChangeEvent>();
 
-  constructor(@Inject(DOCUMENT) private _doc: any, @Optional() @Inject(INITIAL_CONFIG) config: PlatformConfig|null ) {
+  constructor(@Inject(DOCUMENT) private _doc: any, @Optional() @Inject(INITIAL_CONFIG) config: any) {
     if (!!config && !!config.url) {
       const parsedUrl = url.parse(config.url, true);
       this._path = parsedUrl.pathname;
