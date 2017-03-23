@@ -12,11 +12,11 @@ export {CookieXSRFStrategy, XHRBackend, XHRConnection} from './backends/xhr_back
 export {BaseRequestOptions, RequestOptions} from './base_request_options';
 export {BaseResponseOptions, ResponseOptions} from './base_response_options';
 export {ReadyState, RequestMethod, ResponseContentType, ResponseType} from './enums';
-export {Headers} from './headers';
+export {HttpHeaders} from './headers';
 export {Http, Jsonp} from './http';
 export {HttpModule, JsonpModule} from './http_module';
 export {Connection, ConnectionBackend, RequestOptionsArgs, ResponseOptionsArgs, XSRFStrategy} from './interfaces';
 export {Request} from './static_request';
 export {Response} from './static_response';
-export {QueryEncoder, URLSearchParams} from './url_search_params';
+export {QueryEncoder, HttpUrlParams} from './url_search_params';
 export {VERSION} from './version';

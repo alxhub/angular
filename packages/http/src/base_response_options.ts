@@ -9,7 +9,7 @@
 import {Injectable} from '@angular/core';
 
 import {ResponseType} from './enums';
-import {Headers} from './headers';
+import {HttpHeaders} from './headers';
 import {ResponseOptionsArgs} from './interfaces';
 
 
@@ -55,7 +55,7 @@ export class ResponseOptions {
   /**
    * Response {@link Headers headers}
    */
-  headers: Headers;
+  headers: HttpHeaders;
   /**
    * @internal
    */
@@ -160,6 +160,6 @@ export class ResponseOptions {
 @Injectable()
 export class BaseResponseOptions extends ResponseOptions {
   constructor() {
-    super({status: 200, statusText: 'Ok', type: ResponseType.Default, headers: new Headers()});
+    super({status: 200, statusText: 'Ok', type: ResponseType.Default, headers: new HttpHeaders()});
   }
 }

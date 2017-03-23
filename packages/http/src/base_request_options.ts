@@ -9,10 +9,10 @@
 import {Injectable} from '@angular/core';
 
 import {RequestMethod, ResponseContentType} from './enums';
-import {Headers} from './headers';
+import {HttpHeaders} from './headers';
 import {normalizeMethodName} from './http_utils';
 import {RequestOptionsArgs} from './interfaces';
-import {URLSearchParams} from './url_search_params';
+import {HttpUrlParams} from './url_search_params';
 
 
 /**
@@ -50,7 +50,7 @@ export class RequestOptions {
   /**
    * {@link Headers} to be attached to a {@link Request}.
    */
-  headers: Headers;
+  headers: HttpHeaders;
   /**
    * Body to be used when creating a {@link Request}.
    */
@@ -62,15 +62,15 @@ export class RequestOptions {
   /**
    * Search parameters to be included in a {@link Request}.
    */
-  params: URLSearchParams;
+  params: HttpUrlParams;
   /**
    * @deprecated from 4.0.0. Use params instead.
    */
-  get search(): URLSearchParams { return this.params; }
+  get search(): HttpUrlParams { return this.params; }
   /**
    * @deprecated from 4.0.0. Use params instead.
    */
-  set search(params: URLSearchParams) { this.params = params; }
+  set search(params: HttpUrlParams) { this.params = params; }
   /**
    * Enable use credentials for a {@link Request}.
    */
@@ -121,7 +121,7 @@ export class RequestOptions {
   merge(options?: RequestOptionsArgs): RequestOptions {
     return new RequestOptions({
       method: options && options.method != null ? options.method : this.method,
-      headers: options && options.headers != null ? options.headers : new Headers(this.headers),
+      headers: options && options.headers != null ? options.headers : new HttpHeaders(this.headers),
       body: options && options.body != null ? options.body : this.body,
       url: options && options.url != null ? options.url : this.url,
       params: options && this._mergeSearchParams(options.params || options.search),
@@ -132,23 +132,23 @@ export class RequestOptions {
     });
   }
 
-  private _mergeSearchParams(params: string|URLSearchParams|
-                             {[key: string]: any | any[]}): URLSearchParams {
+  private _mergeSearchParams(params: string|HttpUrlParams|
+                             {[key: string]: any | any[]}): HttpUrlParams {
     if (!params) return this.params;
 
-    if (params instanceof URLSearchParams) {
+    if (params instanceof HttpUrlParams) {
       return params.clone();
     }
 
     if (typeof params === 'string') {
-      return new URLSearchParams(params);
+      return new HttpUrlParams(params);
     }
 
     return this._parseParams(params);
   }
 
-  private _parseParams(objParams: {[key: string]: any | any[]} = {}): URLSearchParams {
-    const params = new URLSearchParams();
+  private _parseParams(objParams: {[key: string]: any | any[]} = {}): HttpUrlParams {
+    const params = new HttpUrlParams();
     Object.keys(objParams).forEach((key: string) => {
       const value: any|any[] = objParams[key];
       if (Array.isArray(value)) {
@@ -160,7 +160,7 @@ export class RequestOptions {
     return params;
   }
 
-  private _appendParam(key: string, value: any, params: URLSearchParams): void {
+  private _appendParam(key: string, value: any, params: HttpUrlParams): void {
     if (typeof value !== 'string') {
       value = JSON.stringify(value);
     }
@@ -216,5 +216,5 @@ export class RequestOptions {
  */
 @Injectable()
 export class BaseRequestOptions extends RequestOptions {
-  constructor() { super({method: RequestMethod.Get, headers: new Headers()}); }
+  constructor() { super({method: RequestMethod.Get, headers: new HttpHeaders()}); }
 }

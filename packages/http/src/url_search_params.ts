@@ -78,15 +78,15 @@ function standardEncoding(v: string): string {
  * ```
  * @experimental
  */
-export class URLSearchParams {
+export class HttpUrlParams {
   paramsMap: Map<string, string[]>;
   constructor(
       public rawParams: string = '', private queryEncoder: QueryEncoder = new QueryEncoder()) {
     this.paramsMap = paramParser(rawParams);
   }
 
-  clone(): URLSearchParams {
-    const clone = new URLSearchParams('', this.queryEncoder);
+  clone(): HttpUrlParams {
+    const clone = new HttpUrlParams('', this.queryEncoder);
     clone.appendAll(this);
     return clone;
   }
@@ -118,7 +118,7 @@ export class URLSearchParams {
   // E.g: "a=[1,2,3], c=[8]" + "a=[4,5,6], b=[7]" = "a=[4], c=[8], b=[7]"
   //
   // TODO(@caitp): document this better
-  setAll(searchParams: URLSearchParams) {
+  setAll(searchParams: HttpUrlParams) {
     searchParams.paramsMap.forEach((value, param) => {
       const list = this.paramsMap.get(param) || [];
       list.length = 0;
@@ -141,7 +141,7 @@ export class URLSearchParams {
   // E.g: "a=[1,2], c=[8]" + "a=[3,4], b=[7]" = "a=[1,2,3,4], c=[8], b=[7]"
   //
   // TODO(@caitp): document this better
-  appendAll(searchParams: URLSearchParams) {
+  appendAll(searchParams: HttpUrlParams) {
     searchParams.paramsMap.forEach((value, param) => {
       const list = this.paramsMap.get(param) || [];
       for (let i = 0; i < value.length; ++i) {
@@ -159,7 +159,7 @@ export class URLSearchParams {
   // E.g: "a=[1,2,3], c=[8]" + "a=[4,5,6], b=[7]" = "a=[4,5,6], c=[8], b=[7]"
   //
   // TODO(@caitp): document this better
-  replaceAll(searchParams: URLSearchParams) {
+  replaceAll(searchParams: HttpUrlParams) {
     searchParams.paramsMap.forEach((value, param) => {
       const list = this.paramsMap.get(param) || [];
       list.length = 0;
@@ -182,3 +182,6 @@ export class URLSearchParams {
 
   delete (param: string): void { this.paramsMap.delete(param); }
 }
+
+export type URLSearchParams = HttpUrlParams;
+export const URLSearchParams = HttpUrlParams;

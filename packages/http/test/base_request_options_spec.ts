@@ -9,7 +9,7 @@
 import {describe, expect, it} from '@angular/core/testing/src/testing_internal';
 import {BaseRequestOptions, RequestOptions} from '../src/base_request_options';
 import {RequestMethod} from '../src/enums';
-import {Headers} from '../src/headers';
+import {HttpHeaders} from '../src/headers';
 
 export function main() {
   describe('BaseRequestOptions', () => {
@@ -48,7 +48,7 @@ export function main() {
     });
 
     it('should create a new headers object when calling merge', () => {
-      const options1 = new RequestOptions({headers: new Headers()});
+      const options1 = new RequestOptions({headers: new HttpHeaders()});
       const options2 = options1.merge();
       expect(options2.headers).not.toBe(options1.headers);
     });

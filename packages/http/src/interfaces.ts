@@ -7,9 +7,9 @@
  */
 
 import {ReadyState, RequestMethod, ResponseContentType, ResponseType} from './enums';
-import {Headers} from './headers';
+import {HttpHeaders} from './headers';
 import {Request} from './static_request';
-import {URLSearchParams} from './url_search_params';
+import {HttpUrlParams} from './url_search_params';
 
 /**
  * Abstract class from which real backends are derived.
@@ -49,9 +49,9 @@ export interface RequestOptionsArgs {
   url?: string;
   method?: string|RequestMethod;
   /** @deprecated from 4.0.0. Use params instead. */
-  search?: string|URLSearchParams|{[key: string]: any | any[]};
-  params?: string|URLSearchParams|{[key: string]: any | any[]};
-  headers?: Headers;
+  search?: string|HttpUrlParams|{[key: string]: any | any[]};
+  params?: string|HttpUrlParams|{[key: string]: any | any[]};
+  headers?: HttpHeaders;
   body?: any;
   withCredentials?: boolean;
   responseType?: ResponseContentType;
@@ -72,7 +72,7 @@ export interface ResponseOptionsArgs {
   body?: string|Object|FormData|ArrayBuffer|Blob;
   status?: number;
   statusText?: string;
-  headers?: Headers;
+  headers?: HttpHeaders;
   type?: ResponseType;
   url?: string;
 }

@@ -12,7 +12,7 @@ import {Observable} from 'rxjs/Observable';
 import {Observer} from 'rxjs/Observer';
 import {ResponseOptions} from '../base_response_options';
 import {ContentType, ReadyState, RequestMethod, ResponseContentType, ResponseType} from '../enums';
-import {Headers} from '../headers';
+import {HttpHeaders} from '../headers';
 import {getResponseURL, isSuccess} from '../http_utils';
 import {Connection, ConnectionBackend, XSRFStrategy} from '../interfaces';
 import {Request} from '../static_request';
@@ -74,7 +74,7 @@ export class XHRConnection implements Connection {
           status = body ? 200 : 0;
         }
 
-        const headers: Headers = Headers.fromResponseHeaderString(_xhr.getAllResponseHeaders());
+        const headers: HttpHeaders = HttpHeaders.fromResponseHeaderString(_xhr.getAllResponseHeaders());
         // IE 9 does not provide the way to get URL of response
         const url = getResponseURL(_xhr) || req.url;
         const statusText: string = _xhr.statusText || 'OK';
@@ -110,7 +110,7 @@ export class XHRConnection implements Connection {
       this.setDetectedContentType(req, _xhr);
 
       if (req.headers == null) {
-        req.headers = new Headers();
+        req.headers = new HttpHeaders();
       }
       if (!req.headers.has('Accept')) {
         req.headers.append('Accept', 'application/json, text/plain, */*');

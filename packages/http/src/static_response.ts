@@ -11,7 +11,7 @@
 import {ResponseOptions} from './base_response_options';
 import {Body} from './body';
 import {ResponseType} from './enums';
-import {Headers} from './headers';
+import {HttpHeaders} from './headers';
 
 
 /**
@@ -81,7 +81,7 @@ export class Response extends Body {
    * Headers object based on the `Headers` class in the [Fetch
    * Spec](https://fetch.spec.whatwg.org/#headers-class).
    */
-  headers: Headers;
+  headers: HttpHeaders;
 
   constructor(responseOptions: ResponseOptions) {
     super();

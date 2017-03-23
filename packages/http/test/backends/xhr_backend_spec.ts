@@ -14,11 +14,11 @@ import {CookieXSRFStrategy, XHRBackend, XHRConnection} from '../../src/backends/
 import {BaseRequestOptions, RequestOptions} from '../../src/base_request_options';
 import {BaseResponseOptions, ResponseOptions} from '../../src/base_response_options';
 import {ResponseContentType, ResponseType} from '../../src/enums';
-import {Headers} from '../../src/headers';
+import {HttpHeaders} from '../../src/headers';
 import {XSRFStrategy} from '../../src/interfaces';
 import {Request} from '../../src/static_request';
 import {Response} from '../../src/static_response';
-import {URLSearchParams} from '../../src/url_search_params';
+import {HttpUrlParams} from '../../src/url_search_params';
 
 let abortSpy: any;
 let sendSpy: any;
@@ -68,7 +68,7 @@ class MockBrowserXHR extends BrowserXhr {
   getAllResponseHeaders() { return this.responseHeaders || ''; }
 
   getResponseHeader(key: string) {
-    return Headers.fromResponseHeaderString(this.responseHeaders).get(key);
+    return HttpHeaders.fromResponseHeaderString(this.responseHeaders).get(key);
   }
 
   addEventListener(type: string, cb: Function) { this.callbacks.set(type, cb); }
@@ -225,7 +225,7 @@ export function main() {
 
       it('should attach headers to the request', () => {
         const headers =
-            new Headers({'Content-Type': 'text/xml', 'Breaking-Bad': '<3', 'X-Multi': ['a', 'b']});
+            new HttpHeaders({'Content-Type': 'text/xml', 'Breaking-Bad': '<3', 'X-Multi': ['a', 'b']});
 
         const base = new BaseRequestOptions();
         const connection = new XHRConnection(
@@ -237,7 +237,7 @@ export function main() {
       });
 
       it('should attach default Accept header', () => {
-        const headers = new Headers();
+        const headers = new HttpHeaders();
         const base = new BaseRequestOptions();
         const connection = new XHRConnection(
             new Request(base.merge(new RequestOptions({headers}))), new MockBrowserXHR());
@@ -247,7 +247,7 @@ export function main() {
       });
 
       it('should not override user provided Accept header', () => {
-        const headers = new Headers({'Accept': 'text/xml'});
+        const headers = new HttpHeaders({'Accept': 'text/xml'});
         const base = new BaseRequestOptions();
         const connection = new XHRConnection(
             new Request(base.merge(new RequestOptions({headers}))), new MockBrowserXHR());
@@ -256,7 +256,7 @@ export function main() {
       });
 
       it('should skip content type detection if custom content type header is set', () => {
-        const headers = new Headers({'Content-Type': 'text/plain'});
+        const headers = new HttpHeaders({'Content-Type': 'text/plain'});
         const body = {test: 'val'};
         const base = new BaseRequestOptions();
         const connection = new XHRConnection(
@@ -299,7 +299,7 @@ export function main() {
       });
 
       it('should use URLSearchParams body and detect content type header to the request', () => {
-        const body = new URLSearchParams();
+        const body = new HttpUrlParams();
         body.set('test1', 'val1');
         body.set('test2', 'val2');
         const base = new BaseRequestOptions();
@@ -365,7 +365,7 @@ export function main() {
 
         it('should use blob body without type with custom content type header to the request',
            () => {
-             const headers = new Headers({'Content-Type': 'text/css'});
+             const headers = new HttpHeaders({'Content-Type': 'text/css'});
              const body = createBlob(['body { color: red; }'], null);
              const base = new BaseRequestOptions();
              const connection = new XHRConnection(
@@ -392,7 +392,7 @@ export function main() {
 
         it('should use array buffer body without type with custom content type header to the request',
            () => {
-             const headers = new Headers({'Content-Type': 'text/css'});
+             const headers = new HttpHeaders({'Content-Type': 'text/css'});
              const body = new ArrayBuffer(512);
              const longInt8View = new Uint8Array(body);
              for (let i = 0; i < longInt8View.length; i++) {

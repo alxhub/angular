@@ -34,19 +34,19 @@
  *
  * @experimental
  */
-export class Headers {
+export class HttpHeaders {
   /** @internal header names are lower case */
   _headers: Map<string, string[]> = new Map();
   /** @internal map lower case names to actual names */
   _normalizedNames: Map<string, string> = new Map();
 
   // TODO(vicb): any -> string|string[]
-  constructor(headers?: Headers|{[name: string]: any}) {
+  constructor(headers?: HttpHeaders|{[name: string]: any}) {
     if (!headers) {
       return;
     }
 
-    if (headers instanceof Headers) {
+    if (headers instanceof HttpHeaders) {
       headers.forEach((values: string[], name: string) => {
         values.forEach(value => this.append(name, value));
       });
@@ -63,8 +63,8 @@ export class Headers {
   /**
    * Returns a new Headers instance from the given DOMString of Response Headers
    */
-  static fromResponseHeaderString(headersString: string): Headers {
-    const headers = new Headers();
+  static fromResponseHeaderString(headersString: string): HttpHeaders {
+    const headers = new HttpHeaders();
 
     headersString.split('\n').forEach(line => {
       const index = line.indexOf(':');
@@ -183,3 +183,6 @@ export class Headers {
     }
   }
 }
+
+export type Headers = HttpHeaders;
+export const Headers = HttpHeaders;

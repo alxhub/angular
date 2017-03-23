@@ -10,7 +10,7 @@ import {describe, expect, it} from '@angular/core/testing/src/testing_internal';
 
 import {RequestOptions} from '../src/base_request_options';
 import {ContentType} from '../src/enums';
-import {Headers} from '../src/headers';
+import {HttpHeaders} from '../src/headers';
 import {ArrayBuffer, Request} from '../src/static_request';
 
 export function main() {
@@ -27,7 +27,7 @@ export function main() {
           url: 'test',
           method: 'GET',
           body: null,
-          headers: new Headers({'content-type': 'application/json'})
+          headers: new HttpHeaders({'content-type': 'application/json'})
         }));
 
         expect(req.detectContentType()).toEqual(ContentType.JSON);
@@ -38,7 +38,7 @@ export function main() {
           url: 'test',
           method: 'GET',
           body: null,
-          headers: new Headers({'content-type': 'application/x-www-form-urlencoded'})
+          headers: new HttpHeaders({'content-type': 'application/x-www-form-urlencoded'})
         }));
 
         expect(req.detectContentType()).toEqual(ContentType.FORM);
@@ -49,7 +49,7 @@ export function main() {
           url: 'test',
           method: 'GET',
           body: null,
-          headers: new Headers({'content-type': 'multipart/form-data'})
+          headers: new HttpHeaders({'content-type': 'multipart/form-data'})
         }));
 
         expect(req.detectContentType()).toEqual(ContentType.FORM_DATA);
@@ -60,7 +60,7 @@ export function main() {
           url: 'test',
           method: 'GET',
           body: null,
-          headers: new Headers({'content-type': 'text/plain'})
+          headers: new HttpHeaders({'content-type': 'text/plain'})
         }));
 
         expect(req.detectContentType()).toEqual(ContentType.TEXT);
@@ -71,7 +71,7 @@ export function main() {
           url: 'test',
           method: 'GET',
           body: null,
-          headers: new Headers({'content-type': 'application/octet-stream'})
+          headers: new HttpHeaders({'content-type': 'application/octet-stream'})
         }));
 
         expect(req.detectContentType()).toEqual(ContentType.BLOB);
@@ -82,7 +82,7 @@ export function main() {
           url: 'test',
           method: 'GET',
           body: new ArrayBuffer(1),
-          headers: new Headers({'content-type': 'application/octet-stream'})
+          headers: new HttpHeaders({'content-type': 'application/octet-stream'})
         }));
 
         expect(req.detectContentType()).toEqual(ContentType.ARRAY_BUFFER);
@@ -94,7 +94,7 @@ export function main() {
         url: 'test',
         method: 'GET',
         body: null,
-        headers: new Headers({'content-type': 'application/json'})
+        headers: new HttpHeaders({'content-type': 'application/json'})
       }));
 
       expect(req.text()).toEqual('');
@@ -102,7 +102,7 @@ export function main() {
 
     it('should return empty string if body is undefined', () => {
       const reqOptions = new RequestOptions(
-          {url: 'test', method: 'GET', headers: new Headers({'content-type': 'application/json'})});
+          {url: 'test', method: 'GET', headers: new HttpHeaders({'content-type': 'application/json'})});
       delete reqOptions.body;
       const req = new Request(reqOptions);
 
