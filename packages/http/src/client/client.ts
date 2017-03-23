@@ -5,80 +5,51 @@ import {HttpHeaders} from '../headers';
 import {HttpUrlParams} from '../url_search_params';
 
 import {HttpHandler} from './backend';
-import {HttpRequest} from './request';
+import {HttpBody, HttpMethod, HttpRequest, HttpResponseType} from './request';
 import {HttpResponse} from './response';
-
-export enum HttpResponseType {
-  ARRAY_BUFFER,
-  BLOB,
-  JSON,
-  TEXT,
-  UNPARSED,
-}
-
-export enum HttpMethod {
-  DELETE,
-  GET,
-  HEAD,
-  OPTIONS,
-  POST,
-  PUT,
-  PATCH,
-}
-
-export type HttpBody = ArrayBuffer | Blob | FormData | Object | string | number;
 
 export interface HttpMethodOptions {
   headers?: HttpHeaders;
   responseType?: HttpResponseType;
+  withCredentials?: boolean;
 }
 export interface HttpMethodOptionsWithArrayBufferBody extends HttpMethodOptions {
-  responseType: HttpResponseType.ARRAY_BUFFER;
+  responseType: HttpResponseType.ArrayBuffer;
 }
 export interface HttpMethodOptionsWithBlobBody extends HttpMethodOptions {
-  responseType: HttpResponseType.BLOB;
+  responseType: HttpResponseType.Blob;
 }
 export interface HttpMethodOptionsWithTextBody extends HttpMethodOptions {
-  responseType: HttpResponseType.TEXT;
+  responseType: HttpResponseType.Text;
 }
 export interface HttpMethodOptionsWithJsonBody extends HttpMethodOptions {
-  responseType?: HttpResponseType.JSON;
+  responseType?: HttpResponseType.Json;
 }
 export interface HttpMethodOptionsWithUnparsedBody extends HttpMethodOptions {
-  responseType: HttpResponseType.UNPARSED;
+  responseType: HttpResponseType.Unparsed;
 }
-
 
 export interface HttpRequestOptions extends HttpMethodOptions {
   body?: HttpBody|null;
 }
 export interface HttpRequestOptionsWithArrayBufferBody extends HttpRequestOptions {
-  responseType: HttpResponseType.ARRAY_BUFFER;
+  responseType: HttpResponseType.ArrayBuffer;
 }
 export interface HttpRequestOptionsWithBlobBody extends HttpRequestOptions {
-  responseType: HttpResponseType.BLOB;
+  responseType: HttpResponseType.Blob;
 }
 export interface HttpRequestOptionsWithTextBody extends HttpRequestOptions {
-  responseType: HttpResponseType.TEXT;
+  responseType: HttpResponseType.Text;
 }
 export interface HttpRequestOptionsWithJsonBody extends HttpRequestOptions {
-  responseType?: HttpResponseType.JSON;
+  responseType?: HttpResponseType.Json;
 }
 export interface HttpRequestOptionsWithUnparsedBody extends HttpRequestOptions {
-  responseType: HttpResponseType.UNPARSED;
+  responseType: HttpResponseType.Unparsed;
 }
-
-
-
-/*
-export interface HttpMethodOptionsWithArrayBufferBody extends HttpMethodOptions {
-  responseType: HttpResponseType.
-}
-*/
 
 @Injectable()
 export class HttpClient {
-
   constructor(private handler: HttpHandler) {}
 
   request(req: HttpRequest): Observable<HttpResponse>;
@@ -90,11 +61,17 @@ export class HttpClient {
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptionsWithJsonBody): Observable<T>;
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptions): Observable<T>;
   request<T>(first: string|HttpRequest, method?: HttpMethod|string, options?: HttpRequestOptions): Observable<T> {
+    let req: HttpRequest;
     if (first instanceof HttpRequest) {
-      const req = first as HttpRequest;
-      return this.handler.handle(req);
-    };
-    const url = first as string;
+      req = first as HttpRequest;
+    } else {
+      req = new HttpRequest(first as string, method, options.body || null, {
+        headers: options.headers,
+        responseType: options.responseType,
+        withCredentials: options.withCredentials,
+      });
+    }
+    return null;
   }
 
   get(url: string, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
@@ -105,7 +82,7 @@ export class HttpClient {
   get<T>(url: string, options?: HttpMethodOptionsWithJsonBody): Observable<T>;
   get<T>(url: string, options?: HttpMethodOptions): Observable<T>;
   get<T>(url: string, options?: HttpMethodOptions): Observable<T> {
-    return this.request<any>(url, HttpMethod.GET, options);
+    return this.request<any>(url, HttpMethod.Get, options);
   }
 
   post(url: string, body: HttpBody, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
@@ -115,7 +92,7 @@ export class HttpClient {
   post(url: string, body: HttpBody, options?: HttpMethodOptionsWithJsonBody): Observable<any>;
   post<T>(url: string, body: HttpBody, options?: HttpMethodOptionsWithJsonBody): Observable<T>;
   post<T>(url: string, body: HttpBody, options: HttpMethodOptions = {}): Observable<T> {
-    return this.request<any>(url, HttpMethod.POST, {
+    return this.request<any>(url, HttpMethod.Post, {
       body,
       headers: options.headers,
       responseType: options.responseType,
@@ -129,6 +106,6 @@ export class HttpClient {
   delete(url: string, options?: HttpMethodOptionsWithJsonBody): Observable<any>;
   delete<T>(url: string, options?: HttpMethodOptionsWithJsonBody): Observable<T>;
   delete<T>(url: string, options: HttpMethodOptions = {}): Observable<T> {
-    return this.request<any>(url, HttpMethod.POST, options);
+    return this.request<any>(url, HttpMethod.Post, options);
   }
 }
