@@ -3,7 +3,7 @@ import {Observable} from 'rxjs/Observable';
 import {Observer} from 'rxjs/Observer';
 
 import {HttpBackend, XhrFactory} from './backend';
-import {HttpBody, HttpRequest, HttpResponseType} from './request';
+import {HttpBody, HttpMethod, HttpRequest, HttpResponseType} from './request';
 import {HttpResponse} from './response';
 
 import {HttpHeaders} from '../headers';
@@ -16,6 +16,9 @@ export class HttpXhrBackend implements HttpBackend {
   constructor(private xhrFactory: XhrFactory) {}
 
   handle(req: HttpRequest): Observable<HttpResponse> {
+    if (req.method === HttpMethod.Jsonp) {
+      throw new Error(`Attempted to construct Jsonp request without JsonpClientModule installed.`);
+    }
     return new Observable((observer: Observer<HttpResponse>) => {
       const xhr = this.xhrFactory.build();
       xhr.open(req.verb, req.url);

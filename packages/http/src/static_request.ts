@@ -8,10 +8,10 @@
 
 import {Body} from './body';
 import {ContentType, RequestMethod, ResponseContentType} from './enums';
-import {Headers} from './headers';
+import {HttpHeaders} from './headers';
 import {normalizeMethodName} from './http_utils';
 import {RequestArgs} from './interfaces';
-import {URLSearchParams} from './url_search_params';
+import {HttpUrlParams} from './url_search_params';
 
 
 // TODO(jeffbcross): properly implement body accessors
@@ -62,7 +62,7 @@ export class Request extends Body {
   /**
    * {@link Headers} instance
    */
-  headers: Headers;
+  headers: HttpHeaders;
   /** Url of the remote resource */
   url: string;
   /** Type of the request body **/
@@ -91,7 +91,7 @@ export class Request extends Body {
     this.method = normalizeMethodName(requestOptions.method);
     // TODO(jeffbcross): implement behavior
     // Defaults to 'omit', consistent with browser
-    this.headers = new Headers(requestOptions.headers);
+    this.headers = new HttpHeaders(requestOptions.headers);
     this.contentType = this.detectContentType();
     this.withCredentials = requestOptions.withCredentials;
     this.responseType = requestOptions.responseType;
@@ -124,7 +124,7 @@ export class Request extends Body {
   detectContentTypeFromBody(): ContentType {
     if (this._body == null) {
       return ContentType.NONE;
-    } else if (this._body instanceof URLSearchParams) {
+    } else if (this._body instanceof HttpUrlParams) {
       return ContentType.FORM;
     } else if (this._body instanceof FormData) {
       return ContentType.FORM_DATA;

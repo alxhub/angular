@@ -3,6 +3,7 @@ import {Inject, NgModule, Optional} from '@angular/core';
 import {HttpBackend, HttpHandler, XhrFactory} from './backend';
 import {HttpClient} from './client';
 import {HttpInterceptor, HttpInterceptorHandler, HTTP_INTERCEPTORS} from './interceptor';
+import {JsonpInterceptor} from './jsonp';
 import {HttpXhrBackend} from './xhr';
 import {BrowserXhr} from '../backends/browser_xhr';
 
@@ -26,3 +27,10 @@ export function interceptingHandler(backend: HttpBackend, interceptors: HttpInte
   ],
 })
 export class HttpClientModule {}
+
+@NgModule({
+  providers: [
+    {provide: HTTP_INTERCEPTORS, useValue: JsonpInterceptor,
+  ],
+})
+export class HttpClientJsonpModule {}

@@ -7,7 +7,7 @@
  */
 
 import {stringToArrayBuffer} from './http_utils';
-import {URLSearchParams} from './url_search_params';
+import {HttpUrlParams} from './url_search_params';
 
 
 /**
@@ -23,7 +23,7 @@ export abstract class Body {
   /**
    * Attempts to return body as parsed `JSON` object, or raises an exception.
    */
-  json(): any {
+json(): any {
     if (typeof this._body === 'string') {
       return JSON.parse(<string>this._body);
     }
@@ -39,7 +39,7 @@ export abstract class Body {
    * Returns the body as a string, presuming `toString()` can be called on the response body.
    */
   text(): string {
-    if (this._body instanceof URLSearchParams) {
+    if (this._body instanceof HttpUrlParams) {
       return this._body.toString();
     }
 

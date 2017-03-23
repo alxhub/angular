@@ -16,13 +16,14 @@ export enum HttpMethod {
   Delete,
   Get,
   Head,
+  Jsonp,
   Options,
   Post,
   Put,
   Patch,
 }
 
-export type HttpNoBodyMethod = HttpMethod.Delete | HttpMethod.Get | HttpMethod.Head | HttpMethod.Options;
+export type HttpNoBodyMethod = HttpMethod.Delete | HttpMethod.Get | HttpMethod.Head | HttpMethod.Jsonp | HttpMethod.Options;
 export type HttpBodyMethod = HttpMethod.Post | HttpMethod.Put | HttpMethod.Patch;
 
 export interface HttpRequestInit {
@@ -37,6 +38,7 @@ function mightHaveBody(method: HttpMethod): boolean {
     case HttpMethod.Get:
     case HttpMethod.Head:
     case HttpMethod.Options:
+    case HttpMethod.Jsonp:
       return false;
     default:
       return true;

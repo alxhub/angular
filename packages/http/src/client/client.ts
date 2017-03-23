@@ -1,5 +1,6 @@
 import {Injectable} from '@angular/core';
 import {Observable} from 'rxjs/Observable';
+import {concatMap} from 'rxjs/operator/concatMap';
 
 import {HttpHeaders} from '../headers';
 import {HttpUrlParams} from '../url_search_params';
@@ -60,7 +61,7 @@ export class HttpClient {
   request(url: string, method: HttpMethod|string, options?: HttpRequestOptionsWithJsonBody): Observable<any>;
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptionsWithJsonBody): Observable<T>;
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptions): Observable<T>;
-  request<T>(first: string|HttpRequest, method?: HttpMethod|string, options?: HttpRequestOptions): Observable<T> {
+  request(first: string|HttpRequest, method?: HttpMethod|string, options?: HttpRequestOptions): Observable<any> {
     let req: HttpRequest;
     if (first instanceof HttpRequest) {
       req = first as HttpRequest;
@@ -71,7 +72,19 @@ export class HttpClient {
         withCredentials: options.withCredentials,
       });
     }
-    return null;
+    const res$ = this.handler.handle(req);
+    switch (req.responseType) {
+      case HttpResponseType.ArrayBuffer:
+        return concatMap.call(res$, (res: HttpResponse) => res.arrayBuffer());
+      case HttpResponseType.Blob:
+        return concatMap.call(res$, (res: HttpResponse) => res.blob());
+      case HttpResponseType.Json:
+        return concatMap.call(res$, (res: HttpResponse) => res.json());
+      case HttpResponseType.Text:
+        return concatMap.call(res$, (res: HttpResponse) => res.text());
+      default:
+        return res$;
+    }
   }
 
   get(url: string, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;

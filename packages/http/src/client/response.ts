@@ -5,7 +5,7 @@ import {stringToArrayBuffer} from '../http_utils';
 import {HttpUrlParams} from '../url_search_params';
 
 export interface HttpResponseInit {
-  body?: HttpBody;
+  body?: HttpBody|ErrorEvent;
   headers?: HttpHeaders;
   status?: number;
   statusText?: string;
@@ -13,7 +13,7 @@ export interface HttpResponseInit {
 }
 
 export class HttpResponse {
-  _body: HttpBody|null;
+  _body: HttpBody|ErrorEvent|null;
   headers: HttpHeaders;
   status: number;
   statusText: string;
