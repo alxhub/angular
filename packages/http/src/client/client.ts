@@ -1,8 +1,10 @@
+import {Injectable} from '@angular/core';
 import {Observable} from 'rxjs/Observable';
 
 import {HttpHeaders} from '../headers';
 import {HttpUrlParams} from '../url_search_params';
 
+import {HttpHandler} from './backend';
 import {HttpRequest} from './request';
 import {HttpResponse} from './response';
 
@@ -74,7 +76,12 @@ export interface HttpMethodOptionsWithArrayBufferBody extends HttpMethodOptions 
 }
 */
 
+@Injectable()
 export class HttpClient {
+
+  constructor(private handler: HttpHandler) {}
+
+  request(req: HttpRequest): Observable<HttpResponse>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithBlobBody): Observable<Blob>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithTextBody): Observable<string>;
@@ -82,8 +89,12 @@ export class HttpClient {
   request(url: string, method: HttpMethod|string, options?: HttpRequestOptionsWithJsonBody): Observable<any>;
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptionsWithJsonBody): Observable<T>;
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptions): Observable<T>;
-  request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptions): Observable<T> {
-    return null;
+  request<T>(first: string|HttpRequest, method?: HttpMethod|string, options?: HttpRequestOptions): Observable<T> {
+    if (first instanceof HttpRequest) {
+      const req = first as HttpRequest;
+      return this.handler.handle(req);
+    };
+    const url = first as string;
   }
 
   get(url: string, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
