@@ -1,5 +1,5 @@
-import {HttpHeaders} from '../headers';
-import {HttpUrlParams} from '../url_search_params';
+import {HttpHeaders} from './headers';
+import {HttpUrlParams} from './http_url_params';
 
 export type HttpBody = ArrayBuffer | Blob | FormData | Object | HttpUrlParams | number | string;
 export type HttpSerializedBody = ArrayBuffer | Blob | FormData | string;
@@ -8,6 +8,7 @@ export enum HttpResponseType {
   ArrayBuffer,
   Blob,
   Json,
+  Request,
   Text,
   Unparsed,
 }
@@ -46,17 +47,10 @@ function mightHaveBody(method: HttpMethod): boolean {
 }
 
 export class HttpRequest {
-
   body: HttpBody|null = null;
   headers: HttpHeaders;
   withCredentials: boolean = false;
   responseType: HttpResponseType = HttpResponseType.Json;
-
-  get verb(): string {
-    return typeof this.method === 'string'
-        ? this.method.toUpperCase()
-        : HttpMethod[this.method].toUpperCase();
-  }
 
   constructor(url: string, method: HttpNoBodyMethod, init?: HttpRequestInit);
   constructor(url: string, method: HttpBodyMethod, body: HttpBody|null, init?: HttpRequestInit);
@@ -82,6 +76,13 @@ export class HttpRequest {
       this.headers = new HttpHeaders();
     }
   }
+
+  get verb(): string {
+    return typeof this.method === 'string'
+        ? this.method.toUpperCase()
+        : HttpMethod[this.method].toUpperCase();
+  }
+
 
   serializeBody(): HttpSerializedBody|null {
     if (this.body === null) {

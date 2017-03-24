@@ -2,14 +2,31 @@ import {Injectable} from '@angular/core';
 import {Observable} from 'rxjs/Observable';
 import {Observer} from 'rxjs/Observer';
 
-import {HttpBackend, XhrFactory} from './backend';
+import {HttpBackend} from './backend';
 import {HttpBody, HttpMethod, HttpRequest, HttpResponseType} from './request';
 import {HttpResponse} from './response';
 
-import {HttpHeaders} from '../headers';
+import {HttpHeaders} from './headers';
 import {getResponseURL} from '../http_utils';
 
 const XSSI_PREFIX = /^\)\]\}',?\n/;
+
+export abstract class XhrFactory {
+  abstract build(): XMLHttpRequest;
+}
+
+/**
+ * A backend for http that uses the `XMLHttpRequest` browser API.
+ *
+ * Take care not to evaluate this in non-browser contexts.
+ *
+ * @experimental
+ */
+@Injectable()
+export class BrowserXhr implements XhrFactory {
+  constructor() {}
+  build(): any { return <any>(new XMLHttpRequest()); }
+}
 
 @Injectable()
 export class HttpXhrBackend implements HttpBackend {

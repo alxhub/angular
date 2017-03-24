@@ -8,7 +8,7 @@
 
 import {Body} from './body';
 import {ContentType, RequestMethod, ResponseContentType} from './enums';
-import {HttpHeaders} from './headers';
+import {HttpHeaders, URLSearchParams} from './legacy';
 import {normalizeMethodName} from './http_utils';
 import {RequestArgs} from './interfaces';
 import {HttpUrlParams} from './url_search_params';

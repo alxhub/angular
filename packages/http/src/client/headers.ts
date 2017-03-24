@@ -183,6 +183,3 @@ export class HttpHeaders {
     }
   }
 }
-
-export type Headers = HttpHeaders;
-export const Headers = HttpHeaders;

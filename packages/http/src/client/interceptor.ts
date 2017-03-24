@@ -3,10 +3,10 @@ import {Observable} from 'rxjs/Observable';
 
 import {HttpHandler} from './backend';
 import {HttpRequest} from './request';
-import {HttpResponse} from './response';
+import {HttpEvent, HttpResponse} from './response';
 
 export interface HttpInterceptor {
-  intercept(req: HttpRequest, next: HttpHandler): Observable<HttpResponse>;
+  intercept(req: HttpRequest, next: HttpHandler): Observable<HttpEvent>;
 }
 
 export class HttpInterceptorHandler implements HttpHandler {

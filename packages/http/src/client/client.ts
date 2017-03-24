@@ -2,8 +2,8 @@ import {Injectable} from '@angular/core';
 import {Observable} from 'rxjs/Observable';
 import {concatMap} from 'rxjs/operator/concatMap';
 
-import {HttpHeaders} from '../headers';
-import {HttpUrlParams} from '../url_search_params';
+import {HttpHeaders} from './headers';
+import {HttpUrlParams} from './http_url_params';
 
 import {HttpHandler} from './backend';
 import {HttpBody, HttpMethod, HttpRequest, HttpResponseType} from './request';

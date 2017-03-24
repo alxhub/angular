@@ -1,30 +1,74 @@
-import {HttpBody} from './request';
+import {Observable} from 'rxjs/Observable';
+import {empty} from 'rxjs/observable/empty';
 
-import {HttpHeaders} from '../headers';
+
+import {HttpHeaders} from './headers';
 import {stringToArrayBuffer} from '../http_utils';
-import {HttpUrlParams} from '../url_search_params';
+import {HttpBody} from './request';
+import {HttpUrlParams} from './url_params';
+import {HttpHeaders} from './headers';
 
-export interface HttpResponseInit {
-  body?: HttpBody|ErrorEvent;
+export enum HttpEventType {
+  UploadProgress,
+  ResponseHeader,
+  DownloadProgress,
+  Response,
+}
+
+
+export class HttpProgressEvent {
+  constructor(
+    private type: HttpEventType.DownloadProgress | HttpEventType.UploadProgress,
+    private loaded: number,
+    private total: number
+  ) {}
+}
+
+export interface HttpUnknownEvent {
+  type: HttpEventType;
+}
+
+export type HttpEvent = HttpProgressEvent | HttpResponseHeader | HttpResponse | HttpUnknownEvent;
+
+export interface HttpResponseHeaderInit {
   headers?: HttpHeaders;
   status?: number;
   statusText?: string;
   url?: string;
 }
 
-export class HttpResponse {
-  _body: HttpBody|ErrorEvent|null;
-  headers: HttpHeaders;
-  status: number;
-  statusText: string;
-  url: string|null;
+export interface HttpResponseInit extends HttpResponseHeaderInit {
+  body?: HttpBody|ErrorEvent;
+}
 
+export class HttpResponseHeader {
   constructor(init: HttpResponseInit = {}) {
-    this._body = init.body || null;
     this.headers = init.headers || new HttpHeaders();
     this.status = init.status !== undefined ? init.status : 200;
     this.statusText = init.statusText || 'OK';
     this.url = init.url || null;
+  }
+
+  get type(): HttpEventType {
+    return HttpEventType.ResponseHeader;
+  }
+
+  headers: HttpHeaders;
+  status: number;
+  statusText: string;
+  url: string;
+}
+
+export class HttpResponse extends HttpResponseHeader{
+  _body: HttpBody|ErrorEvent|null;
+
+  constructor(init: HttpResponseInit = {}) {
+    super(init);
+    this._body = init.body || null;
+  }
+
+  get type(): HttpEventType {
+    return HttpEventType.Response;
   }
 
   get ok(): boolean {
