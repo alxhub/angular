@@ -7,10 +7,8 @@ export type HttpSerializedBody = ArrayBuffer | Blob | FormData | string;
 export enum HttpResponseType {
   ArrayBuffer,
   Blob,
-  Events,
   Json,
   Text,
-  Unparsed,
 }
 
 export enum HttpMethod {
@@ -19,9 +17,9 @@ export enum HttpMethod {
   Head,
   Jsonp,
   Options,
+  Patch,
   Post,
   Put,
-  Patch,
 }
 
 export type HttpNoBodyMethod = HttpMethod.Delete | HttpMethod.Get | HttpMethod.Head | HttpMethod.Jsonp | HttpMethod.Options;
@@ -29,8 +27,15 @@ export type HttpBodyMethod = HttpMethod.Post | HttpMethod.Put | HttpMethod.Patch
 
 export interface HttpRequestInit {
   headers?: HttpHeaders;
-  withCredentials?: boolean;
+  reportProgress?: boolean;
   responseType?: HttpResponseType;
+  withCredentials?: boolean;
+}
+
+export interface HttpRequestClone extends HttpRequestInit {
+  body?: HttpBody|null;
+  method?: HttpMethod|string;
+  url?: string;
 }
 
 function mightHaveBody(method: HttpMethod): boolean {
@@ -49,6 +54,7 @@ function mightHaveBody(method: HttpMethod): boolean {
 export class HttpRequest {
   body: HttpBody|null = null;
   headers: HttpHeaders;
+  reportProgress: boolean = false;
   withCredentials: boolean = false;
   responseType: HttpResponseType = HttpResponseType.Json;
 
@@ -64,6 +70,7 @@ export class HttpRequest {
       options = third;
     }
     if (options) {
+      this.reportProgress = !!options.reportProgress;
       this.withCredentials = !!options.withCredentials;
       if (!!options.responseType) {
         this.responseType = options.responseType;
@@ -114,5 +121,17 @@ export class HttpRequest {
       return 'application/json';
     }
     return null;
+  }
+
+  clone(update: HttpRequestClone = {}): HttpRequest {
+    const body = (update.body !== undefined) ? update.body : this.body;
+    const method = update.method || this.method;
+    const url = update.url || this.url;
+    return new HttpRequest(url, method, body, {
+      headers: update.headers || this.headers.clone(),
+      reportProgress: (update.reportProgress !== undefined) ? update.reportProgress : this.reportProgress,
+      responseType: update.responseType || this.responseType,
+      withCredentials: (update.withCredentials !== undefined) ? update.withCredentials : this.withCredentials,
+    });
   }
 }

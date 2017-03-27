@@ -1,5 +1,5 @@
 import {HttpHeaders} from './client/headers';
-import {HttpUrlParams} from './client/http_url_params';
+import {HttpUrlParams} from './client/url_params';
 
 export type Headers = HttpHeaders;
 export const Headers = HttpHeaders;

@@ -4,14 +4,15 @@ import {Observer} from 'rxjs/Observer';
 
 import {HttpBackend, HttpHandler} from './backend';
 import {HttpInterceptor} from './interceptor';
-import {HttpMethod, HttpRequest} from './request';
-import {HttpResponse} from './response';
+import {HttpMethod, HttpRequest, HttpResponseType} from './request';
+import {HttpEvent, HttpEventType, HttpResponse} from './response';
 
 let nextRequestId: number = 0;
 const JSONP_HOME = '__ng__jsonp__';
 
 export const JSONP_ERR_NO_CALLBACK = 'JSONP injected script did not invoke callback.';
 export const JSONP_ERR_WRONG_METHOD = 'JSONP requests must use JSONP request method.';
+export const JSONP_ERR_WRONG_RESPONSE_TYPE = 'JSONP requests must use Json response type.';
 
 @Injectable()
 export class JsonpAdapter {
@@ -51,11 +52,13 @@ export class JsonpAdapter {
 export class JsonpClientBackend implements HttpBackend {
   constructor(private adapter: JsonpAdapter) {}
 
-  handle(req: HttpRequest): Observable<HttpResponse> {
+  handle(req: HttpRequest): Observable<HttpEvent> {
     if (req.verb !== 'JSONP') {
       throw new Error(JSONP_ERR_WRONG_METHOD);
+    } else if (req.responseType !== HttpResponseType.Json) {
+      throw new Error(JSONP_ERR_WRONG_RESPONSE_TYPE);
     }
-    return new Observable<HttpResponse>((observer: Observer<HttpResponse>) => {
+    return new Observable<HttpEvent>((observer: Observer<HttpEvent>) => {
       const callback = this.adapter.allocateCallback();
       const url = req.url.replace(/=JSONP_CALLBACK(&|$)/, `=${callback}$1`);
       const node = this.adapter.createScript();
@@ -121,6 +124,8 @@ export class JsonpClientBackend implements HttpBackend {
       node.addEventListener('load', onLoad);
       node.addEventListener('error', onError);
       this.adapter.body.appendChild(node);
+
+      observer.next({type: HttpEventType.Sent});
 
       return () => {
         cancelled = true;

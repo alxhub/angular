@@ -1,11 +1,10 @@
 import {Inject, NgModule, Optional} from '@angular/core';
 
-import {HttpBackend, HttpHandler, XhrFactory} from './backend';
+import {HttpBackend, HttpHandler} from './backend';
 import {HttpClient} from './client';
 import {HttpInterceptor, HttpInterceptorHandler, HTTP_INTERCEPTORS} from './interceptor';
 import {JsonpAdapter, JsonpClientBackend, JsonpInterceptor} from './jsonp';
-import {HttpXhrBackend} from './xhr';
-import {BrowserXhr} from '../backends/browser_xhr';
+import {BrowserXhr, HttpXhrBackend, XhrFactory} from './xhr';
 
 export function interceptingHandler(backend: HttpBackend, interceptors: HttpInterceptor[] = []): HttpHandler {
   return interceptors.reduceRight(

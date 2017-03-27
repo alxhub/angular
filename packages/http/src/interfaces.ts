@@ -7,9 +7,9 @@
  */
 
 import {ReadyState, RequestMethod, ResponseContentType, ResponseType} from './enums';
-import {HttpHeaders} from './headers';
+import {HttpHeaders} from './client/headers';
 import {Request} from './static_request';
-import {HttpUrlParams} from './url_search_params';
+import {HttpUrlParams} from './client/url_params';
 
 /**
  * Abstract class from which real backends are derived.

@@ -8,6 +8,7 @@ import {HttpBody} from './request';
 import {HttpUrlParams} from './url_params';
 
 export enum HttpEventType {
+  Sent,
   UploadProgress,
   ResponseHeader,
   DownloadProgress,
@@ -26,7 +27,7 @@ export interface HttpUnknownEvent {
   type: HttpEventType;
 }
 
-export type HttpEvent = HttpProgressEvent | HttpResponseHeader | HttpResponse | HttpUnknownEvent;
+export type HttpEvent = HttpProgressEvent | HttpHeaderResponse | HttpResponse | HttpUnknownEvent;
 
 export interface HttpResponseHeaderInit {
   headers?: HttpHeaders;
@@ -39,7 +40,7 @@ export interface HttpResponseInit extends HttpResponseHeaderInit {
   body?: HttpBody|ErrorEvent;
 }
 
-export class HttpResponseHeader {
+export class HttpHeaderResponse {
   constructor(init: HttpResponseInit = {}) {
     this.headers = init.headers || new HttpHeaders();
     this.status = init.status !== undefined ? init.status : 200;
@@ -57,7 +58,7 @@ export class HttpResponseHeader {
   url: string;
 }
 
-export class HttpResponse extends HttpResponseHeader {
+export class HttpResponse extends HttpHeaderResponse {
   _body: HttpBody|ErrorEvent|null;
 
   constructor(init: HttpResponseInit = {}) {
@@ -116,5 +117,15 @@ export class HttpResponse extends HttpResponseHeader {
       return Promise.resolve(JSON.stringify(this._body, null, 2));
     }
     return Promise.resolve(this._body.toString());
+  }
+
+  clone(update: HttpResponseInit = {}): HttpResponse {
+    return new HttpResponse({
+      body: (update.body !== undefined) ? update.body : this._body,
+      headers: update.headers || this.headers.clone(),
+      status: (update.status !== undefined) ? update.status : this.status,
+      statusText: update.statusText || this.statusText,
+      url: update.url || this.url,
+    });
   }
 }

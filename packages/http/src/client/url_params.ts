@@ -182,6 +182,3 @@ export class HttpUrlParams {
 
   delete (param: string): void { this.paramsMap.delete(param); }
 }
-
-export type URLSearchParams = HttpUrlParams;
-export const URLSearchParams = HttpUrlParams;

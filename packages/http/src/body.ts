@@ -7,7 +7,7 @@
  */
 
 import {stringToArrayBuffer} from './http_utils';
-import {HttpUrlParams} from './url_search_params';
+import {HttpUrlParams} from './client/url_params';
 
 
 /**

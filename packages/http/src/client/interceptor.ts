@@ -10,7 +10,6 @@ export interface HttpInterceptor {
 }
 
 export class HttpInterceptorHandler implements HttpHandler {
-
   constructor(private next: HttpHandler, private interceptor: HttpInterceptor) {}
 
   handle(req: HttpRequest): Observable<HttpEvent> {
