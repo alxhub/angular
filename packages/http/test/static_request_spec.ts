@@ -10,7 +10,7 @@ import {describe, expect, it} from '@angular/core/testing/src/testing_internal';
 
 import {RequestOptions} from '../src/base_request_options';
 import {ContentType} from '../src/enums';
-import {HttpHeaders} from '../src/headers';
+import {HttpHeaders} from '../src/client/headers';
 import {ArrayBuffer, Request} from '../src/static_request';
 
 export function main() {

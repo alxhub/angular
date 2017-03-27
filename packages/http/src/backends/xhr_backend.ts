@@ -17,7 +17,7 @@ import {getResponseURL, isSuccess} from '../http_utils';
 import {Connection, ConnectionBackend, XSRFStrategy} from '../interfaces';
 import {Request} from '../static_request';
 import {Response} from '../static_response';
-import {BrowserXhr} from '../legacy';
+import {BrowserXhr} from '../client/xhr';
 
 const XSSI_PREFIX = /^\)\]\}',?\n/;
 

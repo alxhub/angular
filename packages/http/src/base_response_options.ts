@@ -9,7 +9,7 @@
 import {Injectable} from '@angular/core';
 
 import {ResponseType} from './enums';
-import {HttpHeaders} from './headers';
+import {HttpHeaders} from './client/headers';
 import {ResponseOptionsArgs} from './interfaces';
 
 

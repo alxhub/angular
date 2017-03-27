@@ -220,3 +220,7 @@ export class HttpClient {
     return this.request<any>(url, HttpMethod.Put, addBody(options, body));
   }
 }
+
+let client = new HttpClient(null);
+
+let res = client.get('http://some/url', {observe: HttpObserve.Events, responseType: HttpResponseType.Text});

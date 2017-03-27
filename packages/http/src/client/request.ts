@@ -22,8 +22,8 @@ export enum HttpMethod {
   Put,
 }
 
-export type HttpNoBodyMethod = HttpMethod.Delete | HttpMethod.Get | HttpMethod.Head | HttpMethod.Jsonp | HttpMethod.Options;
-export type HttpBodyMethod = HttpMethod.Post | HttpMethod.Put | HttpMethod.Patch;
+export type HttpNoBodyMethod = HttpMethod.Get | HttpMethod.Head | HttpMethod.Jsonp | HttpMethod.Options;
+export type HttpBodyMethod = HttpMethod.Delete | HttpMethod.Post | HttpMethod.Put | HttpMethod.Patch;
 
 export interface HttpRequestInit {
   headers?: HttpHeaders;

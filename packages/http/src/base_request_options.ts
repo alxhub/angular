@@ -9,10 +9,10 @@
 import {Injectable} from '@angular/core';
 
 import {RequestMethod, ResponseContentType} from './enums';
-import {HttpHeaders} from './headers';
+import {HttpHeaders} from './client/headers';
+import {HttpUrlParams} from './client/url_params';
 import {normalizeMethodName} from './http_utils';
 import {RequestOptionsArgs} from './interfaces';
-import {HttpUrlParams} from './url_search_params';
 
 
 /**

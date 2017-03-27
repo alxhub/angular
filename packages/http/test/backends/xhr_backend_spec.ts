@@ -9,16 +9,16 @@
 import {Injectable} from '@angular/core';
 import {AsyncTestCompleter, SpyObject, afterEach, beforeEach, beforeEachProviders, describe, expect, inject, it} from '@angular/core/testing/src/testing_internal';
 import {ɵgetDOM as getDOM} from '@angular/platform-browser';
-import {BrowserXhr} from '../../src/backends/browser_xhr';
+import {BrowserXhr} from '../../src/client/xhr';
 import {CookieXSRFStrategy, XHRBackend, XHRConnection} from '../../src/backends/xhr_backend';
 import {BaseRequestOptions, RequestOptions} from '../../src/base_request_options';
 import {BaseResponseOptions, ResponseOptions} from '../../src/base_response_options';
 import {ResponseContentType, ResponseType} from '../../src/enums';
-import {HttpHeaders} from '../../src/headers';
+import {HttpHeaders} from '../../src/client/headers';
 import {XSRFStrategy} from '../../src/interfaces';
 import {Request} from '../../src/static_request';
 import {Response} from '../../src/static_response';
-import {HttpUrlParams} from '../../src/url_search_params';
+import {HttpUrlParams} from '../../src/client/url_params';
 
 let abortSpy: any;
 let sendSpy: any;

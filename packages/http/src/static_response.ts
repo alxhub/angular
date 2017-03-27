@@ -10,8 +10,8 @@
 
 import {ResponseOptions} from './base_response_options';
 import {Body} from './body';
+import {HttpHeaders} from './client/headers';
 import {ResponseType} from './enums';
-import {HttpHeaders} from './headers';
 
 
 /**
