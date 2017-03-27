@@ -1,5 +1,5 @@
 import {HttpHeaders} from './headers';
-import {HttpUrlParams} from './http_url_params';
+import {HttpUrlParams} from './url_params';
 
 export type HttpBody = ArrayBuffer | Blob | FormData | Object | HttpUrlParams | number | string;
 export type HttpSerializedBody = ArrayBuffer | Blob | FormData | string;
@@ -7,8 +7,8 @@ export type HttpSerializedBody = ArrayBuffer | Blob | FormData | string;
 export enum HttpResponseType {
   ArrayBuffer,
   Blob,
+  Events,
   Json,
-  Request,
   Text,
   Unparsed,
 }

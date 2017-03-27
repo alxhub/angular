@@ -13,7 +13,7 @@ export class HttpInterceptorHandler implements HttpHandler {
 
   constructor(private next: HttpHandler, private interceptor: HttpInterceptor) {}
 
-  handle(req: HttpRequest): Observable<HttpResponse> {
+  handle(req: HttpRequest): Observable<HttpEvent> {
     return this.interceptor.intercept(req, this.next);
   }
 }

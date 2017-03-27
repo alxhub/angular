@@ -6,7 +6,6 @@ import {HttpHeaders} from './headers';
 import {stringToArrayBuffer} from '../http_utils';
 import {HttpBody} from './request';
 import {HttpUrlParams} from './url_params';
-import {HttpHeaders} from './headers';
 
 export enum HttpEventType {
   UploadProgress,
@@ -14,7 +13,6 @@ export enum HttpEventType {
   DownloadProgress,
   Response,
 }
-
 
 export class HttpProgressEvent {
   constructor(
@@ -59,7 +57,7 @@ export class HttpResponseHeader {
   url: string;
 }
 
-export class HttpResponse extends HttpResponseHeader{
+export class HttpResponse extends HttpResponseHeader {
   _body: HttpBody|ErrorEvent|null;
 
   constructor(init: HttpResponseInit = {}) {

@@ -1,13 +1,14 @@
 import {Injectable} from '@angular/core';
 import {Observable} from 'rxjs/Observable';
 import {concatMap} from 'rxjs/operator/concatMap';
+import {filter} from 'rxjs/operator/filter';
 
 import {HttpHeaders} from './headers';
-import {HttpUrlParams} from './http_url_params';
+import {HttpUrlParams} from './url_params';
 
 import {HttpHandler} from './backend';
 import {HttpBody, HttpMethod, HttpRequest, HttpResponseType} from './request';
-import {HttpResponse} from './response';
+import {HttpEvent, HttpResponse} from './response';
 
 export interface HttpMethodOptions {
   headers?: HttpHeaders;
@@ -19,6 +20,9 @@ export interface HttpMethodOptionsWithArrayBufferBody extends HttpMethodOptions 
 }
 export interface HttpMethodOptionsWithBlobBody extends HttpMethodOptions {
   responseType: HttpResponseType.Blob;
+}
+export interface HttpMethodOptionsWithEvents extends HttpMethodOptions {
+  responseType: HttpResponseType.Events;
 }
 export interface HttpMethodOptionsWithTextBody extends HttpMethodOptions {
   responseType: HttpResponseType.Text;
@@ -39,6 +43,9 @@ export interface HttpRequestOptionsWithArrayBufferBody extends HttpRequestOption
 export interface HttpRequestOptionsWithBlobBody extends HttpRequestOptions {
   responseType: HttpResponseType.Blob;
 }
+export interface HttpRequestOptionsWithEvents extends HttpRequestOptions {
+  responseType: HttpResponseType.Events;
+}
 export interface HttpRequestOptionsWithTextBody extends HttpRequestOptions {
   responseType: HttpResponseType.Text;
 }
@@ -56,6 +63,7 @@ export class HttpClient {
   request(req: HttpRequest): Observable<HttpResponse>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithBlobBody): Observable<Blob>;
+  request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithEvents): Observable<HttpEvent>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithTextBody): Observable<string>;
   request(url: string, method: HttpMethod|string, options: HttpRequestOptionsWithUnparsedBody): Observable<HttpResponse>;
   request(url: string, method: HttpMethod|string, options?: HttpRequestOptionsWithJsonBody): Observable<any>;
@@ -72,7 +80,8 @@ export class HttpClient {
         withCredentials: options.withCredentials,
       });
     }
-    const res$ = this.handler.handle(req);
+    const events$: Observable<HttpEvent> = this.handler.handle(req);
+    const res$: Observable<HttpResponse> = filter.call(events$, (event: HttpEvent) => event instanceof HttpResponse);
     switch (req.responseType) {
       case HttpResponseType.ArrayBuffer:
         return concatMap.call(res$, (res: HttpResponse) => res.arrayBuffer());
@@ -82,6 +91,8 @@ export class HttpClient {
         return concatMap.call(res$, (res: HttpResponse) => res.json());
       case HttpResponseType.Text:
         return concatMap.call(res$, (res: HttpResponse) => res.text());
+      case HttpResponseType.Events:
+        return events$;
       default:
         return res$;
     }
@@ -89,19 +100,20 @@ export class HttpClient {
 
   get(url: string, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
   get(url: string, options: HttpMethodOptionsWithBlobBody): Observable<Blob>;
+  get(url: string, options: HttpMethodOptionsWithEvents): Observable<HttpEvent>;
   get(url: string, options: HttpMethodOptionsWithTextBody): Observable<string>;
-  get(url: string, options?: HttpMethodOptionsWithUnparsedBody): Observable<HttpResponse>;
+  get(url: string, options: HttpMethodOptionsWithUnparsedBody): Observable<HttpResponse>;
   get(url: string, options?: HttpMethodOptionsWithJsonBody): Observable<any>;
   get<T>(url: string, options?: HttpMethodOptionsWithJsonBody): Observable<T>;
-  get<T>(url: string, options?: HttpMethodOptions): Observable<T>;
   get<T>(url: string, options?: HttpMethodOptions): Observable<T> {
     return this.request<any>(url, HttpMethod.Get, options);
   }
 
   post(url: string, body: HttpBody, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
   post(url: string, body: HttpBody, options: HttpMethodOptionsWithBlobBody): Observable<Blob>;
+  post(url: string, body: HttpBody, options: HttpMethodOptionsWithEvents): Observable<HttpEvent>;
   post(url: string, body: HttpBody, options: HttpMethodOptionsWithTextBody): Observable<string>;
-  post(url: string, body: HttpBody, options?: HttpMethodOptionsWithUnparsedBody): Observable<HttpResponse>;
+  post(url: string, body: HttpBody, options: HttpMethodOptionsWithUnparsedBody): Observable<HttpResponse>;
   post(url: string, body: HttpBody, options?: HttpMethodOptionsWithJsonBody): Observable<any>;
   post<T>(url: string, body: HttpBody, options?: HttpMethodOptionsWithJsonBody): Observable<T>;
   post<T>(url: string, body: HttpBody, options: HttpMethodOptions = {}): Observable<T> {
@@ -114,6 +126,7 @@ export class HttpClient {
 
   delete(url: string, options: HttpMethodOptionsWithArrayBufferBody): Observable<ArrayBuffer>;
   delete(url: string, options: HttpMethodOptionsWithBlobBody): Observable<Blob>;
+  delete(url: string, options: HttpMethodOptionsWithEvents): Observable<HttpEvent>;
   delete(url: string, options: HttpMethodOptionsWithTextBody): Observable<string>;
   delete(url: string, options: HttpMethodOptionsWithUnparsedBody): Observable<HttpResponse>;
   delete(url: string, options?: HttpMethodOptionsWithJsonBody): Observable<any>;
@@ -122,3 +135,7 @@ export class HttpClient {
     return this.request<any>(url, HttpMethod.Post, options);
   }
 }
+
+const http = new HttpClient(null);
+
+let data = http.get('url', {responseType: HttpResponseType.Events});
