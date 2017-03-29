@@ -22,50 +22,43 @@ export interface HttpMethodOptions {
   responseType?: HttpResponseType;
   withCredentials?: boolean;
 }
-export interface HttpBodyMethodOptions extends HttpMethodOptions {
-  observe?: HttpObserve.Body;
-}
-export interface HttpEventsMethodOptions extends HttpMethodOptions {
+export interface _HttpMethodOptionsObserveEvents extends HttpMethodOptions {
   observe: HttpObserve.Events;
 }
-export interface HttpResponseMethodOptions extends HttpMethodOptions {
+export interface _HttpMethodOptionsObserveResponse extends HttpMethodOptions {
   observe: HttpObserve.Response;
 }
-export interface HttpArrayBufferMethodOptions extends HttpBodyMethodOptions {
+export interface _HttpMethodOptionsArrayObserveBufferBody extends HttpMethodOptions {
+  observe?: HttpObserve.Body;
   responseType: HttpResponseType.ArrayBuffer;
 }
-export interface HttpBlobMethodOptions extends HttpBodyMethodOptions {
+export interface _HttpMethodOptionsObserveBlobBody extends HttpMethodOptions {
+  observe?: HttpObserve.Body;
   responseType: HttpResponseType.Blob;
 }
-export interface HttpJsonMethodOptions extends HttpBodyMethodOptions {
-  responseType?: HttpResponseType.Json;
-}
-export interface HttpTextMethodOptions extends HttpBodyMethodOptions {
+export interface _HttpMethodOptionsObserveTextBody extends HttpMethodOptions {
+  observe?: HttpObserve.Body;
   responseType: HttpResponseType.Text;
 }
 
-export interface HttpRequestOptions extends HttpMethodOptions {
+export interface _HttpRequestBodyOptions {
   body?: HttpBody|null;
 }
-export interface HttpBodyRequestOptions extends HttpRequestOptions {
+
+export interface HttpRequestOptions extends HttpMethodOptions, _HttpRequestBodyOptions {}
+
+export interface _HttpRequestOptionsObserveEvents extends _HttpMethodOptionsObserveEvents, _HttpRequestBodyOptions {}
+
+export interface _HttpRequestOptionsObserveResponse extends _HttpMethodOptionsObserveResponse, _HttpRequestBodyOptions {}
+
+export interface _HttpRequestOptionsObserveArrayBufferBody extends _HttpMethodOptionsArrayObserveBufferBody, _HttpRequestBodyOptions {}
+
+export interface HttpBlobRequestOptions extends HttpRequestOptions {
   observe?: HttpObserve.Body;
-}
-export interface HttpEventsRequestOptions extends HttpRequestOptions {
-  observe: HttpObserve.Events;
-}
-export interface HttpResponseRequestOptions extends HttpRequestOptions {
-  observe: HttpObserve.Response;
-}
-export interface HttpArrayBufferRequestOptions extends HttpBodyRequestOptions {
-  responseType: HttpResponseType.ArrayBuffer;
-}
-export interface HttpBlobRequestOptions extends HttpBodyRequestOptions {
   responseType: HttpResponseType.Blob;
 }
-export interface HttpJsonRequestOptions extends HttpBodyRequestOptions {
-  responseType?: HttpResponseType.Json;
-}
-export interface HttpTextRequestOptions extends HttpBodyRequestOptions {
+export interface HttpTextRequestOptions extends HttpRequestOptions {
+  observe?: HttpObserve.Body;
   responseType: HttpResponseType.Text;
 }
 export interface HttpJsonpOptions {
@@ -87,13 +80,12 @@ export class HttpClient {
   constructor(private handler: HttpHandler) {}
 
   request(req: HttpRequest): Observable<HttpEvent>;
-  request(url: string, method: HttpMethod|string, options: HttpArrayBufferRequestOptions): Observable<ArrayBuffer>;
+  request(url: string, method: HttpMethod|string, options: _HttpRequestOptionsObserveEvents): Observable<HttpEvent>;
+  request(url: string, method: HttpMethod|string, options: _HttpRequestOptionsObserveResponse): Observable<HttpResponse>;
+  request(url: string, method: HttpMethod|string, options: _HttpRequestOptionsObserveArrayBufferBody): Observable<ArrayBuffer>;
   request(url: string, method: HttpMethod|string, options: HttpBlobRequestOptions): Observable<Blob>;
-  request(url: string, method: HttpMethod|string, options: HttpEventsRequestOptions): Observable<HttpEvent>;
   request(url: string, method: HttpMethod|string, options: HttpTextRequestOptions): Observable<string>;
-  request(url: string, method: HttpMethod|string, options: HttpResponseRequestOptions): Observable<HttpResponse>;
-  request(url: string, method: HttpMethod|string, options?: HttpJsonRequestOptions): Observable<any>;
-  request<T>(url: string, method: HttpMethod|string, options?: HttpJsonRequestOptions): Observable<T>;
+  request(url: string, method: HttpMethod|string, options?: HttpRequestOptions): Observable<any>;
   request<T>(url: string, method: HttpMethod|string, options?: HttpRequestOptions): Observable<T>;
   request(first: string|HttpRequest, method?: HttpMethod|string, options: HttpRequestOptions = {}): Observable<any> {
     let req: HttpRequest;
@@ -134,35 +126,35 @@ export class HttpClient {
     }
   }
 
-  delete(url: string, body: HttpBody, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  delete(url: string, body: HttpBody, options: HttpBlobMethodOptions): Observable<Blob>;
-  delete(url: string, body: HttpBody, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  delete(url: string, body: HttpBody, options: HttpTextMethodOptions): Observable<string>;
-  delete(url: string, body: HttpBody, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  delete(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<any>;
-  delete<T>(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<T>;
+  delete(url: string, body: HttpBody, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  delete(url: string, body: HttpBody, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  delete(url: string, body: HttpBody, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  delete(url: string, body: HttpBody, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  delete(url: string, body: HttpBody, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  delete(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<any>;
+  delete<T>(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<T>;
   delete<T>(url: string, body: HttpBody, options: HttpMethodOptions = {}): Observable<T> {
     return this.request<any>(url, HttpMethod.Delete, addBody(options, body));
   }
 
-  get(url: string, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  get(url: string, options: HttpBlobMethodOptions): Observable<Blob>;
-  get(url: string, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  get(url: string, options: HttpTextMethodOptions): Observable<string>;
-  get(url: string, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  get(url: string, options?: HttpJsonMethodOptions): Observable<any>;
-  get<T>(url: string, options?: HttpJsonMethodOptions): Observable<T>;
+  get(url: string, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  get(url: string, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  get(url: string, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  get(url: string, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  get(url: string, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  get(url: string, options?: HttpMethodOptions): Observable<any>;
+  get<T>(url: string, options?: HttpMethodOptions): Observable<T>;
   get<T>(url: string, options?: HttpMethodOptions): Observable<T> {
     return this.request<any>(url, HttpMethod.Get, options);
   }
 
-  head(url: string, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  head(url: string, options: HttpBlobMethodOptions): Observable<Blob>;
-  head(url: string, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  head(url: string, options: HttpTextMethodOptions): Observable<string>;
-  head(url: string, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  head(url: string, options?: HttpJsonMethodOptions): Observable<any>;
-  head<T>(url: string, options?: HttpJsonMethodOptions): Observable<T>;
+  head(url: string, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  head(url: string, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  head(url: string, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  head(url: string, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  head(url: string, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  head(url: string, options?: HttpMethodOptions): Observable<any>;
+  head<T>(url: string, options?: HttpMethodOptions): Observable<T>;
   head<T>(url: string, options?: HttpMethodOptions): Observable<T> {
     return this.request<any>(url, HttpMethod.Head, options);
   }
@@ -176,46 +168,46 @@ export class HttpClient {
     });
   }
 
-  options(url: string, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  options(url: string, options: HttpBlobMethodOptions): Observable<Blob>;
-  options(url: string, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  options(url: string, options: HttpTextMethodOptions): Observable<string>;
-  options(url: string, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  options(url: string, options?: HttpJsonMethodOptions): Observable<any>;
-  options<T>(url: string, options?: HttpJsonMethodOptions): Observable<T>;
+  options(url: string, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  options(url: string, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  options(url: string, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  options(url: string, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  options(url: string, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  options(url: string, options?: HttpMethodOptions): Observable<any>;
+  options<T>(url: string, options?: HttpMethodOptions): Observable<T>;
   options<T>(url: string, options?: HttpMethodOptions): Observable<T> {
     return this.request<any>(url, HttpMethod.Options, options);
   }
 
-  patch(url: string, body: HttpBody, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  patch(url: string, body: HttpBody, options: HttpBlobMethodOptions): Observable<Blob>;
-  patch(url: string, body: HttpBody, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  patch(url: string, body: HttpBody, options: HttpTextMethodOptions): Observable<string>;
-  patch(url: string, body: HttpBody, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  patch(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<any>;
-  patch<T>(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<T>;
+  patch(url: string, body: HttpBody, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  patch(url: string, body: HttpBody, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  patch(url: string, body: HttpBody, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  patch(url: string, body: HttpBody, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  patch(url: string, body: HttpBody, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  patch(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<any>;
+  patch<T>(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<T>;
   patch<T>(url: string, body: HttpBody, options: HttpMethodOptions = {}): Observable<T> {
     return this.request<any>(url, HttpMethod.Patch, addBody(options, body));
   }
 
-  post(url: string, body: HttpBody, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  post(url: string, body: HttpBody, options: HttpBlobMethodOptions): Observable<Blob>;
-  post(url: string, body: HttpBody, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  post(url: string, body: HttpBody, options: HttpTextMethodOptions): Observable<string>;
-  post(url: string, body: HttpBody, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  post(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<any>;
-  post<T>(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<T>;
+  post(url: string, body: HttpBody, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  post(url: string, body: HttpBody, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  post(url: string, body: HttpBody, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  post(url: string, body: HttpBody, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  post(url: string, body: HttpBody, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  post(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<any>;
+  post<T>(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<T>;
   post<T>(url: string, body: HttpBody, options: HttpMethodOptions = {}): Observable<T> {
     return this.request<any>(url, HttpMethod.Post, addBody(options, body));
   }
 
-  put(url: string, body: HttpBody, options: HttpArrayBufferMethodOptions): Observable<ArrayBuffer>;
-  put(url: string, body: HttpBody, options: HttpBlobMethodOptions): Observable<Blob>;
-  put(url: string, body: HttpBody, options: HttpEventsMethodOptions): Observable<HttpEvent>;
-  put(url: string, body: HttpBody, options: HttpTextMethodOptions): Observable<string>;
-  put(url: string, body: HttpBody, options: HttpResponseMethodOptions): Observable<HttpResponse>;
-  put(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<any>;
-  put<T>(url: string, body: HttpBody, options?: HttpJsonMethodOptions): Observable<T>;
+  put(url: string, body: HttpBody, options: _HttpMethodOptionsArrayObserveBufferBody): Observable<ArrayBuffer>;
+  put(url: string, body: HttpBody, options: _HttpMethodOptionsObserveBlobBody): Observable<Blob>;
+  put(url: string, body: HttpBody, options: _HttpMethodOptionsObserveEvents): Observable<HttpEvent>;
+  put(url: string, body: HttpBody, options: _HttpMethodOptionsObserveTextBody): Observable<string>;
+  put(url: string, body: HttpBody, options: _HttpMethodOptionsObserveResponse): Observable<HttpResponse>;
+  put(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<any>;
+  put<T>(url: string, body: HttpBody, options?: HttpMethodOptions): Observable<T>;
   put<T>(url: string, body: HttpBody, options: HttpMethodOptions = {}): Observable<T> {
     return this.request<any>(url, HttpMethod.Put, addBody(options, body));
   }
