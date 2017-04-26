@@ -7,14 +7,20 @@
  */
 
 import {NgModule} from '@angular/core';
-import {ServerModule} from '@angular/platform-server';
+import {Meta} from '@angular/platform-browser';
+import {ServerModule, RenderListener, RENDER_LISTENER} from '@angular/platform-server';
 
 import {HelloWorldModule} from './app';
 import {HelloWorldComponent} from './hello-world.component';
 
+export function beforeRender(meta: Meta): RenderListener {
+  return () => meta.addTag({name: 'test', content: 'Added before render'}, true);
+}
+
 @NgModule({
   bootstrap: [HelloWorldComponent],
   imports: [HelloWorldModule, ServerModule],
+  providers: [{provide: RENDER_LISTENER, useFactory: beforeRender, deps: [Meta]}],
 })
 export class HelloWorldServerModule {
 }

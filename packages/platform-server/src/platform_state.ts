@@ -8,8 +8,27 @@
 
 const parse5 = require('parse5');
 
-import {Injectable, Inject} from '@angular/core';
+import {Injectable, Inject, Optional, InjectionToken} from '@angular/core';
 import {DOCUMENT, ɵgetDOM as getDOM} from '@angular/platform-browser';
+
+/**
+ * A function which will execute just before {@link PlatformState} renders the
+ * DOM to string or returns the tree. 
+ *
+ * @experimental
+ */
+export type RenderListener = () => void;
+
+/**
+ * All callbacks provided via this token will be called just before {@link PlatformState}
+ * renders the DOM to string or returns the tree.
+ *
+ * Signature of the callback:
+ * `() => void`.
+ *
+ * @experimental
+ */
+export const RENDER_LISTENER = new InjectionToken<RenderListener>('RENDER_LISTENER');
 
 /**
  * Representation of the current platform state.
@@ -18,15 +37,44 @@ import {DOCUMENT, ɵgetDOM as getDOM} from '@angular/platform-browser';
  */
 @Injectable()
 export class PlatformState {
-  constructor(@Inject(DOCUMENT) private _doc: any) {}
+
+  /**
+   * Blocks re-entry into `_runRenderListeners()`.
+   */
+  private _runningListeners: boolean = false;
+
+  constructor(@Inject(DOCUMENT) private _doc: any, @Optional() @Inject(RENDER_LISTENER) private _listeners?: RenderListener[]) {}
 
   /**
    * Renders the current state of the platform to string.
    */
-  renderToString(): string { return getDOM().getInnerHTML(this._doc); }
+  renderToString(): string {
+    this._runRenderListeners();
+    return getDOM().getInnerHTML(this._doc);
+  }
 
   /**
    * Returns the current DOM state.
    */
-  getDocument(): any { return this._doc; }
+  getDocument(): any {
+    this._runRenderListeners();
+    return this._doc;
+  }
+
+  /**
+   * Runs all RenderListeners.
+   */
+  private _runRenderListeners() {
+    if (this._runningListeners) {
+      throw new Error(`Cannot access PlatformState APIs from a RENDER_LISTENER.`);
+    }
+    this._runningListeners = true;
+    try {
+      if (this._listeners !== undefined) {
+        this._listeners.forEach(listener => listener());
+      }
+    } finally {
+      this._runningListeners = false;
+    }
+  }
 }
