@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {APP_INITIALIZER, Inject, InjectionToken, Provider} from '@angular/core';
+import {APP_INITIALIZER, Inject, Injector, ApplicationInitStatus, InjectionToken, Provider} from '@angular/core';
 
 import {getDOM} from '../dom/dom_adapter';
 import {DOCUMENT} from '../dom/dom_tokens';
@@ -17,13 +17,15 @@ import {DOCUMENT} from '../dom/dom_tokens';
  */
 export const TRANSITION_ID = new InjectionToken('TRANSITION_ID');
 
-export function bootstrapListenerFactory(transitionId: string, document: any) {
+export function bootstrapListenerFactory(transitionId: string, document: any, injector: Injector) {
   const factory = () => {
-    const dom = getDOM();
-    const styles: any[] =
-        Array.prototype.slice.apply(dom.querySelectorAll(document, `style[ng-transition]`));
-    styles.filter(el => dom.getAttribute(el, 'ng-transition') === transitionId)
-        .forEach(el => dom.remove(el));
+    injector.get(ApplicationInitStatus).donePromise.then(() => {
+      const dom = getDOM();
+      const styles: any[] =
+          Array.prototype.slice.apply(dom.querySelectorAll(document, `style[ng-transition]`));
+      styles.filter(el => dom.getAttribute(el, 'ng-transition') === transitionId)
+          .forEach(el => dom.remove(el));
+    });
   };
   return factory;
 }
@@ -32,7 +34,7 @@ export const SERVER_TRANSITION_PROVIDERS: Provider[] = [
   {
     provide: APP_INITIALIZER,
     useFactory: bootstrapListenerFactory,
-    deps: [TRANSITION_ID, DOCUMENT],
+    deps: [TRANSITION_ID, DOCUMENT, Injector],
     multi: true
   },
 ];

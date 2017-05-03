@@ -29,6 +29,8 @@ export class ApplicationInitStatus {
 
   constructor(@Inject(APP_INITIALIZER) @Optional() appInits: (() => any)[]) {
     const asyncInitPromises: Promise<any>[] = [];
+    let resolve: Function;
+    this._donePromise = new Promise(r => resolve = r);
     if (appInits) {
       for (let i = 0; i < appInits.length; i++) {
         const initResult = appInits[i]();
@@ -37,7 +39,10 @@ export class ApplicationInitStatus {
         }
       }
     }
-    this._donePromise = Promise.all(asyncInitPromises).then(() => { this._done = true; });
+    Promise.all(asyncInitPromises).then(() => {
+      this._done = true;
+      resolve();
+    });
     if (asyncInitPromises.length === 0) {
       this._done = true;
     }
