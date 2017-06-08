@@ -17,7 +17,7 @@
     "url": "https://github.com/angular/angular.git"
   },
   "scripts": {
-    "postinstall": "node tools/npm/copy-npm-shrinkwrap && webdriver-manager update",
+    "postinstall": "node tools/npm/copy-npm-shrinkwrap && webdriver-manager update --versions.chrome 2.29",
     "check-env": "gulp check-env"
   },
   "dependencies": {
