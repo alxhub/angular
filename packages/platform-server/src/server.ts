@@ -35,6 +35,12 @@ export const INTERNAL_SERVER_PLATFORM_PROVIDERS: Array<any /*Type | Provider | a
   {provide: ALLOW_MULTIPLE_PLATFORMS, useValue: true}
 ];
 
+export interface PreRenderHook {
+  beforeRender(): Promise<any>;
+}
+
+export const PRE_RENDER_HOOK = new InjectionToken<PreRenderHook[]>("PRE_RENDER_HOOK");
+
 function initParse5Adapter(injector: Injector) {
   return () => { Parse5DomAdapter.makeCurrent(); };
 }

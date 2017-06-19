@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+export {AmpModule} from './amp_module';
 export {PlatformState} from './platform_state';
 export {ServerModule, platformDynamicServer, platformServer} from './server';
 export {INITIAL_CONFIG, PlatformConfig} from './tokens';

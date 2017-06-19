@@ -13,7 +13,7 @@ import {first} from 'rxjs/operator/first';
 import {toPromise} from 'rxjs/operator/toPromise';
 
 import {PlatformState} from './platform_state';
-import {platformDynamicServer, platformServer} from './server';
+import {platformDynamicServer, platformServer, PRE_RENDER_HOOK, PreRenderHook} from './server';
 import {INITIAL_CONFIG} from './tokens';
 
 const parse5 = require('parse5');
@@ -46,6 +46,10 @@ the server-rendered app can be properly bootstrapped into a client app.`);
     const applicationRef: ApplicationRef = moduleRef.injector.get(ApplicationRef);
     return toPromise
         .call(first.call(filter.call(applicationRef.isStable, (isStable: boolean) => isStable)))
+        .then(() => {
+          const preRender = moduleRef.injector.get(PRE_RENDER_HOOK, []);
+          return preRender.reduce((prev, hook) => prev.then(() => hook.beforeRender()), Promise.resolve());
+        })
         .then(() => {
           const output = platform.injector.get(PlatformState).renderToString();
           platform.destroy();

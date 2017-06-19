@@ -15,13 +15,13 @@ const EMPTY_ARRAY: any[] = [];
 @Injectable()
 export class ServerRendererFactory2 implements RendererFactory2 {
   private rendererByCompId = new Map<string, Renderer2>();
-  private defaultRenderer: Renderer2;
-  private schema = new DomElementSchemaRegistry();
+  protected defaultRenderer: Renderer2;
+  protected schema = new DomElementSchemaRegistry();
 
   constructor(
       private ngZone: NgZone, @Inject(DOCUMENT) private document: any,
       private sharedStylesHost: SharedStylesHost) {
-    this.defaultRenderer = new DefaultServerRenderer2(document, ngZone, this.schema);
+    this.defaultRenderer = this._createDefaultRenderer(document, ngZone, this.schema);
   };
 
   createRenderer(element: any, type: RendererType2|null): Renderer2 {
@@ -33,7 +33,7 @@ export class ServerRendererFactory2 implements RendererFactory2 {
       case ViewEncapsulation.Emulated: {
         let renderer = this.rendererByCompId.get(type.id);
         if (!renderer) {
-          renderer = new EmulatedEncapsulationServerRenderer2(
+          renderer = this._createEmulatedRenderer(
               this.document, this.ngZone, this.sharedStylesHost, this.schema, type);
           this.rendererByCompId.set(type.id, renderer);
         }
@@ -53,11 +53,20 @@ export class ServerRendererFactory2 implements RendererFactory2 {
     }
   }
 
+  protected _createDefaultRenderer(document: any, ngZone: NgZone, schema: DomElementSchemaRegistry): Renderer2 {
+    return new DefaultServerRenderer2(document, ngZone, schema);
+  }
+
+  protected _createEmulatedRenderer(document: any, ngZone: NgZone, sharedStylesHost: SharedStylesHost,
+      schema: DomElementSchemaRegistry, component: RendererType2): Renderer2 {
+    return new EmulatedEncapsulationServerRenderer2(document, ngZone, sharedStylesHost, schema, component)
+  }
+
   begin() {}
   end() {}
 }
 
-class DefaultServerRenderer2 implements Renderer2 {
+export class DefaultServerRenderer2 implements Renderer2 {
   data: {[key: string]: any} = Object.create(null);
 
   constructor(
@@ -184,7 +193,7 @@ function checkNoSyntheticProp(name: string, nameKind: string) {
   }
 }
 
-class EmulatedEncapsulationServerRenderer2 extends DefaultServerRenderer2 {
+export class EmulatedEncapsulationServerRenderer2 extends DefaultServerRenderer2 {
   private contentAttr: string;
   private hostAttr: string;
 
