@@ -1,4 +1,4 @@
-import {HttpRequest} from '@angular/http/client';
+import {HttpRequest} from '@angular/common/http';
 
 import {TestRequest} from './request';
 

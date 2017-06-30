@@ -1,4 +1,4 @@
-import {HttpErrorResponse, HttpEvent, HttpEventType, HttpHeaders, HttpRequest, HttpResponse, HttpResponseInit} from '@angular/http/client';
+import {HttpErrorResponse, HttpEvent, HttpEventType, HttpHeaders, HttpRequest, HttpResponse, HttpResponseInit} from '@angular/common/http';
 import {Observer} from 'rxjs/Observer';
 
 /**

@@ -10,20 +10,19 @@ import resolve from 'rollup-plugin-node-resolve';
 
 const globals = {
   '@angular/core': 'ng.core',
-  '@angular/compiler': 'ng.compiler',
   '@angular/platform-browser': 'ng.platformBrowser',
-  '@angular/http/client': 'ng.http.client',
+  '@angular/common/http': 'ng.common.http',
   'rxjs/Observable': 'Rx',
   'rxjs/ReplaySubject': 'Rx',
   'rxjs/Subject': 'Rx',
 };
 
 export default {
-  entry: '../../../../dist/packages-dist/http/@angular/http/client/testing.es5.js',
-  dest: '../../../../dist/packages-dist/http/bundles/http-client-testing.umd.js',
+  entry: '../../../../dist/packages-dist/common/@angular/common/http/testing.es5.js',
+  dest: '../../../../dist/packages-dist/common/bundles/common-http-testing.umd.js',
   format: 'umd',
   exports: 'named',
-  moduleName: 'ng.http.client.testing',
+  moduleName: 'ng.common.http.testing',
   plugins: [resolve()],
   external: Object.keys(globals),
   globals: globals

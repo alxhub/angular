@@ -1,4 +1,4 @@
-import {HttpBackend, HttpEvent, HttpEventType, HttpRequest} from '@angular/http/client';
+import {HttpBackend, HttpEvent, HttpEventType, HttpRequest} from '@angular/common/http';
 import {Observable} from 'rxjs/Observable';
 import {Observer} from 'rxjs/Observer';
 import {startWith} from 'rxjs/operator/startWith';

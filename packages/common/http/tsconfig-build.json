@@ -6,10 +6,9 @@
     "experimentalDecorators": true,
     "module": "es2015",
     "moduleResolution": "node",
-    "outDir": "../../../dist/packages/http/client",
+    "outDir": "../../../dist/packages/common/http",
     "paths": {
       "@angular/core": ["../../../dist/packages/core"],
-      "@angular/common": ["../../../dist/packages/common"],
       "@angular/platform-browser": ["../../../dist/packages/platform-browser"]
     },
     "rootDir": ".",
@@ -26,6 +25,6 @@
     "annotateForClosureCompiler": true,
     "strictMetadataEmit": true,
     "flatModuleOutFile": "index.js",
-    "flatModuleId": "@angular/http"
+    "flatModuleId": "@angular/common/http"
   }
 }

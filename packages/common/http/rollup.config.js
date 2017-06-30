@@ -7,14 +7,13 @@
  */
 
 export default {
-  entry: '../../../dist/packages-dist/http/@angular/http/client.es5.js',
-  dest: '../../../dist/packages-dist/http/bundles/http-client.umd.js',
+  entry: '../../../dist/packages-dist/common/@angular/common/http.es5.js',
+  dest: '../../../dist/packages-dist/common/bundles/common-http.umd.js',
   format: 'umd',
   exports: 'named',
-  moduleName: 'ng.http.client',
+  moduleName: 'ng.commmon.http',
   globals: {
     '@angular/core': 'ng.core',
-    '@angular/compiler': 'ng.compiler',
     '@angular/platform-browser': 'ng.platformBrowser',
     'rxjs/Observable': 'Rx',
     'rxjs/Subject': 'Rx'
