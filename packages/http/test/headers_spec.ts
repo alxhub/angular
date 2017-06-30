@@ -6,12 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Headers} from '../src/client';
-
-const EXAMPLE_RESPONSE = `Date: Fri, 20 Nov 2015 01:45:26 GMT\n` +
-    `Content-Type: application/json; charset=utf-8\n` +
-    `Transfer-Encoding: chunked\n` +
-    `Connection: keep-alive`;
+import {Headers} from '../src/headers';
 
 export function main() {
   describe('Headers', () => {
@@ -182,28 +177,16 @@ export function main() {
 
     describe('.fromResponseHeaderString()', () => {
       it('should parse a response header string', () => {
-        const headers = Headers.fromResponseHeaderString(EXAMPLE_RESPONSE);
+        const response = `Date: Fri, 20 Nov 2015 01:45:26 GMT\n` +
+            `Content-Type: application/json; charset=utf-8\n` +
+            `Transfer-Encoding: chunked\n` +
+            `Connection: keep-alive`;
+        const headers = Headers.fromResponseHeaderString(response);
         expect(headers.get('Date')).toEqual('Fri, 20 Nov 2015 01:45:26 GMT');
         expect(headers.get('Content-Type')).toEqual('application/json; charset=utf-8');
         expect(headers.get('Transfer-Encoding')).toEqual('chunked');
         expect(headers.get('Connection')).toEqual('keep-alive');
       });
     });
-
-    describe('.seal()', () => {
-      it('prevents headers from being changed', () => {
-        const headers = Headers.fromResponseHeaderString(EXAMPLE_RESPONSE);
-        headers.seal();
-        expect(() => headers.append('Test', 'should error')).toThrow();
-        expect(() => headers.delete('Content-Type')).toThrow();
-        expect(() => headers.set('Test', 'should error')).toThrow();
-      });
-      it('still allows headers to be read', () => {
-        const headers = Headers.fromResponseHeaderString(EXAMPLE_RESPONSE);
-        headers.seal();
-        expect(headers.keys()).toContain('Content-Type');
-        expect(headers.get('Content-Type')).toEqual('application/json; charset=utf-8');
-      });
-    })
   });
 }

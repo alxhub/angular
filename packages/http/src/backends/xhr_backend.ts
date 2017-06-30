@@ -11,35 +11,13 @@ import {ɵgetDOM as getDOM} from '@angular/platform-browser';
 import {Observable} from 'rxjs/Observable';
 import {Observer} from 'rxjs/Observer';
 import {ResponseOptions} from '../base_response_options';
-import {Headers} from '../client';
 import {ContentType, ReadyState, RequestMethod, ResponseContentType, ResponseType} from '../enums';
-import {isSuccess} from '../http_utils';
+import {Headers} from '../headers';
+import {getResponseURL, isSuccess} from '../http_utils';
 import {Connection, ConnectionBackend, XSRFStrategy} from '../interfaces';
 import {Request} from '../static_request';
 import {Response} from '../static_response';
-
-function getResponseUrl(xhr: any): string|null {
-  if ('responseURL' in xhr) {
-    return xhr.responseURL;
-  }
-  if (/^X-Request-URL:/m.test(xhr.getAllResponseHeaders())) {
-    return xhr.getResponseHeader('X-Request-URL');
-  }
-  return null;
-}
-
-/**
- * A backend for http that uses the `XMLHttpRequest` browser API.
- *
- * Take care not to evaluate this in non-browser contexts.
- *
- * @experimental
- */
-@Injectable()
-export class BrowserXhr {
-  constructor() {}
-  build(): any { return <any>(new XMLHttpRequest()); }
-}
+import {BrowserXhr} from './browser_xhr';
 
 const XSSI_PREFIX = /^\)\]\}',?\n/;
 
@@ -98,7 +76,7 @@ export class XHRConnection implements Connection {
 
         const headers: Headers = Headers.fromResponseHeaderString(_xhr.getAllResponseHeaders());
         // IE 9 does not provide the way to get URL of response
-        const url = getResponseUrl(_xhr) || req.url;
+        const url = getResponseURL(_xhr) || req.url;
         const statusText: string = _xhr.statusText || 'OK';
 
         let responseOptions = new ResponseOptions({body, status, headers, statusText, url});
