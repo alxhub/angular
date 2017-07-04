@@ -12,11 +12,6 @@ import {HttpResponseType} from './request';
 /**
  * @experimental
  */
-export type HttpObserve = 'body' | 'events' | 'response';
-
-/**
- * @experimental
- */
 export interface HttpMethodOptions {
   headers?: HttpHeaders;
   observe?: HttpObserve;

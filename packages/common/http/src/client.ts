@@ -14,7 +14,6 @@ import {filter} from 'rxjs/operator/filter';
 import {map} from 'rxjs/operator/map';
 
 import {HttpHandler} from './backend';
-import {HttpJsonpOptions, HttpMethodOptions, HttpObserve, HttpRequestOptions, zHttpMethodOptionsObserveArrayBufferBody, zHttpMethodOptionsObserveArrayBufferEvents, zHttpMethodOptionsObserveArrayBufferResponse, zHttpMethodOptionsObserveBlobBody, zHttpMethodOptionsObserveBlobEvents, zHttpMethodOptionsObserveBlobResponse, zHttpMethodOptionsObserveEvents, zHttpMethodOptionsObserveResponse, zHttpMethodOptionsObserveTextBody, zHttpMethodOptionsObserveTextEvents, zHttpMethodOptionsObserveTextResponse, zHttpRequestBodyOptions, zHttpRequestOptionsObserveArrayBufferBody, zHttpRequestOptionsObserveArrayBufferEvents, zHttpRequestOptionsObserveArrayBufferResponse, zHttpRequestOptionsObserveBlobBody, zHttpRequestOptionsObserveBlobEvents, zHttpRequestOptionsObserveBlobResponse, zHttpRequestOptionsObserveEvents, zHttpRequestOptionsObserveResponse, zHttpRequestOptionsObserveTextBody, zHttpRequestOptionsObserveTextEvents, zHttpRequestOptionsObserveTextResponse} from './client_types';
 import {HttpHeaders} from './headers';
 import {HttpMethod, HttpRequest, HttpResponseType} from './request';
 import {HttpEvent, HttpEventType, HttpResponse} from './response';
@@ -25,7 +24,18 @@ import {HttpUrlParams} from './url_params';
  * Construct an instance of `HttpRequestOptions<T>` from a source `HttpMethodOptions` and
  * the given `body`. Basically, this clones the object and adds the body.
  */
-function addBody<T>(options: HttpMethodOptions, body: T | null): HttpRequestOptions<T> {
+function addBody<T>(options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    }, body: T | null): {
+        body: T | null,
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } {
   return {
     body,
     headers: options.headers,
@@ -34,6 +44,11 @@ function addBody<T>(options: HttpMethodOptions, body: T | null): HttpRequestOpti
     withCredentials: options.withCredentials,
   };
 }
+
+/**
+ * @experimental
+ */
+export type HttpObserve = 'body' | 'events' | 'response';
 
 /**
  * The main API for making outgoing HTTP requests.
@@ -45,43 +60,126 @@ export class HttpClient {
   constructor(private handler: HttpHandler) {}
 
   request<R>(req: HttpRequest<any>): Observable<HttpEvent<R>>;
+/*
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveArrayBufferBody<any>): Observable<ArrayBuffer>;
-  request(url: string, method: HttpMethod|string, options: zHttpRequestOptionsObserveBlobBody<any>):
-      Observable<Blob>;
-  request(url: string, method: HttpMethod|string, options: zHttpRequestOptionsObserveTextBody<any>):
-      Observable<string>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<ArrayBuffer>;
+    */
+  request(url: string, method: HttpMethod|string, options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+    /*
+  request(url: string, method: HttpMethod|string, options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveArrayBufferEvents<any>):
-      Observable<HttpEvent<ArrayBuffer>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<ArrayBuffer>>;
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveBlobEvents<any>): Observable<HttpEvent<Blob>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Blob>>;
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveTextEvents<any>): Observable<HttpEvent<string>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<string>>;
   request<R>(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveEvents<any>): Observable<HttpEvent<R>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<R>>;
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveArrayBufferResponse<any>):
-      Observable<HttpResponse<ArrayBuffer>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<ArrayBuffer>>;
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveBlobResponse<any>): Observable<HttpResponse<Blob>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Blob>>;
   request(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveTextResponse<any>): Observable<HttpResponse<string>>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<string>>;
   request<R>(
       url: string, method: HttpMethod|string,
-      options: zHttpRequestOptionsObserveResponse<any>): Observable<HttpResponse<R>>;
-  request(url: string, method: HttpMethod|string, options?: HttpRequestOptions<any>):
-      Observable<Object>;
-  request<R>(url: string, method: HttpMethod|string, options?: HttpRequestOptions<any>):
-      Observable<R>;
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<R>>;
+  request(url: string, method: HttpMethod|string, options?: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<object>;
+  request<R>(url: string, method: HttpMethod|string, options?: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<R>;
+    */
+  request(url: string, method: HttpMethod|string, options?: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    }): Observable<any>;
   /**
    * Constructs an `Observable` for a particular HTTP request that, when subscribed,
    * fires the request through the chain of registered interceptors and on to the
@@ -115,7 +213,13 @@ export class HttpClient {
    */
   request(
       first: string|HttpRequest<any>, method?: HttpMethod|string,
-      options: HttpRequestOptions<any> = {}): Observable<any> {
+      options: {
+        body?: any,
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     let req: HttpRequest<any>;
     // Firstly, check whether the primary argument is an instance of `HttpRequest`.
     if (first instanceof HttpRequest) {
@@ -201,86 +305,325 @@ export class HttpClient {
     }
   }
 
-  delete (url: string, options: zHttpMethodOptionsObserveArrayBufferBody): Observable<ArrayBuffer>;
-  delete (url: string, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  delete (url: string, options: zHttpMethodOptionsObserveTextBody): Observable<string>;
-  delete (url: string, options: zHttpMethodOptionsObserveArrayBufferEvents):
-      Observable<HttpEvent<ArrayBuffer>>;
-  delete (url: string, options: zHttpMethodOptionsObserveBlobEvents): Observable<HttpEvent<Blob>>;
-  delete (url: string, options: zHttpMethodOptionsObserveTextEvents): Observable<HttpEvent<string>>;
-  delete (url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<Object>>;
-  delete<T>(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<T>>;
-  delete (url: string, options: zHttpMethodOptionsObserveArrayBufferResponse):
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<ArrayBuffer>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<ArrayBuffer>>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Blob>>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<string>>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Object>>;
+  delete<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<T>>;
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<ArrayBuffer>>;
-  delete (url: string, options: zHttpMethodOptionsObserveBlobResponse):
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Blob>>;
-  delete (url: string, options: zHttpMethodOptionsObserveTextResponse):
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<string>>;
-  delete (url: string, options: zHttpMethodOptionsObserveResponse):
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Object>>;
-  delete<T>(url: string, options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<T>>;
-  delete (url: string, options?: HttpMethodOptions): Observable<Object>;
-  delete<T>(url: string, options?: HttpMethodOptions): Observable<T>;
+  delete<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<T>>;
+  delete (url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  delete<T>(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * DELETE request to be executed on the server. See {@link HttpClient#request} for
    * details of `delete()`'s return type based on the provided options.
    */
-  delete (url: string, options: HttpMethodOptions = {}): Observable<any> {
-    return this.request<any>(url, 'DELETE', options);
+  delete (url: string, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
+    return this.request<any>(url, 'DELETE', options as any);
   }
 
-  get(url: string, options: zHttpMethodOptionsObserveArrayBufferBody): Observable<ArrayBuffer>;
-  get(url: string, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  get(url: string, options: zHttpMethodOptionsObserveTextBody): Observable<string>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<ArrayBuffer>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
   get(url: string,
-      options: zHttpMethodOptionsObserveArrayBufferEvents): Observable<HttpEvent<ArrayBuffer>>;
-  get(url: string, options: zHttpMethodOptionsObserveBlobEvents): Observable<HttpEvent<Blob>>;
-  get(url: string, options: zHttpMethodOptionsObserveTextEvents): Observable<HttpEvent<string>>;
-  get(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<Object>>;
-  get<T>(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<T>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<ArrayBuffer>>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Blob>>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<string>>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Object>>;
+  get<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<T>>;
   get(url: string,
-      options: zHttpMethodOptionsObserveArrayBufferResponse): Observable<HttpResponse<ArrayBuffer>>;
-  get(url: string, options: zHttpMethodOptionsObserveBlobResponse): Observable<HttpResponse<Blob>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<ArrayBuffer>>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Blob>>;
   get(url: string,
-      options: zHttpMethodOptionsObserveTextResponse): Observable<HttpResponse<string>>;
-  get(url: string, options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<Object>>;
-  get<T>(url: string, options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<T>>;
-  get(url: string, options?: HttpMethodOptions): Observable<Object>;
-  get<T>(url: string, options?: HttpMethodOptions): Observable<T>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<string>>;
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Object>>;
+  get<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<T>>;
+  get(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  get<T>(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * GET request to be executed on the server. See {@link HttpClient#request} for
    * details of `get()`'s return type based on the provided options.
    */
-  get(url: string, options: HttpMethodOptions = {}): Observable<any> {
+  get(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     return this.request<any>(url, 'GET', options);
   }
 
-  head(url: string, options: zHttpMethodOptionsObserveArrayBufferBody): Observable<ArrayBuffer>;
-  head(url: string, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  head(url: string, options: zHttpMethodOptionsObserveTextBody): Observable<string>;
-  head(url: string, options: zHttpMethodOptionsObserveArrayBufferEvents):
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<ArrayBuffer>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<ArrayBuffer>>;
-  head(url: string, options: zHttpMethodOptionsObserveBlobEvents): Observable<HttpEvent<Blob>>;
-  head(url: string, options: zHttpMethodOptionsObserveTextEvents): Observable<HttpEvent<string>>;
-  head(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<Object>>;
-  head<T>(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<T>>;
-  head(url: string, options: zHttpMethodOptionsObserveArrayBufferResponse):
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Blob>>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<string>>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Object>>;
+  head<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<T>>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<ArrayBuffer>>;
-  head(url: string, options: zHttpMethodOptionsObserveBlobResponse): Observable<HttpResponse<Blob>>;
-  head(url: string, options: zHttpMethodOptionsObserveTextResponse):
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Blob>>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<string>>;
-  head(url: string, options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<Object>>;
-  head<T>(url: string, options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<T>>;
-  head(url: string, options?: HttpMethodOptions): Observable<Object>;
-  head<T>(url: string, options?: HttpMethodOptions): Observable<T>;
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Object>>;
+  head<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<T>>;
+  head(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  head<T>(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * HEAD request to be executed on the server. See {@link HttpClient#request} for
    * details of `head()`'s return type based on the provided options.
    */
-  head(url: string, options: HttpMethodOptions = {}): Observable<any> {
+  head(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     return this.request<any>(url, 'HEAD', options);
   }
 
@@ -301,138 +644,466 @@ export class HttpClient {
     });
   }
 
-  options(url: string, options: zHttpMethodOptionsObserveArrayBufferBody): Observable<ArrayBuffer>;
-  options(url: string, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  options(url: string, options: zHttpMethodOptionsObserveTextBody): Observable<string>;
-  options(url: string, options: zHttpMethodOptionsObserveArrayBufferEvents):
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<ArrayBuffer>;
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<ArrayBuffer>>;
-  options(url: string, options: zHttpMethodOptionsObserveBlobEvents): Observable<HttpEvent<Blob>>;
-  options(url: string, options: zHttpMethodOptionsObserveTextEvents): Observable<HttpEvent<string>>;
-  options(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<Object>>;
-  options<T>(url: string, options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<T>>;
-  options(url: string, options: zHttpMethodOptionsObserveArrayBufferResponse):
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Blob>>;
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<string>>;
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Object>>;
+  options<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<T>>;
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<ArrayBuffer>>;
-  options(url: string, options: zHttpMethodOptionsObserveBlobResponse):
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Blob>>;
-  options(url: string, options: zHttpMethodOptionsObserveTextResponse):
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<string>>;
-  options(url: string, options: zHttpMethodOptionsObserveResponse):
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Object>>;
-  options<T>(url: string, options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<T>>;
-  options(url: string, options?: HttpMethodOptions): Observable<Object>;
-  options<T>(url: string, options?: HttpMethodOptions): Observable<T>;
+  options<T>(url: string, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<T>>;
+  options(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  options<T>(url: string, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * OPTIONS request to be executed on the server. See {@link HttpClient#request} for
    * details of `options()`'s return type based on the provided options.
    */
-  options(url: string, options: HttpMethodOptions = {}): Observable<any> {
+  options(url: string, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     return this.request<any>(url, 'OPTIONS', options);
   }
 
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveArrayBufferBody):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<ArrayBuffer>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveTextBody):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<string>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveArrayBufferEvents):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<ArrayBuffer>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobEvents):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<Blob>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveTextEvents):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<string>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveEvents):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<Object>>;
-  patch<T>(url: string, body: any|null, options: zHttpMethodOptionsObserveEvents):
+  patch<T>(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<T>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveArrayBufferResponse):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<ArrayBuffer>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobResponse):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Blob>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveTextResponse):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<string>>;
-  patch(url: string, body: any|null, options: zHttpMethodOptionsObserveResponse):
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Object>>;
-  patch<T>(url: string, body: any|null, options: zHttpMethodOptionsObserveResponse):
+  patch<T>(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<T>>;
-  patch(url: string, body: any|null, options?: HttpMethodOptions): Observable<Object>;
-  patch<T>(url: string, body: any|null, options?: HttpMethodOptions): Observable<T>;
+  patch(url: string, body: any|null, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  patch<T>(url: string, body: any|null, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * PATCH request to be executed on the server. See {@link HttpClient#request} for
    * details of `patch()`'s return type based on the provided options.
    */
-  patch(url: string, body: any|null, options: HttpMethodOptions = {}): Observable<any> {
+  patch(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     return this.request<any>(url, 'PATCH', addBody(options, body));
   }
 
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveArrayBufferBody):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<ArrayBuffer>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveTextBody): Observable<string>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveArrayBufferEvents):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<ArrayBuffer>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobEvents):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<Blob>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveTextEvents):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<string>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveEvents):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<Object>>;
-  post<T>(url: string, body: any|null, options: zHttpMethodOptionsObserveEvents):
+  post<T>(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<T>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveArrayBufferResponse):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<ArrayBuffer>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobResponse):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Blob>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveTextResponse):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<string>>;
-  post(url: string, body: any|null, options: zHttpMethodOptionsObserveResponse):
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<Object>>;
-  post<T>(url: string, body: any|null, options: zHttpMethodOptionsObserveResponse):
+  post<T>(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<T>>;
-  post(url: string, body: any|null, options?: HttpMethodOptions): Observable<Object>;
-  post<T>(url: string, body: any|null, options?: HttpMethodOptions): Observable<T>;
+  post(url: string, body: any|null, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  post<T>(url: string, body: any|null, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * POST request to be executed on the server. See {@link HttpClient#request} for
    * details of `post()`'s return type based on the provided options.
    */
-  post(url: string, body: any|null, options: HttpMethodOptions = {}): Observable<any> {
+  post(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     return this.request<any>(url, 'POST', addBody(options, body));
   }
 
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveArrayBufferBody): Observable<ArrayBuffer>;
-  put(url: string, body: any|null, options: zHttpMethodOptionsObserveBlobBody): Observable<Blob>;
-  put(url: string, body: any|null, options: zHttpMethodOptionsObserveTextBody): Observable<string>;
+      options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<ArrayBuffer>;
+  put(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<Blob>;
+  put(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<string>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveArrayBufferEvents): Observable<HttpEvent<ArrayBuffer>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<ArrayBuffer>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveBlobEvents): Observable<HttpEvent<Blob>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Blob>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveTextEvents): Observable<HttpEvent<string>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<string>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveEvents): Observable<HttpEvent<Object>>;
-  put<T>(url: string, body: any|null, options: zHttpMethodOptionsObserveEvents):
+      options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpEvent<Object>>;
+  put<T>(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'events',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpEvent<T>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveArrayBufferResponse): Observable<HttpResponse<ArrayBuffer>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'arraybuffer',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<ArrayBuffer>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveBlobResponse): Observable<HttpResponse<Blob>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'blob',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Blob>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveTextResponse): Observable<HttpResponse<string>>;
+      options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType: 'text',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<string>>;
   put(url: string, body: any|null,
-      options: zHttpMethodOptionsObserveResponse): Observable<HttpResponse<Object>>;
-  put<T>(url: string, body: any|null, options: zHttpMethodOptionsObserveResponse):
+      options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<HttpResponse<Object>>;
+  put<T>(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe: 'response',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }):
       Observable<HttpResponse<T>>;
-  put(url: string, body: any|null, options?: HttpMethodOptions): Observable<Object>;
-  put<T>(url: string, body: any|null, options?: HttpMethodOptions): Observable<T>;
+  put(url: string, body: any|null, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<Object>;
+  put<T>(url: string, body: any|null, options?: {
+        headers?: HttpHeaders,
+        observe?: 'body',
+        responseType?: 'json',
+        withCredentials?: boolean,
+    }): Observable<T>;
   /**
    * Constructs an `Observable` which, when subscribed, will cause the configured
    * POST request to be executed on the server. See {@link HttpClient#request} for
    * details of `post()`'s return type based on the provided options.
    */
-  put(url: string, body: any|null, options: HttpMethodOptions = {}): Observable<any> {
+  put(url: string, body: any|null, options: {
+        headers?: HttpHeaders,
+        observe?: HttpObserve,
+        responseType?: HttpResponseType,
+        withCredentials?: boolean,
+    } = {}): Observable<any> {
     return this.request<any>(url, 'PUT', addBody(options, body));
   }
 }
+
+const cli: HttpClient = null!;
+let observe: any = 'foo';
+
+const res = cli.request('/test', 'GET', {
+  responseType: 'blob',
+  observe,
+});
