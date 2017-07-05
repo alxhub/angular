@@ -60,7 +60,6 @@ export class HttpClient {
   constructor(private handler: HttpHandler) {}
 
   request<R>(req: HttpRequest<any>): Observable<HttpEvent<R>>;
-/*
   request(
       url: string, method: HttpMethod|string,
       options: {
@@ -70,7 +69,6 @@ export class HttpClient {
         responseType: 'arraybuffer',
         withCredentials?: boolean,
     }): Observable<ArrayBuffer>;
-    */
   request(url: string, method: HttpMethod|string, options: {
         body?: any,
         headers?: HttpHeaders,
@@ -78,7 +76,6 @@ export class HttpClient {
         responseType: 'blob',
         withCredentials?: boolean,
     }): Observable<Blob>;
-    /*
   request(url: string, method: HttpMethod|string, options: {
         body?: any,
         headers?: HttpHeaders,
@@ -172,7 +169,6 @@ export class HttpClient {
         responseType?: 'json',
         withCredentials?: boolean,
     }): Observable<R>;
-    */
   request(url: string, method: HttpMethod|string, options?: {
         body?: any,
         headers?: HttpHeaders,
@@ -1099,11 +1095,3 @@ export class HttpClient {
     return this.request<any>(url, 'PUT', addBody(options, body));
   }
 }
-
-const cli: HttpClient = null!;
-let observe: any = 'foo';
-
-const res = cli.request('/test', 'GET', {
-  responseType: 'blob',
-  observe,
-});
