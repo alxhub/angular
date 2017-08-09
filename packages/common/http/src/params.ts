@@ -6,6 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {SharedImmutableMap} from './shared';
+
 /**
  * A codec for encoding and decoding parameters in URLs.
  *
@@ -67,12 +69,6 @@ function standardEncoding(v: string): string {
       .replace(/%2F/gi, '/');
 }
 
-interface Update {
-  param: string;
-  value?: string;
-  op: 'a'|'d'|'s';
-}
-
 /**
  * An HTTP request/response body that represents serialized parameters,
  * per the MIME type `application/x-www-form-urlencoded`.
@@ -81,83 +77,34 @@ interface Update {
  *
  * @experimental
  */
-export class HttpParams {
-  private map: Map<string, string[]>|null;
+export class HttpParams extends SharedImmutableMap<string, string, HttpParams> {
   private encoder: HttpParameterCodec;
-  private updates: Update[]|null = null;
-  private cloneFrom: HttpParams|null = null;
 
   constructor(options: {
     fromString?: string,
     fromObject?: {[param: string]: string | string[]},
     encoder?: HttpParameterCodec,
   } = {}) {
-    this.encoder = options.encoder || new HttpUrlEncodingCodec();
+    let lazyInit: Function|null = null;
     if (!!options.fromString) {
       if (!!options.fromObject) {
         throw new Error(`Cannot specify both fromString and fromObject.`);
       }
-      this.map = paramParser(options.fromString, this.encoder);
+      lazyInit = () => {
+        const map = paramParser(options.fromString!, this.encoder);
+        Array.from(map.keys()).forEach(key => this.maybeSetNormalKey(key, key));
+        return map;
+      };
     } else if (!!options.fromObject) {
-      this.map = new Map<string, string[]>();
+
       Object.keys(options.fromObject).forEach(key => {
         const value = (options.fromObject as any)[key];
-        this.map !.set(key, Array.isArray(value) ? value : [value]);
+        this._set(key, Array.isArray(value) ? value : [value]);
       });
-    } else {
-      this.map = null;
     }
+    super(lazyInit);
+    this.encoder = options.encoder || new HttpUrlEncodingCodec();
   }
-
-  /**
-   * Check whether the body has one or more values for the given parameter name.
-   */
-  has(param: string): boolean {
-    this.init();
-    return this.map !.has(param);
-  }
-
-  /**
-   * Get the first value for the given parameter name, or `null` if it's not present.
-   */
-  get(param: string): string|null {
-    this.init();
-    const res = this.map !.get(param);
-    return !!res ? res[0] : null;
-  }
-
-  /**
-   * Get all values for the given parameter name, or `null` if it's not present.
-   */
-  getAll(param: string): string[]|null {
-    this.init();
-    return this.map !.get(param) || null;
-  }
-
-  /**
-   * Get all the parameter names for this body.
-   */
-  keys(): string[] {
-    this.init();
-    return Array.from(this.map !.keys());
-  }
-
-  /**
-   * Construct a new body with an appended value for the given parameter name.
-   */
-  append(param: string, value: string): HttpParams { return this.clone({param, value, op: 'a'}); }
-
-  /**
-   * Construct a new body with a new value for the given parameter name.
-   */
-  set(param: string, value: string): HttpParams { return this.clone({param, value, op: 's'}); }
-
-  /**
-   * Construct a new body with either the given value for the given parameter
-   * removed, if a value is given, or all values for the given parameter removed
-   * if not.
-   */
-  delete (param: string, value?: string): HttpParams { return this.clone({param, value, op: 'd'}); }
 
   /**
    * Serialize the body to an encoded string, where key-value pairs (separated by `=`) are
@@ -174,47 +121,7 @@ export class HttpParams {
         .join('&');
   }
 
-  private clone(update: Update): HttpParams {
-    const clone = new HttpParams({encoder: this.encoder});
-    clone.cloneFrom = this.cloneFrom || this;
-    clone.updates = (this.updates || []).concat([update]);
-    return clone;
-  }
-
-  private init() {
-    if (this.map === null) {
-      this.map = new Map<string, string[]>();
-    }
-    if (this.cloneFrom !== null) {
-      this.cloneFrom.init();
-      this.cloneFrom.keys().forEach(key => this.map !.set(key, this.cloneFrom !.map !.get(key) !));
-      this.updates !.forEach(update => {
-        switch (update.op) {
-          case 'a':
-          case 's':
-            const base = (update.op === 'a' ? this.map !.get(update.param) : undefined) || [];
-            base.push(update.value !);
-            this.map !.set(update.param, base);
-            break;
-          case 'd':
-            if (update.value !== undefined) {
-              let base = this.map !.get(update.param) || [];
-              const idx = base.indexOf(update.value);
-              if (idx !== -1) {
-                base.splice(idx, 1);
-              }
-              if (base.length > 0) {
-                this.map !.set(update.param, base);
-              } else {
-                this.map !.delete(update.param);
-              }
-            } else {
-              this.map !.delete(update.param);
-              break;
-            }
-        }
-      });
-      this.cloneFrom = null;
-    }
+  newContainer(): HttpParams {
+    return new HttpParams();
   }
 }

@@ -9,7 +9,7 @@
 import {HttpHeaders} from '../src/headers';
 
 export function main() {
-  describe('HttpHeaders', () => {
+  fdescribe('HttpHeaders', () => {
 
     describe('initialization', () => {
       it('should conform to spec', () => {

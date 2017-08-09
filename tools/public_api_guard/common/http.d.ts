@@ -1552,17 +1552,12 @@ export declare class HttpHeaderResponse extends HttpResponseBase {
 }
 
 /** @experimental */
-export declare class HttpHeaders {
+export declare class HttpHeaders extends SharedImmutableMap<string, string, HttpHeaders> {
     constructor(headers?: string | {
         [name: string]: string | string[];
     });
-    append(name: string, value: string | string[]): HttpHeaders;
-    delete(name: string, value?: string | string[]): HttpHeaders;
-    get(name: string): string | null;
-    getAll(name: string): string[] | null;
-    has(name: string): boolean;
-    keys(): string[];
-    set(name: string, value: string | string[]): HttpHeaders;
+    protected newContainer(): HttpHeaders;
+    protected normalizeKey(key: string): string;
 }
 
 /** @experimental */
@@ -1579,7 +1574,7 @@ export interface HttpParameterCodec {
 }
 
 /** @experimental */
-export declare class HttpParams {
+export declare class HttpParams extends SharedImmutableMap<string, string, HttpParams> {
     constructor(options?: {
         fromString?: string;
         fromObject?: {
@@ -1587,13 +1582,7 @@ export declare class HttpParams {
         };
         encoder?: HttpParameterCodec;
     });
-    append(param: string, value: string): HttpParams;
-    delete(param: string, value?: string): HttpParams;
-    get(param: string): string | null;
-    getAll(param: string): string[] | null;
-    has(param: string): boolean;
-    keys(): string[];
-    set(param: string, value: string): HttpParams;
+    newContainer(): HttpParams;
     toString(): string;
 }
 
@@ -1755,6 +1744,24 @@ export declare class JsonpClientBackend implements HttpBackend {
 export declare class JsonpInterceptor {
     constructor(jsonp: JsonpClientBackend);
     intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>>;
+}
+
+/** @experimental */
+export declare abstract class SharedImmutableMap<K, V, C extends SharedImmutableMap<K, V, C>> {
+    protected map: Map<K, V[]> | null;
+    constructor(lazyInit: SharedImmutableMap<K, V, C> | Function | null);
+    protected _set(key: K, value: V[], normalKey?: K): void;
+    append(key: K, value: V | V[]): C;
+    delete(key: K, value?: V | V[]): C;
+    get(key: K): V | null;
+    getAll(key: K): V[] | null;
+    has(key: K): boolean;
+    protected init(): void;
+    keys(): K[];
+    protected maybeSetNormalKey(normalKey: K, key: K): void;
+    protected abstract newContainer(): C;
+    protected normalizeKey(key: K): K;
+    set(key: K, value: V | V[]): C;
 }
 
 /** @experimental */
