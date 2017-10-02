@@ -74,11 +74,11 @@ export class AppVersion implements UpdateSource {
     });
 
     // Process each `DataGroup` declared in the manifest.
-    this.dataGroups =
-        (manifest.dataGroups || [])
-            .map(
-                config => new DataGroup(
-                    this.scope, this.adapter, config, this.database, `${config.version}:data`));
+    this.dataGroups = (manifest.dataGroups || [])
+                          .map(
+                              config => new DataGroup(
+                                  this.scope, this.adapter, config, this.database,
+                                  `ngsw:${config.version}:data`));
   }
 
   /**
@@ -151,7 +151,8 @@ export class AppVersion implements UpdateSource {
 
     // Next, check if this is a navigation request for a route. Detect circular
     // navigations by checking if the request URL is the same as the index URL.
-    if (isNavigationRequest(req, this.adapter) && req.url !== this.manifest.index) {
+    if (isNavigationRequest(req, this.scope.registration.scope, this.adapter) &&
+        req.url !== this.manifest.index) {
       // This was a navigation request. Re-enter `handleFetch` with a request for
       // the URL.
       return this.handleFetch(this.adapter.newRequest(this.manifest.index), context);

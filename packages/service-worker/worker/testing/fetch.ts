@@ -11,7 +11,18 @@ export class MockBody implements Body {
 
   constructor(public _body: string|null) {}
 
-  async arrayBuffer(): Promise<ArrayBuffer> { throw 'Not implemented'; }
+  async arrayBuffer(): Promise<ArrayBuffer> {
+    if (this._body !== null) {
+      const buffer = new ArrayBuffer(this._body.length);
+      const access = new Uint8Array(buffer);
+      for (let i = 0; i < this._body.length; i++) {
+        access[i] = this._body.charCodeAt(i);
+      }
+      return buffer;
+    } else {
+      throw new Error('No body')
+    }
+  }
 
   async blob(): Promise<Blob> { throw 'Not implemented'; }
 

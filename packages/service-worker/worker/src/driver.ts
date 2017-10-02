@@ -120,7 +120,8 @@ export class Driver implements Debuggable, UpdateSource {
 
   private onFetch(event: FetchEvent): void {
     // The only thing that is served unconditionally is the debug page.
-    if (this.adapter.getPath(event.request.url) === '/ngsw/state') {
+    if (this.adapter.parseUrl(event.request.url, this.scope.registration.scope).path ===
+        '/ngsw/state') {
       event.respondWith(this.debugger.handleFetch(event.request));
       return;
     }
@@ -439,7 +440,7 @@ export class Driver implements Debuggable, UpdateSource {
         // request is a navigation request, this client can be updated to the latest version
         // immediately.
         if (this.state === DriverReadyState.NORMAL && hash !== this.latestHash &&
-            isNavigationRequest(event.request, this.adapter)) {
+            isNavigationRequest(event.request, this.scope.registration.scope, this.adapter)) {
           // Update this client to the latest version immediately.
           if (this.latestHash === null) {
             throw new Error(`Invariant violated (assignVersion): latestHash was null`);

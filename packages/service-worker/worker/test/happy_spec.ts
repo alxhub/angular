@@ -26,7 +26,6 @@ const dist =
         .addUnhashedFile('/unhashed/a.txt', 'this is unhashed', {'Cache-Control': 'max-age=10'})
         .build();
 
-
 const distUpdate =
     new MockFileSystemBuilder()
         .addFile('/foo.txt', 'this is foo v2')
