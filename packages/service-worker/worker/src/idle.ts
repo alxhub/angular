@@ -62,7 +62,7 @@ export class IdleScheduler {
       await queue.reduce(async (previous, task) => {
         await previous;
         try {
-          task.run();
+          await task.run();
         } catch (err) {
           // TODO: Record the error somewhere.
         }

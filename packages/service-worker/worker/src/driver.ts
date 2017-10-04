@@ -682,7 +682,9 @@ export class Driver implements Debuggable, UpdateSource {
 
     // Cause the new version to become fully initialized. If this fails, then the
     // version will not be available for use.
+    console.log('initializing new version', hash);
     await newVersion.initializeFully(this);
+    console.log('initialized');
 
     // Install this as an active version of the app.
     this.versions.set(hash, newVersion);
@@ -695,6 +697,7 @@ export class Driver implements Debuggable, UpdateSource {
 
   async checkForUpdate(): Promise<boolean> {
     try {
+      console.log('checking for update');
       const manifest = await this.fetchLatestManifest();
       const hash = hashManifest(manifest);
 
@@ -702,6 +705,8 @@ export class Driver implements Debuggable, UpdateSource {
       if (this.versions.has(hash)) {
         return false;
       }
+
+      console.log('there is an update!');
       await this.setupUpdate(manifest, hash);
 
       return true;

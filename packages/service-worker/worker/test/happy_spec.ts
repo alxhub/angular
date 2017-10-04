@@ -272,7 +272,7 @@ export function main() {
       expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo v2');
     });
 
-    async_it('checks for updates on restart', async() => {
+    async_fit('checks for updates on restart', async() => {
       expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo');
       await driver.initialized;
 
@@ -283,12 +283,15 @@ export function main() {
       driver = new Driver(scope, scope, new CacheDatabase(scope, scope));
       expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo');
       await driver.initialized;
+      console.log('after restart, asserting no other requests');
       serverUpdate.assertNoOtherRequests();
 
       scope.advance(12000);
       await driver.idle.empty;
       serverUpdate.assertSawRequestFor('/ngsw.json');
+      console.log('checking for request for /foo.txt');
       serverUpdate.assertSawRequestFor('/foo.txt');
+      console.log('after updates, asserting no other requests');
       serverUpdate.assertNoOtherRequests();
     });
 

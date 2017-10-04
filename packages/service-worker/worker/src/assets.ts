@@ -288,6 +288,7 @@ export abstract class AssetGroup {
     // underway for known resources. If this request appears there, another "thread" is already
     // in the process of caching it, and this work should not be duplicated.
     if (this.inFlightRequests.has(req.url)) {
+      console.log('request in flight for', req.url);
       // There is a caching operation already in progress for this request. Wait for it to
       // complete, and hopefully it will have yielded a useful response.
       return this.inFlightRequests.get(req.url) !;
@@ -306,6 +307,7 @@ export abstract class AssetGroup {
       // Wait for a response. If this fails, the request will remain in `inFlightRequests`
       // indefinitely.
       let res: Response = await fetchOp;
+      console.log('got response from network for', req.url);
 
       // It's very important that only successful responses are cached. Unsuccessful responses
       // should never be cached as this can completely break applications.
@@ -364,6 +366,7 @@ export abstract class AssetGroup {
     // If a hash is available for this resource, then compare the fetched version with the
     // canonical hash. Otherwise, the network version will have to be trusted.
     if (this.hashes.has(url)) {
+      console.log('hashed request for', url);
       // It turns out this resource does have a hash. Look it up. Unless the fetched version
       // matches this hash, it's invalid and the whole manifest may need to be thrown out.
       const canonicalHash = this.hashes.get(url) !;
@@ -381,7 +384,7 @@ export abstract class AssetGroup {
       // a stale response.
 
       // Fetch the resource from the network (possibly hitting the HTTP cache).
-      const networkResult = await this.scope.fetch(req);
+      const networkResult = await this.safeFetch(req);
 
       // Decide whether a cache-busted request is necessary. It might be for two independent
       // reasons: either the non-cache-busted request failed (hopefully transiently) or if the
@@ -403,7 +406,8 @@ export abstract class AssetGroup {
         // data, or because the version on the server really doesn't match. A cache-busting
         // request will differentiate these two situations.
         // TODO: handle case where the URL has parameters already (unlikely for assets).
-        const cacheBustedResult = await this.scope.fetch(this.cacheBust(req.url));
+        const cacheBustReq = this.adapter.newRequest(this.cacheBust(req.url));
+        const cacheBustedResult = await this.safeFetch(cacheBustReq);
 
         // If the response was unsuccessful, there's nothing more that can be done.
         if (!cacheBustedResult.ok) {
@@ -430,7 +434,7 @@ export abstract class AssetGroup {
       return networkResult;
     } else {
       // This URL doesn't exist in our hash database, so it must be requested directly.
-      return this.scope.fetch(req);
+      return this.safeFetch(req);
     }
   }
 
@@ -470,6 +474,17 @@ export abstract class AssetGroup {
   private cacheBust(url: string): string {
     return url + (url.indexOf('?') === -1 ? '?' : '&') + 'ngsw-cache-bust=' + Math.random();
   }
+
+  protected async safeFetch(req: Request): Promise<Response> {
+    try {
+      return this.scope.fetch(req);
+    } catch (err) {
+      return this.adapter.newResponse('', {
+        status: 504,
+        statusText: 'Gateway Timeout',
+      });
+    }
+  }
 }
 
 /**
@@ -477,6 +492,7 @@ export abstract class AssetGroup {
  */
 export class PrefetchAssetGroup extends AssetGroup {
   async initializeFully(updateFrom?: UpdateSource): Promise<void> {
+    console.log(`Initializing prefetch group ${this.name}`);
     // Open the cache which actually holds requests.
     const cache = await this.cache;
 
@@ -486,6 +502,7 @@ export class PrefetchAssetGroup extends AssetGroup {
     await this.config.urls.reduce(async(previous: Promise<void>, url: string) => {
       // Wait on all previous operations to complete.
       await previous;
+      console.log(`processing url ${url}`);
 
       // Construct the Request for this url.
       const req = this.adapter.newRequest(url);
@@ -495,14 +512,17 @@ export class PrefetchAssetGroup extends AssetGroup {
 
       // If the resource is in the cache already, it can be skipped.
       if (alreadyCached) {
+        console.log('already cached');
         return;
       }
 
       // If an update source is available.
       if (updateFrom !== undefined && await this.maybeUpdate(updateFrom, req, cache)) {
+        console.log('updated from update source');
         return;
       }
 
+      console.log('fetchAndCacheOnce', url);
       // Otherwise, go to the network and hopefully cache the response (if successful).
       await this.fetchAndCacheOnce(req, false);
     }, Promise.resolve());
