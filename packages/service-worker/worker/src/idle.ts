@@ -37,14 +37,14 @@ export class IdleScheduler {
       this.scheduled.cancel = true;
     }
 
-    this.scheduled = {
+    const scheduled = {
       cancel: false,
     };
+    this.scheduled = scheduled;
 
     await this.adapter.timeout(this.threshold);
 
-    if (this.scheduled !== null && this.scheduled.cancel) {
-      this.scheduled = null;
+    if (scheduled.cancel) {
       return;
     }
 
@@ -56,18 +56,18 @@ export class IdleScheduler {
   async execute(): Promise<void> {
     this.lastRun = this.adapter.time;
     while (this.queue.length > 0) {
-      const queue = this.queue.map(task => {
-        try {
-          return task.run();
-        } catch (e) {
-          // Ignore errors, for now.
-          return Promise.resolve();
-        }
-      });
-
+      const queue = this.queue;
       this.queue = [];
 
-      await Promise.all(queue);
+      await queue.reduce(async (previous, task) => {
+        await previous;
+        try {
+          task.run();
+        } catch (err) {
+          // TODO: Record the error somewhere.
+        }
+      }, Promise.resolve());
+
       if (this.emptyResolve !== null) {
         this.emptyResolve();
         this.emptyResolve = null;

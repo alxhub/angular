@@ -82,6 +82,10 @@ export interface CacheState {
   metadata?: UrlMetadata;
 }
 
+export interface DebugLogger {
+  log(value: string|Error): void;
+}
+
 export interface DebugState {
   state: string;
   why: string;
