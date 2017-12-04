@@ -3,7 +3,7 @@ import { browser, element, by } from 'protractor';
 
 describe('sw-example App', () => {
   let page: AppPage;
-  let logo = element(by.css("img"));
+  let logo = element(by.css('img'));
 
 
   beforeEach(() => {
