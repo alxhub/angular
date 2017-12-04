@@ -57,9 +57,8 @@ To import and register the Angular service worker:
 
 3. Add `ServiceWorkerModule` to the `@NgModule` imports section. 
 
-It's better to do this with a conditional so that the service worker is only registered for a production application.
-
-Use the `register()` helper to take care of registering the service worker for you.
+Use the `register()` helper to take care of registering the service worker for you, taking care to disable the
+Service Worker when not running in production mode.
 
 <code-example path="service-worker-getstart/src/app/app.module.ts" linenums="false" title="src/app/app.module.ts" region="sw-module"> </code-example>
 

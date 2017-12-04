@@ -18,7 +18,7 @@ import { PromptUpdateService } from './prompt-update.service';
   ],
   imports: [
     BrowserModule,
-    ServiceWorkerModule.register('/ngsw-worker.js')
+    ServiceWorkerModule.register('/ngsw-worker.js', {enabled: environment.production})
   ],
   providers: [
     CheckForUpdateService,
