@@ -1,4 +1,12 @@
-# Getting started
+# Getting Started with Service Workers
+
+#### Prerequisites
+
+A basic understanding of the following concepts:
+* [Introduction to Angular service workers](guide/service-worker-intro).
+
+<hr />
+
 
 Beginning in Angular 5.0.0, you can easily enable Angular service worker support in any CLI project. This document explains how to enable Angular service worker support in new and existing projects. It then uses a simple example to show you a service worker in action, demonstrating loading and basic caching.  
 
@@ -181,7 +189,6 @@ What went wrong? Nothing, actually. The Angular service worker is doing its job 
 If you look at the `http-server` logs, you can see the service worker requesting `/ngsw.json`. This is how the service worker checks for updates.
 
 2. Refresh the page.
-![The text has changed to say "Bienvenue à app!"](generated/images/guide/service-worker/welcome-msg-fr.png) 
 
 <figure>
   <img src="generated/images/guide/service-worker/welcome-msg-fr.png" alt="The text has changed to say Bienvenue à app!">
@@ -189,3 +196,9 @@ If you look at the `http-server` logs, you can see the service worker requesting
 
 The service worker installed the updated version of your app *in the background*, and the next time the page is loaded or reloaded, the service worker switches to the latest version.
 
+<hr />
+
+## More on Angular service workers
+
+You may also be interested in the following:
+* [Communicating with service workers](guide/service-worker-communications).

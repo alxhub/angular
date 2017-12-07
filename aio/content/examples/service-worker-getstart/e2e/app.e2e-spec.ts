@@ -3,7 +3,7 @@ import { browser, element, by } from 'protractor';
 
 describe('sw-example App', () => {
   let page: AppPage;
-  let logo = element(by.css('img'));
+  
 
   beforeEach(() => {
     page = new AppPage();
@@ -15,6 +15,7 @@ describe('sw-example App', () => {
   });
 
   it('should display the Angular logo', () => {
+    let logo = element(by.css('img'));
     page.navigateTo();
     expect(logo.isPresent()).toBe(true);
   });
@@ -33,5 +34,8 @@ describe('sw-example App', () => {
         expect(items[3].getText()).toBe('Angular blog');
       });
   });
-
+  
+  it('should return a rejected promise', function () {
+      
+  });
 });

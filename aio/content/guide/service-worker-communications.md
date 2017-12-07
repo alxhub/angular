@@ -1,6 +1,14 @@
-# Communicating with service workers
+# Service Worker Communication
 
 Importing `ServiceWorkerModule` into your `AppModule` doesn't just register the service worker, it also provides a few services you can use to interact with the service worker and control the caching of your app.
+
+#### Prerequisites
+
+A basic understanding of the following concepts:
+* [Getting Started with Service Workers](guide/service-worker-intro).
+
+<hr />
+
 
 ## `SwUpdate` service
 
@@ -39,3 +47,8 @@ If the current tab needs to be updated to the latest app version immediately, it
 <code-example path="service-worker-getstart/src/app/prompt-update.service.ts" linenums="false" title="prompt-update.service.ts" region="sw-activate"> </code-example>
 
 Doing this could break lazy-loading into currently running apps, especially if the lazy-loaded chunks use filenames with hashes, which change every version.
+
+## More on Angular service workers
+
+You may also be interested in the following:
+* [Service Worker in Production](guide/service-worker-devops).
