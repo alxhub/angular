@@ -1563,6 +1563,39 @@ describe('ngc transformer command-line', () => {
       `);
          expect(main(['-p', path.join(basePath, 'src/tsconfig.json')])).toBe(0);
        });
+
+       // Regression: #20864
+      it('should output other decorators', () => {
+        write('src/tsconfig.json', `{
+       "extends": "../tsconfig-base.json",
+       "compilerOptions": {
+         "noEmitOnError": true
+       },
+       "files": ["test-module.ts"]
+     }`);
+        write('src/test-module.ts', `
+import {NgModule} from '@angular/core';
+import {CommonModule} from '@angular/common';
+
+export function ExtraDecorator(effect: string) {
+  return (target: any) => {
+    target.$sideEffect = effect;
+    return target;
+  };
+}
+
+@ExtraDecorator('ThisIsASideEffect')
+@NgModule({
+  exports: [CommonModule],
+})
+export class WrappedModule {}
+`);
+          expect(main(['-p', path.join(basePath, 'src/tsconfig.json')], err => console.log(err))).toBe(0);
+
+          const mymodulefactory = path.resolve(outDir, 'src/test-module.js');
+          const mymodulefactorySource = fs.readFileSync(mymodulefactory, 'utf8');
+          expect(mymodulefactorySource).toContain("ThisIsASideEffect");
+       });
   });
 
   describe('formatted messages', () => {
