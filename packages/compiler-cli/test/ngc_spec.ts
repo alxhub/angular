@@ -1563,6 +1563,30 @@ describe('ngc transformer command-line', () => {
       `);
          expect(main(['-p', path.join(basePath, 'src/tsconfig.json')])).toBe(0);
        });
+
+    fit('should give a better error when importing something besides an NgModule',
+       () => {
+         write('src/tsconfig.json', `{
+        "extends": "../tsconfig-base.json",
+        "files": ["test-module.ts"]
+      }`);
+         write('src/foo.ts', `
+        import {Component} from '@angular/core';
+        
+                @Component({selector: 'foo', template: 'foo'})
+                export class Foo {}
+         `)
+         write('src/test-module.ts', `
+        import {NgModule} from '@angular/core';
+        import {Foo} from './foo';
+
+        @NgModule({
+          imports: [Foo],
+        })
+        export class MyModule {}
+      `);
+         expect(main(['-p', path.join(basePath, 'src/tsconfig.json')])).toBe(1);
+       });
   });
 
   describe('formatted messages', () => {
