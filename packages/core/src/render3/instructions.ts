@@ -295,7 +295,11 @@ function resetApplicationState() {
 export function renderTemplate<T>(
     hostNode: RElement, template: ComponentTemplate<T>, context: T,
     providedRendererFactory: RendererFactory3, host: LElementNode | null): LElementNode {
+  let stateSaved = false;
+  let savedPreviousOrParentNode: LNode|null = previousOrParentNode;
+  let savedIsParent = isParent;
   if (host == null) {
+    stateSaved = true;
     resetApplicationState();
     rendererFactory = providedRendererFactory;
     host = createLNode(
@@ -306,6 +310,10 @@ export function renderTemplate<T>(
   ngDevMode && assertNotEqual(hostView, null, 'hostView');
   hostView.ngStaticData = getTemplateStatic(template);
   renderComponentOrTemplate(host, hostView, context, template);
+  if (stateSaved) {
+    previousOrParentNode = savedPreviousOrParentNode;
+    isParent = savedIsParent;
+  }
   return host;
 }
 
