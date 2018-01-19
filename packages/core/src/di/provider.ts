@@ -8,7 +8,6 @@
 
 import {Type} from '../type';
 
-
 /**
  * @whatItDoes Configures the {@link Injector} to return a value for a token.
  * @howToUse
@@ -31,16 +30,6 @@ export interface ValueSansProvider {
    * The value to inject.
    */
   useValue: any;
-
-  /**
-   * If true, then injector returns an array of instances. This is useful to allow multiple
-   * providers spread across many files to provide configuration information to a common token.
-   *
-   * ### Example
-   *
-   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
-   */
-  multi?: boolean;
 }
 
 /**
@@ -64,6 +53,16 @@ export interface ValueProvider extends ValueSansProvider {
    * An injection token. (Typically an instance of `Type` or `InjectionToken`, but can be `any`).
    */
   provide: any;
+
+  /**
+   * If true, then injector returns an array of instances. This is useful to allow multiple
+   * providers spread across many files to provide configuration information to a common token.
+   *
+   * ### Example
+   *
+   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
+   */
+  multi?: boolean;
 }
 
 /**
@@ -95,16 +94,6 @@ export interface StaticClassSansProvider {
    * used as arguments to the `useClass` constructor.
    */
   deps: any[];
-
-  /**
-   * If true, then injector returns an array of instances. This is useful to allow multiple
-   * providers spread across many files to provide configuration information to a common token.
-   *
-   * ### Example
-   *
-   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
-   */
-  multi?: boolean;
 }
 
 /**
@@ -134,6 +123,16 @@ export interface StaticClassProvider extends StaticClassSansProvider {
    * An injection token. (Typically an instance of `Type` or `InjectionToken`, but can be `any`).
    */
   provide: any;
+
+  /**
+   * If true, then injector returns an array of instances. This is useful to allow multiple
+   * providers spread across many files to provide configuration information to a common token.
+   *
+   * ### Example
+   *
+   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
+   */
+  multi?: boolean;
 }
 
 /**
@@ -158,17 +157,7 @@ export interface ConstructorSansProvider {
    * A list of `token`s which need to be resolved by the injector. The list of values is then
    * used as arguments to the `useClass` constructor.
    */
-  deps: any[];
-
-  /**
-   * If true, then injector returns an array of instances. This is useful to allow multiple
-   * providers spread across many files to provide configuration information to a common token.
-   *
-   * ### Example
-   *
-   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
-   */
-  multi?: boolean;
+  deps?: any[];
 }
 
 /**
@@ -195,6 +184,16 @@ export interface ConstructorProvider extends ConstructorSansProvider {
    * An injection token. (Typically an instance of `Type` or `InjectionToken`, but can be `any`).
    */
   provide: Type<any>;
+
+  /**
+   * If true, then injector returns an array of instances. This is useful to allow multiple
+   * providers spread across many files to provide configuration information to a common token.
+   *
+   * ### Example
+   *
+   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
+   */
+  multi?: boolean;
 }
 
 /**
@@ -219,16 +218,6 @@ export interface ExistingSansProvider {
    * Existing `token` to return. (equivalent to `injector.get(useExisting)`)
    */
   useExisting: any;
-
-  /**
-   * If true, then injector returns an array of instances. This is useful to allow multiple
-   * providers spread across many files to provide configuration information to a common token.
-   *
-   * ### Example
-   *
-   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
-   */
-  multi?: boolean;
 }
 
 /**
@@ -252,6 +241,16 @@ export interface ExistingProvider extends ExistingSansProvider {
    * An injection token. (Typically an instance of `Type` or `InjectionToken`, but can be `any`).
    */
   provide: any;
+
+  /**
+   * If true, then injector returns an array of instances. This is useful to allow multiple
+   * providers spread across many files to provide configuration information to a common token.
+   *
+   * ### Example
+   *
+   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
+   */
+  multi?: boolean;
 }
 
 /**
@@ -286,16 +285,6 @@ export interface FactorySansProvider {
    * used as arguments to the `useFactory` function.
    */
   deps?: any[];
-
-  /**
-   * If true, then injector returns an array of instances. This is useful to allow multiple
-   * providers spread across many files to provide configuration information to a common token.
-   *
-   * ### Example
-   *
-   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
-   */
-  multi?: boolean;
 }
 
 /**
@@ -325,6 +314,16 @@ export interface FactoryProvider extends FactorySansProvider {
    * An injection token. (Typically an instance of `Type` or `InjectionToken`, but can be `any`).
    */
   provide: any;
+
+  /**
+   * If true, then injector returns an array of instances. This is useful to allow multiple
+   * providers spread across many files to provide configuration information to a common token.
+   *
+   * ### Example
+   *
+   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
+   */
+  multi?: boolean;
 }
 
 /**
@@ -394,16 +393,6 @@ export interface ClassSansProvider {
    * Class to instantiate for the `token`.
    */
   useClass: Type<any>;
-
-  /**
-   * If true, then injector returns an array of instances. This is useful to allow multiple
-   * providers spread across many files to provide configuration information to a common token.
-   *
-   * ### Example
-   *
-   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
-   */
-  multi?: boolean;
 }
 
 /**
@@ -433,6 +422,16 @@ export interface ClassProvider extends ClassSansProvider {
    * An injection token. (Typically an instance of `Type` or `InjectionToken`, but can be `any`).
    */
   provide: any;
+
+  /**
+   * If true, then injector returns an array of instances. This is useful to allow multiple
+   * providers spread across many files to provide configuration information to a common token.
+   *
+   * ### Example
+   *
+   * {@example core/di/ts/provider_spec.ts region='MultiProviderAspect'}
+   */
+  multi?: boolean;
 }
 
 /**

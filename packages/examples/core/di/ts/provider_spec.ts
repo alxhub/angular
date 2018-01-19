@@ -34,7 +34,7 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
         class MyModule {
         }
 
-        @Injectable(MyModule, {useValue: 'Hello'})
+        @Injectable({targetScope: MyModule, useValue: 'Hello'})
         class MyClass {
         }
         const injector = Injector.create([MyModule as InjectorDefType<any>]);
@@ -76,12 +76,12 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
         class ShapeModule {
         }
 
-        @Injectable(ShapeModule)
+        @Injectable({targetScope: ShapeModule})
         class Square {
           name = 'square';
         }
 
-        @Injectable(ShapeModule, {useClass: Square})
+        @Injectable({targetScope: ShapeModule, useClass: Square})
         abstract class Shape {
           name: string;
         }
@@ -101,12 +101,12 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
         }
 
 
-        @Injectable(SalutationModule)
+        @Injectable({targetScope: SalutationModule})
         class FormalGreeting {
           salutation = 'Greetings';
         }
 
-        @Injectable(SalutationModule, {useClass: FormalGreeting})
+        @Injectable({targetScope: SalutationModule, useClass: FormalGreeting})
         class Greeting {
           salutation = 'Hello';
         }
@@ -169,7 +169,7 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
           name = 'square';
         }
 
-        @Injectable(MyShapeModule, {useClass: Square, deps: []})
+        @Injectable({targetScope: MyShapeModule, useClass: Square, deps: []})
         class Shape {
           name: string;
         }
@@ -229,7 +229,7 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
         class MyShapeModule {
         }
 
-        @Injectable(MyShapeModule, {deps: []})
+        @Injectable({targetScope: MyShapeModule, deps: []})
         class Square {
           name = 'square';
         }
@@ -268,12 +268,12 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
         class MyGreetingModule {
         }
 
-        @Injectable(MyGreetingModule, {deps: []})
+        @Injectable({targetScope: MyGreetingModule, deps: []})
         class FormalGreeting extends AbstractGreeting {
           salutation = 'Greetings';
         }
 
-        @Injectable(MyGreetingModule, {useExisting: FormalGreeting})
+        @Injectable({targetScope: MyGreetingModule, useExisting: FormalGreeting})
         class Greeting extends AbstractGreeting {
           salutation = 'Hello';
         }
@@ -316,13 +316,13 @@ import {Injectable, InjectionToken, Injector, InjectorDefType, NgModule, Optiona
         class MyLocationModule {
         }
 
-        @Injectable(MyLocationModule, {useValue: 'http://angular.io/#someLocation'})
+        @Injectable({targetScope: MyLocationModule, useValue: 'http://angular.io/#someLocation'})
         class Location {
         }
 
-        @Injectable(
+        @Injectable({targetScope: 
             MyLocationModule,
-            {useFactory: (location: string) => location.split('#')[1], deps: [Location]})
+            useFactory: (location: string) => location.split('#')[1], deps: [Location]})
         class Hash {
         }
 

@@ -218,7 +218,7 @@ export function inject(token: any, options?: any, defaultValue?: any) {
     throw new Error('inject() can not be invoked outside injector context');
   } else {
     // TODO(misko): I wonder if there is a more efficient way to do this.
-    return _currentInjector.get(token);
+    return _currentInjector.get(token, defaultValue);
   }
 }
 

@@ -153,9 +153,9 @@ export interface InjectableDecorator {
    * @stable
    */
   (): any;
-  ({moduleType, provider}: {moduleType: Type<any>, provider?: InjectableProvider}): any;
+  (options?: {targetScope: Type<any>} & InjectableProvider): any;
   new (): Injectable;
-  new ({moduleType, provider}: {moduleType: Type<any>, provider?: InjectableProvider}): Injectable;
+  new (options?: {targetScope: Type<any>} & InjectableProvider): Injectable;
 }
 
 /**
@@ -178,7 +178,7 @@ export interface InjectableType<T> extends Type<T> { ngInjectableDef?: Injectabl
 export function injectArgs(types: any[]): any[] {
   const args: any[] = [];
   for(let i = 0; i < types.length; i++) {
-    const arg = args[i];
+    const arg = types[i];
     if (Array.isArray(arg)) {
       // TODO(misko): this needs more work since we have to take care of optional etc...
       throw new Error('implement me');
@@ -197,9 +197,6 @@ function convertInjectableProviderToFactory(
     return () => new type(...injectArgs(deps));
   }
 
-  if (provider.multi) {
-    throw new Error('@Injectable() does not supports multi providers');
-  }
   if (USE_VALUE in provider) {
     const valueProvider = (provider as ValueSansProvider);
     return () => valueProvider.useValue;
@@ -218,8 +215,12 @@ function convertInjectableProviderToFactory(
     }
     return () => new classProvider.useClass(...injectArgs(deps));
   } else {
-    const constructorProvider = (provider as ConstructorSansProvider);
-    return () => new type(...injectArgs(constructorProvider.deps));
+    let deps = (provider as ConstructorSansProvider).deps;
+    if (!deps) {
+      const reflectionCapabilities = new ReflectionCapabilities();
+      deps = reflectionCapabilities.parameters(type);
+    }
+    return () => new type(...injectArgs(deps!));
   }
 }
 
@@ -240,13 +241,12 @@ export function defineInjectable(opts: Injectable): Injectable {
  */
 export const Injectable: InjectableDecorator = makeDecorator(
     'Injectable', undefined, undefined, undefined,
-    (injectableType: Type<any>, moduleType?: InjectorDefType<any>,
-     provider?: InjectableProvider) => {
-      if (moduleType) {
+    (injectableType: Type<any>, options: {targetScope: Type<any>} & InjectableProvider) => {
+      if (options && options.targetScope) {
         (injectableType as InjectableType<any>).ngInjectableDef =
             defineInjectable({
-              scope: moduleType, 
-              factory: convertInjectableProviderToFactory(injectableType, provider)
+              scope: options.targetScope as InjectorDefType<any>, 
+              factory: convertInjectableProviderToFactory(injectableType, options)
             });
       }
     });

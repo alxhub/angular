@@ -107,12 +107,12 @@ function factoryFn(a: any){}
       class SalutationModule {
       }
 
-      @Injectable(SalutationModule, {deps: [Foo]})
+      @Injectable({targetScope: SalutationModule, deps: [Foo]})
       class Greeter {
         constructor(foo: Foo) {}
       }
 
-      @Injectable(SalutationModule, {deps: []})
+      @Injectable({targetScope: SalutationModule, deps: []})
       class Toast {
       }
 
@@ -136,16 +136,16 @@ function factoryFn(a: any){}
       class SalutationModule {
       }
 
-      @Injectable(SalutationModule, {deps: []})
+      @Injectable({targetScope: SalutationModule, deps: []})
       class Foo {
       }
 
-      @Injectable(SalutationModule, {deps: [Foo]})
+      @Injectable({targetScope: SalutationModule, deps: [Foo]})
       class Greeter {
         constructor(foo: Foo) {}
       }
 
-      @Injectable(SalutationModule, {deps: []})
+      @Injectable({targetScope: SalutationModule, deps: []})
       class Toast {
       }
 
@@ -153,6 +153,9 @@ function factoryFn(a: any){}
       class MyAppModule {
         constructor(toast: Toast) {}
       }
+
+      debugger;
+
       const injector = Injector.create([SalutationModule as InjectorDefType<any>]);
 
       const greeter = injector.get<Greeter>(Greeter);
@@ -203,7 +206,7 @@ function factoryFn(a: any){}
         constructor() { moduleInstantiated = true; }
       }
 
-      @Injectable(SalutationModule, {deps: [Foo]})
+      @Injectable({targetScope: SalutationModule, deps: [Foo]})
       class Greeter {
         constructor(foo: Foo) {}
       }
@@ -217,7 +220,7 @@ function factoryFn(a: any){}
       class SalutationModule {
       }
 
-      @Injectable(SalutationModule, {useValue: 0})
+      @Injectable({targetScope: SalutationModule, useValue: 0})
       class Greeting {
       }
 
@@ -231,11 +234,12 @@ function factoryFn(a: any){}
       class SalutationModule {
       }
 
-      @Injectable(SalutationModule)
+      @Injectable({targetScope: SalutationModule})
       class Greeting {
       }
 
       const injector = Injector.create([SalutationModule as InjectorDefType<any>]);
+      debugger;
 
       expect(injector.get<Greeting>(Greeting)).toBeAnInstanceOf(Greeting);
     });
@@ -245,11 +249,11 @@ function factoryFn(a: any){}
       class SalutationModule {
       }
 
-      @Injectable(SalutationModule, {useValue: 1})
+      @Injectable({targetScope: SalutationModule, useValue: 1})
       class Foo {
       }
 
-      @Injectable(SalutationModule)
+      @Injectable({targetScope: SalutationModule})
       class Greeting {
         constructor(foo: Foo) { expect(foo).toBe(1); }
       }
@@ -264,12 +268,12 @@ function factoryFn(a: any){}
       class ShapeModule {
       }
 
-      @Injectable(ShapeModule)
+      @Injectable({targetScope: ShapeModule})
       class Square {
         name = 'square';
       }
 
-      @Injectable(ShapeModule, {useClass: Square})
+      @Injectable({targetScope: ShapeModule, useClass: Square})
       abstract class Shape {
         name: string;
       }
@@ -290,7 +294,7 @@ function factoryFn(a: any){}
       class SalutationModule {
       }
 
-      @Injectable(SalutationModule, {deps: []})
+      @Injectable({targetScope: SalutationModule, deps: []})
       class Greeting {
       }
 
