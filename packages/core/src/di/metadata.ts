@@ -180,8 +180,15 @@ export function injectArgs(types: any[]): any[] {
   for(let i = 0; i < types.length; i++) {
     const arg = types[i];
     if (Array.isArray(arg)) {
-      // TODO(misko): this needs more work since we have to take care of optional etc...
-      throw new Error('implement me');
+      if (arg.length === 0) {
+        throw new Error('Arguments array must have arguments.');
+      }
+      const type = arg[arg.length - 1];
+      if (arg.length > 1) {
+        throw new Error('not implemented');
+      }
+
+      args.push(inject(type));
     } else {
       args.push(inject(arg));
     }
