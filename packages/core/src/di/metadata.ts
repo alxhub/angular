@@ -183,12 +183,23 @@ export function injectArgs(types: any[]): any[] {
       if (arg.length === 0) {
         throw new Error('Arguments array must have arguments.');
       }
-      const type = arg[arg.length - 1];
-      if (arg.length > 1) {
-        throw new Error('not implemented');
+      let type: Type<any>|undefined  = undefined;
+      let defaultValue: null|undefined = undefined;
+      debugger;
+      
+      for (let j = 0; j < arg.length; j++) {
+        const meta = arg[j];
+        console.log(meta);
+        if (meta instanceof Optional || meta.__proto__.ngMetadataName === 'Optional') {
+          defaultValue = null;
+        } else if (meta instanceof Inject) {
+          type = meta.token;
+        } else {
+          type = meta;
+        }
       }
 
-      args.push(inject(type));
+      args.push(inject(type, undefined, defaultValue));
     } else {
       args.push(inject(arg));
     }

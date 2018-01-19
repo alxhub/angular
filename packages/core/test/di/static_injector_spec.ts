@@ -263,6 +263,64 @@ function factoryFn(a: any){}
       expect(injector.get<Greeting>(Greeting)).toBeAnInstanceOf(Greeting);
     });
 
+    it('should work with @Optional dependencies in constructor', () => {
+      @NgModule()
+      class SalutationModule {
+      }
+
+      @Injectable()
+      class Foo {
+      }
+
+      @Injectable({targetScope: SalutationModule})
+      class Greeting {
+        constructor(@Optional() foo: Foo) { expect(foo).toBe(null); }
+      }
+
+      const injector = Injector.create([SalutationModule as InjectorDefType<any>]);
+
+      expect(injector.get<Greeting>(Greeting)).toBeAnInstanceOf(Greeting);
+    });
+
+    it('should work with @Optional dependencies in deps', () => {
+      @NgModule()
+      class SalutationModule {
+      }
+
+      @Injectable()
+      class Foo {
+      }
+
+      @Injectable({targetScope: SalutationModule, deps: [[new Optional(), Foo]]})
+      class Greeting {
+        constructor(foo: Foo) { expect(foo).toBe(null); }
+      }
+
+      const injector = Injector.create([SalutationModule as InjectorDefType<any>]);
+
+      expect(injector.get<Greeting>(Greeting)).toBeAnInstanceOf(Greeting);
+    });
+
+    fit('should work with @Inject dependency', () => {
+      @NgModule()
+      class SalutationModule {
+      }
+
+      @Injectable({targetScope: SalutationModule, useValue: 1})
+      class Foo {
+      }
+
+      @Injectable({targetScope: SalutationModule})
+      class Greeting {
+        constructor(@Inject(Foo) foo: any) { expect(foo).toBe(1); }
+      }
+
+      const injector = Injector.create([SalutationModule as InjectorDefType<any>]);
+
+      expect(injector.get<Greeting>(Greeting)).toBeAnInstanceOf(Greeting);
+    });
+
+
     it('should class provider works', () => {
       @NgModule()
       class ShapeModule {
