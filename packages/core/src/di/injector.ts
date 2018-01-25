@@ -386,3 +386,13 @@ function getClosureSafeProperty<T>(objWithPropertyToExtract: T): string {
   }
   throw Error('!prop');
 }
+
+export function inject(token: any, notFoundValue?: any): any {
+  return _currentInjector!.get(token, notFoundValue);
+}
+
+let _currentInjector: Injector|null = null;
+
+export function setCurrentInjector(injector: Injector|null): void {
+  _currentInjector = injector;
+}

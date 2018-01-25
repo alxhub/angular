@@ -702,7 +702,7 @@ describe('ngc transformer command-line', () => {
         return result;
       }
 
-      it('should be able to lower a lambda expression in a provider', () => {
+      fit('should be able to lower a lambda expression in a provider', () => {
         write('mymodule.ts', `
           import {CommonModule} from '@angular/common';
           import {NgModule} from '@angular/core';
@@ -725,6 +725,7 @@ describe('ngc transformer command-line', () => {
         const mymodulefactory = path.resolve(outDir, 'mymodule.ngfactory.js');
         const mymodulefactorySource = fs.readFileSync(mymodulefactory, 'utf8');
         expect(mymodulefactorySource).toContain('"someToken", i1.ɵ0');
+        console.log(mymodulefactorySource);
       });
 
       it('should be able to lower a function expression in a provider', () => {
