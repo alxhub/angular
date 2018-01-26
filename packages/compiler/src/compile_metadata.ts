@@ -141,6 +141,12 @@ export interface CompileInjectableMetadata {
   type: CompileTypeMetadata;
 
   module?: StaticSymbol;
+
+  useValue?: any;
+  useClass?: StaticSymbol;
+  useExisting?: StaticSymbol;
+  useFactory?: StaticSymbol;
+  deps?: any[]; 
 }
 
 /**

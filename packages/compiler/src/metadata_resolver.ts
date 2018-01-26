@@ -801,14 +801,19 @@ export class CompileMetadataResolver {
     const meta = annotations[0];
     let module: StaticSymbol|undefined = undefined;
 
-    if (meta.module) {
-      module = meta.module;
+    if (meta.scope) {
+      module = meta.scope;
     }
 
     return {
       symbol: type,
       type: typeMetadata,
       module,
+      useValue: meta.useValue,
+      useClass: meta.useClass,
+      useExisting: meta.useExisting,
+      useFactory: meta.useFactory,
+      deps: meta.deps,
     };
   }
 

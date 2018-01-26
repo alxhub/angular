@@ -14,6 +14,7 @@ import {MessageBundle} from '../i18n/message_bundle';
 import {Identifiers, createTokenForExternalReference} from '../identifiers';
 import {CompileMetadataResolver} from '../metadata_resolver';
 import {HtmlParser} from '../ml_parser/html_parser';
+import {InjectableCompiler} from '../injectable_compiler';
 import {InterpolationConfig} from '../ml_parser/interpolation_config';
 import {NgModuleCompiler} from '../ng_module_compiler';
 import {OutputEmitter} from '../output/abstract_emitter';
@@ -56,6 +57,7 @@ export class AotCompiler {
       private _metadataResolver: CompileMetadataResolver, private _templateParser: TemplateParser,
       private _styleCompiler: StyleCompiler, private _viewCompiler: ViewCompiler,
       private _typeCheckCompiler: TypeCheckCompiler, private _ngModuleCompiler: NgModuleCompiler,
+      private _injectableCompiler: InjectableCompiler,
       private _outputEmitter: OutputEmitter,
       private _summaryResolver: SummaryResolver<StaticSymbol>,
       private _symbolResolver: StaticSymbolResolver) {}
@@ -320,7 +322,7 @@ export class AotCompiler {
   private _emitPartialModule(
       fileName: string, ngModuleByPipeOrDirective: Map<StaticSymbol, CompileNgModuleMetadata>,
       directives: StaticSymbol[], pipes: StaticSymbol[], ngModules: CompileNgModuleMetadata[],
-      injectables: StaticSymbol[]): PartialModule[] {
+      injectables: CompileInjectableMetadata[]): PartialModule[] {
     const classes: o.ClassStmt[] = [];
 
     const context = this._createOutputContext(fileName);
@@ -341,6 +343,27 @@ export class AotCompiler {
         compileIvyDirective(context, directiveMetadata, this._reflector);
       }
     });
+
+    injectables.forEach(injectable => this._injectableCompiler.compile(injectable, context));
+
+    if (context.statements) {
+      return [{fileName, statements: [...context.constantPool.statements, ...context.statements]}];
+    }
+    return [];
+  }
+
+  emitAllPartialModules2({ngModuleByPipeOrDirective, files}: NgAnalyzedModules): PartialModule[] {
+    // Using reduce like this is a select many pattern (where map is a select pattern)
+    return files.reduce<PartialModule[]>((r, file) => {
+      r.push(...this._emitPartialModule2(file.fileName, file.injectables));
+      return r;
+    }, []);
+  }
+
+  private _emitPartialModule2(fileName: string, injectables: CompileInjectableMetadata[]): PartialModule[] {
+    const context = this._createOutputContext(fileName);
+
+    injectables.forEach(injectable => this._injectableCompiler.compile(injectable, context));
 
     if (context.statements) {
       return [{fileName, statements: [...context.constantPool.statements, ...context.statements]}];

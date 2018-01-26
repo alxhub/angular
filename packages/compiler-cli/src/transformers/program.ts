@@ -293,8 +293,11 @@ class AngularCompilerProgram implements Program {
           }
           this.writeFile(outFileName, outData, writeByteOrderMark, onError, genFile, sourceFiles);
         };
+
+    const modules = this.compiler.emitAllPartialModules2(this.analyzedModules);
+
     const tsCustomTansformers = this.calculateTransforms(
-        genFileByFileName, /* partialModules */ undefined, customTransformers);
+        genFileByFileName, modules, customTransformers);
     const emitOnlyDtsFiles = (emitFlags & (EmitFlags.DTS | EmitFlags.JS)) == EmitFlags.DTS;
     // Restore the original references before we emit so TypeScript doesn't emit
     // a reference to the .d.ts file.

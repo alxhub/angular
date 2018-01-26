@@ -29,6 +29,10 @@ export function providerDef(ctx: OutputContext, providerAst: ProviderAst): {
   if (providerAst.providerType === ProviderAstType.PrivateService) {
     flags |= NodeFlags.PrivateProvider;
   }
+  console.log('providerDef for', providerAst.token.identifier!.reference, providerAst.isModule);
+  if (providerAst.isModule) {
+    flags |= NodeFlags.TypeModuleProvider;
+  }
   providerAst.lifecycleHooks.forEach((lifecycleHook) => {
     // for regular providers, we only support ngOnDestroy
     if (lifecycleHook === LifecycleHooks.OnDestroy ||

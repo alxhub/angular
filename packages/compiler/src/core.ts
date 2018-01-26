@@ -127,7 +127,7 @@ export interface ModuleWithProviders {
   providers?: Provider[];
 }
 export interface Injectable {
-  module?: Type|any;
+  scope?: Type|any;
   useClass?: Type|any;
   useExisting?: Type|any;
   useValue?: any;
@@ -201,6 +201,7 @@ export const enum NodeFlags {
   TypeViewQuery = 1 << 27,
   StaticQuery = 1 << 28,
   DynamicQuery = 1 << 29,
+  TypeModuleProvider = 1 << 30,
   CatQuery = TypeContentQuery | TypeViewQuery,
 
   // mutually exclusive values...

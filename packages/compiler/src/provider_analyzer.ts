@@ -319,9 +319,10 @@ export class NgModuleProviderAnalyzer {
     this._allProviders = new Map<any, ProviderAst>();
     ngModule.transitiveModule.modules.forEach((ngModuleType: CompileTypeMetadata) => {
       const ngModuleProvider = {token: {identifier: ngModuleType}, useClass: ngModuleType};
+      console.log('PROVIDER', ngModuleType.reference);
       _resolveProviders(
           [ngModuleProvider], ProviderAstType.PublicService, true, sourceSpan, this._errors,
-          this._allProviders);
+          this._allProviders, true);
     });
     _resolveProviders(
         ngModule.transitiveModule.providers.map(entry => entry.provider).concat(extraProviders),
@@ -448,7 +449,7 @@ function _transformProviderAst(
     {eager, providers}: {eager: boolean, providers: CompileProviderMetadata[]}): ProviderAst {
   return new ProviderAst(
       provider.token, provider.multiProvider, provider.eager || eager, providers,
-      provider.providerType, provider.lifecycleHooks, provider.sourceSpan);
+      provider.providerType, provider.lifecycleHooks, provider.sourceSpan, provider.isModule);
 }
 
 function _resolveProvidersFromDirectives(
@@ -481,7 +482,7 @@ function _resolveProvidersFromDirectives(
 function _resolveProviders(
     providers: CompileProviderMetadata[], providerType: ProviderAstType, eager: boolean,
     sourceSpan: ParseSourceSpan, targetErrors: ParseError[],
-    targetProvidersByToken: Map<any, ProviderAst>) {
+    targetProvidersByToken: Map<any, ProviderAst>, isModule: boolean = false) {
   providers.forEach((provider) => {
     let resolvedProvider = targetProvidersByToken.get(tokenReference(provider.token));
     if (resolvedProvider != null && !!resolvedProvider.multiProvider !== !!provider.multi) {
@@ -489,6 +490,7 @@ function _resolveProviders(
           `Mixing multi and non multi provider is not possible for token ${tokenName(resolvedProvider.token)}`,
           sourceSpan));
     }
+    console.log('_resolveProviders', providers.map(p => p.token.identifier!.reference), isModule);
     if (!resolvedProvider) {
       const lifecycleHooks = provider.token.identifier &&
               (<CompileTypeMetadata>provider.token.identifier).lifecycleHooks ?
@@ -497,7 +499,7 @@ function _resolveProviders(
       const isUseValue = !(provider.useClass || provider.useExisting || provider.useFactory);
       resolvedProvider = new ProviderAst(
           provider.token, !!provider.multi, eager || isUseValue, [provider], providerType,
-          lifecycleHooks, sourceSpan);
+          lifecycleHooks, sourceSpan, isModule);
       targetProvidersByToken.set(tokenReference(provider.token), resolvedProvider);
     } else {
       if (!provider.multi) {

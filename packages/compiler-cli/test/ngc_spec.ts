@@ -702,30 +702,37 @@ describe('ngc transformer command-line', () => {
         return result;
       }
 
-      it('should be able to lower a lambda expression in a provider', () => {
+      fit('should be able to lower a lambda expression in a provider', () => {
         write('mymodule.ts', `
           import {CommonModule} from '@angular/common';
-          import {NgModule} from '@angular/core';
-
-          class Foo {}
+          import {NgModule, Injectable} from '@angular/core';
 
           @NgModule({
-            imports: [CommonModule],
-            providers: [{provide: 'someToken', useFactory: () => new Foo()}]
+            imports: [CommonModule]
           })
           export class MyModule {}
+
+          @Injectable()
+          export class Bar {}
+
+          @Injectable({
+            scope: MyModule,
+            useExisting: Bar,
+          })
+          export class Foo {
+            constructor(bar: Bar) {}
+          }
+
         `);
         expect(compile()).toEqual(0);
 
         const mymodulejs = path.resolve(outDir, 'mymodule.js');
         const mymoduleSource = fs.readFileSync(mymodulejs, 'utf8');
-        expect(mymoduleSource).toContain('var ɵ0 = function () { return new Foo(); }');
-        expect(mymoduleSource).toContain('export { ɵ0');
 
         const mymodulefactory = path.resolve(outDir, 'mymodule.ngfactory.js');
         const mymodulefactorySource = fs.readFileSync(mymodulefactory, 'utf8');
-        expect(mymodulefactorySource).toContain('"someToken", i1.ɵ0');
         console.log(mymodulefactorySource);
+        console.log(mymoduleSource);
       });
 
       it('should be able to lower a function expression in a provider', () => {
