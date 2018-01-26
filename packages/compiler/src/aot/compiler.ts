@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {CompileDirectiveMetadata, CompileDirectiveSummary, CompileIdentifierMetadata, CompileNgModuleMetadata, CompileNgModuleSummary, CompilePipeMetadata, CompilePipeSummary, CompileProviderMetadata, CompileStylesheetMetadata, CompileSummaryKind, CompileTypeMetadata, CompileTypeSummary, componentFactoryName, flatten, identifierName, templateSourceUrl, tokenReference} from '../compile_metadata';
+import {CompileDirectiveMetadata, CompileDirectiveSummary, CompileIdentifierMetadata, CompileInjectableMetadata, CompileNgModuleMetadata, CompileNgModuleSummary, CompilePipeMetadata, CompilePipeSummary, CompileProviderMetadata, CompileStylesheetMetadata, CompileSummaryKind, CompileTypeMetadata, CompileTypeSummary, componentFactoryName, flatten, identifierName, templateSourceUrl, tokenReference} from '../compile_metadata';
 import {CompilerConfig} from '../config';
 import {ConstantPool} from '../constant_pool';
 import {ViewEncapsulation} from '../core';

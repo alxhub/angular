@@ -13,6 +13,7 @@
  */
 
 export * from './di/metadata';
+export * from './di/injectable';
 
 export {forwardRef, resolveForwardRef, ForwardRefFn} from './di/forward_ref';
 

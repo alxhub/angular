@@ -702,7 +702,7 @@ describe('ngc transformer command-line', () => {
         return result;
       }
 
-      fit('should be able to lower a lambda expression in a provider', () => {
+      it('should be able to lower a lambda expression in a provider', () => {
         write('mymodule.ts', `
           import {CommonModule} from '@angular/common';
           import {NgModule} from '@angular/core';

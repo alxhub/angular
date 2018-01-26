@@ -396,3 +396,35 @@ let _currentInjector: Injector|null = null;
 export function setCurrentInjector(injector: Injector|null): void {
   _currentInjector = injector;
 }
+
+export function injectArgs(types: any[]): any[] {
+  const args: any[] = [];
+  for(let i = 0; i < types.length; i++) {
+    const arg = types[i];
+    if (Array.isArray(arg)) {
+      if (arg.length === 0) {
+        throw new Error('Arguments array must have arguments.');
+      }
+      let type: Type<any>|undefined  = undefined;
+      let defaultValue: null|undefined = undefined;
+      debugger;
+      
+      for (let j = 0; j < arg.length; j++) {
+        const meta = arg[j];
+        console.log(meta);
+        if (meta instanceof Optional || meta.__proto__.ngMetadataName === 'Optional') {
+          defaultValue = null;
+        } else if (meta instanceof Inject) {
+          type = meta.token;
+        } else {
+          type = meta;
+        }
+      }
+
+      args.push(inject(type, defaultValue));
+    } else {
+      args.push(inject(arg));
+    }
+  }
+  return args;
+}

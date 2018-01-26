@@ -794,8 +794,9 @@ export class CompileMetadataResolver {
       .annotations(type)
       .filter(ann => createInjectable.isTypeOf(ann));
     
-    if (annotations.length === 0 || annotations.length > 1) {
-      throw new Error(`Too few or too many @Injectables`);
+    if (annotations.length === 0) {
+      debugger;
+      throw new Error(`Too few @Injectables`);
     }
     const meta = annotations[0];
     let module: StaticSymbol|undefined = undefined;
