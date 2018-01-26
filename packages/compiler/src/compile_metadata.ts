@@ -136,6 +136,13 @@ export interface CompileTokenMetadata {
   identifier?: CompileIdentifierMetadata|CompileTypeMetadata;
 }
 
+export interface CompileInjectableMetadata {
+  symbol: StaticSymbol;
+  type: CompileTypeMetadata;
+
+  module?: StaticSymbol;
+}
+
 /**
  * Metadata regarding compilation of a type.
  */

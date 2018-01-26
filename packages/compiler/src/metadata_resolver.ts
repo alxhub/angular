@@ -12,7 +12,7 @@ import {assertArrayOfStrings, assertInterpolationSymbols} from './assertions';
 import * as cpl from './compile_metadata';
 import {CompileReflector} from './compile_reflector';
 import {CompilerConfig} from './config';
-import {ChangeDetectionStrategy, Component, Directive, ModuleWithProviders, Provider, Query, SchemaMetadata, Type, ViewEncapsulation, createAttribute, createComponent, createHost, createInject, createInjectable, createInjectionToken, createOptional, createSelf, createSkipSelf} from './core';
+import {ChangeDetectionStrategy, Component, Directive, ModuleWithProviders, Provider, Query, SchemaMetadata, Type, ViewEncapsulation, createAttribute, createComponent, createHost, createInject, createInjectable, createInjectionToken, createOptional, createSelf, createSkipSelf, Injectable} from './core';
 import {DirectiveNormalizer} from './directive_normalizer';
 import {DirectiveResolver} from './directive_resolver';
 import {Identifiers} from './identifiers';
@@ -530,6 +530,7 @@ export class CompileMetadataResolver {
               this.getNgModuleSummary(importedModuleType, alreadyCollecting);
           alreadyCollecting.delete(importedModuleType);
           if (!importedModuleSummary) {
+            debugger;
             this._reportError(
                 syntaxError(
                     `Unexpected ${this._getTypeDescriptor(importedType)} '${stringifyType(importedType)}' imported by the module '${stringifyType(moduleType)}'. Please add a @NgModule annotation.`),
@@ -539,9 +540,10 @@ export class CompileMetadataResolver {
           importedModules.push(importedModuleSummary);
         } else {
           this._reportError(
-              syntaxError(
-                  `Unexpected value '${stringifyType(importedType)}' imported by the module '${stringifyType(moduleType)}'`),
+            syntaxError(
+              `Unexpected value '${stringifyType(importedType)}' imported by the module '${stringifyType(moduleType)}'`),
               moduleType);
+          debugger;
           return;
         }
       });
@@ -778,17 +780,35 @@ export class CompileMetadataResolver {
   getInjectableSummary(type: any): cpl.CompileTypeSummary {
     return {
       summaryKind: cpl.CompileSummaryKind.Injectable,
-      type: this._getTypeMetadata(type, null, false)
+      type: this._getTypeMetadata(type, null, false),
     };
   }
 
-  private _getInjectableMetadata(type: Type, dependencies: any[]|null = null):
-      cpl.CompileTypeMetadata {
+  getInjectableMetadata(type: any, dependencies: any[]|null = null):
+      cpl.CompileInjectableMetadata {
     const typeSummary = this._loadSummary(type, cpl.CompileSummaryKind.Injectable);
-    if (typeSummary) {
-      return typeSummary.type;
+    const typeMetadata = typeSummary ? typeSummary.type : this._getTypeMetadata(type, dependencies);
+
+    const annotations: Injectable[] = this
+      ._reflector
+      .annotations(type)
+      .filter(ann => createInjectable.isTypeOf(ann));
+    
+    if (annotations.length === 0 || annotations.length > 1) {
+      throw new Error(`Too few or too many @Injectables`);
     }
-    return this._getTypeMetadata(type, dependencies);
+    const meta = annotations[0];
+    let module: StaticSymbol|undefined = undefined;
+
+    if (meta.module) {
+      module = meta.module;
+    }
+
+    return {
+      symbol: type,
+      type: typeMetadata,
+      module,
+    };
   }
 
   private _getTypeMetadata(type: Type, dependencies: any[]|null = null, throwOnUnknownDeps = true):
@@ -1049,7 +1069,7 @@ export class CompileMetadataResolver {
     let token: cpl.CompileTokenMetadata = this._getTokenMetadata(provider.token);
 
     if (provider.useClass) {
-      compileTypeMetadata = this._getInjectableMetadata(provider.useClass, provider.dependencies);
+      compileTypeMetadata = this.getInjectableMetadata(provider.useClass, provider.dependencies).type;
       compileDeps = compileTypeMetadata.diDeps;
       if (provider.token === provider.useClass) {
         // use the compileTypeMetadata as it contains information about lifecycleHooks...

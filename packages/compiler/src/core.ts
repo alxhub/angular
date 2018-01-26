@@ -126,7 +126,15 @@ export interface ModuleWithProviders {
   ngModule: Type;
   providers?: Provider[];
 }
-
+export interface Injectable {
+  module?: Type|any;
+  useClass?: Type|any;
+  useExisting?: Type|any;
+  useValue?: any;
+  useFactory?: Type|any;
+  deps?: Array<Type|any[]>;
+}
+export const createInjectable = makeMetadataFactory('Injectable', (injectable: Injectable = {}) => injectable);
 export interface SchemaMetadata { name: string; }
 
 export const CUSTOM_ELEMENTS_SCHEMA: SchemaMetadata = {
@@ -138,7 +146,6 @@ export const NO_ERRORS_SCHEMA: SchemaMetadata = {
 };
 
 export const createOptional = makeMetadataFactory('Optional');
-export const createInjectable = makeMetadataFactory('Injectable');
 export const createSelf = makeMetadataFactory('Self');
 export const createSkipSelf = makeMetadataFactory('SkipSelf');
 export const createHost = makeMetadataFactory('Host');

@@ -360,7 +360,7 @@ export class AotCompiler {
   private _compileImplFile(
       srcFileUrl: string, ngModuleByPipeOrDirective: Map<StaticSymbol, CompileNgModuleMetadata>,
       directives: StaticSymbol[], pipes: StaticSymbol[], ngModules: CompileNgModuleMetadata[],
-      injectables: StaticSymbol[]): GeneratedFile[] {
+      injectables: CompileInjectableMetadata[]): GeneratedFile[] {
     const fileSuffix = normalizeGenFileSuffix(splitTypescriptSuffix(srcFileUrl, true)[1]);
     const generatedFiles: GeneratedFile[] = [];
 
@@ -414,7 +414,7 @@ export class AotCompiler {
 
   private _createSummary(
       srcFileName: string, directives: StaticSymbol[], pipes: StaticSymbol[],
-      ngModules: CompileNgModuleMetadata[], injectables: StaticSymbol[],
+      ngModules: CompileNgModuleMetadata[], injectables: CompileInjectableMetadata[],
       ngFactoryCtx: OutputContext): GeneratedFile[] {
     const symbolSummaries = this._symbolResolver.getSymbolsOf(srcFileName)
                                 .map(symbol => this._symbolResolver.resolveSymbol(symbol));
@@ -438,8 +438,8 @@ export class AotCompiler {
                          metadata: this._metadataResolver.getPipeMetadata(ref) !
                        })),
           ...injectables.map(ref => ({
-                               summary: this._metadataResolver.getInjectableSummary(ref) !,
-                               metadata: this._metadataResolver.getInjectableSummary(ref) !.type
+                               summary: this._metadataResolver.getInjectableSummary(ref.symbol) !,
+                               metadata: this._metadataResolver.getInjectableSummary(ref.symbol) !.type
                              }))
         ];
     const forJitOutputCtx = this._options.enableSummariesForJit ?
@@ -687,7 +687,7 @@ export interface NgAnalyzedFile {
   directives: StaticSymbol[];
   pipes: StaticSymbol[];
   ngModules: CompileNgModuleMetadata[];
-  injectables: StaticSymbol[];
+  injectables: CompileInjectableMetadata[];
   exportsNonSourceFiles: boolean;
 }
 
@@ -747,7 +747,7 @@ export function analyzeFile(
     metadataResolver: CompileMetadataResolver, fileName: string): NgAnalyzedFile {
   const directives: StaticSymbol[] = [];
   const pipes: StaticSymbol[] = [];
-  const injectables: StaticSymbol[] = [];
+  const injectables: CompileInjectableMetadata[] = [];
   const ngModules: CompileNgModuleMetadata[] = [];
   const hasDecorators = staticSymbolResolver.hasDecorators(fileName);
   let exportsNonSourceFiles = false;
@@ -779,7 +779,8 @@ export function analyzeFile(
           }
         } else if (metadataResolver.isInjectable(symbol)) {
           isNgSymbol = true;
-          injectables.push(symbol);
+          const injectable = metadataResolver.getInjectableMetadata(symbol);
+          injectables.push(injectable);
         }
       }
       if (!isNgSymbol) {
