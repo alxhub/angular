@@ -785,7 +785,7 @@ export class CompileMetadataResolver {
   }
 
   getInjectableMetadata(type: any, dependencies: any[]|null = null):
-      cpl.CompileInjectableMetadata {
+      cpl.CompileInjectableMetadata|null {
     const typeSummary = this._loadSummary(type, cpl.CompileSummaryKind.Injectable);
     const typeMetadata = typeSummary ? typeSummary.type : this._getTypeMetadata(type, dependencies);
 
@@ -795,20 +795,14 @@ export class CompileMetadataResolver {
       .filter(ann => createInjectable.isTypeOf(ann));
     
     if (annotations.length === 0) {
-      debugger;
-      throw new Error(`Too few @Injectables`);
-    }
-    const meta = annotations[0];
-    let module: StaticSymbol|undefined = undefined;
-
-    if (meta.scope) {
-      module = meta.scope;
+      return null;
     }
 
+    const meta = annotations[annotations.length - 1];
     return {
       symbol: type,
       type: typeMetadata,
-      module,
+      module: meta.scope || undefined,
       useValue: meta.useValue,
       useClass: meta.useClass,
       useExisting: meta.useExisting,
@@ -1075,7 +1069,7 @@ export class CompileMetadataResolver {
     let token: cpl.CompileTokenMetadata = this._getTokenMetadata(provider.token);
 
     if (provider.useClass) {
-      compileTypeMetadata = this.getInjectableMetadata(provider.useClass, provider.dependencies).type;
+      compileTypeMetadata = this._getTypeMetadata(provider.useClass, provider.dependencies);
       compileDeps = compileTypeMetadata.diDeps;
       if (provider.token === provider.useClass) {
         // use the compileTypeMetadata as it contains information about lifecycleHooks...

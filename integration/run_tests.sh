@@ -19,7 +19,7 @@ rm_cache
 mkdir $cache
 trap rm_cache EXIT
 
-for testDir in $(ls | grep -v node_modules) ; do
+for testDir in $(ls | grep injectable | grep -v node_modules) ; do
   [[ -d "$testDir" ]] || continue
   echo "#################################"
   echo "Running integration test $testDir"
@@ -34,13 +34,13 @@ for testDir in $(ls | grep -v node_modules) ; do
       if [[ $testDir == cli-hello-world ]]; then
         yarn build
       fi
-      if [[ -v TRAVIS ]]; then
-        trackPayloadSize "$testDir" "dist/*.js" true false "${thisDir}/_payload-limits.json"
-      fi
+      #if [[ -v TRAVIS ]]; then
+      #  trackPayloadSize "$testDir" "dist/*.js" true false "${thisDir}/_payload-limits.json"
+      #fi
     fi
   )
 done
 
-if [[ -v TRAVIS ]]; then
-  trackPayloadSize "umd" "../dist/packages-dist/*/bundles/*.umd.min.js" false false
-fi
+# if [[ -v TRAVIS ]]; then
+#   trackPayloadSize "umd" "../dist/packages-dist/*/bundles/*.umd.min.js" false false
+# fi

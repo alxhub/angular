@@ -803,7 +803,9 @@ export function analyzeFile(
         } else if (metadataResolver.isInjectable(symbol)) {
           isNgSymbol = true;
           const injectable = metadataResolver.getInjectableMetadata(symbol);
-          injectables.push(injectable);
+          if (injectable) {
+            injectables.push(injectable);
+          }
         }
       }
       if (!isNgSymbol) {

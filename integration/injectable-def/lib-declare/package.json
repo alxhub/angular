@@ -1,0 +1,21 @@
+{
+  "name": "injectable-def",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@angular/animations": "file:../../../dist/packages-dist/animations",
+    "@angular/common": "file:../../../dist/packages-dist/common",
+    "@angular/compiler": "file:../../../dist/packages-dist/compiler",
+    "@angular/compiler-cli": "file:../../../dist/packages-dist/compiler-cli",
+    "@angular/core": "file:../../../dist/packages-dist/core",
+    "@angular/platform-browser": "file:../../../dist/packages-dist/platform-browser",
+    "@angular/platform-server": "file:../../../dist/packages-dist/platform-server",
+    "rxjs": "file:../../../node_modules/rxjs",
+    "typescript": "file:../../../node_modules/typescript",
+    "zone.js": "file:../../../node_modules/zone.js"
+  },
+  "scripts": {
+    "build": "ngc -p tsconfig.json"
+  }
+}
