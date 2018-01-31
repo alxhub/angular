@@ -50,6 +50,7 @@ export class AotCompiler {
   private _templateAstCache =
       new Map<StaticSymbol, {template: TemplateAst[], pipes: CompilePipeSummary[]}>();
   private _analyzedFiles = new Map<string, NgAnalyzedFile>();
+  private _analyzedFilesForInjectables = new Map<string, NgAnalyzedFileWithInjectables>();
 
   constructor(
       private _config: CompilerConfig, private _options: AotCompilerOptions,
@@ -89,6 +90,15 @@ export class AotCompiler {
       analyzedFile =
           analyzeFile(this._host, this._symbolResolver, this._metadataResolver, fileName);
       this._analyzedFiles.set(fileName, analyzedFile);
+    }
+    return analyzedFile;
+  }
+
+  private _analyzeFileForInjectables(fileName: string): NgAnalyzedFileWithInjectables {
+    let analyzedFile = this._analyzedFilesForInjectables.get(fileName);
+    if (!analyzedFile) {
+      analyzedFile = analyzeFileForInjectables(this._host, this._symbolResolver, this._metadataResolver, fileName);
+      this._analyzedFilesForInjectables.set(fileName, analyzedFile);
     }
     return analyzedFile;
   }
@@ -187,13 +197,17 @@ export class AotCompiler {
     return Promise.all(loadingPromises).then(_ => mergeAndValidateNgFiles(files));
   }
 
-  loadFilesSync(fileNames: string[]): NgAnalyzedModules {
+  loadFilesSync(fileNames: string[], tsFiles: string[]): {analyzedModules: NgAnalyzedModules, analyzedInjectables: NgAnalyzedFileWithInjectables[]} {
     const files = fileNames.map(fileName => this._analyzeFile(fileName));
     files.forEach(
         file => file.ngModules.forEach(
             ngModule => this._metadataResolver.loadNgModuleDirectiveAndPipeMetadata(
                 ngModule.type.reference, true)));
-    return mergeAndValidateNgFiles(files);
+    const analyzedInjectables = tsFiles.map(tsFile => this._analyzeFileForInjectables(tsFile));
+    return {
+      analyzedModules: mergeAndValidateNgFiles(files),
+      analyzedInjectables: analyzedInjectables,
+    };
   }
 
   private _createNgFactoryStub(
@@ -352,7 +366,7 @@ export class AotCompiler {
     return [];
   }
 
-  emitAllPartialModules2({ngModuleByPipeOrDirective, files}: NgAnalyzedModules): PartialModule[] {
+  emitAllPartialModules2(files: NgAnalyzedFileWithInjectables[]): PartialModule[] {
     // Using reduce like this is a select many pattern (where map is a select pattern)
     return files.reduce<PartialModule[]>((r, file) => {
       r.push(...this._emitPartialModule2(file.fileName, file.injectables));
@@ -705,6 +719,11 @@ export interface NgAnalyzedModules {
   symbolsMissingModule?: StaticSymbol[];
 }
 
+export interface NgAnalyzedFileWithInjectables {
+  fileName: string;
+  injectables: CompileInjectableMetadata[];
+}
+
 export interface NgAnalyzedFile {
   fileName: string;
   directives: StaticSymbol[];
@@ -819,6 +838,36 @@ export function analyzeFile(
   };
 }
 
+export function analyzeFileForInjectables(
+    host: NgAnalyzeModulesHost, staticSymbolResolver: StaticSymbolResolver,
+    metadataResolver: CompileMetadataResolver, fileName: string): NgAnalyzedFileWithInjectables {
+  const injectables: CompileInjectableMetadata[] = [];
+  if (staticSymbolResolver.hasDecorators(fileName)) {
+    staticSymbolResolver.getSymbolsOf(fileName).forEach((symbol) => {
+      const resolvedSymbol = staticSymbolResolver.resolveSymbol(symbol);
+      const symbolMeta = resolvedSymbol.metadata;
+      if (!symbolMeta || symbolMeta.__symbolic === 'error') {
+        return;
+      }
+      let isNgSymbol = false;
+      if (symbolMeta.__symbolic === 'class') {
+        if (metadataResolver.isInjectable(symbol)) {
+          isNgSymbol = true;
+          const injectable = metadataResolver.getInjectableMetadata(symbol);
+          if (injectable) {
+            injectables.push(injectable);
+          }
+        }
+      }
+    });
+  }
+  return {
+    fileName,
+    injectables,
+  }
+}
+
+
 function isValueExportingNonSourceFile(host: NgAnalyzeModulesHost, metadata: any): boolean {
   let exportsNonSourceFiles = false;
 
@@ -865,7 +914,7 @@ export function mergeAnalyzedFiles(analyzedFiles: NgAnalyzedFile[]): NgAnalyzedM
     ngModules: allNgModules,
     ngModuleByPipeOrDirective,
     symbolsMissingModule,
-    files: analyzedFiles
+    files: analyzedFiles,
   };
 }
 

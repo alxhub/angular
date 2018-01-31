@@ -16,6 +16,9 @@ export class ResolvedStaticSymbol {
   constructor(public symbol: StaticSymbol, public metadata: any) {}
 }
 
+const DTS = /\.d\.ts$/;
+const TS = /\.ts$/;
+
 /**
  * The host of the SymbolResolverHost disconnects the implementation from TypeScript / other
  * language
@@ -357,6 +360,7 @@ export class StaticSymbolResolver {
             this.symbolResourcePaths.set(symbol, originFilePath);
           }
         }
+
         resolvedSymbols.push(
             this.createResolvedSymbol(symbol, filePath, topLevelSymbolNames, symbolMeta));
       });
@@ -374,7 +378,8 @@ export class StaticSymbolResolver {
     // (e.g. their constructor parameters).
     // We do this to prevent introducing deep imports
     // as we didn't generate .ngfactory.ts files with proper reexports.
-    if (this.summaryResolver.isLibraryFile(sourceSymbol.filePath) && metadata &&
+    const isTsFile = false && TS.test(sourceSymbol.filePath) && !DTS.test(sourceSymbol.filePath);
+    if (this.summaryResolver.isLibraryFile(sourceSymbol.filePath) && !isTsFile && metadata &&
         metadata['__symbolic'] === 'class') {
       const transformedMeta = {__symbolic: 'class', arity: metadata.arity};
       return new ResolvedStaticSymbol(sourceSymbol, transformedMeta);

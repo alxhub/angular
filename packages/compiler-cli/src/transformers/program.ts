@@ -7,7 +7,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AotCompiler, AotCompilerHost, AotCompilerOptions, EmitterVisitorContext, FormattedMessageChain, GeneratedFile, MessageBundle, NgAnalyzedFile, NgAnalyzedModules, ParseSourceSpan, PartialModule, Position, Serializer, TypeScriptEmitter, Xliff, Xliff2, Xmb, core, createAotCompiler, getParseErrors, isFormattedError, isSyntaxError} from '@angular/compiler';
+import {AotCompiler, AotCompilerHost, AotCompilerOptions, EmitterVisitorContext, FormattedMessageChain, GeneratedFile, MessageBundle, NgAnalyzedFile, NgAnalyzedModules, ParseSourceSpan, PartialModule, Position, Serializer, TypeScriptEmitter, Xliff, Xliff2, Xmb, core, createAotCompiler, getParseErrors, isFormattedError, isSyntaxError, NgAnalyzedFileWithInjectables} from '@angular/compiler';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
@@ -20,7 +20,7 @@ import {CodeGenerator, TsCompilerAotCompilerTypeCheckHostAdapter, getOriginalRef
 import {LowerMetadataCache, getExpressionLoweringTransformFactory} from './lower_expressions';
 import {getAngularEmitterTransformFactory} from './node_emitter_transform';
 import {getAngularClassTransformerFactory} from './r3_transform';
-import {GENERATED_FILES, StructureIsReused, createMessageDiagnostic, isInRootDir, ngToTsDiagnostic, tsStructureIsReused, userError} from './util';
+import {GENERATED_FILES, StructureIsReused, createMessageDiagnostic, isInRootDir, ngToTsDiagnostic, tsStructureIsReused, userError, DTS, TS} from './util';
 
 
 /**
@@ -58,6 +58,7 @@ class AngularCompilerProgram implements Program {
   private _hostAdapter: TsCompilerAotCompilerTypeCheckHostAdapter;
   private _tsProgram: ts.Program;
   private _analyzedModules: NgAnalyzedModules|undefined;
+  private _analyzedInjectables: NgAnalyzedFileWithInjectables[]|undefined;
   private _structuralDiagnostics: Diagnostic[]|undefined;
   private _programWithStubs: ts.Program|undefined;
   private _optionsDiagnostics: Diagnostic[] = [];
@@ -185,7 +186,7 @@ class AngularCompilerProgram implements Program {
             if (this._analyzedModules) {
               throw new Error('Angular structure loaded both synchronously and asynchronsly');
             }
-            this._updateProgramWithTypeCheckStubs(tmpProgram, analyzedModules, rootNames);
+            this._updateProgramWithTypeCheckStubs(tmpProgram, analyzedModules, [], rootNames);
           });
         })
         .catch(e => this._createProgramOnError(e));
@@ -254,13 +255,21 @@ class AngularCompilerProgram implements Program {
         emitCallback?: TsEmitCallback
       } = {}): ts.EmitResult {
     const emitStart = Date.now();
+
+    // Here we decide whether to emit i18n bundles.
     if (emitFlags & EmitFlags.I18nBundle) {
       const locale = this.options.i18nOutLocale || null;
       const file = this.options.i18nOutFile || null;
       const format = this.options.i18nOutFormat || null;
+
+      // As far as I can tell this doesn't actually *emit* anything, it merely produces the
+      // MessageBundle object.
       const bundle = this.compiler.emitMessageBundle(this.analyzedModules, locale);
+
+      // The MessageBundle is actually written here.
       i18nExtract(format, file, this.host, this.options, bundle);
     }
+
     if ((emitFlags & (EmitFlags.JS | EmitFlags.DTS | EmitFlags.Metadata | EmitFlags.Codegen)) ===
         0) {
       return {emitSkipped: true, diagnostics: [], emittedFiles: []};
@@ -294,7 +303,7 @@ class AngularCompilerProgram implements Program {
           this.writeFile(outFileName, outData, writeByteOrderMark, onError, genFile, sourceFiles);
         };
 
-    const modules = this.compiler.emitAllPartialModules2(this.analyzedModules);
+    const modules = this.compiler.emitAllPartialModules2(this._analyzedInjectables!);
 
     const tsCustomTansformers = this.calculateTransforms(
         genFileByFileName, modules, customTransformers);
@@ -477,9 +486,9 @@ class AngularCompilerProgram implements Program {
       return;
     }
     try {
-      const {tmpProgram, sourceFiles, rootNames} = this._createProgramWithBasicStubs();
-      const analyzedModules = this.compiler.loadFilesSync(sourceFiles);
-      this._updateProgramWithTypeCheckStubs(tmpProgram, analyzedModules, rootNames);
+      const {tmpProgram, sourceFiles, tsFiles, rootNames} = this._createProgramWithBasicStubs();
+      const {analyzedModules, analyzedInjectables} = this.compiler.loadFilesSync(sourceFiles, tsFiles);
+      this._updateProgramWithTypeCheckStubs(tmpProgram, analyzedModules, analyzedInjectables, rootNames);
     } catch (e) {
       this._createProgramOnError(e);
     }
@@ -506,6 +515,7 @@ class AngularCompilerProgram implements Program {
     tmpProgram: ts.Program,
     rootNames: string[],
     sourceFiles: string[],
+    tsFiles: string[],
   } {
     if (this._analyzedModules) {
       throw new Error(`Internal Error: already initalized!`);
@@ -539,17 +549,22 @@ class AngularCompilerProgram implements Program {
 
     const tmpProgram = ts.createProgram(rootNames, this.options, this.hostAdapter, oldTsProgram);
     const sourceFiles: string[] = [];
+    const tsFiles: string[] = [];
     tmpProgram.getSourceFiles().forEach(sf => {
       if (this.hostAdapter.isSourceFile(sf.fileName)) {
         sourceFiles.push(sf.fileName);
       }
+      if (TS.test(sf.fileName) && !DTS.test(sf.fileName)) {
+        tsFiles.push(sf.fileName);
+      }
     });
-    return {tmpProgram, sourceFiles, rootNames};
+    return {tmpProgram, sourceFiles, tsFiles, rootNames};
   }
 
   private _updateProgramWithTypeCheckStubs(
-      tmpProgram: ts.Program, analyzedModules: NgAnalyzedModules, rootNames: string[]) {
+      tmpProgram: ts.Program, analyzedModules: NgAnalyzedModules, analyzedInjectables: NgAnalyzedFileWithInjectables[], rootNames: string[]) {
     this._analyzedModules = analyzedModules;
+    this._analyzedInjectables = analyzedInjectables;
     tmpProgram.getSourceFiles().forEach(sf => {
       if (sf.fileName.endsWith('.ngfactory.ts')) {
         const {generate, baseFileName} = this.hostAdapter.shouldGenerateFile(sf.fileName);

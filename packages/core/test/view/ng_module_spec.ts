@@ -61,7 +61,7 @@ function makeProviders(classes: any[], modules: any[]): NgModuleDefinition {
   };
 }
 
-fdescribe('NgModuleRef_ injector', () => {
+describe('NgModuleRef_ injector', () => {
   let ref: NgModuleRef<any>;
   beforeEach(() => {
     ref = createNgModuleRef(MyModule, Injector.NULL, [], makeProviders([

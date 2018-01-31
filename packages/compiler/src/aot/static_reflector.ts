@@ -338,8 +338,9 @@ export class StaticReflector implements CompileReflector {
         this.findDeclaration(ANGULAR_CORE, 'ANALYZE_FOR_ENTRY_COMPONENTS');
 
     this._registerDecoratorOrConstructor(this.findDeclaration(ANGULAR_CORE, 'Host'), createHost);
+    const injectable = this.findDeclaration(ANGULAR_CORE, 'Injectable');
     this._registerDecoratorOrConstructor(
-        this.findDeclaration(ANGULAR_CORE, 'Injectable'), createInjectable);
+        injectable, createInjectable);
     this._registerDecoratorOrConstructor(this.findDeclaration(ANGULAR_CORE, 'Self'), createSelf);
     this._registerDecoratorOrConstructor(
         this.findDeclaration(ANGULAR_CORE, 'SkipSelf'), createSkipSelf);

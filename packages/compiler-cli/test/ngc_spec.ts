@@ -691,26 +691,22 @@ describe('ngc transformer command-line', () => {
       beforeEach(() => {
         writeConfig(`{
             "extends": "./tsconfig-base.json",
-            "files": ["mymodule.ts"]
+            "files": ["mymodule.ts", "myservice.ts"]
           }`);
       });
 
       function compile(): number {
         errorSpy.calls.reset();
-        const result = main(['-p', path.join(basePath, 'tsconfig.json')], errorSpy);
+        const result = main(['-p', path.join(basePath, 'tsconfig.json')], err => console.error(err));
+        debugger;
         expect(errorSpy).not.toHaveBeenCalled();
         return result;
       }
-
-      fit('should be able to lower a lambda expression in a provider', () => {
-        write('mymodule.ts', `
-          import {CommonModule} from '@angular/common';
+      
+      it('should be able to lower a lambda expression in a provider', () => {
+        write('myservice.ts', `
           import {NgModule, Injectable} from '@angular/core';
-
-          @NgModule({
-            imports: [CommonModule]
-          })
-          export class MyModule {}
+          import {MyModule} from './mymodule';
 
           @Injectable()
           export class Bar {}
@@ -722,9 +718,22 @@ describe('ngc transformer command-line', () => {
           export class Foo {
             constructor(bar: Bar) {}
           }
+        `)
+        write('mymodule.ts', `
+          import {CommonModule} from '@angular/common';
+          import {NgModule, Injectable} from '@angular/core';
+
+          @NgModule({
+            imports: [CommonModule]
+          })
+          export class MyModule {}
 
         `);
         expect(compile()).toEqual(0);
+
+        const myservicejs = path.resolve(outDir, 'myservice.js');
+        debugger;
+        const myserviceSource = fs.readFileSync(myservicejs, 'utf8');
 
         const mymodulejs = path.resolve(outDir, 'mymodule.js');
         const mymoduleSource = fs.readFileSync(mymodulejs, 'utf8');
@@ -733,6 +742,51 @@ describe('ngc transformer command-line', () => {
         const mymodulefactorySource = fs.readFileSync(mymodulefactory, 'utf8');
         console.log(mymodulefactorySource);
         console.log(mymoduleSource);
+        console.log(myserviceSource);
+      });
+
+
+      it('should be able to lower a lambda expression in a provider', () => {
+
+        writeConfig(`{
+          "extends": "./tsconfig-base.json",
+          "files": ["mymodule.ts", "myservice.ts"],
+          "angularCompilerOptions": {
+            "skipTemplateCodegen": true
+          }
+        }`);
+        write('myservice.ts', `
+          import {NgModule, Injectable} from '@angular/core';
+          import {MyModule} from './mymodule';
+
+          @Injectable()
+          export class Bar {}
+
+          @Injectable({
+            scope: MyModule,
+            useExisting: Bar,
+          })
+          export class Foo {
+            constructor(bar: Bar) {}
+          }
+        `)
+        write('mymodule.ts', `
+          import {CommonModule} from '@angular/common';
+          import {NgModule, Injectable} from '@angular/core';
+
+          @NgModule({
+            imports: [CommonModule]
+          })
+          export class MyModule {}
+
+        `);
+        expect(compile()).toEqual(0);
+
+        const myservicejs = path.resolve(outDir, 'myservice.js');
+        debugger;
+        const myserviceSource = fs.readFileSync(myservicejs, 'utf8');
+
+        console.log(myserviceSource);
       });
 
       it('should be able to lower a function expression in a provider', () => {
@@ -1018,6 +1072,142 @@ describe('ngc transformer command-line', () => {
       it('should compile without error', () => {
         expect(main(['-p', path.join(basePath, 'tsconfig.json')], errorSpy)).toBe(0);
       });
+    });
+
+    fit('ngInjectableDef with summaries', () => {
+      // Note: we need to emit the generated code for the libraries
+      // into the node_modules, as that is the only way that we
+      // currently support when using summaries.
+      // TODO(tbosch): add support for `paths` to our CompilerHost.fileNameToModuleName
+      // and then use `paths` here instead of writing to node_modules.
+
+      // Angular
+      write('tsconfig-ng.json', `{
+          "extends": "./tsconfig-base.json",
+          "angularCompilerOptions": {
+            "generateCodeForLibraries": true,
+            "enableSummariesForJit": true
+          },
+          "compilerOptions": {
+            "outDir": "."
+          },
+          "include": ["node_modules/@angular/core/**/*"],
+          "exclude": [
+            "node_modules/@angular/core/test/**",
+            "node_modules/@angular/core/testing/**"
+          ]
+        }`);
+
+      // Lib 1
+      write('lib1/tsconfig-lib1.json', `{
+          "extends": "../tsconfig-base.json",
+          "angularCompilerOptions": {
+            "generateCodeForLibraries": false,
+            "enableSummariesForJit": true
+          },
+          "compilerOptions": {
+            "rootDir": ".",
+            "outDir": "../node_modules/lib1_built"
+          }
+        }`);
+      write('lib1/module.ts', `
+          import {Injectable, NgModule} from '@angular/core';
+
+          @Injectable()
+          export class Service {}
+
+          @NgModule({
+            providers: [Service],
+          })
+          export class Lib1Module {}
+        `);
+
+      // Lib 2
+      write('lib2/tsconfig-lib2.json', `{
+          "extends": "../tsconfig-base.json",
+          "angularCompilerOptions": {
+            "generateCodeForLibraries": false,
+            "enableSummariesForJit": true
+          },
+          "compilerOptions": {
+            "rootDir": ".",
+            "outDir": "../node_modules/lib2_built"
+          }
+        }`);
+      write('lib2/module.ts', `
+          import {Component, NgModule} from '@angular/core';
+          import {Lib1Module, Service} from 'lib1_built/module';
+
+          @Component({
+            selector: 'lib2-cmp',
+            template: 'Lib2Cmp',
+          })
+          export class Lib2Cmp {
+
+            constructor(service: Service) {}
+          }
+
+          @NgModule({
+            declarations: [Lib2Cmp],
+            exports: [Lib2Cmp],
+            imports: [Lib1Module],
+          })
+          export class Lib2Module {}
+        `);
+
+      // Application
+      write('app/tsconfig-app.json', `{
+          "extends": "../tsconfig-base.json",
+          "angularCompilerOptions": {
+            "generateCodeForLibraries": false,
+            "enableSummariesForJit": true
+          },
+          "compilerOptions": {
+            "rootDir": ".",
+            "outDir": "../built/app"
+          }
+        }`);
+      write('app/main.ts', `
+          import {NgModule, Inject} from '@angular/core';
+          import {Lib2Module} from 'lib2_built/module';
+
+          @NgModule({
+            imports: [Lib2Module]
+          })
+          export class AppModule {
+            constructor(@Inject('foo') public foo: any) {}
+          }
+        `);
+
+      expect(main(['-p', path.join(basePath, 'tsconfig-ng.json')], errorSpy)).toBe(0);
+      expect(main(['-p', path.join(basePath, 'lib1', 'tsconfig-lib1.json')], errorSpy)).toBe(0);
+      expect(main(['-p', path.join(basePath, 'lib2', 'tsconfig-lib2.json')], errorSpy)).toBe(0);
+      expect(main(['-p', path.join(basePath, 'app', 'tsconfig-app.json')], errorSpy)).toBe(0);
+
+      // library 1
+      // make `shouldExist` / `shouldNotExist` relative to `node_modules`
+      outDir = path.resolve(basePath, 'node_modules');
+      shouldExist('lib1_built/module.js');
+      shouldExist('lib1_built/module.ngsummary.json');
+      shouldExist('lib1_built/module.ngsummary.js');
+      shouldExist('lib1_built/module.ngsummary.d.ts');
+      shouldExist('lib1_built/module.ngfactory.js');
+      shouldExist('lib1_built/module.ngfactory.d.ts');
+
+      // library 2
+      // make `shouldExist` / `shouldNotExist` relative to `node_modules`
+      outDir = path.resolve(basePath, 'node_modules');
+      shouldExist('lib2_built/module.js');
+      shouldExist('lib2_built/module.ngsummary.json');
+      shouldExist('lib2_built/module.ngsummary.js');
+      shouldExist('lib2_built/module.ngsummary.d.ts');
+      shouldExist('lib2_built/module.ngfactory.js');
+      shouldExist('lib2_built/module.ngfactory.d.ts');
+
+      // app
+      // make `shouldExist` / `shouldNotExist` relative to `built`
+      outDir = path.resolve(basePath, 'built');
+      shouldExist('app/main.js');
     });
 
     it('should be able to compile multiple libraries with summaries', () => {

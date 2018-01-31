@@ -32,7 +32,7 @@ export function createTsConfig(options: TsConfigOptions) {
   const result = options.defaultTsConfig;
 
   return {
-    'extends': '../angular/packages/bazel/test/ngc-wrapped/empty/tsconfig',
+    'extends': '../angular/test/ngc-wrapped/empty/tsconfig',
     'compilerOptions': {
       ...result.compilerOptions,
       'outDir': options.outDir,

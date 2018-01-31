@@ -194,7 +194,6 @@ export class ProviderAst implements TemplateAst {
       public providers: CompileProviderMetadata[], public providerType: ProviderAstType,
       public lifecycleHooks: LifecycleHooks[], public sourceSpan: ParseSourceSpan,
       readonly isModule: boolean = false) {
-        console.log('ProviderAst', token.identifier!.reference, isModule);
         if (token.identifier!.reference.name === 'MyModule' && !isModule) {
           debugger;
         }

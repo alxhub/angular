@@ -193,6 +193,7 @@ export class ProviderElementContext {
       let transformedUseValue = provider.useValue;
       let transformedUseExisting = provider.useExisting !;
       let transformedDeps: CompileDiDependencyMetadata[] = undefined !;
+      console.error('provider', provider.token);
       if (provider.useExisting != null) {
         const existingDiDep = this._getDependency(
             resolvedProvider.providerType, {token: provider.useExisting}, eager) !;
@@ -205,7 +206,7 @@ export class ProviderElementContext {
       } else if (provider.useFactory) {
         const deps = provider.deps || provider.useFactory.diDeps;
         transformedDeps =
-            deps.map((dep) => this._getDependency(resolvedProvider.providerType, dep, eager) !);
+        deps.map((dep) => this._getDependency(resolvedProvider.providerType, dep, eager) !);
       } else if (provider.useClass) {
         const deps = provider.deps || provider.useClass.diDeps;
         transformedDeps =
@@ -270,6 +271,9 @@ export class ProviderElementContext {
     let currElement: ProviderElementContext = this;
     let currEager: boolean = eager;
     let result: CompileDiDependencyMetadata|null = null;
+    if (!dep) {
+      debugger;
+    }
     if (!dep.isSkipSelf) {
       result = this._getLocalDependency(requestingProviderType, dep, eager);
     }
@@ -319,7 +323,6 @@ export class NgModuleProviderAnalyzer {
     this._allProviders = new Map<any, ProviderAst>();
     ngModule.transitiveModule.modules.forEach((ngModuleType: CompileTypeMetadata) => {
       const ngModuleProvider = {token: {identifier: ngModuleType}, useClass: ngModuleType};
-      console.log('PROVIDER', ngModuleType.reference);
       _resolveProviders(
           [ngModuleProvider], ProviderAstType.PublicService, true, sourceSpan, this._errors,
           this._allProviders, true);
@@ -490,7 +493,6 @@ function _resolveProviders(
           `Mixing multi and non multi provider is not possible for token ${tokenName(resolvedProvider.token)}`,
           sourceSpan));
     }
-    console.log('_resolveProviders', providers.map(p => p.token.identifier!.reference), isModule);
     if (!resolvedProvider) {
       const lifecycleHooks = provider.token.identifier &&
               (<CompileTypeMetadata>provider.token.identifier).lifecycleHooks ?
