@@ -1074,38 +1074,20 @@ describe('ngc transformer command-line', () => {
       });
     });
 
-    fit('ngInjectableDef with summaries', () => {
+    fit('ngInjectableDef with metadata', done => {
       // Note: we need to emit the generated code for the libraries
       // into the node_modules, as that is the only way that we
       // currently support when using summaries.
       // TODO(tbosch): add support for `paths` to our CompilerHost.fileNameToModuleName
       // and then use `paths` here instead of writing to node_modules.
-
-      // Angular
-      write('tsconfig-ng.json', `{
-          "extends": "./tsconfig-base.json",
-          "angularCompilerOptions": {
-            "generateCodeForLibraries": true,
-            "enableSummariesForJit": true
-          },
-          "compilerOptions": {
-            "outDir": "."
-          },
-          "include": ["node_modules/@angular/core/**/*"],
-          "exclude": [
-            "node_modules/@angular/core/test/**",
-            "node_modules/@angular/core/testing/**"
-          ]
-        }`);
-
       // Lib 1
       write('lib1/tsconfig-lib1.json', `{
           "extends": "../tsconfig-base.json",
           "angularCompilerOptions": {
-            "generateCodeForLibraries": false,
-            "enableSummariesForJit": true
+            "skipTemplateCodegen": true
           },
           "compilerOptions": {
+            "module": "commonjs",
             "rootDir": ".",
             "outDir": "../node_modules/lib1_built"
           }
@@ -1113,23 +1095,22 @@ describe('ngc transformer command-line', () => {
       write('lib1/module.ts', `
           import {Injectable, NgModule} from '@angular/core';
 
-          @Injectable()
-          export class Service {}
-
           @NgModule({
-            providers: [Service],
           })
           export class Lib1Module {}
+
+          @Injectable({scope: Lib1Module})
+          export class Service {}
         `);
 
       // Lib 2
       write('lib2/tsconfig-lib2.json', `{
           "extends": "../tsconfig-base.json",
           "angularCompilerOptions": {
-            "generateCodeForLibraries": false,
-            "enableSummariesForJit": true
+            "skipTemplateCodegen": true
           },
           "compilerOptions": {
+            "module": "commonjs",
             "rootDir": ".",
             "outDir": "../node_modules/lib2_built"
           }
@@ -1158,28 +1139,51 @@ describe('ngc transformer command-line', () => {
       // Application
       write('app/tsconfig-app.json', `{
           "extends": "../tsconfig-base.json",
-          "angularCompilerOptions": {
-            "generateCodeForLibraries": false,
-            "enableSummariesForJit": true
-          },
           "compilerOptions": {
+            "module": "commonjs",
             "rootDir": ".",
             "outDir": "../built/app"
           }
         }`);
-      write('app/main.ts', `
-          import {NgModule, Inject} from '@angular/core';
+      write('app/module.ts', `
+          import {Component, NgModule} from '@angular/core';
+          import {BrowserModule} from '@angular/platform-browser';
+          import {ServerModule} from '@angular/platform-server';
           import {Lib2Module} from 'lib2_built/module';
 
-          @NgModule({
-            imports: [Lib2Module]
+
+          @Component({
+            selector: 'test-app',
+            template: '<lib2-cmp></lib2-cmp>',
           })
-          export class AppModule {
-            constructor(@Inject('foo') public foo: any) {}
-          }
+          export class AppCmp {}
+
+          @NgModule({
+            bootstrap: [AppCmp],
+            declarations: [AppCmp],
+            imports: [
+              Lib2Module,
+              BrowserModule.withServerTransition({appId: 'test-app'}),
+              ServerModule,
+            ],
+          })
+          export class AppModule {}
+        `);
+      write('app/main.ts', `
+        import {enableProdMode} from '@angular/core';
+        import {renderModuleFactory} from '@angular/platform-server';  
+        import {AppModuleNgFactory} from './module.ngfactory.js';
+
+        enableProdMode();
+        export function render(): Promise<string> {
+          return renderModuleFactory(AppModuleNgFactory, {
+            document: '<test-app></test-app>',
+            url: '/',
+          });
+        }
         `);
 
-      expect(main(['-p', path.join(basePath, 'tsconfig-ng.json')], errorSpy)).toBe(0);
+        console.log(basePath);
       expect(main(['-p', path.join(basePath, 'lib1', 'tsconfig-lib1.json')], errorSpy)).toBe(0);
       expect(main(['-p', path.join(basePath, 'lib2', 'tsconfig-lib2.json')], errorSpy)).toBe(0);
       expect(main(['-p', path.join(basePath, 'app', 'tsconfig-app.json')], errorSpy)).toBe(0);
@@ -1188,26 +1192,30 @@ describe('ngc transformer command-line', () => {
       // make `shouldExist` / `shouldNotExist` relative to `node_modules`
       outDir = path.resolve(basePath, 'node_modules');
       shouldExist('lib1_built/module.js');
-      shouldExist('lib1_built/module.ngsummary.json');
-      shouldExist('lib1_built/module.ngsummary.js');
-      shouldExist('lib1_built/module.ngsummary.d.ts');
-      shouldExist('lib1_built/module.ngfactory.js');
-      shouldExist('lib1_built/module.ngfactory.d.ts');
+      shouldExist('lib1_built/module.metadata.json');
 
       // library 2
       // make `shouldExist` / `shouldNotExist` relative to `node_modules`
       outDir = path.resolve(basePath, 'node_modules');
       shouldExist('lib2_built/module.js');
-      shouldExist('lib2_built/module.ngsummary.json');
-      shouldExist('lib2_built/module.ngsummary.js');
-      shouldExist('lib2_built/module.ngsummary.d.ts');
-      shouldExist('lib2_built/module.ngfactory.js');
-      shouldExist('lib2_built/module.ngfactory.d.ts');
+      shouldExist('lib2_built/module.metadata.json');
 
       // app
       // make `shouldExist` / `shouldNotExist` relative to `built`
       outDir = path.resolve(basePath, 'built');
       shouldExist('app/main.js');
+
+      fs.symlinkSync(path.join(basePath, 'node_modules'), path.join(outDir, 'node_modules'));
+
+      try {
+        const res = require(path.join(outDir, 'app/main.js'));
+        (res.render() as Promise<string>).then((html: string) => {
+          expect(html).toContain('>0:0<');
+          done();
+        }).catch(err => done.fail(err));
+      } catch (err) {
+        done.fail(err);
+      }
     });
 
     it('should be able to compile multiple libraries with summaries', () => {
@@ -1340,6 +1348,8 @@ describe('ngc transformer command-line', () => {
       // make `shouldExist` / `shouldNotExist` relative to `built`
       outDir = path.resolve(basePath, 'built');
       shouldExist('app/main.js');
+
+      console.log(outDir);
     });
 
     it('should be able to compile libraries with summaries and flat modules', () => {

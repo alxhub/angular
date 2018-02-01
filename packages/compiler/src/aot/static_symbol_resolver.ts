@@ -378,7 +378,7 @@ export class StaticSymbolResolver {
     // (e.g. their constructor parameters).
     // We do this to prevent introducing deep imports
     // as we didn't generate .ngfactory.ts files with proper reexports.
-    const isTsFile = false && TS.test(sourceSymbol.filePath) && !DTS.test(sourceSymbol.filePath);
+    const isTsFile = TS.test(sourceSymbol.filePath) && !DTS.test(sourceSymbol.filePath);
     if (this.summaryResolver.isLibraryFile(sourceSymbol.filePath) && !isTsFile && metadata &&
         metadata['__symbolic'] === 'class') {
       const transformedMeta = {__symbolic: 'class', arity: metadata.arity};
