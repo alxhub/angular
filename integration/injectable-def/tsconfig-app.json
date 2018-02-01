@@ -10,12 +10,8 @@
     "types": ["node"],
     "rootDir": "."
   },
-  "include": [
+  "files": [
     "src/app.ts",
     "src/main.ts"
-  ],
-  "exclude": [
-    "src/lib1.ts",
-    "src/lib2.ts"
   ]
 }

@@ -12,9 +12,11 @@
     "rootDir": "."
   },
   "files": [
-    "lib1/lib1.ts"
+    "src/lib1.ts"
   ],
   "angularCompilerOptions": {
-    "skipTemplateCodegen": true
+    "skipTemplateCodegen": true,
+    "flatModuleOutFile": "index.js",
+    "flatModuleId": "lib1_built"
   }
 }

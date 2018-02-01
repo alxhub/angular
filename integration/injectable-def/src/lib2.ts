@@ -1,5 +1,5 @@
 import {Component, Injector, NgModule} from '@angular/core';
-import {Service} from 'lib1_built/lib1/lib1';
+import {Lib1Module, Service} from 'lib1_built';
 
 @Component({
   selector: 'test-cmp',
@@ -18,5 +18,6 @@ export class TestCmp {
 @NgModule({
   declarations: [TestCmp],
   exports: [TestCmp],
+  imports: [Lib1Module],
 })
 export class Lib2Module {}

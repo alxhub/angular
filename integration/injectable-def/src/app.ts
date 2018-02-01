@@ -1,7 +1,7 @@
 import {Component, NgModule} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
 import {ServerModule} from '@angular/platform-server';
-import {Lib2Module} from 'lib2_built/lib2/lib2';
+import {Lib2Module} from 'lib2_built';
 
 @Component({
   selector: 'test-app',

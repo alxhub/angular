@@ -1,3 +1,5 @@
+import 'zone.js/dist/zone-node';
+
 import {enableProdMode} from '@angular/core';
 import {renderModuleFactory} from '@angular/platform-server';
 import {AppModuleNgFactory} from './app.ngfactory';

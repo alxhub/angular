@@ -12,9 +12,11 @@
     "rootDir": "."
   },
   "files": [
-    "lib2/lib2.ts"
+    "src/lib2.ts"
   ],
   "angularCompilerOptions": {
-    "skipTemplateCodegen": true
+    "skipTemplateCodegen": true,
+    "flatModuleId": "lib2_built",
+    "flatModuleOutFile": "index.js"
   }
 }
