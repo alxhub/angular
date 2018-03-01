@@ -20,6 +20,7 @@ import {ApplicationInitStatus} from './application_init';
 import {APP_BOOTSTRAP_LISTENER, PLATFORM_INITIALIZER} from './application_tokens';
 import {Console} from './console';
 import {Injectable, InjectionToken, Injector, StaticProvider} from './di';
+import {APP_ROOT_SCOPE} from './di/scope';
 import {CompilerFactory, CompilerOptions} from './linker/compiler';
 import {ComponentFactory, ComponentRef} from './linker/component_factory';
 import {ComponentFactoryBoundToModule, ComponentFactoryResolver} from './linker/component_factory_resolver';
@@ -364,7 +365,9 @@ function optionsReducer<T extends Object>(dst: any, objs: T | T[]): T {
  *
  * @stable
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class ApplicationRef {
   /** @internal */
   static _tickScope: WtfScopeFn = wtfCreateScope('ApplicationRef#tick()');

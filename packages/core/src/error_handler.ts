@@ -5,7 +5,8 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-
+import {Injectable} from './di/injectable';
+import {APP_ROOT_SCOPE} from './di/scope';
 import {ERROR_ORIGINAL_ERROR, getDebugContext, getErrorLogger, getOriginalError} from './errors';
 
 
@@ -36,6 +37,9 @@ import {ERROR_ORIGINAL_ERROR, getDebugContext, getErrorLogger, getOriginalError}
  *
  * @stable
  */
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class ErrorHandler {
   /**
    * @internal

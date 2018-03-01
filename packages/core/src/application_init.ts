@@ -9,6 +9,7 @@
 import {isPromise} from '../src/util/lang';
 
 import {Inject, Injectable, InjectionToken, Optional} from './di';
+import {APP_ROOT_SCOPE} from './di/scope';
 
 
 /**
@@ -22,7 +23,9 @@ export const APP_INITIALIZER = new InjectionToken<Array<() => void>>('Applicatio
  *
  * @experimental
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class ApplicationInitStatus {
   private resolve: Function;
   private reject: Function;

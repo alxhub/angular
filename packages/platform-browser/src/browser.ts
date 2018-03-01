@@ -24,7 +24,7 @@ import {EVENT_MANAGER_PLUGINS, EventManager} from './dom/events/event_manager';
 import {HAMMER_GESTURE_CONFIG, HammerGestureConfig, HammerGesturesPlugin} from './dom/events/hammer_gestures';
 import {KeyEventsPlugin} from './dom/events/key_events';
 import {DomSharedStylesHost, SharedStylesHost} from './dom/shared_styles_host';
-import {DomSanitizer, DomSanitizerImpl} from './security/dom_sanitization_service';
+import {DomSanitizer} from './security/dom_sanitization_service';
 
 export const INTERNAL_BROWSER_PLATFORM_PROVIDERS: StaticProvider[] = [
   {provide: PLATFORM_ID, useValue: PLATFORM_BROWSER_ID},
@@ -41,7 +41,6 @@ export const INTERNAL_BROWSER_PLATFORM_PROVIDERS: StaticProvider[] = [
  */
 export const BROWSER_SANITIZATION_PROVIDERS: StaticProvider[] = [
   {provide: Sanitizer, useExisting: DomSanitizer},
-  {provide: DomSanitizer, useClass: DomSanitizerImpl, deps: [DOCUMENT]},
 ];
 
 /**
@@ -53,10 +52,6 @@ export const platformBrowser: (extraProviders?: StaticProvider[]) => PlatformRef
 export function initDomAdapter() {
   BrowserDomAdapter.makeCurrent();
   BrowserGetTestability.init();
-}
-
-export function errorHandler(): ErrorHandler {
-  return new ErrorHandler();
 }
 
 export function _document(): any {
@@ -72,20 +67,12 @@ export function _document(): any {
   providers: [
     BROWSER_SANITIZATION_PROVIDERS,
     {provide: APP_ROOT_SCOPE, useValue: true},
-    {provide: ErrorHandler, useFactory: errorHandler, deps: []},
     {provide: EVENT_MANAGER_PLUGINS, useClass: DomEventsPlugin, multi: true},
     {provide: EVENT_MANAGER_PLUGINS, useClass: KeyEventsPlugin, multi: true},
     {provide: EVENT_MANAGER_PLUGINS, useClass: HammerGesturesPlugin, multi: true},
     {provide: HAMMER_GESTURE_CONFIG, useClass: HammerGestureConfig},
-    DomRendererFactory2,
     {provide: RendererFactory2, useExisting: DomRendererFactory2},
-    {provide: SharedStylesHost, useExisting: DomSharedStylesHost},
-    DomSharedStylesHost,
-    Testability,
-    EventManager,
     ELEMENT_PROBE_PROVIDERS,
-    Meta,
-    Title,
   ],
   exports: [CommonModule, ApplicationModule]
 })

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Inject, Injectable, Sanitizer, SecurityContext} from '@angular/core';
+import {APP_ROOT_SCOPE, forwardRef, Inject, Injectable, Sanitizer, SecurityContext} from '@angular/core';
 
 import {DOCUMENT} from '../dom/dom_tokens';
 
@@ -91,6 +91,10 @@ export interface SafeResourceUrl extends SafeValue {}
  *
  * @stable
  */
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+  useClass: forwardRef(() => DomSanitizerImpl),
+})
 export abstract class DomSanitizer implements Sanitizer {
   /**
    * Sanitizes a value for use in the given SecurityContext.

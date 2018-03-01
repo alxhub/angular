@@ -7,7 +7,6 @@
  */
 
 import {DefaultIterableDifferFactory} from './differs/default_iterable_differ';
-import {DefaultKeyValueDifferFactory} from './differs/default_keyvalue_differ';
 import {IterableDifferFactory, IterableDiffers} from './differs/iterable_differs';
 import {KeyValueDifferFactory, KeyValueDiffers} from './differs/keyvalue_differs';
 
@@ -17,17 +16,9 @@ export {ChangeDetectorRef} from './change_detector_ref';
 export {ChangeDetectionStrategy, ChangeDetectorStatus, isDefaultChangeDetectionStrategy} from './constants';
 export {DefaultIterableDifferFactory} from './differs/default_iterable_differ';
 export {DefaultIterableDiffer} from './differs/default_iterable_differ';
-export {DefaultKeyValueDifferFactory} from './differs/default_keyvalue_differ';
 export {CollectionChangeRecord, IterableChangeRecord, IterableChanges, IterableDiffer, IterableDifferFactory, IterableDiffers, NgIterable, TrackByFunction} from './differs/iterable_differs';
-export {KeyValueChangeRecord, KeyValueChanges, KeyValueDiffer, KeyValueDifferFactory, KeyValueDiffers} from './differs/keyvalue_differs';
+export {KeyValueChangeRecord, KeyValueChanges, KeyValueDiffer, KeyValueDifferFactory, KeyValueDiffers, DefaultKeyValueDiffer, DefaultKeyValueDifferFactory} from './differs/keyvalue_differs';
 export {PipeTransform} from './pipe_transform';
-
-
-
-/**
- * Structural diffing for `Object`s and `Map`s.
- */
-const keyValDiff: KeyValueDifferFactory[] = [new DefaultKeyValueDifferFactory()];
 
 /**
  * Structural diffing for `Iterable` types such as `Array`s.
@@ -35,5 +26,3 @@ const keyValDiff: KeyValueDifferFactory[] = [new DefaultKeyValueDifferFactory()]
 const iterableDiff: IterableDifferFactory[] = [new DefaultIterableDifferFactory()];
 
 export const defaultIterableDiffers = new IterableDiffers(iterableDiff);
-
-export const defaultKeyValueDiffers = new KeyValueDiffers(keyValDiff);

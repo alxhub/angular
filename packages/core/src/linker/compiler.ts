@@ -7,6 +7,7 @@
  */
 
 import {Injectable, InjectionToken, StaticProvider} from '../di';
+import {APP_ROOT_SCOPE} from '../di/scope';
 import {MissingTranslationStrategy} from '../i18n/tokens';
 import {ViewEncapsulation} from '../metadata';
 import {Type} from '../type';
@@ -41,7 +42,9 @@ function _throwError() {
  * of components.
  * @stable
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class Compiler {
   /**
    * Compiles the given NgModule and all of its components. All templates of the components listed

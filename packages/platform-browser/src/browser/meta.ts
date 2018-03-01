@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Inject, Injectable} from '@angular/core';
+import {APP_ROOT_SCOPE, Inject, Injectable} from '@angular/core';
 
 import {DomAdapter, getDOM} from '../dom/dom_adapter';
 import {DOCUMENT} from '../dom/dom_tokens';
@@ -34,7 +34,9 @@ export type MetaDefinition = {
  *
  * @experimental
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class Meta {
   private _dom: DomAdapter;
   constructor(@Inject(DOCUMENT) private _doc: any) { this._dom = getDOM(); }

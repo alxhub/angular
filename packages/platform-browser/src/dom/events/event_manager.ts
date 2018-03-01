@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Inject, Injectable, InjectionToken, NgZone} from '@angular/core';
+import {APP_ROOT_SCOPE, Inject, Injectable, InjectionToken, NgZone} from '@angular/core';
 
 import {getDOM} from '../dom_adapter';
 
@@ -19,7 +19,9 @@ export const EVENT_MANAGER_PLUGINS =
 /**
  * @stable
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class EventManager {
   private _plugins: EventManagerPlugin[];
   private _eventNameToPlugin = new Map<string, EventManagerPlugin>();

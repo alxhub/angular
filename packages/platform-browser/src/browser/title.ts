@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Inject, Injectable} from '@angular/core';
+import {APP_ROOT_SCOPE, Inject, Injectable} from '@angular/core';
 
 import {getDOM} from '../dom/dom_adapter';
 import {DOCUMENT} from '../dom/dom_tokens';
@@ -22,7 +22,9 @@ import {DOCUMENT} from '../dom/dom_tokens';
  *
  * @experimental
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class Title {
   constructor(@Inject(DOCUMENT) private _doc: any) {}
   /**

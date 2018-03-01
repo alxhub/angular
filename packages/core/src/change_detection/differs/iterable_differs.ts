@@ -6,8 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {Injectable} from '../../di/injectable';
 import {Optional, SkipSelf} from '../../di/metadata';
 import {StaticProvider} from '../../di/provider';
+import {APP_ROOT_SCOPE} from '../../di/scope';
+import { defaultIterableDiffers } from 'core/src/change_detection/change_detection';
 
 
 /**
@@ -134,6 +137,10 @@ export interface IterableDifferFactory {
  * A repository of different iterable diffing strategies used by NgFor, NgClass, and others.
  * @stable
  */
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+  useValue: defaultIterableDiffers,
+})
 export class IterableDiffers {
   /**
    * @deprecated v4.0.0 - Should be private

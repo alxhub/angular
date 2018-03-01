@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Injectable} from '../di';
+import {Injectable} from '../di/injectable';
+import {APP_ROOT_SCOPE} from '../di/scope';
 import {scheduleMicroTask} from '../util';
 import {NgZone} from '../zone/ng_zone';
 
@@ -28,7 +29,9 @@ export declare interface PublicTestability {
  * application on the page will have an instance of Testability.
  * @experimental
  */
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class Testability implements PublicTestability {
   /** @internal */
   _pendingCount: number = 0;

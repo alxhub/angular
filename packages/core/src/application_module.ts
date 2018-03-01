@@ -35,9 +35,6 @@ export function _localeFactory(locale?: string): string {
  */
 @NgModule({
   providers: [
-    ApplicationRef,
-    ApplicationInitStatus,
-    Compiler,
     APP_ID_RANDOM_PROVIDER,
     {provide: IterableDiffers, useFactory: _iterableDiffersFactory},
     {provide: KeyValueDiffers, useFactory: _keyValueDiffersFactory},

@@ -6,11 +6,14 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Inject, Injectable, OnDestroy} from '@angular/core';
+import {APP_ROOT_SCOPE, forwardRef, Inject, Injectable, OnDestroy} from '@angular/core';
 import {getDOM} from './dom_adapter';
 import {DOCUMENT} from './dom_tokens';
 
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+  useExisting: forwardRef(() => DomSharedStylesHost),
+})
 export class SharedStylesHost {
   /** @internal */
   protected _stylesSet = new Set<string>();
@@ -31,7 +34,9 @@ export class SharedStylesHost {
   getAllStyles(): string[] { return Array.from(this._stylesSet); }
 }
 
-@Injectable()
+@Injectable({
+  scope: APP_ROOT_SCOPE,
+})
 export class DomSharedStylesHost extends SharedStylesHost implements OnDestroy {
   private _hostNodes = new Set<Node>();
   private _styleNodes = new Set<Node>();
