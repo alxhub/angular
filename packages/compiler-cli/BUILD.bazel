@@ -18,6 +18,7 @@ ts_library(
         ],
         exclude = [
             "src/integrationtest/**/*.ts",
+            "src/ngtsc/metadata/**/*.ts"
         ],
     ),
     module_name = "@angular/compiler-cli",
@@ -25,6 +26,7 @@ ts_library(
     tsconfig = ":tsconfig",
     deps = [
         "//packages/compiler",
+        "//packages/compiler-cli/src/ngtsc/metadata",
     ],
 )
 

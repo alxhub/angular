@@ -3,11 +3,11 @@ load("@build_bazel_rules_nodejs//:defs.bzl", "jasmine_node_test")
 
 # ngc_spec
 ts_library(
-    name = "test_lib",
+    name = "ngtsc_lib",
     testonly = 1,
-    srcs = glob([
-      "**/*.ts",
-    ]),
+    srcs = [
+        "ngtsc_spec.ts"
+    ],
     deps = [
         "//packages/compiler",
         "//packages/compiler-cli",
@@ -16,14 +16,10 @@ ts_library(
 )
 
 jasmine_node_test(
-    name = "test",
+    name = "ngtsc",
     bootstrap = ["angular/tools/testing/init_node_spec.js"],
-    data = [
-        "//packages/core:npm_package",
-    ],
     deps = [
-        ":test_lib",
-        "//packages/core",
+        ":ngtsc_lib",
         "//tools/testing:node",
     ],
 )
