@@ -95,6 +95,11 @@ export class Identifiers {
     moduleName: CORE,
   };
 
+  static DirectiveDef: o.ExternalReference = {
+    name: 'DirectiveDef',
+    moduleName: CORE,
+  }
+
   static defineInjector: o.ExternalReference = {
     name: 'defineInjector',
     moduleName: CORE,
