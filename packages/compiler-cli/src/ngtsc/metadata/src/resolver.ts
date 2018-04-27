@@ -77,7 +77,7 @@ type Scope = Map<ts.ParameterDeclaration, ResolvedValue>;
  *
  * See `StaticInterpreter` for details.
  */
-const enum AllowReferences {
+export const enum AllowReferences {
   No = 0,
   Yes = 1,
 }
@@ -99,9 +99,9 @@ export class Reference {
  * @param checker a `ts.TypeChecker` used to understand the expression
  * @returns a `ResolvedValue` representing the resolved value
  */
-export function staticallyResolve(node: ts.Expression, checker: ts.TypeChecker): ResolvedValue {
+export function staticallyResolve(node: ts.Expression, checker: ts.TypeChecker, allowReferences: AllowReferences = AllowReferences.No): ResolvedValue {
   return new StaticInterpreter(
-             checker, new Map<ts.ParameterDeclaration, ResolvedValue>(), AllowReferences.No)
+             checker, new Map<ts.ParameterDeclaration, ResolvedValue>(), allowReferences)
       .visit(node);
 }
 

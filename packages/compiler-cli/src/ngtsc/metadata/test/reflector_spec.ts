@@ -10,7 +10,7 @@ import * as ts from 'typescript';
 
 import {Parameter, reflectConstructorParameters} from '../src/reflector';
 
-import {getDeclaration, makeProgram} from './in_memory_typescript';
+import {getDeclaration, makeProgram} from '../../test_util';
 
 describe('reflector', () => {
   describe('ctor params', () => {

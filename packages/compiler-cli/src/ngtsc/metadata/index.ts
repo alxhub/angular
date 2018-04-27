@@ -6,5 +6,5 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-export {Decorator, Parameter, reflectConstructorParameters, reflectDecorator} from './src/reflector';
-export {Reference, ResolvedValue, isDynamicValue, staticallyResolve} from './src/resolver';
+export {Decorator, Parameter, reflectConstructorParameters, reflectDecorator, reflectObjectLiteral} from './src/reflector';
+export {AllowReferences, Reference, ResolvedValue, isDynamicValue, staticallyResolve} from './src/resolver';

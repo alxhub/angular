@@ -10,7 +10,7 @@ import * as ts from 'typescript';
 
 import {ResolvedValue, staticallyResolve} from '../src/resolver';
 
-import {getDeclaration, makeProgram} from './in_memory_typescript';
+import {getDeclaration, makeProgram} from '../../test_util';
 
 function makeSimpleProgram(contents: string): ts.Program {
   return makeProgram([{name: 'entry.ts', contents}]);
