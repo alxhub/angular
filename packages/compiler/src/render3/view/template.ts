@@ -21,6 +21,11 @@ import {Identifiers as R3} from '../r3_identifiers';
 
 import {R3QueryMetadata} from './api';
 import {CONTEXT_NAME, I18N_ATTR, I18N_ATTR_PREFIX, ID_SEPARATOR, IMPLICIT_REFERENCE, MEANING_SEPARATOR, REFERENCE_PREFIX, RENDER_FLAGS, TEMPORARY_NAME, asLiteral, getQueryPredicate, invalid, mapToExpression, noop, temporaryAllocator, trimTrailingNulls, unsupported} from './util';
+import {HtmlParser} from '../../ml_parser/html_parser';
+import {DEFAULT_INTERPOLATION_CONFIG } from '../../ml_parser/interpolation_config';
+import { TemplateParser, BindingParser } from '../../..';
+import { HtmlToTemplateTransform } from '../r3_template_transform';
+import * as html from '../../ml_parser/ast';
 
 const BINDING_INSTRUCTION_MAP: {[type: number]: o.ExternalReference} = {
   [BoundElementBindingType.Property]: R3.elementProperty,
@@ -718,4 +723,16 @@ function interpolate(args: o.Expression[]): o.Expression {
   (args.length >= 19 && args.length % 2 == 1) ||
       error(`Invalid interpolation argument length ${args.length}`);
   return o.importExpr(R3.interpolationV).callFn([o.literalArr(args)]);
+}
+
+export function parseTemplate(template: string, templateUrl: string, bindingParser: BindingParser): {nodes: t.Node[], hasNgContent: boolean, ngContentSelectors: string[]} {
+  const htmlParser = new HtmlParser();
+  const templateXform = new HtmlToTemplateTransform(bindingParser);
+  const htmlAst = htmlParser.parse(template, templateUrl, true, DEFAULT_INTERPOLATION_CONFIG);
+  const nodes = html.visitAll(templateXform, htmlAst.rootNodes);
+  return {
+    nodes,
+    hasNgContent: templateXform.hasNgContent,
+    ngContentSelectors: templateXform.ngContentSelectors,
+  };
 }

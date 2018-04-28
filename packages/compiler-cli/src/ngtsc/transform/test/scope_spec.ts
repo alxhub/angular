@@ -9,7 +9,7 @@
 import * as ts from 'typescript';
 
 import {makeProgram, getDeclaration} from '../../test_util';
-import {ScopeAnalyzer, ModuleScope} from '../src/scope';
+import {ScopeMap, ModuleScope} from '../src/scope';
 
 const FAKE_ANGULAR_CORE = [{
   name: '/node_modules/@angular/core/index.d.ts',
@@ -43,7 +43,7 @@ export class TestModule {}
         `
       }
     ]);
-    const analyzer = new ScopeAnalyzer(program.getTypeChecker());
+    const analyzer = new ScopeMap(program.getTypeChecker());
     const scopes: ModuleScope[] = [];
     program.getSourceFiles().filter(sf => !sf.fileName.endsWith('.d.ts')).forEach(sf => scopes.push(...analyzer.analyze(sf)));
     expect(scopes.length).toBe(1);
@@ -84,7 +84,7 @@ export class TestComponent {}
         `
       }
     ]);
-    const analyzer = new ScopeAnalyzer(program.getTypeChecker());
+    const analyzer = new ScopeMap(program.getTypeChecker());
     program.getSourceFiles().filter(sf => !sf.fileName.endsWith('.d.ts')).forEach(sf => analyzer.analyze(sf));
     const TestComponent = getDeclaration(program, 'component.ts', 'TestComponent', ts.isClassDeclaration);
     expect(analyzer.getScopeForDirective(TestComponent)).toBeDefined();

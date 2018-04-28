@@ -9,3 +9,5 @@
 export {IvyCompilation} from './src/compilation';
 export {InjectableCompilerAdapter} from './src/injectable';
 export {ivyTransformFactory} from './src/transform';
+export * from './src/scope';
+export {ViewCompilerAdapter} from './src/view';

@@ -56,6 +56,8 @@ export {NgModuleResolver} from './ng_module_resolver';
 export {DEFAULT_INTERPOLATION_CONFIG, InterpolationConfig} from './ml_parser/interpolation_config';
 export * from './schema/element_schema_registry';
 export * from './i18n/index';
+export {BindingParser} from './template_parser/binding_parser';
+export {ConstantPool} from './constant_pool';
 export * from './directive_normalizer';
 export * from './expression_parser/ast';
 export * from './expression_parser/lexer';
@@ -79,4 +81,8 @@ export {ViewCompiler} from './view_compiler/view_compiler';
 export {getParseErrors, isSyntaxError, syntaxError, Version} from './util';
 export {SourceMap} from './output/source_map';
 export * from './injectable_compiler_2';
+
+export * from './render3/view/api';
+export {compileComponent, compileDirective} from './render3/view/compiler';
+export {parseTemplate} from './render3/view/template';
 // This file only reexports content of the `src` folder. Keep it that way.

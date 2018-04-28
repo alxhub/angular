@@ -6,11 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {WrappedNodeExpr, compileIvyInjectable} from '@angular/compiler';
+import {WrappedNodeExpr, compileIvyInjectable, ConstantPool} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {IvyCompilation} from './compilation';
-import {ImportManager, translateExpression} from './translator';
+import {ImportManager, translateExpression, translateStatement} from './translator';
 
 export function ivyTransformFactory(compilation: IvyCompilation):
     ts.TransformerFactory<ts.SourceFile> {
@@ -28,6 +28,7 @@ function transformIvySourceFile(
     compilation: IvyCompilation, context: ts.TransformationContext,
     file: ts.SourceFile): ts.SourceFile {
   const importManager = new ImportManager();
+  const constantPool = new ConstantPool();
 
   // Recursively scan through the AST and perform any updates requested by the IvyCompilation.
   const sf = visitNode(file);
@@ -39,9 +40,11 @@ function transformIvySourceFile(
           ts.createImportClause(undefined, ts.createNamespaceImport(ts.createIdentifier(i.as))),
           ts.createLiteral(i.name)));
 
+  const constants = constantPool.statements.map(statement => translateStatement(statement, importManager));
+
   // Prepend imports if needed.
-  if (imports.length > 0) {
-    sf.statements = ts.createNodeArray([...imports, ...sf.statements]);
+  if (imports.length > 0 || constants.length > 0) {
+    sf.statements = ts.createNodeArray([...imports, ...constants, ...sf.statements]);
   }
   return sf;
 
@@ -49,7 +52,7 @@ function transformIvySourceFile(
   function visitClassDeclaration(node: ts.ClassDeclaration): ts.ClassDeclaration {
     // Determine if this class has an Ivy field that needs to be added, and compile the field
     // to an expression if so.
-    const res = compilation.compileIvyFieldFor(node);
+    const res = compilation.compileIvyFieldFor(node, constantPool);
     if (res !== undefined) {
       // There is a field to add. Translate the initializer for the field into TS nodes.
       const exprNode = translateExpression(res.initializer, importManager);

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ArrayType, AssertNotNull, BinaryOperatorExpr, BuiltinType, BuiltinTypeName, CastExpr, ClassStmt, CommaExpr, CommentStmt, ConditionalExpr, DeclareFunctionStmt, DeclareVarStmt, Expression, ExpressionStatement, ExpressionType, ExpressionVisitor, ExternalExpr, ExternalReference, FunctionExpr, IfStmt, InstantiateExpr, InvokeFunctionExpr, InvokeMethodExpr, JSDocCommentStmt, LiteralArrayExpr, LiteralExpr, LiteralMapExpr, MapType, NotExpr, ReadKeyExpr, ReadPropExpr, ReadVarExpr, ReturnStatement, StatementVisitor, ThrowStmt, TryCatchStmt, Type, TypeVisitor, WrappedNodeExpr, WriteKeyExpr, WritePropExpr, WriteVarExpr} from '@angular/compiler';
+import {ArrayType, AssertNotNull, BinaryOperatorExpr, BuiltinType, BuiltinTypeName, CastExpr, ClassStmt, CommaExpr, CommentStmt, ConditionalExpr, DeclareFunctionStmt, DeclareVarStmt, Expression, ExpressionStatement, ExpressionType, ExpressionVisitor, ExternalExpr, ExternalReference, FunctionExpr, IfStmt, InstantiateExpr, InvokeFunctionExpr, InvokeMethodExpr, JSDocCommentStmt, LiteralArrayExpr, LiteralExpr, LiteralMapExpr, MapType, NotExpr, ReadKeyExpr, ReadPropExpr, ReadVarExpr, ReturnStatement, Statement, StatementVisitor, ThrowStmt, TryCatchStmt, Type, TypeVisitor, WrappedNodeExpr, WriteKeyExpr, WritePropExpr, WriteVarExpr, BinaryOperator} from '@angular/compiler';
 import * as ts from 'typescript';
 
 export class ImportManager {
@@ -32,6 +32,11 @@ export function translateExpression(expression: Expression, imports: ImportManag
   return expression.visitExpression(new ExpressionTranslatorVisitor(imports), null);
 }
 
+export function translateStatement(statement: Statement, imports: ImportManager): ts.Statement {
+  return statement.visitStatement(new ExpressionTranslatorVisitor(imports), null);
+
+}
+
 export function translateType(type: Type, imports: ImportManager): string {
   return type.visitType(new TypeTranslatorVisitor(imports), null);
 }
@@ -47,8 +52,8 @@ class ExpressionTranslatorVisitor implements ExpressionVisitor, StatementVisitor
     throw new Error('Method not implemented.');
   }
 
-  visitExpressionStmt(stmt: ExpressionStatement, context: any) {
-    throw new Error('Method not implemented.');
+  visitExpressionStmt(stmt: ExpressionStatement, context: any): ts.ExpressionStatement {
+    return ts.createStatement(stmt.expr.visitExpression(this, context));
   }
 
   visitReturnStmt(stmt: ReturnStatement, context: any): ts.ReturnStatement {
@@ -59,7 +64,15 @@ class ExpressionTranslatorVisitor implements ExpressionVisitor, StatementVisitor
     throw new Error('Method not implemented.');
   }
 
-  visitIfStmt(stmt: IfStmt, context: any) { throw new Error('Method not implemented.'); }
+  visitIfStmt(stmt: IfStmt, context: any): ts.IfStatement {
+    const trueCase = stmt.trueCase.map(subStmt => subStmt.visitStatement(this, context));
+    const falseCase = stmt.falseCase.map(subStmt => subStmt.visitStatement(this, context));
+    return ts.createIf(
+      stmt.condition.visitExpression(this, context),
+      ts.createBlock(trueCase),
+      falseCase.length > 0 ? ts.createBlock(falseCase) : undefined
+    );
+  }
 
   visitTryCatchStmt(stmt: TryCatchStmt, context: any) {
     throw new Error('Method not implemented.');
@@ -156,8 +169,12 @@ class ExpressionTranslatorVisitor implements ExpressionVisitor, StatementVisitor
         undefined, ts.createBlock(ast.statements.map(stmt => stmt.visitStatement(this, context))));
   }
 
-  visitBinaryOperatorExpr(ast: BinaryOperatorExpr, context: any): never {
-    throw new Error('Method not implemented.');
+  visitBinaryOperatorExpr(ast: BinaryOperatorExpr, context: any): ts.BinaryExpression {
+    return ts.createBinary(
+      ast.lhs.visitExpression(this, context),
+      tsOperatorFrom(ast.operator),
+      ast.rhs.visitExpression(this, context),
+    );
   }
 
   visitReadPropExpr(ast: ReadPropExpr, context: any): never {
@@ -168,8 +185,8 @@ class ExpressionTranslatorVisitor implements ExpressionVisitor, StatementVisitor
     throw new Error('Method not implemented.');
   }
 
-  visitLiteralArrayExpr(ast: LiteralArrayExpr, context: any): never {
-    throw new Error('Method not implemented.');
+  visitLiteralArrayExpr(ast: LiteralArrayExpr, context: any): ts.ArrayLiteralExpression {
+    return ts.createArrayLiteral(ast.entries.map(entry => entry.visitExpression(this, context)));
   }
 
   visitLiteralMapExpr(ast: LiteralMapExpr, context: any): ts.ObjectLiteralExpression {
@@ -315,5 +332,44 @@ export class TypeTranslatorVisitor implements ExpressionVisitor, TypeVisitor {
       throw new Error(
           `Unsupported WrappedNodeExpr in TypeTranslatorVisitor: ${ts.SyntaxKind[node.kind]}`);
     }
+  }
+}
+
+function tsOperatorFrom(op: BinaryOperator): ts.BinaryOperator {
+  switch (op) {
+    case BinaryOperator.And:
+      return ts.SyntaxKind.AmpersandAmpersandToken;
+    case BinaryOperator.Bigger:
+      return ts.SyntaxKind.GreaterThanToken;
+    case BinaryOperator.BiggerEquals:
+      return ts.SyntaxKind.GreaterThanEqualsToken;
+    case BinaryOperator.BitwiseAnd:
+      return ts.SyntaxKind.AmpersandToken;
+    case BinaryOperator.Divide:
+      return ts.SyntaxKind.SlashToken;
+    case BinaryOperator.Equals:
+      return ts.SyntaxKind.EqualsEqualsToken;
+    case BinaryOperator.Identical:
+      return ts.SyntaxKind.EqualsEqualsEqualsToken;
+    case BinaryOperator.Lower:
+      return ts.SyntaxKind.LessThanToken;
+    case BinaryOperator.LowerEquals:
+      return ts.SyntaxKind.LessThanEqualsToken;
+    case BinaryOperator.Minus:
+      return ts.SyntaxKind.MinusToken;
+    case BinaryOperator.Modulo:
+      return ts.SyntaxKind.PercentToken;
+    case BinaryOperator.Multiply:
+      return ts.SyntaxKind.AsteriskToken;
+    case BinaryOperator.NotEquals:
+      return ts.SyntaxKind.ExclamationEqualsToken;
+    case BinaryOperator.NotIdentical:
+      return ts.SyntaxKind.ExclamationEqualsEqualsToken;
+    case BinaryOperator.Or:
+      return ts.SyntaxKind.BarBarToken;
+    case BinaryOperator.Plus:
+      return ts.SyntaxKind.PlusToken;
+    default:
+      throw new Error(`Unhandled binary operator: ${op}`);
   }
 }

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Expression, Type} from '@angular/compiler';
+import {ConstantPool, Expression, Type} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {Decorator} from '../../metadata';
@@ -37,7 +37,7 @@ export interface CompilerAdapter<A> {
    * Generate a description of the field which should be added to the class, including any
    * initialization code to be generated.
    */
-  compile(node: ts.ClassDeclaration, analysis: A): AddStaticFieldInstruction;
+  compile(node: ts.ClassDeclaration, analysis: A, constantPool: ConstantPool): AddStaticFieldInstruction;
 }
 
 /**

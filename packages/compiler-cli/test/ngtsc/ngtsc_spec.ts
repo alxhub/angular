@@ -122,4 +122,60 @@ describe('ngtsc behavioral tests', () => {
     expect(dtsContents).toContain('static ngInjectableDef: i0.InjectableDef<Dep>;');
     expect(dtsContents).toContain('static ngInjectableDef: i0.InjectableDef<Service>;');
   });
+
+  it('should compile a component without errors', () => {writeConfig();
+    write('test.ts', `
+        import {Component} from '@angular/core';
+
+        @Component({
+          selector: 'test-cmp',
+          template: 'Hello world!'
+        })
+        export class Cmp {
+          constructor() {}
+        }
+    `);
+
+    const exitCode = main(['-p', basePath], errorSpy);
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(exitCode).toBe(0);
+
+
+    const jsContents = getContents('test.js');
+    expect(jsContents).toContain('Cmp.ngComponentDef =');
+  });
+
+  fit('should compile two components without errors', () => {writeConfig();
+    write('test.ts', `
+        import {Component, NgModule} from '@angular/core';
+
+        @Component({
+          selector: 'hello-world',
+          template: 'Hello world!'
+        })
+        export class HelloWorldCmp {
+          constructor() {}
+        }
+
+        @Component({
+          selector: 'main-app',
+          template: '<hello-world></hello-world>',
+        })
+        export class AppCmp {}
+
+        @NgModule({
+          declarations: [HelloWorldCmp, AppCmp],
+        })
+        export class AppModule {}
+    `);
+
+    const exitCode = main(['-p', basePath], errorSpy);
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(exitCode).toBe(0);
+
+
+    const jsContents = getContents('test.js');
+    expect(jsContents).toContain('AppCmp.ngCoxmponentDef =');
+    expect(jsContents).toContain('directives: [HelloWorldCmp]');
+  });
 });

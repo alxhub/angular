@@ -13,7 +13,7 @@ import * as ts from 'typescript';
 import * as api from '../transformers/api';
 
 import {CompilerHost} from './compiler_host';
-import {InjectableCompilerAdapter, IvyCompilation, ivyTransformFactory} from './transform';
+import {InjectableCompilerAdapter, IvyCompilation, ivyTransformFactory, ScopeMap, ViewCompilerAdapter} from './transform';
 
 export class NgtscProgram implements api.Program {
   private tsProgram: ts.Program;
@@ -90,14 +90,28 @@ export class NgtscProgram implements api.Program {
 
     const checker = this.tsProgram.getTypeChecker();
 
+    const scopeMap = new ScopeMap(checker);
+
+    const forEachTsFile = (op: (sf: ts.SourceFile) => void): void => {
+      this
+        .tsProgram
+        .getSourceFiles()
+        .filter(file => !file.fileName.endsWith('.d.ts'))
+        .forEach(op);
+    };
+
+    // Analyze the compilation unit and map out all the @NgModule scopes.
+    forEachTsFile(sf => scopeMap.analyze(sf));
+
     // Set up the IvyCompilation, which manages state for the Ivy transformer.
-    const adapters = [new InjectableCompilerAdapter(checker)];
+    const adapters = [
+      new InjectableCompilerAdapter(checker),
+      new ViewCompilerAdapter(scopeMap, checker),
+    ];
     const compilation = new IvyCompilation(adapters, checker);
 
-    // Analyze every source file in the program.
-    this.tsProgram.getSourceFiles()
-        .filter(file => !file.fileName.endsWith('.d.ts'))
-        .forEach(file => compilation.analyze(file));
+    // Analyze the compilation unit again, this time invoking all the compilers.
+    forEachTsFile(sf => compilation.analyze(sf));
 
     // Since there is no .d.ts transformation API, .d.ts files are transformed during write.
     const writeFile: ts.WriteFileCallback =

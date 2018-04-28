@@ -7,6 +7,7 @@
  */
 
 import * as ts from 'typescript';
+import * as path from 'path';
 import { staticallyResolve, AllowReferences, Reference, reflectDecorator, Decorator, ResolvedValue, reflectObjectLiteral } from '../../metadata';
 
 export interface ModuleScope {
@@ -36,7 +37,7 @@ export interface ImportFrom {
   relatively?: string;
 }
 
-export class ScopeAnalyzer {
+export class ScopeMap {
   private modules = new Map<ts.ClassDeclaration, ModuleScope>();
   private scopeByClass = new Map<ts.ClassDeclaration, SelectorScope>();
   
@@ -46,6 +47,7 @@ export class ScopeAnalyzer {
     if (sf.fileName.endsWith('.d.ts')) {
       throw new Error(`Cannot handle .d.ts files`);
     } else {
+      console.error('analyze for modules', sf.fileName);
       return this.analyzeTypescript(sf);
     }
   }
@@ -58,7 +60,9 @@ export class ScopeAnalyzer {
     const scopes: ModuleScope[] = [];
 
     const visitClassDeclaration = (node: ts.ClassDeclaration): void => {
+      console.error('visiting class', node.name!.text);
       if (node.decorators === undefined) {
+        console.error('no decorators');
         return;
       }
       const decorators = node
@@ -66,12 +70,14 @@ export class ScopeAnalyzer {
         .map(decorator => reflectDecorator(decorator, this.checker))
         .filter(decorator => decorator !== null && decorator.from === '@angular/core') as Decorator[];
       if (decorators.length === 0) {
+        console.error('no core decorators');
         return;
       } else if (decorators.length > 1) {
         throw new Error(`Too many Angular decorators.`);
       }
       const decorator = decorators[0];
       if (decorator.name !== 'NgModule') {
+        console.error('not ngmodule');
         return;
       }
       if (decorator.args.length !== 1) {
@@ -165,6 +171,7 @@ export class ScopeAnalyzer {
     } else {
       throw new Error(`Class ${name} in declarations of ${moduleName} has a decorator of type ${decorator.name} and is not a pipe or directive.`);
     }
+    console.error(`map component ${declaredClass.name!.text} to scope!`);
     this.scopeByClass.set(declaredClass, scope);
   }
 
@@ -271,4 +278,12 @@ export class ScopeAnalyzer {
 
     return {name: decorator.name, arg};
   }
+}
+
+export function getImportPath(from: string, to: string): string {
+  const relative = path.relative(from, to);
+  console.error(`relative(${from}, ${to}) = ${relative}`);
+  const importPath = relative.replace(/(\.d)?\.ts$/g, '');
+  console.error(`result = ${importPath}`);
+  return importPath;
 }

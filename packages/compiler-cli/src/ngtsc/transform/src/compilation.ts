@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Expression, Type} from '@angular/compiler';
+import {Expression, Type, ConstantPool} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {Decorator, reflectDecorator} from '../../metadata';
@@ -101,7 +101,7 @@ export class IvyCompilation {
    * Perform a compilation operation on the given class declaration and return instructions to an
    * AST transformer if any are available.
    */
-  compileIvyFieldFor(node: ts.ClassDeclaration): AddStaticFieldInstruction|undefined {
+  compileIvyFieldFor(node: ts.ClassDeclaration, constantPool: ConstantPool): AddStaticFieldInstruction|undefined {
     // Look to see whether the original node was analyzed. If not, there's nothing to do.
     const original = ts.getOriginalNode(node) as ts.ClassDeclaration;
     if (!this.analysis.has(original)) {
@@ -110,7 +110,7 @@ export class IvyCompilation {
     const op = this.analysis.get(original) !;
 
     // Run the actual compilation, which generates an Expression for the Ivy field.
-    const res = op.adapter.compile(node, op.analysis);
+    const res = op.adapter.compile(node, op.analysis, constantPool);
 
     // Look up the .d.ts transformer for the input file and record that a field was generated,
     // which will allow the .d.ts to be transformed later.
