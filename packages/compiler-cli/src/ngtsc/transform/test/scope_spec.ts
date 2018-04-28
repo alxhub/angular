@@ -19,6 +19,16 @@ export type ClassDecoratorWithParam = (param?: any) => ClassDecorator;
 
 export const Component: ClassDecoratorWithParam;
 export const NgModule: ClassDecoratorWithParam;
+
+export interface ɵDirectiveInScope<S extends string, D> {
+  selector: S;
+  directive: D;
+}
+
+export interface ɵSelectorScopeDef<D extends ɵDirectiveInScope<string, any>[], P> {
+  directives: D;
+  pipes: P;
+}
 `
 }];
 
@@ -88,5 +98,30 @@ export class TestComponent {}
     program.getSourceFiles().filter(sf => !sf.fileName.endsWith('.d.ts')).forEach(sf => analyzer.analyze(sf));
     const TestComponent = getDeclaration(program, 'component.ts', 'TestComponent', ts.isClassDeclaration);
     expect(analyzer.getScopeForDirective(TestComponent)).toBeDefined();
+  });
+
+  fit('analyzes a .d.ts file for scopes', () => {
+    const program = makeProgram([
+      ...FAKE_ANGULAR_CORE,
+      {
+        name: 'index.d.ts',
+        contents: `
+import * as i0 from '@angular/core';
+
+export declare class HelloWorldCmp {}
+
+export declare class TestModule {
+  static ngSelectorScopeDef: i0.ɵSelectorScopeDef<[i0.ɵDirectiveInScope<'hello-world', HelloWorldCmp>], any>;
+}
+        `,
+    }]);
+    const analyzer = new ScopeMap(program.getTypeChecker());
+    program.getSourceFiles().forEach(sf => analyzer.analyze(sf));
+    const TestModule = getDeclaration(program, 'index.d.ts', 'TestModule', ts.isClassDeclaration);
+    const scope = analyzer.getScopeOfModule(TestModule)!;
+    expect(scope).toBeDefined();
+    expect(scope.exportScope.directives.length).toBe(1);
+    expect(scope.exportScope.directives[0].selector).toBe('hello-world');
+    expect(scope.exportScope.directives[0].identifier).toBe('HelloWorldCmp');
   });
 });

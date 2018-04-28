@@ -8,3 +8,4 @@
 
 export {Decorator, Parameter, reflectConstructorParameters, reflectDecorator, reflectObjectLiteral} from './src/reflector';
 export {AllowReferences, Reference, ResolvedValue, isDynamicValue, staticallyResolve} from './src/resolver';
+export {ANY, reflectType, Type, TypeReference} from './src/type_reflector';

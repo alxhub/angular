@@ -8,11 +8,22 @@
 
 import * as ts from 'typescript';
 import * as path from 'path';
-import { staticallyResolve, AllowReferences, Reference, reflectDecorator, Decorator, ResolvedValue, reflectObjectLiteral } from '../../metadata';
+import { staticallyResolve, AllowReferences, Reference, reflectDecorator, Decorator, ResolvedValue, reflectObjectLiteral, reflectType, TypeReference } from '../../metadata';
 
 export interface ModuleScope {
+  localScope: SelectorScope;
+  localExports: ExportInScope[];
   compilationScope: SelectorScope;
   exportScope: SelectorScope;
+}
+
+export interface LocalModuleScope {
+  transitiveCompilationScope: SelectorScope;
+  
+}
+
+export interface DeclaredModuleScope {
+
 }
 
 export interface SelectorScope {
@@ -32,6 +43,11 @@ export interface PipeInScope {
   name: string;
 }
 
+export interface ExportInScope {
+  identifier: string;
+  importFrom: ImportFrom;
+}
+
 export interface ImportFrom {
   absolutely?: string;
   relatively?: string;
@@ -45,19 +61,83 @@ export class ScopeMap {
 
   analyze(sf: ts.SourceFile): ModuleScope[] {
     if (sf.fileName.endsWith('.d.ts')) {
-      throw new Error(`Cannot handle .d.ts files`);
+      return this.analyzeDefinition(sf);
     } else {
       console.error('analyze for modules', sf.fileName);
       return this.analyzeTypescript(sf);
     }
   }
 
+  
   getScopeForDirective(directive: ts.ClassDeclaration): SelectorScope|undefined {
     return this.scopeByClass.get(directive);
   }
-
+  
   getScopeOfModule(module: ts.ClassDeclaration): ModuleScope|undefined {
     return this.modules.get(module);
+  }
+  
+  private analyzeDefinition(sf: ts.SourceFile): ModuleScope[] {
+    const scopes: ModuleScope[] = [];
+
+    const visitClassDeclaration = (node: ts.ClassDeclaration): void => {
+      console.error('analyze class declaration', node.name!.text);
+      node.members.forEach(member => {
+        if (!ts.isPropertyDeclaration(member) || member.type === undefined) {
+          console.error('not property decl or no type');
+          return;
+        }
+        if (member.modifiers === undefined || member.modifiers.find(mod => mod.kind === ts.SyntaxKind.StaticKeyword) === undefined) {
+          console.error('no static modifier');
+          return;
+        }
+        if (!ts.isIdentifier(member.name)) {
+          console.error('name is not an identifier');
+          return;
+        }
+        if (member.name.text !== 'ngSelectorScopeDef') {
+          console.error('name is not the right identifier');
+          return;
+        }
+        const typeInfo = reflectType(member.type, this.checker);
+        if (!(typeInfo instanceof TypeReference) || typeInfo.module !== '@angular/core' || typeInfo.name !== 'ɵSelectorScopeDef' || typeInfo.parameters.length !== 2) {
+          console.error('wrong type');
+          return;
+        }
+        const directives = typeInfo.parameters[0];
+        const scope: SelectorScope = {
+          directives: [],
+          pipes: [],
+        };
+        if (Array.isArray(directives)) {
+          directives.forEach(dirType => {
+            if (!(dirType instanceof TypeReference) || dirType.module !== '@angular/core' || dirType.name !== 'ɵDirectiveInScope' || dirType.parameters.length !== 2) {
+              console.error('not a directive');
+              return;
+            }
+            const [selector, dirRef] = dirType.parameters;
+            if (typeof selector !== 'string' || !(dirRef instanceof TypeReference)) {
+              console.error('directive has wrong structure', selector, dirRef);
+              return;
+            }
+            scope.directives.push({identifier: dirRef.name, selector, importFrom: {}});
+          });
+        }
+        const moduleScope = {
+          compilationScope: scope,
+          exportScope: scope,
+        };
+        scopes.push(moduleScope);
+        this.modules.set(node, moduleScope);
+      });
+    };
+
+    sf.statements.forEach(stmt => {
+      if (ts.isClassDeclaration(stmt)) {
+        visitClassDeclaration(stmt);
+      }
+    });
+    return scopes;
   }
 
   private analyzeTypescript(sf: ts.SourceFile): ModuleScope[] {
