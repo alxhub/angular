@@ -77,6 +77,9 @@ export {
   Pp as ɵPp,
   ComponentDef as ɵComponentDef,
   DirectiveDef as ɵDirectiveDef,
+  DirectiveInScope as ɵDirectiveInScope,
+  PipeInScope as ɵPipeInScope,
+  SelectorScopeDef as ɵSelectorScopeDef,
   PipeDef as ɵPipeDef,
   whenRendered as ɵwhenRendered,
 } from './render3/index';

@@ -123,7 +123,8 @@ describe('ngtsc behavioral tests', () => {
     expect(dtsContents).toContain('static ngInjectableDef: i0.InjectableDef<Service>;');
   });
 
-  it('should compile a component without errors', () => {writeConfig();
+  it('should compile a component without errors', () => {
+    writeConfig();
     write('test.ts', `
         import {Component} from '@angular/core';
 
@@ -145,7 +146,8 @@ describe('ngtsc behavioral tests', () => {
     expect(jsContents).toContain('Cmp.ngComponentDef =');
   });
 
-  fit('should compile two components without errors', () => {writeConfig();
+  fit('should compile two components without errors', () => {
+    writeConfig();
     write('test.ts', `
         import {Component, NgModule} from '@angular/core';
 
@@ -175,7 +177,10 @@ describe('ngtsc behavioral tests', () => {
 
 
     const jsContents = getContents('test.js');
-    expect(jsContents).toContain('AppCmp.ngCoxmponentDef =');
+    expect(jsContents).toContain('AppCmp.ngComponentDef =');
     expect(jsContents).toContain('directives: [HelloWorldCmp]');
+
+    const dtsContents = getContents('test.d.ts');
+    expect(dtsContents).toContain(`static ngSelectorScopeDef: i0.ɵSelectorScopeDef<[i0.ɵDirectiveInScope<'hello-world', HelloWorldCmp>, i0.ɵDirectiveInScope<'main-app', AppCmp>], any>`);
   });
 });

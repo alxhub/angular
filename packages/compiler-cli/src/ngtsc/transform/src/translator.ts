@@ -314,8 +314,8 @@ export class TypeTranslatorVisitor implements ExpressionVisitor, TypeVisitor {
 
   visitReadKeyExpr(ast: ReadKeyExpr, context: any) { throw new Error('Method not implemented.'); }
 
-  visitLiteralArrayExpr(ast: LiteralArrayExpr, context: any) {
-    throw new Error('Method not implemented.');
+  visitLiteralArrayExpr(ast: LiteralArrayExpr, context: any): string {
+    return '[' + ast.entries.map(expr => expr.visitExpression(this, context)).join(', ') + ']';
   }
 
   visitLiteralMapExpr(ast: LiteralMapExpr, context: any) {
@@ -324,7 +324,7 @@ export class TypeTranslatorVisitor implements ExpressionVisitor, TypeVisitor {
 
   visitCommaExpr(ast: CommaExpr, context: any) { throw new Error('Method not implemented.'); }
 
-  visitWrappedNodeExpr(ast: WrappedNodeExpr<any>, context: any) {
+  visitWrappedNodeExpr(ast: WrappedNodeExpr<any>, context: any): string {
     const node: ts.Node = ast.node;
     if (ts.isIdentifier(node)) {
       return node.text;

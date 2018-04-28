@@ -56,6 +56,10 @@ export class ScopeMap {
     return this.scopeByClass.get(directive);
   }
 
+  getScopeOfModule(module: ts.ClassDeclaration): ModuleScope|undefined {
+    return this.modules.get(module);
+  }
+
   private analyzeTypescript(sf: ts.SourceFile): ModuleScope[] {
     const scopes: ModuleScope[] = [];
 

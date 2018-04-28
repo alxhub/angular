@@ -14,6 +14,7 @@ import * as api from '../transformers/api';
 
 import {CompilerHost} from './compiler_host';
 import {InjectableCompilerAdapter, IvyCompilation, ivyTransformFactory, ScopeMap, ViewCompilerAdapter} from './transform';
+import { SelectorScopeAdapter } from './transform/src/selector_scope';
 
 export class NgtscProgram implements api.Program {
   private tsProgram: ts.Program;
@@ -105,6 +106,7 @@ export class NgtscProgram implements api.Program {
 
     // Set up the IvyCompilation, which manages state for the Ivy transformer.
     const adapters = [
+      new SelectorScopeAdapter(scopeMap),
       new InjectableCompilerAdapter(checker),
       new ViewCompilerAdapter(scopeMap, checker),
     ];
