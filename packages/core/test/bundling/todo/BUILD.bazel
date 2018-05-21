@@ -89,6 +89,7 @@ http_server(
         "base.css",
         "index.html",
         "todo.css",
+        ":bundle.min.js",
         ":bundle.min_debug.js",
     ],
 )

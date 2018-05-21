@@ -24,6 +24,7 @@ export {
   PublicFeature as ɵPublicFeature,
   NgOnChangesFeature as ɵNgOnChangesFeature,
   CssSelectorList as ɵCssSelectorList,
+  SelectorFlags as ɵSelectorFlags,
   markDirty as ɵmarkDirty,
   NC as ɵNC,
   C as ɵC,

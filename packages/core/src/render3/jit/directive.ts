@@ -6,14 +6,14 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {compileComponent as compileIvyComponent, parseTemplate, ConstantPool, makeBindingParser, WrappedNodeExpr, jitPatchDefinition,} from '@angular/compiler';
+import {compileComponent as compileIvyComponent, compileDirective as compileIvyDirective, parseTemplate, ConstantPool, makeBindingParser, WrappedNodeExpr, jitExpression, jitPatchDefinition, R3DirectiveMetadata} from '@angular/compiler';
 
-import {Component} from '../../metadata/directives';
+import {Component, Directive, Input, Output} from '../../metadata/directives';
 import {ReflectionCapabilities} from '../../reflection/reflection_capabilities';
 import {Type} from '../../type';
 
 import {angularCoreEnv} from './environment';
-import {reflectDependencies} from './util';
+import {reflectDependencies, getReflect} from './util';
 
 let _pendingPromises: Promise<void>[] = [];
 
@@ -42,28 +42,15 @@ export function compileComponent(type: Type<any>, metadata: Component): Promise<
   // The ConstantPool is a requirement of the JIT'er.
   const constantPool = new ConstantPool();
 
+
   // Compile the component metadata, including template, into an expression.
   // TODO(alxhub): implement inputs, outputs, queries, etc.
   const res = compileIvyComponent(
       {
-        name: type.name,
-        type: new WrappedNodeExpr(type),
-        selector: metadata.selector !, template,
-        deps: reflectDependencies(type),
+        ...directiveMetadata(type, metadata),
+        template,
         directives: new Map(),
         pipes: new Map(),
-        host: {
-          attributes: {},
-          listeners: {},
-          properties: {},
-        },
-        inputs: {},
-        outputs: {},
-        lifecycle: {
-          usesOnChanges: false,
-        },
-        queries: [],
-        typeSourceSpan: null !,
         viewQueries: [],
       },
       constantPool, makeBindingParser());
@@ -71,6 +58,22 @@ export function compileComponent(type: Type<any>, metadata: Component): Promise<
   // Patch the generated expression as ngComponentDef on the type.
   jitPatchDefinition(type, 'ngComponentDef', res.expression, angularCoreEnv, constantPool);
   return null;
+}
+
+export function compileDirective(type: Type<any>, directive: Directive): void {
+  let def: any = null;
+  Object.defineProperty(type, 'ngDirectiveDef', {
+    get: () => {
+      if (def === null) {
+        const constantPool = new ConstantPool();
+        const sourceMapUrl = `ng://${type && type.name}/ngDirectiveDef`;
+        const res = compileIvyDirective(
+            directiveMetadata(type, directive), constantPool, makeBindingParser());
+        def = jitExpression(res.expression, angularCoreEnv, sourceMapUrl, constantPool);
+      }
+      return def;
+    },
+  });
 }
 
 /**
@@ -94,4 +97,48 @@ export function awaitCurrentlyCompilingComponents(): Promise<void> {
   const res = Promise.all(_pendingPromises).then(() => undefined);
   _pendingPromises = [];
   return res;
+}
+
+function directiveMetadata(type: Type<any>, metadata: Directive): R3DirectiveMetadata {
+  // Reflect inputs and outputs.
+  const props = getReflect().propMetadata(type);
+  const inputs: {[key: string]: string} = {};
+  const outputs: {[key: string]: string} = {};
+
+  for (let field in props) {
+    props[field].forEach(ann => {
+      if (isInput(ann)) {
+        inputs[field] = ann.bindingPropertyName || field;
+      } else if (ann.ngMetadataName === 'Output') {
+        outputs[field] = ann.bindingPropertyName || field;
+      }
+    });
+  }
+
+  return {
+    name: type.name,
+    type: new WrappedNodeExpr(type),
+    selector: metadata.selector !,
+    deps: reflectDependencies(type),
+    host: {
+      attributes: {},
+      listeners: {},
+      properties: {},
+    },
+    inputs,
+    outputs,
+    queries: [],
+    lifecycle: {
+      usesOnChanges: type.prototype.ngOnChanges !== undefined,
+    },
+    typeSourceSpan: null !,
+  };
+}
+
+function isInput(value: any): value is Input {
+  return value.ngMetadataName === 'Input';
+}
+
+function isOutput(value: any): value is Output {
+  return value.ngMetadataName === 'Output';
 }

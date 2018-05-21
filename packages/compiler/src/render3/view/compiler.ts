@@ -65,6 +65,15 @@ function baseDirectiveFields(
   // e.g 'outputs: {a: 'a'}`
   definitionMap.set('outputs', conditionallyCreateMapObjectLiteral(meta.outputs));
 
+  // e.g. `features: [NgOnChangesFeature(MyComponent)]`
+  const features: o.Expression[] = [];
+  if (meta.lifecycle.usesOnChanges) {
+    features.push(o.importExpr(R3.NgOnChangesFeature, null, null).callFn([meta.type]));
+  }
+  if (features.length) {
+    definitionMap.set('features', o.literalArr(features));
+  }
+
   return definitionMap;
 }
 
@@ -143,15 +152,6 @@ export function compileComponent(
     definitionMap.set('pipes', o.literalArr(Array.from(pipesUsed)));
   }
 
-  // e.g. `features: [NgOnChangesFeature(MyComponent)]`
-  const features: o.Expression[] = [];
-  if (meta.lifecycle.usesOnChanges) {
-    features.push(o.importExpr(R3.NgOnChangesFeature, null, null).callFn([meta.type]));
-  }
-  if (features.length) {
-    definitionMap.set('features', o.literalArr(features));
-  }
-
   const expression = o.importExpr(R3.defineComponent).callFn([definitionMap.toLiteralMap()]);
   const type =
       new o.ExpressionType(o.importExpr(R3.ComponentDef, [new o.ExpressionType(meta.type)]));
@@ -211,10 +211,6 @@ export function compileComponentFromRender2(
       hasNgContent: render3Ast.hasNgContent,
       ngContentSelectors: render3Ast.ngContentSelectors,
     },
-    lifecycle: {
-      usesOnChanges:
-          component.type.lifecycleHooks.some(lifecycle => lifecycle == LifecycleHooks.OnChanges),
-    },
     directives: typeMapToExpressionMap(directiveTypeBySel, outputCtx),
     pipes: typeMapToExpressionMap(pipeTypeByName, outputCtx),
     viewQueries: queriesFromGlobalMetadata(component.viewQueries, outputCtx),
@@ -250,6 +246,10 @@ function directiveMetadataFromGlobalMetadata(
       attributes: directive.hostAttributes,
       listeners: summary.hostListeners,
       properties: summary.hostProperties,
+    },
+    lifecycle: {
+      usesOnChanges:
+          directive.type.lifecycleHooks.some(lifecycle => lifecycle == LifecycleHooks.OnChanges),
     },
     inputs: directive.inputs,
     outputs: directive.outputs,

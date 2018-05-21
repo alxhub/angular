@@ -69,7 +69,8 @@ export function patchComponentWithScope<C, M>(
     module: Type<M>& {ngModuleDef: NgModuleDef<M>}) {
   component.ngComponentDef.directiveDefs = () =>
       module.ngModuleDef.transitiveCompileScope !.directives.map(
-          dir => dir.ngDirectiveDef || dir.ngComponentDef);
+          dir => dir.ngDirectiveDef || dir.ngComponentDef)
+          .filter(def => !!def);
   component.ngComponentDef.pipeDefs = () =>
       module.ngModuleDef.transitiveCompileScope !.pipes.map(pipe => pipe.ngPipeDef);
 }
