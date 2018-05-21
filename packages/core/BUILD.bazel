@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//tools:defaults.bzl", "ng_module", "ng_package")
+load("//tools:defaults.bzl", "ts_library", "ng_package")
 
-ng_module(
+ts_library(
     name = "core",
     srcs = glob(
         [
@@ -18,6 +18,7 @@ ng_module(
         "//packages:types",
         "//packages/compiler",
         "@rxjs",
+        "@rxjs//operators"
     ],
 )
 

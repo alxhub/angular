@@ -145,6 +145,8 @@ export class ToDoAppComponent {
   }
 }
 
+/*
+
 // TODO(misko): This hack is here because common is not compiled with Ivy flag turned on.
 (CommonModule as any).ngInjectorDef = defineInjector({factory: () => new CommonModule});
 
@@ -174,6 +176,7 @@ export class ToDoAppComponent {
   inputs: {ngIf: 'ngIf', ngIfThen: 'ngIfThen', ngIfElse: 'ngIfElse'}
 });
 
+*/
 
 @NgModule({declarations: [ToDoAppComponent, ToDoAppComponent], imports: [CommonModule]})
 export class ToDoAppModule {
