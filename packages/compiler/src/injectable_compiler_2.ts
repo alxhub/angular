@@ -52,7 +52,7 @@ export function compileInjectable(meta: R3InjectableMetadata): InjectableDef {
         fnOrClass,
         useNew,
         injectFn: Identifiers.inject,
-        useOptionalParam: true,
+        useOptionalParam: false,
         deps: meta.deps,
       });
     } else if (meta.useClass !== undefined) {
@@ -94,7 +94,7 @@ export function compileInjectable(meta: R3InjectableMetadata): InjectableDef {
       fnOrClass: meta.type,
       useNew: true,
       injectFn: Identifiers.inject,
-      useOptionalParam: true,
+      useOptionalParam: false,
       deps: meta.deps,
     });
   }
