@@ -128,7 +128,7 @@ export class NgtscProgram implements api.Program {
       options: this.options,
       emitOnlyDtsFiles: false, writeFile,
       customTransformers: {
-        before: [ivyTransformFactory(compilation)],
+        before: [ivyTransformFactory(compilation, reflector)],
       },
     });
     return emitResult;
