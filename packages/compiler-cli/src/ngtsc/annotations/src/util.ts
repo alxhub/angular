@@ -87,3 +87,10 @@ export function referenceToExpression(ref: Reference, context: ts.SourceFile): E
 export function isAngularCore(decorator: Decorator): boolean {
   return decorator.import !== null && decorator.import.from === '@angular/core';
 }
+
+export function unwrapExpression(node: ts.Expression): ts.Expression {
+  while (ts.isAsExpression(node) || ts.isParenthesizedExpression(node)) {
+    node = node.expression;
+  }
+  return node;
+}
