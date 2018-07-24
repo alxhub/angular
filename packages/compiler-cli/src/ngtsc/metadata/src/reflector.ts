@@ -282,7 +282,9 @@ export function reflectTypeEntityToDeclaration(
     type: ts.EntityName, checker: ts.TypeChecker): {node: ts.Declaration, from: string | null} {
   let realSymbol = checker.getSymbolAtLocation(type);
   if (realSymbol === undefined) {
-    throw new Error(`Cannot resolve type entity to symbol`);
+    const name = ts.isIdentifier(type) ? type.text : '(undefined)';
+    const from = type.getSourceFile().fileName;
+    throw new Error(`Cannot resolve type entity to symbol, ${name} ${from}`);
   }
   while (realSymbol.flags & ts.SymbolFlags.Alias) {
     realSymbol = checker.getAliasedSymbol(realSymbol);

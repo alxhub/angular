@@ -9,6 +9,7 @@
 // We are temporarily importing the existing viewEngine_from core so we can be sure we are
 // correctly implementing its interfaces for backwards compatibility.
 import {ChangeDetectorRef as viewEngine_ChangeDetectorRef} from '../change_detection/change_detector_ref';
+import {InjectionToken} from '../di/injection_token';
 import {InjectFlags, Injector, inject, setCurrentInjector} from '../di/injector';
 import {ComponentFactory as viewEngine_ComponentFactory, ComponentRef as viewEngine_ComponentRef} from '../linker/component_factory';
 import {ComponentFactoryResolver as viewEngine_ComponentFactoryResolver} from '../linker/component_factory_resolver';
@@ -623,11 +624,17 @@ class ViewContainerRef implements viewEngine_ViewContainerRef {
   // TODO(issue/24571): remove '!'.
   element !: viewEngine_ElementRef;
   // TODO(issue/24571): remove '!'.
-  injector !: Injector;
+  injector: Injector;
   // TODO(issue/24571): remove '!'.
   parentInjector !: Injector;
 
-  constructor(private _lContainerNode: LContainerNode) {}
+  constructor(private _lContainerNode: LContainerNode) {
+    this.injector = {
+      get<T>(token: Type<T>|InjectionToken<T>, notFoundValue?: T, flags?: InjectFlags): T|undefined {
+        return getOrCreateInjectable<T>(this._lContainerNode.nodeInjector, token as Type<T>, flags) || notFoundValue;
+      },
+    };
+  } 
 
   clear(): void {
     const lContainer = this._lContainerNode.data;

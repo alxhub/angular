@@ -376,7 +376,7 @@ class _AstToIrVisitor implements cdAst.AstVisitor {
   }
 
   visitLiteralMap(ast: cdAst.LiteralMap, mode: _Mode): any {
-    throw new Error(`Illegal State: literal maps should have been converted into functions`);
+    throw new Error(`Illegal State: literal maps should have been converted into functions, ${ast.toString()}`);
   }
 
   visitLiteralPrimitive(ast: cdAst.LiteralPrimitive, mode: _Mode): any {
