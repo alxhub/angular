@@ -60,8 +60,7 @@ export class Analyzer {
    */
   analyzeFile(file: ParsedFile): AnalyzedFile {
     const analyzedClasses =
-        file.decoratedClasses.map(clazz => this.analyzeClass(file.sourceFile, clazz))
-            .filter(isDefined);
+        file.decoratedClasses.map(clazz => this.analyzeClass(clazz)).filter(isDefined);
 
     return {
       analyzedClasses,
@@ -69,7 +68,7 @@ export class Analyzer {
     };
   }
 
-  protected analyzeClass(file: ts.SourceFile, clazz: ParsedClass): AnalyzedClass|undefined {
+  protected analyzeClass(clazz: ParsedClass): AnalyzedClass|undefined {
     const matchingHandlers =
         this.handlers.map(handler => ({handler, decorator: handler.detect(clazz.decorators)}))
             .filter(isMatchingHandler);
