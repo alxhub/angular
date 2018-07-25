@@ -77,7 +77,7 @@ export class Analyzer {
       throw new Error('TODO.Diagnostic: Class has multiple Angular decorators.');
     }
 
-    if (matchingHandlers.length == 0) {
+    if (matchingHandlers.length === 0) {
       return undefined;
     }
 
