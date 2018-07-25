@@ -406,7 +406,7 @@ export interface ReflectionHost {
   getExportsOfModule(module: ts.Node): Map<string, Declaration>|null;
 
   /**
-   * Check whether the given declaration node actually represents a class.
+   * Check whether the given node actually represents a class.
    */
-  isClass(node: ts.Declaration): boolean;
+  isClass(node: ts.Node): boolean;
 }
