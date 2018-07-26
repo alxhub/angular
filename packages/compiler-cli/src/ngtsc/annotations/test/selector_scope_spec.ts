@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {ExternalExpr} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {TypeScriptReflectionHost} from '../../metadata';
@@ -27,22 +28,23 @@ describe('SelectorScopeRegistry', () => {
       {
         name: 'node_modules/some_library/index.d.ts',
         contents: `
-        import {NgComponentDef, NgModuleDef} from '@angular/core';
+        import {NgModuleDef} from '@angular/core';
         import * as i0 from './component';
+        export {SomeCmp} from './component';
         
         export declare class SomeModule {
           static ngModuleDef: NgModuleDef<SomeModule, [typeof i0.SomeCmp], never, [typeof i0.SomeCmp]>;
-        }
-
-        export declare class SomeCmp {
-          static ngComponentDef: NgComponentDef<SomeCmp, 'some-cmp'>;
         }
       `
       },
       {
         name: 'node_modules/some_library/component.d.ts',
         contents: `
-        export declare class SomeCmp {}
+        import {NgComponentDef} from '@angular/core';
+
+        export declare class SomeCmp {
+          static ngComponentDef: NgComponentDef<SomeCmp, 'some-cmp'>;
+        }
       `
       },
       {
@@ -76,10 +78,20 @@ describe('SelectorScopeRegistry', () => {
     const scope = registry.lookupCompilationScope(ProgramCmp) !;
     expect(scope).toBeDefined();
     expect(scope.directives).toBeDefined();
-    expect(scope.directives.size).toBe(1);
+
+    expect(scope.directives.has('program-cmp')).toBe(true);
+    expect(scope.directives.has('some-cmp')).toBe(true);
+
+    const expr = scope.directives.get('some-cmp') !;
+    if (!(expr instanceof ExternalExpr)) {
+      console.error(expr);
+      return fail(`Expected ${expr} to be an ExternalExpr`);
+    }
+    expect(expr.value.moduleName).toBe('some_library');
+    expect(expr.value.name).toBe('SomeCmp');
   });
 
-  xit('relative imports work', () => {
+  it('relative imports work', () => {
     const {program} = makeProgram([
       {
         name: 'node_modules/@angular/core/index.d.ts',
@@ -91,22 +103,22 @@ describe('SelectorScopeRegistry', () => {
       {
         name: 'some_library/module.d.ts',
         contents: `
-        import {NgComponentDef, NgModuleDef} from '@angular/core';
+        import {NgModuleDef} from '@angular/core';
         import * as i0 from './component';
 
         export declare class SomeModule {
           static ngModuleDef: NgModuleDef<SomeModule, [typeof i0.SomeCmp], never, [typeof i0.SomeCmp]>;
-        }
-
-        export declare class SomeCmp {
-          static ngComponentDef: NgComponentDef<SomeCmp, 'some-cmp'>;
         }
       `
       },
       {
         name: 'some_library/component.d.ts',
         contents: `
-        export declare class SomeCmp {}
+        import {NgComponentDef} from '@angular/core';
+
+        export declare class SomeCmp {
+          static ngComponentDef: NgComponentDef<SomeCmp, 'some-cmp'>;
+        }
       `
       },
       {
@@ -140,6 +152,16 @@ describe('SelectorScopeRegistry', () => {
     const scope = registry.lookupCompilationScope(ProgramCmp) !;
     expect(scope).toBeDefined();
     expect(scope.directives).toBeDefined();
-    expect(scope.directives.size).toBe(2);
+
+    expect(scope.directives.has('program-cmp')).toBe(true);
+    expect(scope.directives.has('some-cmp')).toBe(true);
+
+    const expr = scope.directives.get('some-cmp') !;
+    if (!(expr instanceof ExternalExpr)) {
+      console.error(expr);
+      return fail(`Expected ${expr} to be an ExternalExpr`);
+    }
+    expect(expr.value.moduleName).toBe('./some_library/component');
+    expect(expr.value.name).toBe('SomeCmp');
   });
 });
