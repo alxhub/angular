@@ -121,3 +121,17 @@ export class DefinitionMap {
 
   toLiteralMap(): o.LiteralMapExpr { return o.literalMap(this.values); }
 }
+
+export function getAttrsForDirectiveMatching(elOrTpl: t.Element|t.Template): {[name: string]: string} {
+  const attributesMap: {[name: string]: string} = {};
+
+  elOrTpl.attributes.forEach(a => {
+    if (!isI18NAttribute(a.name)) {
+      attributesMap[a.name] = a.value;
+    }
+  });
+  elOrTpl.inputs.forEach(i => { attributesMap[i.name] = ''; });
+  elOrTpl.outputs.forEach(o => { attributesMap[o.name] = ''; });
+
+  return attributesMap;
+}
