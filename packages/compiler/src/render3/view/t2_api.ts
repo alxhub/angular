@@ -1,30 +1,41 @@
-import {Element, BoundText, Reference, Template, Variable, Visitor} from '../r3_ast';
+import {Element, BoundText, Reference, Node, Template, Variable, Visitor} from '../r3_ast';
 import {AST, BindingPipe} from '../../expression_parser/ast';
 import {SelectorMatcher} from '../../selector';
 import * as o from '../../output/output_ast';
 
+export interface Directive<D> {
+  directive: D;
+  name: string;
+  isPrimary: boolean;
+  inputs: Set<string>;
+  outputs: Set<string>;
+  exportAs: string|null;
+}
+
 export interface Target {
-  template?: Template;
-  directiveMatcher?: SelectorMatcher;
+  template?: Node[];
 }
 
-export interface MatchedDirective<I> {
-  info: I;
-}
-
-export interface TargetBinder {
-  bind(target: Target): BoundTarget;
+export interface TargetBinder<D> {
+  bind(target: Target): BoundTarget<D>;
 }
 
 export interface TargetStructuralAnalyzer {
-  analyze(target: BoundTarget): StructurallyAnalyzedTarget;
+  analyze(target: BoundTarget<any>): StructurallyAnalyzedTarget;
 }
 
-export interface BoundTarget {
+export interface BoundTarget<D> {
   readonly target: Target;
 
-  getDirectivesOfElement(el: Element): MatchedDirective<any>[]|null;
-  getExpressionTarget(expr: AST): MatchedDirective<any>|Reference|Variable|null;
+  getDirectivesOfNode(node: Element|Template): Directive<D>[]|null;
+
+  getReferenceTarget(ref: Reference): Directive<D>|Element|Template|null;
+
+  getExpressionTarget(expr: AST): Directive<D>|Reference|Variable|null;
+
+  getTemplateOfSymbol(symbol: Reference|Variable): Template|null;
+
+  getNestingLevel(template: Template): number;
 }
 
 export interface StructurallyAnalyzedTarget {
