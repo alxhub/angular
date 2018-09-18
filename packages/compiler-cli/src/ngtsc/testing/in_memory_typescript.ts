@@ -11,8 +11,10 @@ import * as ts from 'typescript';
 
 export function makeProgram(
     files: {name: string, contents: string}[],
-    options?: ts.CompilerOptions): {program: ts.Program, host: ts.CompilerHost} {
-  const host = new InMemoryHost();
+    options?: ts.CompilerOptions,
+    host: InMemoryHost = new InMemoryHost(),
+    checkForErrors: boolean = true
+    ): {program: ts.Program, host: ts.CompilerHost} {
   files.forEach(file => host.writeFile(file.name, file.contents));
 
   const rootNames = files.map(file => host.getCanonicalFileName(file.name));
@@ -23,17 +25,19 @@ export function makeProgram(
         moduleResolution: ts.ModuleResolutionKind.NodeJs, ...options
       },
       host);
-  const diags = [...program.getSyntacticDiagnostics(), ...program.getSemanticDiagnostics()];
-  if (diags.length > 0) {
-    const errors = diags.map(diagnostic => {
-      let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-      if (diagnostic.file) {
-        const {line, character} = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start !);
-        message = `${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`;
-      }
-      return `Error: ${message}`;
-    });
-    throw new Error(`Typescript diagnostics failed! ${errors.join(', ')}`);
+  if (checkForErrors) {
+    const diags = [...program.getSyntacticDiagnostics(), ...program.getSemanticDiagnostics()];
+    if (diags.length > 0) {
+      const errors = diags.map(diagnostic => {
+        let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+        if (diagnostic.file) {
+          const {line, character} = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start !);
+          message = `${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`;
+        }
+        return `Error: ${message}`;
+      });
+      throw new Error(`Typescript diagnostics failed! ${errors.join(', ')}`);
+    }
   }
   return {program, host};
 }
