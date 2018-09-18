@@ -1,29 +1,37 @@
 import * as ts from 'typescript';
 
-import {makeProgram} from '../../testing/in_memory_typescript';
-import {AugmentedInMemoryHost, addTypeCheckBlockFn, identity} from './util';
+import {getDeclaration, makeProgram} from '../../testing/in_memory_typescript';
+import {AugmentingHost, augmentSf, LIB_D_TS} from './util';
+import {TypeCheckContext} from '../src/context';
 
 describe('ngtsc typechecking', () => {
   describe('ctors', () => {
     it('compiles a basic type constructor', () => {
-      const augment = addTypeCheckBlockFn('TestClass', {
-        fnName: 'TestClass_TypeCtor',
+      const ctx = new TypeCheckContext();
+      const files = [
+        LIB_D_TS,
+        {name: 'main.ts', contents: `
+class TestClass<T extends string> {
+  value: T;
+}
+
+TestClass.ngTypeCtor({value: 'test'});
+        `}
+      ];
+      const {program, host} = makeProgram(files, undefined, undefined, false);
+      const TestClass = getDeclaration(program, 'main.ts', 'TestClass', ts.isClassDeclaration);
+      ctx.addTypeCtor(
+        program.getSourceFile('main.ts')!,
+        TestClass, {
+        fnName: 'ngTypeCtor',
         fields: {
           inputs: ['value'],
           outputs: [],
           queries: [],
         },
       });
-
-      const {program} = makeProgram([
-        {name: 'main.ts', contents: `
-class TestClass<T extends string> {
-  value: T;
-}
-
-TestClass_TypeCtor({value: 'test'});
-        `}
-      ], undefined, new AugmentedInMemoryHost(augment), true);
+      const augHost = new AugmentingHost(program, host, (sf: ts.SourceFile) => ctx.transform(sf));
+      makeProgram(files, undefined, augHost, true);
     });
   });
 });

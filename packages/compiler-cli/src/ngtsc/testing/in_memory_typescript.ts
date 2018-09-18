@@ -12,10 +12,10 @@ import * as ts from 'typescript';
 export function makeProgram(
     files: {name: string, contents: string}[],
     options?: ts.CompilerOptions,
-    host: InMemoryHost = new InMemoryHost(),
+    host: ts.CompilerHost = new InMemoryHost(),
     checkForErrors: boolean = true
     ): {program: ts.Program, host: ts.CompilerHost} {
-  files.forEach(file => host.writeFile(file.name, file.contents));
+  files.forEach(file => host.writeFile(file.name, file.contents, false, undefined, []));
 
   const rootNames = files.map(file => host.getCanonicalFileName(file.name));
   const program = ts.createProgram(

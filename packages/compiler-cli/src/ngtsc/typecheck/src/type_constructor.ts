@@ -3,7 +3,7 @@ import {R3ComponentMetadata, WrappedNodeExpr} from '@angular/compiler';
 
 import {ComponentTcbRequest, ComponentTcbResponse, TypeCtorMetadata} from './api';
 
-export function generateTypeCtor(node: ts.ClassDeclaration, meta: TypeCtorMetadata): ts.FunctionDeclaration {
+export function generateTypeCtor(node: ts.ClassDeclaration, meta: TypeCtorMetadata): ts.MethodDeclaration {
   const id = node.name!;
 
   const keys: string[] = [
@@ -36,11 +36,12 @@ export function generateTypeCtor(node: ts.ClassDeclaration, meta: TypeCtorMetada
     /* initializer */ undefined,
   );
 
-  return ts.createFunctionDeclaration(
+  return ts.createMethod(
     /* decorators */ undefined,
-    /* modifiers */ undefined,
+    /* modifiers */ [ts.createModifier(ts.SyntaxKind.StaticKeyword)],
     /* asteriskToken */ undefined,
     /* name */ meta.fnName,
+    /* questionToken */ undefined,
     /* typeParameters */ node.typeParameters,
     /* parameters */ [initParam],
     /* type */ rawType,
