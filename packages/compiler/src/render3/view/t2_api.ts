@@ -36,6 +36,8 @@ export interface BoundTarget<D> {
   getTemplateOfSymbol(symbol: Reference|Variable): Template|null;
 
   getNestingLevel(template: Template): number;
+
+  getUsedDirectives(): Directive<D>[];
 }
 
 export interface StructurallyAnalyzedTarget {

@@ -1,5 +1,8 @@
 import * as ts from 'typescript';
-import { TypeCtorMetadata } from './api';
+import {Directive, R3TargetBinder, SelectorMatcher} from '@angular/compiler';
+import {Node} from '@angular/compiler/src/render3/r3_ast';
+
+import { TypeCtorMetadata, DirectiveTypecheckData } from './api';
 import {generateTypeCtor} from './type_constructor';
 
 interface TypeCtorOp {
@@ -33,12 +36,28 @@ export class TypeCheckContext {
     });
   }
 
-  addTemplate(node: ts.ClassDeclaration): void {
+  addTemplate<N>(node: ts.ClassDeclaration, template: Node[], matcher: SelectorMatcher<Directive<DirectiveTypecheckData>>): void {
+    const binder = new R3TargetBinder(matcher);
+    const bound = binder.bind({
+      template,
+    });
+    const directives = bound.getUsedDirectives();
+    console.error('processed', node.name!.text, 'and found it used', directives.length, 'directives');
+    directives.forEach(dir => {
+      this.addTypeCtor(node.getSourceFile(), node, {
+        fnName: 'ngTypeCtor',
+        body: !node.getSourceFile().fileName.endsWith('.d.ts'),
+        fields: {
+          inputs: [],
+          outputs: [],
+          queries: [],
+        }
+      })
+    });
   }
 
   transform(sf: ts.SourceFile): ts.SourceFile {
     if (!this.typeCtorMap.has(sf)) {
-      console.error('not transforming file', sf.fileName);
       return sf;
     }
 

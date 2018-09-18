@@ -5,26 +5,31 @@ import {ComponentTcbRequest, ComponentTcbResponse, TypeCtorMetadata} from './api
 
 export function generateTypeCtor(node: ts.ClassDeclaration, meta: TypeCtorMetadata): ts.MethodDeclaration {
   const id = node.name!;
+  const rawTypeArgs = node.typeParameters !== undefined ?
+  node.typeParameters.map(param =>
+      ts.createTypeReferenceNode(param.name, undefined)) :
+  undefined;
+
+  const rawType: ts.TypeNode = ts.createTypeReferenceNode(id, rawTypeArgs);
+
+  let initType: ts.TypeNode;
 
   const keys: string[] = [
     ...meta.fields.inputs, ...meta.fields.outputs, ...meta.fields.queries,
   ];
-  const keyTypeUnion = ts.createUnionTypeNode(keys.map(key =>
-      ts.createLiteralTypeNode(ts.createStringLiteral(key))));
+  if (keys.length === 0) {
+    initType = ts.createTypeLiteralNode([]);
+  } else {
+    const keyTypeUnion = ts.createUnionTypeNode(keys.map(key =>
+        ts.createLiteralTypeNode(ts.createStringLiteral(key))));
+  
+    const pickType = ts.createTypeReferenceNode('Pick', [rawType, keyTypeUnion]);
+    initType = ts.createTypeReferenceNode('Partial', [pickType]);
+  }
 
-  const rawTypeArgs = node.typeParameters !== undefined ?
-      node.typeParameters.map(param =>
-          ts.createTypeReferenceNode(param.name, undefined)) :
-      undefined;
-    
-  const rawType: ts.TypeNode = ts.createTypeReferenceNode(id, rawTypeArgs);
-
-  const pickType = ts.createTypeReferenceNode('Pick', [rawType, keyTypeUnion]);
-  const partialType = ts.createTypeReferenceNode('Partial', [pickType]);
-
-  const body = ts.createBlock([
+  const body = meta.body ? ts.createBlock([
     ts.createReturn(ts.createNonNullExpression(ts.createNull())),
-  ]);
+  ]) : undefined;
 
   const initParam = ts.createParameter(
     /* decorators */ undefined,
@@ -32,7 +37,7 @@ export function generateTypeCtor(node: ts.ClassDeclaration, meta: TypeCtorMetada
     /* dotDotDotToken */ undefined,
     /* name */ 'init',
     /* questionToken */ undefined,
-    /* type */ partialType,
+    /* type */ initType,
     /* initializer */ undefined,
   );
 

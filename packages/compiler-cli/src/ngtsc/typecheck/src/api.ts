@@ -5,6 +5,11 @@ import {Reference} from '../../metadata';
 
 export interface DirectiveTypecheckData {
   ref: Reference<ts.ClassDeclaration>;
+  fields: {
+    inputs: string[];
+    outputs: string[];
+    queries: string[];
+  };
 }
 
 export interface ComponentTcbRequest {
@@ -18,6 +23,7 @@ export interface ComponentTcbResponse {
 
 export interface TypeCtorMetadata {
   fnName: string;
+  body: boolean;
   fields: {
     inputs: string[];
     outputs: string[];

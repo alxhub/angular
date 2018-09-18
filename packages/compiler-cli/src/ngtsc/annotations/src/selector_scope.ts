@@ -125,11 +125,7 @@ export class SelectorScopeRegistry {
     this._pipeToName.set(node, name);
   }
 
-  /**
-   * Produce the compilation scope of a component, which is determined by the module that declares
-   * it.
-   */
-  lookupCompilationScope(node: ts.Declaration): CompilationScope<Expression>|null {
+  lookupCompilationScopeAsRefs(node: ts.Declaration): CompilationScope<Reference>|null {
     node = ts.getOriginalNode(node) as ts.Declaration;
 
     // If the component has no associated module, then it has no compilation scope.
@@ -147,7 +143,7 @@ export class SelectorScopeRegistry {
 
       // The scope as cached is in terms of References, not Expressions. Converting between them
       // requires knowledge of the context file (in this case, the component node's source file).
-      return convertScopeToExpressions(scope, node);
+      return scope;
     }
 
     // This is the first time the scope for this module is being computed.
@@ -180,7 +176,16 @@ export class SelectorScopeRegistry {
     this._compilationScopeCache.set(node, scope);
 
     // Convert References to Expressions in the context of the component's source file.
-    return convertScopeToExpressions(scope, node);
+    return scope;
+  }
+
+  /**
+   * Produce the compilation scope of a component, which is determined by the module that declares
+   * it.
+   */
+  lookupCompilationScope(node: ts.Declaration): CompilationScope<Expression>|null {
+    const scope = this.lookupCompilationScopeAsRefs(node);
+    return scope !== null ? convertScopeToExpressions(scope, node) : null;
   }
 
   private lookupScopesOrDie(node: ts.Declaration, ngModuleImportedFrom: string|null):

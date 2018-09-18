@@ -356,4 +356,12 @@ export class R3BoundTarget<D> implements BoundTarget<D> {
   getNestingLevel(template: Template): number {
     return this.nestingLevel.get(template) || 0;
   }
+
+  getUsedDirectives(): Directive<D>[] {
+    const set = new Set<Directive<D>>();
+    this.directives.forEach(dirs => {
+      dirs.forEach(dir => set.add(dir))
+    });
+    return Array.from(set.values());
+  }
 }

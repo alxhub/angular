@@ -1,8 +1,17 @@
 import * as ts from 'typescript';
 
 import {getDeclaration, makeProgram} from '../../testing/in_memory_typescript';
-import {AugmentingHost, augmentSf, LIB_D_TS} from './util';
+import {AuxiliaryProgramHost} from '../src/host';
 import {TypeCheckContext} from '../src/context';
+
+
+const LIB_D_TS = {
+  name: 'lib.d.ts',
+  contents: `
+    type Partial<T> = { [P in keyof T]?: T[P]; };
+    type Pick<T, K extends keyof T> = { [P in K]: T[P]; };
+    type NonNullable<T> = T extends null | undefined ? never : T;`
+};
 
 describe('ngtsc typechecking', () => {
   describe('ctors', () => {
@@ -22,15 +31,18 @@ TestClass.ngTypeCtor({value: 'test'});
       const TestClass = getDeclaration(program, 'main.ts', 'TestClass', ts.isClassDeclaration);
       ctx.addTypeCtor(
         program.getSourceFile('main.ts')!,
-        TestClass, {
-        fnName: 'ngTypeCtor',
-        fields: {
-          inputs: ['value'],
-          outputs: [],
-          queries: [],
-        },
-      });
-      const augHost = new AugmentingHost(program, host, (sf: ts.SourceFile) => ctx.transform(sf));
+        TestClass,
+        {
+          fnName: 'ngTypeCtor',
+          body: true,
+          fields: {
+            inputs: ['value'],
+            outputs: [],
+            queries: [],
+          },
+        }
+      );
+      const augHost = new AuxiliaryProgramHost(program, host, (sf: ts.SourceFile) => ctx.transform(sf));
       makeProgram(files, undefined, augHost, true);
     });
   });

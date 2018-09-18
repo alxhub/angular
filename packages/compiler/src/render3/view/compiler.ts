@@ -119,7 +119,11 @@ export function compileDirectiveFromMetadata(
 
   const type = new o.ExpressionType(o.importExpr(R3.DirectiveDef, [
     typeWithParameters(meta.type, meta.typeArgumentCount),
-    new o.ExpressionType(o.literal(selectorForType))
+    new o.ExpressionType(o.literal(selectorForType)),
+    meta.exportAs !== null ? new o.ExpressionType(o.literal(meta.exportAs)) : o.NONE_TYPE,
+    /* inputs */ o.NONE_TYPE,
+    /* outputs */ o.NONE_TYPE,
+    /* queries */ o.NONE_TYPE,
   ]));
   return {expression, type, statements};
 }

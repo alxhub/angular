@@ -778,4 +778,34 @@ describe('ngtsc behavioral tests', () => {
        const jsContents = getContents('test.js');
        expect(jsContents).toContain('directives: function () { return [CmpB]; }');
      });
+
+  fdescribe('template type-checking', () => {
+    it('should generate type constructors', () => {
+      writeConfig({fullTemplateTypeCheck: true});
+      write('test.ts', `
+      import {Component, NgModule} from '@angular/core';
+
+      @Component({
+        selector: 'cmp-a',
+        template: '<cmp-b></cmp-b>',
+      })
+      class CmpA {}
+
+      @Component({
+        selector: 'cmp-b',
+        template: 'This is B',
+      })
+      class CmpB {}
+
+      @NgModule({
+        declarations: [CmpA, CmpB],
+      })
+      class Module {}
+      `);
+
+      const exitCode = main(['-p', basePath], errorSpy);
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(exitCode).toBe(0);
+    });
+  });
 });

@@ -63,7 +63,7 @@ export interface PipeType<T> extends Type<T> { ngPipeDef: never; }
  * A version of {@link DirectiveDef} that represents the runtime type shape only, and excludes
  * metadata parameters.
  */
-export type DirectiveDefInternal<T> = DirectiveDef<T, string>;
+export type DirectiveDefInternal<T> = DirectiveDef<T, string, string, {}, {}, string[]>;
 
 /**
  * Runtime information for classes that are inherited by components or directives
@@ -110,12 +110,12 @@ export interface BaseDef<T> {
  *
  * See: {@link defineDirective}
  */
-export interface DirectiveDef<T, Selector extends string> extends BaseDef<T> {
+export interface DirectiveDef<T, Selector extends string, ExportAs extends string, InputMap extends {[key: string]: string}, OutputMap extends {[key: string]: string}, QueryFields extends string[]> extends BaseDef<T> {
   /** Token representing the directive. Used by DI. */
   type: Type<T>;
 
   /** Function that makes a directive public to the DI system. */
-  diPublic: ((def: DirectiveDef<T, string>) => void)|null;
+  diPublic: ((def: DirectiveDef<T, string, string, any, any, any>) => void)|null;
 
   /** The selectors that will be used to match nodes to this directive. */
   selectors: CssSelectorList;
@@ -176,7 +176,7 @@ export interface DirectiveDef<T, Selector extends string> extends BaseDef<T> {
  * A version of {@link ComponentDef} that represents the runtime type shape only, and excludes
  * metadata parameters.
  */
-export type ComponentDefInternal<T> = ComponentDef<T, string>;
+export type ComponentDefInternal<T> = ComponentDef<T, string, string, {}, {}, string[]>;
 
 /**
  * Runtime link information for Components.
@@ -190,7 +190,7 @@ export type ComponentDefInternal<T> = ComponentDef<T, string>;
  *
  * See: {@link defineComponent}
  */
-export interface ComponentDef<T, Selector extends string> extends DirectiveDef<T, Selector> {
+export interface ComponentDef<T, Selector extends string, ExportAs extends string, InputMap extends {[key: string]: string}, OutputMap extends {[key: string]: string}, QueryFields extends string[]> extends DirectiveDef<T, Selector, ExportAs, InputMap, OutputMap, QueryFields> {
   /**
    * Runtime unique component ID.
    */
@@ -316,8 +316,8 @@ export interface PipeDef<T, S extends string> {
 
 export type PipeDefInternal<T> = PipeDef<T, string>;
 
-export type DirectiveDefFeature = <T>(directiveDef: DirectiveDef<T, string>) => void;
-export type ComponentDefFeature = <T>(componentDef: ComponentDef<T, string>) => void;
+export type DirectiveDefFeature = <T>(directiveDef: DirectiveDef<T, string, string, {}, {}, string[]>) => void;
+export type ComponentDefFeature = <T>(componentDef: ComponentDef<T, string, string, {}, {}, string[]>) => void;
 
 /**
  * Type used for directiveDefs on component definition.
@@ -326,12 +326,12 @@ export type ComponentDefFeature = <T>(componentDef: ComponentDef<T, string>) => 
  */
 export type DirectiveDefListOrFactory = (() => DirectiveDefList) | DirectiveDefList;
 
-export type DirectiveDefList = (DirectiveDef<any, string>| ComponentDef<any, string>)[];
+export type DirectiveDefList = (DirectiveDef<any, string, string, {}, {}, string[]>| ComponentDef<any, string, string, {}, {}, string[]>)[];
 
 export type DirectiveTypesOrFactory = (() => DirectiveTypeList) | DirectiveTypeList;
 
 export type DirectiveTypeList =
-    (DirectiveDef<any, string>| ComponentDef<any, string>|
+    (DirectiveDef<any, string, string, {}, {}, string[]>| ComponentDef<any, string, string, {}, {}, string[]>|
      Type<any>/* Type as workaround for: Microsoft/TypeScript/issues/4881 */)[];
 
 /**
