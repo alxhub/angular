@@ -10,11 +10,11 @@ import './ng_dev_mode';
 
 import {ChangeDetectionStrategy} from '../change_detection/constants';
 import {Provider} from '../di/provider';
-import {NgModuleDef, NgModuleDefInternal} from '../metadata/ng_module';
+import {NgModuleDef} from '../metadata/ng_module';
 import {ViewEncapsulation} from '../metadata/view';
 import {Type} from '../type';
 
-import {BaseDef, ComponentDefFeature, ComponentDefInternal, ComponentQuery, ComponentTemplate, ComponentType, DirectiveDefFeature, DirectiveDefInternal, DirectiveType, DirectiveTypesOrFactory, PipeDefInternal, PipeType, PipeTypesOrFactory} from './interfaces/definition';
+import {BaseDef, ComponentDefFeature, ComponentDef, ComponentQuery, ComponentTemplate, ComponentType, DirectiveDefFeature, DirectiveDef, DirectiveType, DirectiveTypesOrFactory, PipeDefInternal, PipeType, PipeTypesOrFactory} from './interfaces/definition';
 import {CssSelectorList, SelectorFlags} from './interfaces/projection';
 
 export const EMPTY: {} = {};
@@ -279,7 +279,7 @@ export function defineComponent<T>(componentDefinition: {
   if (animations) {
     data.animations = animations;
   }
-  const def: ComponentDefInternal<any> = {
+  const def: ComponentDef<any> = {
     type: type,
     diPublic: null,
     consts: componentDefinition.consts,
@@ -327,7 +327,7 @@ export function defineComponent<T>(componentDefinition: {
 }
 
 export function extractDirectiveDef(type: DirectiveType<any>& ComponentType<any>):
-    DirectiveDefInternal<any>|ComponentDefInternal<any> {
+    DirectiveDef<any>|ComponentDef<any> {
   const def = type.ngComponentDef || type.ngDirectiveDef;
   if (ngDevMode && !def) {
     throw new Error(`'${type.name}' is neither 'ComponentType' or 'DirectiveType'.`);
@@ -343,8 +343,8 @@ export function extractPipeDef(type: PipeType<any>): PipeDefInternal<any> {
   return def;
 }
 
-export function defineNgModule<T>(def: {type: T} & Partial<NgModuleDef<T, any, any, any>>): never {
-  const res: NgModuleDefInternal<T> = {
+export function defineNgModule<T>(def: {type: T} & Partial<NgModuleDef<T>>): never {
+  const res: NgModuleDef<T> = {
     type: def.type,
     bootstrap: def.bootstrap || EMPTY_ARRAY,
     declarations: def.declarations || EMPTY_ARRAY,

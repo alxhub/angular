@@ -9,22 +9,22 @@
 import {Type} from '../../type';
 import {fillProperties} from '../../util/property';
 import {EMPTY, EMPTY_ARRAY} from '../definition';
-import {ComponentDefInternal, ComponentTemplate, DirectiveDefFeature, DirectiveDefInternal, RenderFlags} from '../interfaces/definition';
+import {ComponentDef, ComponentTemplate, DirectiveDefFeature, DirectiveDef, RenderFlags} from '../interfaces/definition';
 
 
 
 /**
- * Determines if a definition is a {@link ComponentDefInternal} or a {@link DirectiveDefInternal}
+ * Determines if a definition is a {@link ComponentDef} or a {@link DirectiveDef}
  * @param definition The definition to examine
  */
-function isComponentDef<T>(definition: ComponentDefInternal<T>| DirectiveDefInternal<T>):
-    definition is ComponentDefInternal<T> {
-  const def = definition as ComponentDefInternal<T>;
+function isComponentDef<T>(definition: ComponentDef<T>| DirectiveDef<T>):
+    definition is ComponentDef<T> {
+  const def = definition as ComponentDef<T>;
   return typeof def.template === 'function';
 }
 
 function getSuperType(type: Type<any>): Type<any>&
-    {ngComponentDef?: ComponentDefInternal<any>, ngDirectiveDef?: DirectiveDefInternal<any>} {
+    {ngComponentDef?: ComponentDef<any>, ngDirectiveDef?: DirectiveDef<any>} {
   return Object.getPrototypeOf(type.prototype).constructor;
 }
 
@@ -33,11 +33,11 @@ function getSuperType(type: Type<any>): Type<any>&
  * @param definition The definition that is a SubClass of another directive of component
  */
 export function InheritDefinitionFeature(
-    definition: DirectiveDefInternal<any>| ComponentDefInternal<any>): void {
+    definition: DirectiveDef<any>| ComponentDef<any>): void {
   let superType = getSuperType(definition.type);
 
   while (superType) {
-    let superDef: DirectiveDefInternal<any>|ComponentDefInternal<any>|undefined = undefined;
+    let superDef: DirectiveDef<any>|ComponentDef<any>|undefined = undefined;
     if (isComponentDef(definition)) {
       superDef = superType.ngComponentDef || superType.ngDirectiveDef;
     } else {

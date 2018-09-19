@@ -19,7 +19,7 @@ import {Type} from '../type';
 import {assertComponentType, assertDefined} from './assert';
 import {LifecycleHooksFeature, createRootContext} from './component';
 import {adjustBlueprintForNewNode, baseDirectiveCreate, createLNode, createLViewData, createTView, elementCreate, enterView, hostElement, initChangeDetectorIfExisting, locateHostElement, queueHostBindingForCheck, renderEmbeddedTemplate, setHostBindings} from './instructions';
-import {ComponentDefInternal, ComponentType, RenderFlags} from './interfaces/definition';
+import {ComponentDef, ComponentType, RenderFlags} from './interfaces/definition';
 import {LElementNode, TNode, TNodeType} from './interfaces/node';
 import {RElement, RendererFactory3, domRendererFactory3} from './interfaces/renderer';
 import {CONTEXT, FLAGS, INJECTOR, LViewData, LViewFlags, RootContext, TVIEW} from './interfaces/view';
@@ -86,7 +86,7 @@ export class ComponentFactory<T> extends viewEngine_ComponentFactory<T> {
     return toRefArray(this.componentDef.outputs);
   }
 
-  constructor(private componentDef: ComponentDefInternal<any>) {
+  constructor(private componentDef: ComponentDef<any>) {
     super();
     this.componentType = componentDef.type;
     this.selector = componentDef.selectors[0][0] as string;

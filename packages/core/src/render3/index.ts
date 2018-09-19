@@ -11,7 +11,7 @@ import {defineBase, defineComponent, defineDirective, defineNgModule, definePipe
 import {InheritDefinitionFeature} from './features/inherit_definition_feature';
 import {NgOnChangesFeature} from './features/ng_onchanges_feature';
 import {PublicFeature} from './features/public_feature';
-import {BaseDef, ComponentDef, ComponentDefInternal, ComponentTemplate, ComponentType, DirectiveDef, DirectiveDefFlags, DirectiveDefInternal, DirectiveType, PipeDef} from './interfaces/definition';
+import {BaseDef, ComponentDef, ComponentDefWithMeta, ComponentTemplate, ComponentType, DirectiveDef, DirectiveDefFlags, DirectiveDefWithMeta, DirectiveType, PipeDef} from './interfaces/definition';
 
 export {ComponentFactory, ComponentFactoryResolver, ComponentRef, WRAP_RENDERER_FACTORY2} from './component_ref';
 export {QUERY_READ_CONTAINER_REF, QUERY_READ_ELEMENT_REF, QUERY_READ_FROM_NODE, QUERY_READ_TEMPLATE_REF, directiveInject, getFactoryOf, getInheritedFactory, injectAttribute, injectChangeDetectorRef, injectComponentFactoryResolver, injectElementRef, injectRenderer2, injectTemplateRef, injectViewContainerRef, templateRefExtractor} from './di';
@@ -144,12 +144,12 @@ export {
 export {
   BaseDef,
   ComponentDef,
-  ComponentDefInternal,
+  ComponentDefWithMeta,
   ComponentTemplate,
   ComponentType,
   DirectiveDef,
   DirectiveDefFlags,
-  DirectiveDefInternal,
+  DirectiveDefWithMeta,
   DirectiveType,
   NgOnChangesFeature,
   InheritDefinitionFeature,
