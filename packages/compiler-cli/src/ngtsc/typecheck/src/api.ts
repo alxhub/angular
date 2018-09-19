@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import {Directive, Node} from '@angular/compiler';
+import {Directive, Node, BoundTarget} from '@angular/compiler';
 
 import {Reference} from '../../metadata';
 
@@ -12,13 +12,9 @@ export interface DirectiveTypecheckData {
   };
 }
 
-export interface ComponentTcbRequest {
-  nodes: Node[];
-  directives: Directive<DirectiveTypecheckData>;
-}
-
-export interface ComponentTcbResponse {
-  checkFn: ts.FunctionDeclaration;
+export interface TypeCheckBlockMetadata {
+  boundTarget: BoundTarget<DirectiveTypecheckData>;
+  fnName: string;
 }
 
 export interface TypeCtorMetadata {

@@ -15,8 +15,6 @@ import {reflectIdentifierOfDeclaration, reflectNameOfDeclaration} from '../../me
 
 import {toR3Reference} from './util';
 
-
-
 /**
  * Metadata extracted for a given NgModule that can be used to compute selector scopes.
  */
@@ -31,9 +29,22 @@ export interface ModuleData {
  * context of some module.
  */
 export interface CompilationScope<T> {
-  directives: Map<string, T>;
+  directives: Map<string, ScopeDirective<T>>;
   pipes: Map<string, T>;
   containsForwardDecls?: boolean;
+}
+
+export interface ScopeDirectiveMetadata {
+  selector: string;
+  exportAs: string|null;
+  inputs: {[field: string]: string};
+  outputs: {[field: string]: string};
+  queries: string[];
+  isComponent: boolean;
+}
+
+export interface ScopeDirective<T> extends ScopeDirectiveMetadata {
+  directive: T;
 }
 
 /**
@@ -71,9 +82,9 @@ export class SelectorScopeRegistry {
   private _compilationScopeCache = new Map<ts.Declaration, CompilationScope<Reference>>();
 
   /**
-   * Map of components/directives to their selector.
+   * Map of components/directives to their metadata.
    */
-  private _directiveToSelector = new Map<ts.Declaration, string>();
+  private _directiveToMetadata = new Map<ts.Declaration, ScopeDirectiveMetadata>();
 
   /**
    * Map of pipes to their name.
@@ -105,15 +116,15 @@ export class SelectorScopeRegistry {
   }
 
   /**
-   * Register the selector of a component or directive with the registry.
+   * Register the metadata of a component or directive with the registry.
    */
-  registerSelector(node: ts.Declaration, selector: string): void {
+  registerDirective(node: ts.Declaration, metadata: ScopeDirectiveMetadata): void {
     node = ts.getOriginalNode(node) as ts.Declaration;
 
-    if (this._directiveToSelector.has(node)) {
-      throw new Error(`Selector already registered: ${reflectNameOfDeclaration(node)} ${selector}`);
+    if (this._directiveToMetadata.has(node)) {
+      throw new Error(`Selector already registered: ${reflectNameOfDeclaration(node)} ${metadata.selector}`);
     }
-    this._directiveToSelector.set(node, selector);
+    this._directiveToMetadata.set(node, metadata);
   }
 
   /**
@@ -147,7 +158,7 @@ export class SelectorScopeRegistry {
     }
 
     // This is the first time the scope for this module is being computed.
-    const directives = new Map<string, Reference>();
+    const directives = new Map<string, ScopeDirective<Reference>>();
     const pipes = new Map<string, Reference>();
 
     // Process the declaration scope of the module, and lookup the selector of every declared type.
@@ -157,10 +168,10 @@ export class SelectorScopeRegistry {
       const node = ts.getOriginalNode(ref.node) as ts.Declaration;
 
       // Either the node represents a directive or a pipe. Look for both.
-      const selector = this.lookupDirectiveSelector(node);
+      const metadata = this.lookupDirectiveMetadata(node);
       // Only directives/components with selectors get added to the scope.
-      if (selector != null) {
-        directives.set(selector, ref);
+      if (metadata != null) {
+        directives.set(metadata.selector, {...metadata, directive: ref});
         return;
       }
 
@@ -215,7 +226,7 @@ export class SelectorScopeRegistry {
     } else {
       // The module wasn't analyzed before, and probably has a precompiled ngModuleDef with a type
       // annotation that specifies the needed metadata.
-      data = this._readMetadataFromCompiledClass(node, ngModuleImportedFrom);
+      data = this._readModuleDataFromCompiledClass(node, ngModuleImportedFrom);
       // Note that data here could still be null, if the class didn't have a precompiled
       // ngModuleDef.
     }
@@ -250,17 +261,17 @@ export class SelectorScopeRegistry {
   }
 
   /**
-   * Lookup the selector of a component or directive class.
+   * Lookup the metadata of a component or directive class.
    *
    * Potentially this class is declared in a .d.ts file or otherwise has a manually created
    * ngComponentDef/ngDirectiveDef. In this case, the type metadata of that definition is read
-   * to determine the selector.
+   * to determine the metadata.
    */
-  private lookupDirectiveSelector(node: ts.Declaration): string|null {
-    if (this._directiveToSelector.has(node)) {
-      return this._directiveToSelector.get(node) !;
+  private lookupDirectiveMetadata(node: ts.Declaration): ScopeDirectiveMetadata|null {
+    if (this._directiveToMetadata.has(node)) {
+      return this._directiveToMetadata.get(node) !;
     } else {
-      return this._readSelectorFromCompiledClass(node);
+      return this._readMetadataFromCompiledClass(node);
     }
   }
 
@@ -280,7 +291,7 @@ export class SelectorScopeRegistry {
    * @param ngModuleImportedFrom module specifier of the import path to assume for all declarations
    * stemming from this module.
    */
-  private _readMetadataFromCompiledClass(clazz: ts.Declaration, ngModuleImportedFrom: string|null):
+  private _readModuleDataFromCompiledClass(clazz: ts.Declaration, ngModuleImportedFrom: string|null):
       ModuleData|null {
     // This operation is explicitly not memoized, as it depends on `ngModuleImportedFrom`.
     // TODO(alxhub): investigate caching of .d.ts module metadata.
@@ -309,7 +320,7 @@ export class SelectorScopeRegistry {
    * Get the selector from type metadata for a class with a precompiled ngComponentDef or
    * ngDirectiveDef.
    */
-  private _readSelectorFromCompiledClass(clazz: ts.Declaration): string|null {
+  private _readMetadataFromCompiledClass(clazz: ts.Declaration): ScopeDirectiveMetadata|null {
     const def = this.reflector.getMembersOfClass(clazz).find(
         field =>
             field.isStatic && (field.name === 'ngComponentDef' || field.name === 'ngDirectiveDef'));
@@ -318,16 +329,22 @@ export class SelectorScopeRegistry {
       return null;
     } else if (
         def.type === null || !ts.isTypeReferenceNode(def.type) ||
-        def.type.typeArguments === undefined || def.type.typeArguments.length !== 2) {
+        def.type.typeArguments === undefined || def.type.typeArguments.length !== 6) {
       // The type metadata was the wrong shape.
       return null;
     }
-    const type = def.type.typeArguments[1];
-    if (!ts.isLiteralTypeNode(type) || !ts.isStringLiteral(type.literal)) {
-      // The type metadata was the wrong type.
+    const selector = readStringType(def.type.typeArguments[1]);
+    if (selector === null) {
       return null;
     }
-    return type.literal.text;
+    return {
+      isComponent: def.name === 'ngComponentDef',
+      selector,
+      exportAs: readStringType(def.type.typeArguments[2]),
+      inputs: readStringMapType(def.type.typeArguments[3]),
+      outputs: readStringMapType(def.type.typeArguments[4]),
+      queries: readStringArrayType(def.type.typeArguments[5]),
+    };
   }
 
   /**
@@ -399,23 +416,34 @@ function absoluteModuleName(ref: Reference): string|null {
   return ref.moduleName;
 }
 
-function convertReferenceMap(
+function convertDirectiveReferenceMap(
+    map: Map<string, ScopeDirective<Reference>>, context: ts.SourceFile): Map<string, ScopeDirective<Expression>> {
+  const newMap = new Map<string, ScopeDirective<Expression>>();
+  map.forEach((meta, selector) => {
+    newMap.set(selector, {...meta, directive: toR3Reference(meta.directive, context).value});
+  });
+  return newMap;
+}
+
+function convertPipeReferenceMap(
     map: Map<string, Reference>, context: ts.SourceFile): Map<string, Expression> {
-  return new Map<string, Expression>(Array.from(map.entries()).map(([selector, ref]): [
-    string, Expression
-  ] => [selector, toR3Reference(ref, context).value]));
+  const newMap = new Map<string, Expression>();
+  map.forEach((meta, selector) => {
+    newMap.set(selector, toR3Reference(meta, context).value);
+  });
+  return newMap;
 }
 
 function convertScopeToExpressions(
     scope: CompilationScope<Reference>, context: ts.Declaration): CompilationScope<Expression> {
   const sourceContext = ts.getOriginalNode(context).getSourceFile();
-  const directives = convertReferenceMap(scope.directives, sourceContext);
-  const pipes = convertReferenceMap(scope.pipes, sourceContext);
+  const directives = convertDirectiveReferenceMap(scope.directives, sourceContext);
+  const pipes = convertPipeReferenceMap(scope.pipes, sourceContext);
   const declPointer = maybeUnwrapNameOfDeclaration(context);
   let containsForwardDecls = false;
   directives.forEach(expr => {
     containsForwardDecls =
-        containsForwardDecls || isExpressionForwardReference(expr, declPointer, sourceContext);
+        containsForwardDecls || isExpressionForwardReference(expr.directive, declPointer, sourceContext);
   });
   !containsForwardDecls && pipes.forEach(expr => {
     containsForwardDecls =
@@ -443,4 +471,43 @@ function maybeUnwrapNameOfDeclaration(decl: ts.Declaration): ts.Declaration|ts.I
     return decl.name;
   }
   return decl;
+}
+
+function readStringType(type: ts.TypeNode): string|null {
+  if (!ts.isLiteralTypeNode(type) || !ts.isStringLiteral(type.literal)) {
+    return null;
+  }
+  return type.literal.text;
+}
+
+function readStringMapType(type: ts.TypeNode): {[key: string]: string} {
+  if (!ts.isTypeLiteralNode(type)) {
+    return {};
+  }
+  const obj: {[key: string]: string} = {};
+  type.members.forEach(member => {
+    if (!ts.isPropertySignature(member) || member.type === undefined || member.name === undefined || !ts.isStringLiteral(member.name)) {
+      return;
+    }
+    const value = readStringType(member.type);
+    if (value === null) {
+      return null;
+    }
+    obj[member.name.text] = value;
+  });
+  return obj;
+}
+
+function readStringArrayType(type: ts.TypeNode): string[] {
+  if (!ts.isTupleTypeNode(type)) {
+    return [];
+  }
+  const res: string[] = [];
+  type.elementTypes.forEach(el => {
+    if (!ts.isLiteralTypeNode(el) || !ts.isStringLiteral(el.literal)) {
+      return;
+    }
+    res.push(el.literal.text);
+  });
+  return res;
 }

@@ -1,7 +1,6 @@
 import * as ts from 'typescript';
-import {R3ComponentMetadata, WrappedNodeExpr} from '@angular/compiler';
 
-import {ComponentTcbRequest, ComponentTcbResponse, TypeCtorMetadata} from './api';
+import {TypeCtorMetadata} from './api';
 
 export function generateTypeCtor(node: ts.ClassDeclaration, meta: TypeCtorMetadata): ts.MethodDeclaration {
   const id = node.name!;

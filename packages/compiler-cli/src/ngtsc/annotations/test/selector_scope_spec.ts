@@ -71,7 +71,14 @@ describe('SelectorScopeRegistry', () => {
       imports: [new AbsoluteReference(SomeModule, SomeModule.name !, 'some_library', 'SomeModule')],
     });
 
-    registry.registerSelector(ProgramCmp, 'program-cmp');
+    registry.registerDirective(ProgramCmp, {
+      selector: 'program-cmp',
+      isComponent: true,
+      exportAs: null,
+      inputs: {},
+      outputs: {},
+      queries: []
+    });
 
     const scope = registry.lookupCompilationScope(ProgramCmp) !;
     expect(scope).toBeDefined();
@@ -128,7 +135,14 @@ describe('SelectorScopeRegistry', () => {
       imports: [],
     });
 
-    registry.registerSelector(ProgramCmp, 'program-cmp');
+    registry.registerDirective(ProgramCmp, {
+      selector: 'program-cmp',
+      isComponent: true,
+      exportAs: null,
+      inputs: {},
+      outputs: {},
+      queries: []
+    });
 
     const scope = registry.lookupCompilationScope(ProgramCmp) !;
     expect(scope).toBeDefined();

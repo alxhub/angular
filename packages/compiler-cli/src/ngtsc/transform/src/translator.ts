@@ -420,7 +420,7 @@ export class TypeTranslatorVisitor implements ExpressionVisitor, TypeVisitor {
       const {key, quoted} = entry;
       const value = entry.value.visitExpression(this, context);
       if (quoted) {
-        return `"${key}": ${value}`;
+        return `'${key}': ${value}`;
       } else {
         return `${key}: ${value}`;
       }

@@ -140,7 +140,14 @@ export class ComponentDecoratorHandler implements DecoratorHandler<ComponentHand
     // If the component has a selector, it should be registered with the `SelectorScopeRegistry` so
     // when this component appears in an `@NgModule` scope, its selector can be determined.
     if (metadata.selector !== null) {
-      this.scopeRegistry.registerSelector(node, metadata.selector);
+      this.scopeRegistry.registerDirective(node, {
+        selector: metadata.selector,
+        exportAs: metadata.exportAs,
+        inputs: metadata.inputs,
+        outputs: metadata.outputs,
+        queries: metadata.queries.map(query => query.propertyName),
+        isComponent: true,
+      });
     }
 
     // Construct the list of view queries.
@@ -204,7 +211,7 @@ export class ComponentDecoratorHandler implements DecoratorHandler<ComponentHand
     const matcher = new SelectorMatcher<Directive<DirectiveTypecheckData>>();
     if (scope !== null) {
       console.error('found scope for', (node as ts.ClassDeclaration).name!.text, scope.directives.size);
-      scope.directives.forEach((ref, selector) => {
+      scope.directives.forEach((meta, selector) => {
         matcher.addSelectables(CssSelector.parse(selector), {
           directive: {
             fields: {
@@ -212,7 +219,7 @@ export class ComponentDecoratorHandler implements DecoratorHandler<ComponentHand
               outputs: [],
               queries: [],
             },
-            ref: ref as Reference<ts.ClassDeclaration>,
+            ref: meta.directive as Reference<ts.ClassDeclaration>,
           },
           exportAs: null,
           inputs: new Set<string>(),
@@ -237,7 +244,9 @@ export class ComponentDecoratorHandler implements DecoratorHandler<ComponentHand
       // Replace the empty components and directives from the analyze() step with a fully expanded
       // scope. This is possible now because during compile() the whole compilation unit has been
       // fully analyzed.
-      const {directives, pipes, containsForwardDecls} = scope;
+      const {pipes, containsForwardDecls} = scope;
+      const directives = new Map<string, Expression>();
+      scope.directives.forEach((meta, selector) => directives.set(selector, meta.directive));
       const wrapDirectivesInClosure: boolean = !!containsForwardDecls;
       metadata = {...metadata, directives, pipes, wrapDirectivesInClosure};
     }

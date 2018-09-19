@@ -1,7 +1,7 @@
 import * as a from '../../../src/render3/r3_ast';
 import * as e from '../../../src/expression_parser/ast';
 
-export function findExpression(tmpl: a.Node[], expr: string): e.AST|null {
+export function findExpression(tmpl: a.R3AstNode[], expr: string): e.AST|null {
   const res = tmpl.reduce((found, node) => {
     if (found !== null) {
       return found;
@@ -15,7 +15,7 @@ export function findExpression(tmpl: a.Node[], expr: string): e.AST|null {
   return res;
 }
 
-function findExpressionInNode(node: a.Node, expr: string): e.AST|null {
+function findExpressionInNode(node: a.R3AstNode, expr: string): e.AST|null {
   if (node instanceof a.Element || node instanceof a.Template) {
     return findExpression(
       [

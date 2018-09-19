@@ -117,7 +117,7 @@ export function compileDirectiveFromMetadata(
   // string literal, which must be on one line.
   const selectorForType = (meta.selector || '').replace(/\n/g, '');
 
-  const type = createTypeForDirectiveDef(meta, R3.DirectiveDefWithMeta);
+  const type = createTypeForDef(meta, R3.DirectiveDefWithMeta);
   return {expression, type, statements};
 }
 
@@ -254,7 +254,7 @@ export function compileComponentFromMetadata(
   const selectorForType = (meta.selector || '').replace(/\n/g, '');
 
   const expression = o.importExpr(R3.defineComponent).callFn([definitionMap.toLiteralMap()]);
-  const type = createTypeForDirectiveDef(meta, R3.ComponentDefWithMeta);
+  const type = createTypeForDef(meta, R3.ComponentDefWithMeta);
 
   return {expression, type, statements};
 }
@@ -520,7 +520,7 @@ function stringArrayAsType(arr: string[]): o.Type {
   return arr.length > 0 ? o.expressionType(o.literalArr(arr.map(value => o.literal(value)))) : o.NONE_TYPE;
 }
 
-function createTypeForDirectiveDef(meta: R3DirectiveMetadata, typeBase: o.ExternalReference): o.Type {
+function createTypeForDef(meta: R3DirectiveMetadata, typeBase: o.ExternalReference): o.Type {
   // On the type side, remove newlines from the selector as it will need to fit into a TypeScript
   // string literal, which must be on one line.
   const selectorForType = (meta.selector || '').replace(/\n/g, '');
