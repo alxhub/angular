@@ -172,6 +172,8 @@ class DirectiveMatcher<D> implements Visitor {
     [...node.attributes, ...node.inputs].forEach(binding => {
       
     });
+
+    node.children.forEach(child => child.visit(this));
   }
 
   visitContent(content: Content): void {}

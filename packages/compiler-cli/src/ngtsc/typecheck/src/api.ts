@@ -10,6 +10,8 @@ export interface DirectiveTypecheckData {
     outputs: string[];
     queries: string[];
   };
+  ngTemplateGuards: string[];
+  hasNgTemplateContextGuard: boolean;
 }
 
 export interface TypeCheckBlockMetadata {

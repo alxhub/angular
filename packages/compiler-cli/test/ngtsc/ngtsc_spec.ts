@@ -79,6 +79,7 @@ describe('ngtsc behavioral tests', () => {
         "experimentalDecorators": true,
         "skipLibCheck": true,
         "noImplicitAny": true,
+        "strictNullChecks": true,
         "types": [],
         "outDir": "built",
         "rootDir": ".",
@@ -783,13 +784,26 @@ describe('ngtsc behavioral tests', () => {
     it('should generate type constructors', () => {
       writeConfig({fullTemplateTypeCheck: true});
       write('test.ts', `
-      import {Component, NgModule} from '@angular/core';
+      import {Component, Directive, Input, NgModule} from '@angular/core';
+
+      @Directive({
+        selector: '[ngIf]',
+      })
+      class NgIf {
+        @Input() ngIf: any;
+
+        static ngTemplateGuard_ngIf<E>(dir: NgIf, expr: E): expr is NonNullable<E> {
+          return true;
+        }
+      }
 
       @Component({
         selector: 'cmp-a',
-        template: '<cmp-b></cmp-b>',
+        template: '<cmp-b *ngIf="user">{{user.name}}</cmp-b>',
       })
-      class CmpA {}
+      class CmpA {
+        user: {name: string}|null;
+      }
 
       @Component({
         selector: 'cmp-b',
@@ -798,7 +812,7 @@ describe('ngtsc behavioral tests', () => {
       class CmpB {}
 
       @NgModule({
-        declarations: [CmpA, CmpB],
+        declarations: [CmpA, CmpB, NgIf],
       })
       class Module {}
       `);

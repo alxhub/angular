@@ -19,7 +19,9 @@ export class AuxiliaryProgramHost implements ts.CompilerHost {
     } else {
     }
     if (sf !== undefined) {
-      return this.augment(sf);
+      const augSf = this.augment(sf);
+      this.sfCache.set(fileName, augSf);
+      return augSf;
     } else {
       return undefined;
     }

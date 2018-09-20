@@ -2,21 +2,52 @@ import * as ts from 'typescript';
 import {Directive, R3TargetBinder, SelectorMatcher} from '@angular/compiler';
 import {Node} from '@angular/compiler/src/render3/r3_ast';
 
-import { TypeCtorMetadata, DirectiveTypecheckData } from './api';
-import {generateTypeCtor} from './type_constructor';
+import { ImportManager } from '../../translator';
 
-interface TypeCtorOp {
-  node: ts.ClassDeclaration;
-  meta: TypeCtorMetadata;
+import {TypeCtorMetadata, DirectiveTypecheckData, TypeCheckBlockMetadata} from './api';
+import {generateTypeCtor} from './type_constructor';
+import { generateTypeCheckBlock } from './type_check_block';
+
+interface Op {
+  readonly node: ts.ClassDeclaration;
+  readonly splitPoint: number;
+
+  execute(im: ImportManager, sf: ts.SourceFile, printer: ts.Printer): string;
 }
 
-function orderOps(op1: {node: ts.ClassDeclaration}, op2: {node: ts.ClassDeclaration}): number {
-  return op1.node.pos - op2.node.pos;
+class TcbOp implements Op {
+  constructor(readonly node: ts.ClassDeclaration, readonly meta: TypeCheckBlockMetadata) {}
+
+  get splitPoint(): number {
+    return this.node.end + 1;
+  }
+
+  execute(im: ImportManager, sf: ts.SourceFile, printer: ts.Printer): string {
+    const tcb = generateTypeCheckBlock(this.node, this.meta, im);
+    return printer.printNode(ts.EmitHint.Unspecified, tcb, sf);
+  }
+}
+
+class TypeCtorOp implements Op {
+  constructor(readonly node: ts.ClassDeclaration, readonly meta: TypeCtorMetadata) {}
+
+  get splitPoint(): number {
+    return this.node.end - 1;
+  }
+
+  execute(im: ImportManager, sf: ts.SourceFile, printer: ts.Printer): string {
+    const tcb = generateTypeCtor(this.node, this.meta);
+    return printer.printNode(ts.EmitHint.Unspecified, tcb, sf);
+  }
+}
+
+function orderOps(op1: Op, op2: Op): number {
+  return op1.splitPoint - op2.splitPoint;
 }
 
 export class TypeCheckContext {
   private typeCtors = new Set<ts.ClassDeclaration>();
-  private typeCtorMap = new Map<ts.SourceFile, TypeCtorOp[]>();
+  private opMap = new Map<ts.SourceFile, Op[]>();
 
   hasTypeCtor(node: ts.ClassDeclaration): boolean {
     return this.typeCtors.has(node);
@@ -24,16 +55,21 @@ export class TypeCheckContext {
 
   addTypeCtor(sf: ts.SourceFile, node: ts.ClassDeclaration, ctorMeta: TypeCtorMetadata): void {
     if (this.hasTypeCtor(node)) {
-      throw new Error(`Did too much work to produce type ctor metadata for ${node}`);
+      return;
     }
-    if (!this.typeCtorMap.has(sf)) {
-      this.typeCtorMap.set(sf, []);
+    if (!this.opMap.has(sf)) {
+      this.opMap.set(sf, []);
     }
-    const ops = this.typeCtorMap.get(sf)!;
-    ops.push({
-      node,
-      meta: ctorMeta,
-    });
+    const ops = this.opMap.get(sf)!;
+    ops.push(new TypeCtorOp(node, ctorMeta));
+  }
+
+  addTypeCheckBlock(sf: ts.SourceFile, node: ts.ClassDeclaration, tcbMeta: TypeCheckBlockMetadata): void {
+    if (!this.opMap.has(sf)) {
+      this.opMap.set(sf, []);
+    }
+    const ops = this.opMap.get(sf)!;
+    ops.push(new TcbOp(node, tcbMeta));
   }
 
   addTemplate<N>(node: ts.ClassDeclaration, template: Node[], matcher: SelectorMatcher<Directive<DirectiveTypecheckData>>): void {
@@ -44,24 +80,32 @@ export class TypeCheckContext {
     const directives = bound.getUsedDirectives();
     console.error('processed', node.name!.text, 'and found it used', directives.length, 'directives');
     directives.forEach(dir => {
-      this.addTypeCtor(node.getSourceFile(), node, {
+      const dirNode = dir.directive.ref.node;
+      this.addTypeCtor(dirNode.getSourceFile(), dirNode, {
         fnName: 'ngTypeCtor',
-        body: !node.getSourceFile().fileName.endsWith('.d.ts'),
+        body: !dirNode.getSourceFile().fileName.endsWith('.d.ts'),
         fields: {
-          inputs: [],
-          outputs: [],
+          inputs: Array.from(dir.inputs.values()),
+          outputs: Array.from(dir.outputs.values()),
+          // TODO: support queries
           queries: [],
-        }
-      })
+        },
+      });
+    });
+    this.addTypeCheckBlock(node.getSourceFile(), node, {
+      boundTarget: bound,
+      fnName: `${node.name!.text}_TypeCheckBlock`,
     });
   }
 
   transform(sf: ts.SourceFile): ts.SourceFile {
-    if (!this.typeCtorMap.has(sf)) {
+    if (!this.opMap.has(sf)) {
       return sf;
     }
 
-    const ops = this.typeCtorMap.get(sf)!.sort(orderOps);
+    const importManager = new ImportManager(false, '_i');
+
+    const ops = this.opMap.get(sf)!.sort(orderOps);
     const textParts = splitStringAtPoints(sf.text, ops.map(op => op.node.end - 1));
 
     const printer = ts.createPrinter({omitTrailingSemicolon: true});
@@ -69,13 +113,12 @@ export class TypeCheckContext {
     let str = textParts[0];
 
     ops.forEach((op, idx) => {
-      const ctor = generateTypeCtor(op.node, op.meta);
-      const text = printer.printNode(ts.EmitHint.Unspecified, ctor, sf);
+      const text = op.execute(importManager, sf, printer);
       str += text + textParts[idx + 1];
     });
 
-    console.error('str', str);
-
+    str = importManager.getAllImports(sf.fileName, null).map(i => `import * as ${i.as} from '${i.name}';`).join('\n') + '\n' + str;
+    console.error(str);
     return ts.createSourceFile(sf.fileName, str, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   }
 }
@@ -91,3 +134,4 @@ function splitStringAtPoints(str: string, points: number[]): string[] {
   splits.push(str.substring(start));
   return splits;
 }
+

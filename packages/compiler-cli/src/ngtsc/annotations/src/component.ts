@@ -220,6 +220,7 @@ export class ComponentDecoratorHandler implements DecoratorHandler<ComponentHand
               queries: [],
             },
             ref: meta.directive as Reference<ts.ClassDeclaration>,
+            ...detectDirectiveGuards(meta.directive.node as ts.ClassDeclaration),
           },
           exportAs: null,
           inputs: new Set<string>(),
@@ -285,4 +286,33 @@ function convertMapToStringMap<T>(map: Map<string, T>): {[key: string]: T} {
   const stringMap: {[key: string]: T} = {};
   map.forEach((value: T, key: string) => { stringMap[key] = value; });
   return stringMap;
+}
+
+function detectDirectiveGuards(node: ts.ClassDeclaration): {
+  ngTemplateGuards: string[],
+  hasNgTemplateContextGuard: boolean,
+} {
+  const methods = nodeStaticMethodNames(node);
+  const ngTemplateGuards = methods
+    .filter(method => method.startsWith('ngTemplateGuard_'))
+    .map(method => method.split('_', 2)[1]);
+  const hasNgTemplateContextGuard = methods.some(name => name === 'ngTemplateContextGuard');
+  return {hasNgTemplateContextGuard, ngTemplateGuards};
+}
+
+function nodeStaticMethodNames(node: ts.ClassDeclaration): string[] {
+  return node.members.filter(member => {
+    if (!ts.isMethodDeclaration(member) || !ts.isIdentifier(member.name)) {
+      return false;
+    }
+    if (member.modifiers === undefined || !member.modifiers.some(isStaticModifier)) {
+      return false;
+    }
+    return true;
+  })
+  .map(member => (member.name! as ts.Identifier).text);
+}
+
+function isStaticModifier(mod: ts.Modifier): boolean {
+  return mod.kind === ts.SyntaxKind.StaticKeyword;
 }
