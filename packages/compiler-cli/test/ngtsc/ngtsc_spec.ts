@@ -797,6 +797,21 @@ describe('ngtsc behavioral tests', () => {
         }
       }
 
+      interface NgForOfContext<T> {
+        $implicit: T,
+      }
+
+      @Directive({
+        selector: '[ngForOf]',
+      })
+      class NgFor<T> {
+        @Input() ngForOf: T[];
+
+        static ngTemplateContextGuard<T>(dir: NgFor<T>, ctx: any): ctx is NgForOfContext<T> {
+          return true;
+        }
+      }
+
       @Component({
         selector: 'cmp-a',
         template: '<cmp-b *ngIf="user">{{user.name}}</cmp-b>',
@@ -807,12 +822,14 @@ describe('ngtsc behavioral tests', () => {
 
       @Component({
         selector: 'cmp-b',
-        template: 'This is B',
+        template: '<div *ngFor="let item of items">{{item.name}}</div>',
       })
-      class CmpB {}
+      class CmpB {
+        items: {name2: string}[];
+      }
 
       @NgModule({
-        declarations: [CmpA, CmpB, NgIf],
+        declarations: [CmpA, CmpB, NgIf, NgFor],
       })
       class Module {}
       `);

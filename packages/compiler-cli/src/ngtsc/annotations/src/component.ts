@@ -215,18 +215,18 @@ export class ComponentDecoratorHandler implements DecoratorHandler<ComponentHand
         matcher.addSelectables(CssSelector.parse(selector), {
           directive: {
             fields: {
-              inputs: [],
-              outputs: [],
-              queries: [],
+              inputs: meta.inputs,
+              outputs: meta.outputs,
+              queries: meta.queries,
             },
             ref: meta.directive as Reference<ts.ClassDeclaration>,
             ...detectDirectiveGuards(meta.directive.node as ts.ClassDeclaration),
           },
           exportAs: null,
-          inputs: new Set<string>(),
-          outputs: new Set<string>(),
+          inputs: new Set(Object.keys(meta.inputs).map(key => meta.inputs[key])),
+          outputs: new Set(Object.keys(meta.outputs).map(key => meta.outputs[key])),
           isPrimary: false,
-          name: null!,
+          name: (node as ts.ClassDeclaration).name!.text,
         });
       });
       ctx.addTemplate(node as ts.ClassDeclaration, meta.parsedTemplate, matcher);

@@ -6,8 +6,8 @@ import {Reference} from '../../metadata';
 export interface DirectiveTypecheckData {
   ref: Reference<ts.ClassDeclaration>;
   fields: {
-    inputs: string[];
-    outputs: string[];
+    inputs: {[field: string]: string};
+    outputs: {[field: string]: string};
     queries: string[];
   };
   ngTemplateGuards: string[];

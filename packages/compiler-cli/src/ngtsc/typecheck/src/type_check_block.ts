@@ -1,6 +1,6 @@
 import * as ts from 'typescript';
 
-import {AST, BoundTarget, TmplAstNode, TmplAstElement, TmplAstBoundText, PropertyRead, ImplicitReceiver, TmplAstTemplate, Directive} from '@angular/compiler';
+import {AST, BoundTarget, TmplAstNode, TmplAstElement, TmplAstBoundText, TmplAstVariable, PropertyRead, ImplicitReceiver, TmplAstTemplate, Directive} from '@angular/compiler';
 
 import {TypeCheckBlockMetadata, DirectiveTypecheckData} from './api';
 import {astToTypescript} from './expression';
@@ -55,6 +55,7 @@ function tcbBodyForNodes(nodes: TmplAstNode[], tcb: Context, scope: Scope): ts.S
 class Scope {
   private elementData = new Map<TmplAstElement|TmplAstTemplate, TcbElementData>();
   private templateCtx = new Map<TmplAstTemplate, ts.Identifier>();
+  private varMap = new Map<TmplAstVariable, ts.Identifier>();
 
   constructor(private tcb: Context, private parent: Scope|null = null) {}
 
@@ -78,12 +79,23 @@ class Scope {
     return this.templateCtx.get(tmpl) || (this.parent !== null ? this.parent.getTemplateCtx(tmpl) : null);
   }
 
+  getVariableId(v: TmplAstVariable): ts.Identifier|null {
+    return this.varMap.get(v) || (this.parent !== null ? this.parent.getVariableId(v) : null);
+  }
+
   allocateElementId(el: TmplAstElement): ts.Identifier {
     const data = this.getElementData(el, true);
     if (data.htmlNode === null) {
       data.htmlNode = this.tcb.allocateId();
     }
     return data.htmlNode;
+  }
+
+  allocateVariableId(v: TmplAstVariable): ts.Identifier {
+    if (!this.varMap.has(v)) {
+      this.varMap.set(v, this.tcb.allocateId());
+    }
+    return this.varMap.get(v)!;
   }
 
   allocateDirectiveId(el: TmplAstElement|TmplAstTemplate, dir: TypeCheckDirective): ts.Identifier {
@@ -128,16 +140,6 @@ class Context {
     return ts.createIdentifier(`_t${this.nextId++}`);
   }
 
-  resolve(ast: AST, scope: Scope): ts.Identifier|null {
-    // Short circuit if this isn't a property read.
-    // TODO: handle property writes
-    if (!(ast instanceof PropertyRead && ast.receiver instanceof ImplicitReceiver)) {
-      return null;
-    }
-    // TODO: handle resolution of contexts.
-    return ts.createIdentifier('ctx');
-  }
-
   reference(ref: Reference<ts.Node>): ts.Expression {
     const ngExpr = ref.toExpression(this.sourceFile);
     if (ngExpr === null) {
@@ -167,8 +169,9 @@ function tcbProcessDirectives(el: TmplAstElement|TmplAstTemplate, tcb: Context, 
 }
 
 function tcbProcessDirective(el: TmplAstElement|TmplAstTemplate, dir: TypeCheckDirective, tcb: Context, statements: ts.Statement[], scope: Scope): ts.Identifier {
+  console.error('process directive', dir);
   const id = scope.allocateDirectiveId(el, dir);
-  const initializer = tcbCallTypeCtor(el, dir, tcb, scope);
+  const initializer = tcbCallTypeCtor(el, dir, tcb, statements, scope);
   statements.push(tsCreateVariable(id, initializer));
   return null!;
 }
@@ -182,7 +185,7 @@ function tcbProcessNodes(nodes: TmplAstNode[], tcb: Context, statements: ts.Stat
     } else if (node instanceof TmplAstTemplate) {
       tcbProcessTemplateDeclaration(node, tcb, statements, scope);
     } else if (node instanceof TmplAstBoundText) {
-      const expr = tcbExpression(node.value, tcb, scope);
+      const expr = tcbExpression(node.value, tcb, statements, scope);
       statements.push(ts.createStatement(expr));
     }
   });
@@ -213,7 +216,7 @@ function tcbProcessTemplateDeclaration(tmpl: TmplAstTemplate, tcb: Context, stat
       dir.directive.ngTemplateGuards.forEach(inputName => {
         const boundInput = tmpl.inputs.find(i => i.name === inputName);
         if (boundInput !== undefined) {
-          const expr = tcbExpression(boundInput.value, tcb, scope);
+          const expr = tcbExpression(boundInput.value, tcb, statements, scope);
           const guardInvoke = tsCallMethod(dirId, `ngTemplateGuard_${inputName}`, [
             dirInstId,
             expr,
@@ -225,6 +228,17 @@ function tcbProcessTemplateDeclaration(tmpl: TmplAstTemplate, tcb: Context, stat
           );
         }
       });
+      if (dir.directive.hasNgTemplateContextGuard) {
+        const guardInvoke = tsCallMethod(dirId, 'ngTemplateContextGuard', [
+          dirInstId,
+          ctx,
+        ]);
+        partialGuard = ts.createBinary(
+          partialGuard,
+          ts.SyntaxKind.AmpersandAmpersandToken,
+          guardInvoke,
+        );
+      }
       return partialGuard;
     }, guard);
   }
@@ -237,16 +251,25 @@ function tcbProcessTemplateDeclaration(tmpl: TmplAstTemplate, tcb: Context, stat
   statements.push(tmplIf);
 }
 
-function tcbExpression(ast: AST, tcb: Context, scope: Scope): ts.Expression {
-  return astToTypescript(ast, (ast) => tcb.resolve(ast, scope));
+function tcbExpression(ast: AST, tcb: Context, statements: ts.Statement[], scope: Scope): ts.Expression {
+  return astToTypescript(ast, (ast) => tcbResolve(ast, tcb, statements, scope));
 }
 
-function tcbCallTypeCtor(el: TmplAstElement|TmplAstTemplate, dir: TypeCheckDirective, tcb: Context, scope: Scope): ts.Expression {
+function tcbCallTypeCtor(el: TmplAstElement|TmplAstTemplate, dir: TypeCheckDirective, tcb: Context, statements: ts.Statement[], scope: Scope): ts.Expression {
   const dirId = tcb.reference(dir.directive.ref);
+  console.error(`Inputs: ${el.inputs.map(i => i.name)}`);
+  console.error(`Dir: ${dir.name} ${dir.inputs}`);
+  const propMatch = new Map<string, string>();
+  const inputs = dir.directive.fields.inputs;
+  Object.keys(inputs).forEach(key => propMatch.set(inputs[key], key));
+  const members = el.inputs.filter(input => propMatch.has(input.name)).map(input => {
+    const value = tcbExpression(input.value, tcb, statements, scope);
+    return ts.createPropertyAssignment(propMatch.get(input.name)!, value);
+  });
   return tsCallMethod(
     /* receiver */ dirId,
     /* methodName */ 'ngTypeCtor',
-    /* args */ [ts.createObjectLiteral()],
+    /* args */ [ts.createObjectLiteral(members)],
   );
 }
 
@@ -298,4 +321,51 @@ function tsCallMethod(receiver: ts.Expression, methodName: string, args: ts.Expr
     /* typeArguments */ undefined,
     /* argumentsArray */ args
   );  
+}
+
+function tcbResolve(ast: AST, tcb: Context, statements: ts.Statement[], scope: Scope): ts.Expression|null {
+  // Short circuit if this isn't a property read.
+  // TODO: handle property writes
+  if (!(ast instanceof PropertyRead && ast.receiver instanceof ImplicitReceiver)) {
+    return null;
+  }
+
+  const binding = tcb.boundTarget.getExpressionTarget(ast);
+  if (binding !== null) {
+    if (binding instanceof TmplAstVariable) {
+      return tcbResolveVariable(binding, tcb, statements, scope);
+    } else {
+      throw new Error(`Not handled: ${binding}`);
+    }
+  } else if (ast instanceof PropertyRead) {
+    return ts.createPropertyAccess(
+      /* expression */ ts.createIdentifier('ctx'),
+      /* name */ ast.name,
+    );
+  } else {
+    throw new Error(`Could not map receiver for ${ast}`);
+  }
+}
+
+function tcbResolveVariable(binding: TmplAstVariable, tcb: Context, statements: ts.Statement[], scope: Scope): ts.Identifier {
+  let id = scope.getVariableId(binding);
+  if (id !== null) {
+    return id;
+  }
+  const tmpl = tcb.boundTarget.getTemplateOfSymbol(binding);
+  let ctx: ts.Identifier|null = null;
+  if (tmpl !== null) {
+    ctx = scope.getTemplateCtx(tmpl);
+  }
+  if (ctx === null) {
+    throw new Error('Expected template context to exist.')
+  }
+
+  id = scope.allocateVariableId(binding);
+  const initializer = ts.createPropertyAccess(
+    /* expression */ ctx,
+    /* name */ binding.value,
+  );
+  statements.push(tsCreateVariable(id, initializer));  
+  return id;
 }
