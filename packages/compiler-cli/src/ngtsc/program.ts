@@ -19,6 +19,7 @@ import {FactoryGenerator, FactoryInfo, GeneratedFactoryHostWrapper, generatedFac
 import {TypeScriptReflectionHost} from './metadata';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
 import {IvyCompilation, ivyTransformFactory} from './transform';
+import {AuxiliaryProgramHost, TypeCheckContext} from './typecheck';
 
 export class NgtscProgram implements api.Program {
   private tsProgram: ts.Program;
@@ -103,7 +104,13 @@ export class NgtscProgram implements api.Program {
       fileName?: string|undefined, cancellationToken?: ts.CancellationToken|
                                    undefined): ReadonlyArray<ts.Diagnostic|api.Diagnostic> {
     const compilation = this.ensureAnalyzed();
-    return compilation.diagnostics;
+    const diagnostics = [...compilation.diagnostics];
+    if (!!this.options.fullTemplateTypeCheck) {
+      const ctx = new TypeCheckContext();
+      compilation.typeCheck(ctx);
+      diagnostics.push(...this.compileTypeCheckProgram(ctx));
+    }
+    return diagnostics;
   }
 
   async loadNgStructureAsync(): Promise<void> {
@@ -181,6 +188,18 @@ export class NgtscProgram implements api.Program {
       },
     });
     return emitResult;
+  }
+
+  private compileTypeCheckProgram(ctx: TypeCheckContext): ReadonlyArray<ts.Diagnostic> {
+    const host = new AuxiliaryProgramHost(
+        this.tsProgram, this.host, (sf: ts.SourceFile) => ctx.transform(sf));
+    const auxProgram = ts.createProgram({
+      host,
+      rootNames: this.tsProgram.getRootFileNames(),
+      oldProgram: this.tsProgram,
+      options: this.options,
+    });
+    return auxProgram.getSemanticDiagnostics();
   }
 
   private makeCompilation(): IvyCompilation {
