@@ -122,8 +122,8 @@ export class Identifiers {
 
   static defineComponent: o.ExternalReference = {name: 'ɵdefineComponent', moduleName: CORE};
 
-  static ComponentDef: o.ExternalReference = {
-    name: 'ɵComponentDef',
+  static ComponentDefWithMeta: o.ExternalReference = {
+    name: 'ɵComponentDefWithMeta',
     moduleName: CORE,
   };
 
@@ -132,8 +132,8 @@ export class Identifiers {
     moduleName: CORE,
   };
 
-  static DirectiveDef: o.ExternalReference = {
-    name: 'ɵDirectiveDef',
+  static DirectiveDefWithMeta: o.ExternalReference = {
+    name: 'ɵDirectiveDefWithMeta',
     moduleName: CORE,
   };
 

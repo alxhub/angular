@@ -18,7 +18,7 @@ import {getLElementFromComponent, readPatchedLViewData} from './context_discover
 import {getComponentDef} from './definition';
 import {queueInitHooks, queueLifecycleHooks} from './hooks';
 import {CLEAN_PROMISE, baseDirectiveCreate, createLViewData, createTView, detectChangesInternal, enterView, executeInitAndContentHooks, hostElement, leaveView, locateHostElement, setHostBindings, queueHostBindingForCheck,} from './instructions';
-import {ComponentDef, ComponentDefInternal, ComponentType} from './interfaces/definition';
+import {ComponentDef, ComponentType} from './interfaces/definition';
 import {LElementNode} from './interfaces/node';
 import {RElement, RendererFactory3, domRendererFactory3} from './interfaces/renderer';
 import {CONTEXT, INJECTOR, LViewData, LViewFlags, RootContext, RootContextFlags, TVIEW} from './interfaces/view';
@@ -187,7 +187,7 @@ export function createRootContext(
  * renderComponent(AppComponent, {features: [RootLifecycleHooks]});
  * ```
  */
-export function LifecycleHooksFeature(component: any, def: ComponentDefInternal<any>): void {
+export function LifecycleHooksFeature(component: any, def: ComponentDef<any>): void {
   const rootTView = readPatchedLViewData(component) ![TVIEW];
 
   // Root component is always created at dir index 0

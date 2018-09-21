@@ -12,7 +12,7 @@ import {Sanitizer} from '../../sanitization/security';
 import {PlayerHandler} from '../animations/interfaces';
 
 import {LContainer} from './container';
-import {ComponentQuery, ComponentTemplate, DirectiveDefInternal, DirectiveDefList, PipeDefInternal, PipeDefList} from './definition';
+import {ComponentQuery, ComponentTemplate, DirectiveDef, DirectiveDefList, PipeDefInternal, PipeDefList} from './definition';
 import {LElementNode, LViewNode, TElementNode, TNode, TViewNode} from './node';
 import {LQueries} from './query';
 import {Renderer3} from './renderer';
@@ -557,7 +557,7 @@ export type HookData = (number | (() => void))[];
 export type TData = (TNode | PipeDefInternal<any>| null)[];
 
 /** Type for TView.currentMatches */
-export type CurrentMatchesList = [DirectiveDefInternal<any>, (string | number | null)];
+export type CurrentMatchesList = [DirectiveDef<any>, (string | number | null)];
 
 // Note: This hack is necessary so we don't erroneously get a circular dependency
 // failure based on types.
