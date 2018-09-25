@@ -6,19 +6,23 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, Node} from '@angular/compiler';
+import {BoundTarget} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {Reference} from '../../metadata';
 
-export interface DirectiveTypecheckData { ref: Reference<ts.ClassDeclaration>; }
-
-export interface ComponentTcbRequest {
-  nodes: Node[];
-  directives: Directive<DirectiveTypecheckData>;
+export interface DirectiveTypecheckData {
+  ref: Reference<ts.ClassDeclaration>;
+  fields:
+      {inputs: {[field: string]: string}; outputs: {[field: string]: string}; queries: string[];};
+  ngTemplateGuards: string[];
+  hasNgTemplateContextGuard: boolean;
 }
 
-export interface ComponentTcbResponse { checkFn: ts.FunctionDeclaration; }
+export interface TypeCheckBlockMetadata {
+  boundTarget: BoundTarget<DirectiveTypecheckData>;
+  fnName: string;
+}
 
 export interface TypeCtorMetadata {
   fnName: string;
