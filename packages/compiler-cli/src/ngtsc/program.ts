@@ -20,11 +20,14 @@ import {TypeScriptReflectionHost} from './metadata';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
 import {IvyCompilation, ivyTransformFactory} from './transform';
 import {TypeCheckContext, TypeCheckProgramHost} from './typecheck';
+import {ExportTracker, getTopLevelExports} from './entrypoint';
+import { FatalDiagnosticError, ErrorCode } from './diagnostics';
 
 export class NgtscProgram implements api.Program {
   private tsProgram: ts.Program;
   private resourceLoader: ResourceLoader;
   private compilation: IvyCompilation|undefined = undefined;
+  private exportTracker: ExportTracker = new ExportTracker();
   private factoryToSourceInfo: Map<string, FactoryInfo>|null = null;
   private sourceToFactorySymbols: Map<string, Set<string>>|null = null;
   private host: ts.CompilerHost;
@@ -32,12 +35,14 @@ export class NgtscProgram implements api.Program {
   private _reflector: TypeScriptReflectionHost|undefined = undefined;
   private _isCore: boolean|undefined = undefined;
   private rootDirs: string[];
+  private rootNames: ReadonlyArray<string>;
   private closureCompilerEnabled: boolean;
 
 
   constructor(
       rootNames: ReadonlyArray<string>, private options: api.CompilerOptions,
       host: api.CompilerHost, oldProgram?: api.Program) {
+    this.rootNames = rootNames;
     this.rootDirs = [];
     if (options.rootDirs !== undefined) {
       this.rootDirs.push(...options.rootDirs);
@@ -104,7 +109,9 @@ export class NgtscProgram implements api.Program {
       fileName?: string|undefined, cancellationToken?: ts.CancellationToken|
                                    undefined): ReadonlyArray<ts.Diagnostic|api.Diagnostic> {
     const compilation = this.ensureAnalyzed();
-    const diagnostics = [...compilation.diagnostics];
+    console.error('get export diagnostics');
+    const exportDiagnostics = this.getExportDiagnostics();
+    const diagnostics = [...compilation.diagnostics, ...exportDiagnostics];
     if (!!this.options.fullTemplateTypeCheck) {
       const ctx = new TypeCheckContext();
       compilation.typeCheck(ctx);
@@ -135,6 +142,21 @@ export class NgtscProgram implements api.Program {
 
   getEmittedSourceFiles(): Map<string, ts.SourceFile> {
     throw new Error('Method not implemented.');
+  }
+
+  private getExportDiagnostics(): ts.Diagnostic[] {
+    // First, add public exports to the tracker.
+    const entryPoints = this.rootNames.map(entryPoint => this.tsProgram.getSourceFile(entryPoint)!);
+    getTopLevelExports(entryPoints, this.tsProgram.getTypeChecker())
+        .forEach(publicExport => {
+          this.exportTracker.addTopLevelExport(publicExport);
+        });
+
+    // Then, use the tracker to scan for export violations.
+    return this.exportTracker.scanForPrivateExports().map(
+        decl => new FatalDiagnosticError(ErrorCode.NOT_EXPORTED, declarationToIdentifier(decl),
+            `Included in a public NgModule's exports but not exported via the entrypoint`)
+            .toDiagnostic());
   }
 
   private ensureAnalyzed(): IvyCompilation {
@@ -212,7 +234,7 @@ export class NgtscProgram implements api.Program {
           checker, this.reflector, scopeRegistry, this.isCore, this.resourceLoader, this.rootDirs),
       new DirectiveDecoratorHandler(checker, this.reflector, scopeRegistry, this.isCore),
       new InjectableDecoratorHandler(this.reflector, this.isCore),
-      new NgModuleDecoratorHandler(checker, this.reflector, scopeRegistry, this.isCore),
+      new NgModuleDecoratorHandler(checker, this.reflector, scopeRegistry, this.exportTracker, this.isCore),
       new PipeDecoratorHandler(checker, this.reflector, scopeRegistry, this.isCore),
     ];
 
@@ -302,4 +324,16 @@ function isAngularCorePackage(program: ts.Program): boolean {
       return true;
     });
   });
+}
+
+function declarationToIdentifier(decl: ts.Declaration): ts.Node {
+  if (ts.isClassDeclaration(decl)) {
+    return decl.name || decl;
+  } else if (ts.isVariableDeclaration(decl)) {
+    return decl.name;
+  } else if (ts.isFunctionDeclaration(decl)) {
+    return decl.name || decl;
+  } else {
+    return decl;
+  }
 }

@@ -10,6 +10,7 @@ import {ConstantPool, Expression, LiteralArrayExpr, R3DirectiveMetadata, R3Injec
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
+import {ExportTracker} from '../../entrypoint';
 import {Decorator, ReflectionHost} from '../../host';
 import {Reference, ResolvedValue, reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {AnalysisOutput, CompileResult, DecoratorHandler} from '../../transform';
@@ -30,7 +31,8 @@ export interface NgModuleAnalysis {
 export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalysis, Decorator> {
   constructor(
       private checker: ts.TypeChecker, private reflector: ReflectionHost,
-      private scopeRegistry: SelectorScopeRegistry, private isCore: boolean) {}
+      private scopeRegistry: SelectorScopeRegistry, private exportTracker: ExportTracker,
+      private isCore: boolean) {}
 
   detect(node: ts.Declaration, decorators: Decorator[]|null): Decorator|undefined {
     if (!decorators) {
@@ -86,6 +88,7 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
           expr, this.reflector, this.checker,
           ref => this._extractModuleFromModuleWithProvidersFn(ref.node));
       exports = this.resolveTypeList(expr, exportsMeta, 'exports');
+      exports.forEach(exp => this.exportTracker.addExportRelationship(exp.node, node));
     }
     let bootstrap: Reference<ts.Declaration>[] = [];
     if (ngModule.has('bootstrap')) {

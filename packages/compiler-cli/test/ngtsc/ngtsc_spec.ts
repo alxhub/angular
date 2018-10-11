@@ -673,4 +673,29 @@ describe('ngtsc behavioral tests', () => {
        const jsContents = env.getContents('test.js');
        expect(jsContents).toContain('directives: function () { return [CmpB]; }');
      });
+  
+  fit('should error when a directive is not exported but a module is', () => {
+    env.tsconfig({}, 'index.ts');
+    env.write('index.ts', `
+      export {Module} from './module';
+    `);
+    env.write('module.ts', `
+      import {NgModule} from '@angular/core';
+      import {Dir} from './directive';
+
+      @NgModule({
+        declarations: [Dir],
+        exports: [Dir],
+      })
+      export class Module {}
+    `);
+    env.write('directive.ts', `
+      import {Directive} from '@angular/core';
+
+      @Directive({selector: '[dir]'})
+      export class Dir {}
+    `);
+
+    env.driveMain();
+  });
 });
