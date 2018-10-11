@@ -7,11 +7,12 @@
  */
 
 import {ConstantPool, Expression, LiteralArrayExpr, R3DirectiveMetadata, R3InjectorMetadata, R3NgModuleMetadata, WrappedNodeExpr, compileInjector, compileNgModule, makeBindingParser, parseTemplate} from '@angular/compiler';
+import {R3Reference} from 'compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
 import {Decorator, ReflectionHost} from '../../host';
-import {Reference, ResolvedValue, reflectObjectLiteral, staticallyResolve} from '../../metadata';
+import {Reference, ResolvedReference, ResolvedValue, reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {AnalysisOutput, CompileResult, DecoratorHandler} from '../../transform';
 
 import {SelectorScopeRegistry} from './selector_scope';
@@ -98,14 +99,21 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
     // the compile() phase, the module's metadata is available for selector scope computation.
     this.scopeRegistry.registerModule(node, {declarations, imports, exports});
 
-    const context = node.getSourceFile();
+    const valueContext = node.getSourceFile();
+
+    let typeContext = valueContext;
+    const typeNode = this.reflector.getDtsVersionOfClass(node);
+    if (typeNode !== null) {
+      typeContext = typeNode.getSourceFile();
+    }
 
     const ngModuleDef: R3NgModuleMetadata = {
       type: new WrappedNodeExpr(node.name !),
-      bootstrap: bootstrap.map(bootstrap => toR3Reference(bootstrap, context)),
-      declarations: declarations.map(decl => toR3Reference(decl, context)),
-      exports: exports.map(exp => toR3Reference(exp, context)),
-      imports: imports.map(imp => toR3Reference(imp, context)),
+      bootstrap:
+          bootstrap.map(bootstrap => this._toR3Reference(bootstrap, valueContext, typeContext)),
+      declarations: declarations.map(decl => this._toR3Reference(decl, valueContext, typeContext)),
+      exports: exports.map(exp => this._toR3Reference(exp, valueContext, typeContext)),
+      imports: imports.map(imp => this._toR3Reference(imp, valueContext, typeContext)),
       emitInline: false,
     };
 
@@ -153,6 +161,21 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
         type: ngInjectorDef.type,
       },
     ];
+  }
+
+  private _toR3Reference(
+      valueRef: Reference<ts.Declaration>, valueContext: ts.SourceFile,
+      typeContext: ts.SourceFile): R3Reference {
+    if (!(valueRef instanceof ResolvedReference)) {
+      return toR3Reference(valueRef, valueRef, valueContext, valueContext);
+    } else {
+      let typeRef = valueRef;
+      let typeNode = this.reflector.getDtsVersionOfClass(typeRef.node);
+      if (typeNode !== null) {
+        typeRef = new ResolvedReference(typeNode, typeNode.name !);
+      }
+      return toR3Reference(valueRef, typeRef, valueContext, typeContext);
+    }
   }
 
   /**

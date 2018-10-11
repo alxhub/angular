@@ -170,6 +170,8 @@ export class TypeScriptReflectionHost implements ReflectionHost {
     return declaration.initializer || null;
   }
 
+  getDtsVersionOfClass(_: ts.Declaration): null { return null; }
+
   /**
    * Resolve a `ts.Symbol` to its declaration, keeping track of the `viaModule` along the way.
    *
