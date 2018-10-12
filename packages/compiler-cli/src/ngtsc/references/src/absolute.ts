@@ -13,10 +13,26 @@ import {pickIdentifier} from './util';
  */
 export class AbsoluteReference<T extends ts.Node> extends Reference<T> {
   private identifiers: ts.Identifier[] = [];
+  private _publicSymbolName: string|null = null;
   constructor(
       node: T, private primaryIdentifier: ts.Identifier, readonly moduleName: string,
-      readonly symbolName: string) {
+      readonly declaredSymbolName: string) {
     super(node);
+  }
+
+  get publicSymbolName(): string|null {
+    return this._publicSymbolName;
+  }
+
+  setPublicSymbolName(value: string): void {
+    if (this._publicSymbolName !== null) {
+      throw new Error(`The public symbol name for ${this.declaredSymbolName} has already been set`);
+    }
+    this._publicSymbolName = value;
+  }
+
+  get symbolName(): string {
+    return this._publicSymbolName !== null ? this._publicSymbolName : this.declaredSymbolName;
   }
 
   readonly expressable = true;
