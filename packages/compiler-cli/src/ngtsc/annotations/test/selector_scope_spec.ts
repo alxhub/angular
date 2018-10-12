@@ -9,7 +9,7 @@
 import * as ts from 'typescript';
 
 import {TypeScriptReflectionHost} from '../../metadata';
-import {AbsoluteReference, ResolvedReference} from '../../metadata/src/resolver';
+import {AbsoluteReference, RelativeReference} from '../../references';
 import {getDeclaration, makeProgram} from '../../testing/in_memory_typescript';
 import {NgModuleDecoratorHandler} from '../src/ng_module';
 import {SelectorScopeRegistry} from '../src/selector_scope';
@@ -63,17 +63,17 @@ describe('SelectorScopeRegistry', () => {
     expect(ProgramModule).toBeDefined();
     expect(SomeModule).toBeDefined();
 
-    const ProgramCmpRef = new ResolvedReference(ProgramCmp, ProgramCmp.name !);
+    const ProgramCmpRef = new RelativeReference(ProgramCmp, ProgramCmp.name !);
 
     const registry = new SelectorScopeRegistry(checker, host);
 
     registry.registerModule(ProgramModule, {
-      declarations: [new ResolvedReference(ProgramCmp, ProgramCmp.name !)],
+      declarations: [new RelativeReference(ProgramCmp, ProgramCmp.name !)],
       exports: [],
       imports: [new AbsoluteReference(SomeModule, SomeModule.name !, 'some_library', 'SomeModule')],
     });
 
-    const ref = new ResolvedReference(ProgramCmp, ProgramCmp.name !);
+    const ref = new RelativeReference(ProgramCmp, ProgramCmp.name !);
     registry.registerDirective(ProgramCmp, {
       name: 'ProgramCmp',
       ref: ProgramCmpRef,
@@ -135,12 +135,12 @@ describe('SelectorScopeRegistry', () => {
     expect(ProgramModule).toBeDefined();
     expect(SomeModule).toBeDefined();
 
-    const ProgramCmpRef = new ResolvedReference(ProgramCmp, ProgramCmp.name !);
+    const ProgramCmpRef = new RelativeReference(ProgramCmp, ProgramCmp.name !);
 
     const registry = new SelectorScopeRegistry(checker, host);
 
     registry.registerModule(ProgramModule, {
-      declarations: [new ResolvedReference(ProgramCmp, ProgramCmp.name !)],
+      declarations: [new RelativeReference(ProgramCmp, ProgramCmp.name !)],
       exports: [new AbsoluteReference(SomeModule, SomeModule.name !, 'some_library', 'SomeModule')],
       imports: [],
     });

@@ -10,8 +10,9 @@ import {Expression, ExternalExpr, ExternalReference, WrappedNodeExpr} from '@ang
 import * as ts from 'typescript';
 
 import {ReflectionHost} from '../../host';
-import {AbsoluteReference, Reference, ResolvedReference, reflectTypeEntityToDeclaration} from '../../metadata';
+import {reflectTypeEntityToDeclaration} from '../../metadata';
 import {reflectIdentifierOfDeclaration, reflectNameOfDeclaration} from '../../metadata/src/reflector';
+import {AbsoluteReference, Reference, RelativeReference} from '../../references';
 import {TypeCheckableDirectiveMeta} from '../../typecheck';
 
 import {extractDirectiveGuards, toR3Reference} from './util';
@@ -398,7 +399,7 @@ export class SelectorScopeRegistry {
       } else {
         const {node} = reflectTypeEntityToDeclaration(type, this.checker);
         const id = reflectIdentifierOfDeclaration(node);
-        return new ResolvedReference(node, id !);
+        return new RelativeReference(node, id !);
       }
     });
   }

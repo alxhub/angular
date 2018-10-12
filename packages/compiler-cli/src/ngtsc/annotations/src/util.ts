@@ -11,7 +11,7 @@ import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
 import {ClassMemberKind, Decorator, ReflectionHost} from '../../host';
-import {AbsoluteReference, ImportMode, Reference} from '../../metadata';
+import {AbsoluteReference, ImportMode, Reference} from '../../references';
 
 export function getConstructorDependencies(
     clazz: ts.ClassDeclaration, reflector: ReflectionHost, isCore: boolean): R3DependencyMetadata[]|

@@ -12,7 +12,8 @@ import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
 import {Decorator, ReflectionHost} from '../../host';
-import {AbsoluteReference, Reference, ResolvedReference, filterToMembersWithDecorator, reflectObjectLiteral, staticallyResolve} from '../../metadata';
+import {filterToMembersWithDecorator, reflectObjectLiteral, staticallyResolve} from '../../metadata';
+import {AbsoluteReference, Reference, RelativeReference} from '../../references';
 import {AnalysisOutput, CompileResult, DecoratorHandler} from '../../transform';
 import {TypeCheckContext, TypeCheckableDirectiveMeta} from '../../typecheck';
 
@@ -20,6 +21,7 @@ import {ResourceLoader} from './api';
 import {extractDirectiveMetadata, extractQueriesFromDecorator, parseFieldArrayValue, queriesFromFields} from './directive';
 import {ScopeDirective, SelectorScopeRegistry} from './selector_scope';
 import {extractDirectiveGuards, isAngularCore, unwrapExpression} from './util';
+
 
 const EMPTY_MAP = new Map<string, Expression>();
 
@@ -141,7 +143,7 @@ export class ComponentDecoratorHandler implements
     // If the component has a selector, it should be registered with the `SelectorScopeRegistry` so
     // when this component appears in an `@NgModule` scope, its selector can be determined.
     if (metadata.selector !== null) {
-      const ref = new ResolvedReference(node, node.name !);
+      const ref = new RelativeReference(node, node.name !);
       this.scopeRegistry.registerDirective(node, {
         ref,
         name: node.name !.text,

@@ -9,7 +9,7 @@
 import {BoundTarget, DirectiveMeta} from '@angular/compiler';
 import * as ts from 'typescript';
 
-import {Reference} from '../../metadata';
+import {Reference} from '../../references';
 
 /**
  * Extension of `DirectiveMeta` that includes additional information required to type-check the

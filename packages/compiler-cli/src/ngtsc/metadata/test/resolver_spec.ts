@@ -10,8 +10,9 @@ import {WrappedNodeExpr} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {TypeScriptReflectionHost} from '..';
+import {AbsoluteReference, Reference} from '../../references';
 import {getDeclaration, makeProgram} from '../../testing/in_memory_typescript';
-import {AbsoluteReference, EnumValue, Reference, ResolvedValue, staticallyResolve} from '../src/resolver';
+import {EnumValue, ResolvedValue, staticallyResolve} from '../src/resolver';
 
 function makeSimpleProgram(contents: string): ts.Program {
   return makeProgram([{name: 'entry.ts', contents}]).program;

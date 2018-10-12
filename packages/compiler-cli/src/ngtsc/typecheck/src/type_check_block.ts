@@ -9,7 +9,7 @@
 import {AST, BindingType, BoundTarget, ImplicitReceiver, PropertyRead, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
 import * as ts from 'typescript';
 
-import {Reference} from '../../metadata';
+import {Reference} from '../../references';
 import {ImportManager, translateExpression} from '../../translator';
 
 import {TypeCheckBlockMetadata, TypeCheckableDirectiveMeta} from './api';
