@@ -12,7 +12,7 @@ import * as ts from 'typescript';
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
 import {ExportTracker} from '../../entrypoint';
 import {Decorator, ReflectionHost} from '../../host';
-import {Reference, ResolvedValue, reflectObjectLiteral, staticallyResolve} from '../../metadata';
+import {Reference, ResolvedValue, reflectObjectLiteral, staticallyResolve, ResolvedReference} from '../../metadata';
 import {AnalysisOutput, CompileResult, DecoratorHandler} from '../../transform';
 
 import {SelectorScopeRegistry} from './selector_scope';
@@ -88,7 +88,11 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
           expr, this.reflector, this.checker,
           ref => this._extractModuleFromModuleWithProvidersFn(ref.node));
       exports = this.resolveTypeList(expr, exportsMeta, 'exports');
-      exports.forEach(exp => this.exportTracker.addExportRelationship(exp.node, node));
+      exports.forEach(exp => {
+        if (exp instanceof ResolvedReference) {
+          this.exportTracker.addExportRelationship(exp.node, node);
+        }
+      });
     }
     let bootstrap: Reference<ts.Declaration>[] = [];
     if (ngModule.has('bootstrap')) {

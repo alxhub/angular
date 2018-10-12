@@ -6,5 +6,6 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+export {inferEntryPoint} from './src/detect';
 export {EntryPointOracle, ProgramEntryPointOracle} from './src/oracle';
 export {ExportTracker, getTopLevelExports} from './src/tracker';

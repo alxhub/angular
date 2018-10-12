@@ -20,7 +20,7 @@ import {TypeScriptReflectionHost} from './metadata';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
 import {IvyCompilation, ivyTransformFactory} from './transform';
 import {TypeCheckContext, TypeCheckProgramHost} from './typecheck';
-import {ExportTracker, getTopLevelExports} from './entrypoint';
+import {ExportTracker, getTopLevelExports, inferEntryPoint} from './entrypoint';
 import { FatalDiagnosticError, ErrorCode } from './diagnostics';
 
 export class NgtscProgram implements api.Program {
@@ -145,18 +145,29 @@ export class NgtscProgram implements api.Program {
   }
 
   private getExportDiagnostics(): ts.Diagnostic[] {
+    const entryPoint = inferEntryPoint(this.rootNames);
+    if (entryPoint === null) {
+      return [];
+    }
+    
+    const entryPointFile = this.tsProgram.getSourceFile(entryPoint)!;
+    
     // First, add public exports to the tracker.
-    const entryPoints = this.rootNames.map(entryPoint => this.tsProgram.getSourceFile(entryPoint)!);
-    getTopLevelExports(entryPoints, this.tsProgram.getTypeChecker())
-        .forEach(publicExport => {
-          this.exportTracker.addTopLevelExport(publicExport);
-        });
+    getTopLevelExports(entryPointFile, this.tsProgram.getTypeChecker()).forEach(publicExport => {
+      this.exportTracker.addTopLevelExport(publicExport);
+    });
 
     // Then, use the tracker to scan for export violations.
-    return this.exportTracker.scanForPrivateExports().map(
-        decl => new FatalDiagnosticError(ErrorCode.NOT_EXPORTED, declarationToIdentifier(decl),
-            `Included in a public NgModule's exports but not exported via the entrypoint`)
-            .toDiagnostic());
+    return this.exportTracker.scanForPrivateExports().map(decl => {
+      const id = declarationToIdentifier(decl);
+      let name = '(unknown)';
+      if (ts.isIdentifier(id)) {
+        name = id.text;
+      }
+      return new FatalDiagnosticError(ErrorCode.NOT_EXPORTED, id,
+        `${name} is in a public NgModule's exports but not exported via the entrypoint.`)
+        .toDiagnostic();
+    });
   }
 
   private ensureAnalyzed(): IvyCompilation {

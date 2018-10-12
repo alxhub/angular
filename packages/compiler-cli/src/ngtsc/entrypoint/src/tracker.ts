@@ -59,17 +59,14 @@ export class ExportTracker {
   }
 }
 
-export function getTopLevelExports(entryPoints: ts.SourceFile[], checker: ts.TypeChecker): ts.Declaration[] {
-  console.error(`getTopLevelExports(${entryPoints.map(p => p.fileName)})`);
-  return entryPoints
-    .map(entryPoint => checker.getSymbolAtLocation(entryPoint))
-    .filter((entrySymbol: ts.Symbol|undefined): entrySymbol is ts.Symbol => entrySymbol !== undefined)
-    .map(entrySymbol => checker.getExportsOfModule(entrySymbol))
-    .map(symbols => symbols.map(symbol => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol))
-    .reduce((arr, symbols) => {
-      arr.push(...symbols);
-      return arr;
-    }, [])
+export function getTopLevelExports(entryPoint: ts.SourceFile, checker: ts.TypeChecker): ts.Declaration[] {
+  const entrySymbol = checker.getSymbolAtLocation(entryPoint);
+  if (entrySymbol === undefined) {
+    throw new Error(`No symbol for entrypoint ${entryPoint.fileName}`);
+  }
+  return checker
+    .getExportsOfModule(entrySymbol)
+    .map(symbol => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol)
     .filter(exportSym => exportSym.valueDeclaration !== undefined)
     .map(exportSym => exportSym.valueDeclaration);    
 }
