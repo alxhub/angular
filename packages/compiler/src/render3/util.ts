@@ -52,3 +52,23 @@ export interface R3Reference {
   value: o.Expression;
   type: o.Expression;
 }
+
+export function stringAsType(str: string|null, defaultType: o.Type): o.Type;
+export function stringAsType(str: string): o.Type;
+export function stringAsType(str: string|null, defaultType?: o.Type): o.Type {
+  return str !== null ? o.expressionType(o.literal(str)) : defaultType !;
+}
+
+export function stringMapAsType(map: {[key: string]: string}): o.Type {
+  const mapValues = Object.keys(map).map(key => ({
+                                           key,
+                                           value: o.literal(map[key]),
+                                           quoted: true,
+                                         }));
+  return o.expressionType(o.literalMap(mapValues));
+}
+
+export function stringArrayAsType(arr: string[]): o.Type {
+  return arr.length > 0 ? o.expressionType(o.literalArr(arr.map(value => o.literal(value)))) :
+                          o.NONE_TYPE;
+}

@@ -352,6 +352,9 @@ class _TsEmitterVisitor extends AbstractEmitterVisitor implements o.TypeVisitor 
       case o.BuiltinTypeName.None:
         typeStr = 'never';
         break;
+      case o.BuiltinTypeName.Unknown:
+        typeStr = 'unknown';
+        break;
       default:
         throw new Error(`Unsupported builtin type ${type.name}`);
     }

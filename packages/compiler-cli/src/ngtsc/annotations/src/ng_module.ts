@@ -10,7 +10,7 @@ import {ConstantPool, Expression, LiteralArrayExpr, R3DirectiveMetadata, R3Injec
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
-import {ExportTracker} from '../../entrypoint';
+import {ExportHost, ExportTracker} from '../../entrypoint';
 import {Decorator, ReflectionHost} from '../../host';
 import {ResolvedValue, reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {Reference, RelativeReference} from '../../references';
@@ -33,7 +33,7 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
   constructor(
       private checker: ts.TypeChecker, private reflector: ReflectionHost,
       private scopeRegistry: SelectorScopeRegistry, private exportTracker: ExportTracker,
-      private isCore: boolean) {}
+      private exportHost: ExportHost, private isCore: boolean) {}
 
   detect(node: ts.Declaration, decorators: Decorator[]|null): Decorator|undefined {
     if (!decorators) {
@@ -110,6 +110,7 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
 
     const ngModuleDef: R3NgModuleMetadata = {
       type: new WrappedNodeExpr(node.name !),
+      importName: this.exportHost.getExportedAs(node),
       bootstrap: bootstrap.map(bootstrap => toR3Reference(bootstrap, context)),
       declarations: declarations.map(decl => toR3Reference(decl, context)),
       exports: exports.map(exp => toR3Reference(exp, context)),

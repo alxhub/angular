@@ -10,6 +10,7 @@ import {ConstantPool, Expression, R3DirectiveMetadata, R3QueryMetadata, WrappedN
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
+import {ExportHost} from '../../entrypoint';
 import {ClassMember, ClassMemberKind, Decorator, Import, ReflectionHost} from '../../host';
 import {filterToMembersWithDecorator, reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {Reference, RelativeReference} from '../../references';
@@ -23,7 +24,8 @@ const EMPTY_OBJECT: {[key: string]: string} = {};
 export class DirectiveDecoratorHandler implements DecoratorHandler<R3DirectiveMetadata, Decorator> {
   constructor(
       private checker: ts.TypeChecker, private reflector: ReflectionHost,
-      private scopeRegistry: SelectorScopeRegistry, private isCore: boolean) {}
+      private scopeRegistry: SelectorScopeRegistry, private exportHost: ExportHost,
+      private isCore: boolean) {}
 
   detect(node: ts.Declaration, decorators: Decorator[]|null): Decorator|undefined {
     if (!decorators) {
@@ -34,8 +36,8 @@ export class DirectiveDecoratorHandler implements DecoratorHandler<R3DirectiveMe
   }
 
   analyze(node: ts.ClassDeclaration, decorator: Decorator): AnalysisOutput<R3DirectiveMetadata> {
-    const directiveResult =
-        extractDirectiveMetadata(node, decorator, this.checker, this.reflector, this.isCore);
+    const directiveResult = extractDirectiveMetadata(node, decorator, this.checker, this.reflector,
+        this.exportHost, this.isCore);
     const analysis = directiveResult && directiveResult.metadata;
 
     // If the directive has a selector, it should be registered with the `SelectorScopeRegistry` so
@@ -75,7 +77,7 @@ export class DirectiveDecoratorHandler implements DecoratorHandler<R3DirectiveMe
  */
 export function extractDirectiveMetadata(
     clazz: ts.ClassDeclaration, decorator: Decorator, checker: ts.TypeChecker,
-    reflector: ReflectionHost, isCore: boolean): {
+    reflector: ReflectionHost, exportHost: ExportHost, isCore: boolean): {
   decorator: Map<string, ts.Expression>,
   metadata: R3DirectiveMetadata,
   decoratedElements: ClassMember[],
@@ -164,11 +166,14 @@ export function extractDirectiveMetadata(
     exportAs = resolved;
   }
 
+  const importName = exportHost.getExportedAs(clazz);
+
   // Detect if the component inherits from another class
   const usesInheritance = clazz.heritageClauses !== undefined &&
       clazz.heritageClauses.some(hc => hc.token === ts.SyntaxKind.ExtendsKeyword);
   const metadata: R3DirectiveMetadata = {
     name: clazz.name !.text,
+    importName,
     deps: getConstructorDependencies(clazz, reflector, isCore), host,
     lifecycle: {
         usesOnChanges,
@@ -179,6 +184,8 @@ export function extractDirectiveMetadata(
     typeArgumentCount: reflector.getGenericArityOfClass(clazz) || 0,
     typeSourceSpan: null !, usesInheritance, exportAs,
   };
+
+  
   return {decoratedElements, decorator: directive, metadata};
 }
 

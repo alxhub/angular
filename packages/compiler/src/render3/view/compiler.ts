@@ -23,7 +23,7 @@ import {OutputContext, error} from '../../util';
 import {compileFactoryFunction, dependenciesFromGlobalMetadata} from '../r3_factory';
 import {Identifiers as R3} from '../r3_identifiers';
 import {Render3ParseResult} from '../r3_template_transform';
-import {typeWithParameters} from '../util';
+import {stringArrayAsType, stringAsType, stringMapAsType, typeWithParameters} from '../util';
 
 import {R3ComponentDef, R3ComponentMetadata, R3DirectiveDef, R3DirectiveMetadata, R3QueryMetadata} from './api';
 import {BindingScope, TemplateDefinitionBuilder, ValueConverter, renderFlagCheckIfStmt} from './template';
@@ -341,6 +341,7 @@ function directiveMetadataFromGlobalMetadata(
 
   return {
     name,
+    importName: null,
     type: outputCtx.importExpr(directive.type.reference),
     typeArgumentCount: 0,
     typeSourceSpan:
@@ -500,23 +501,6 @@ function createContentQueriesRefreshFunction(meta: R3DirectiveMetadata): o.Expre
   return null;
 }
 
-function stringAsType(str: string): o.Type {
-  return o.expressionType(o.literal(str));
-}
-
-function stringMapAsType(map: {[key: string]: string}): o.Type {
-  const mapValues = Object.keys(map).map(key => ({
-                                           key,
-                                           value: o.literal(map[key]),
-                                           quoted: true,
-                                         }));
-  return o.expressionType(o.literalMap(mapValues));
-}
-
-function stringArrayAsType(arr: string[]): o.Type {
-  return arr.length > 0 ? o.expressionType(o.literalArr(arr.map(value => o.literal(value)))) :
-                          o.NONE_TYPE;
-}
 
 function createTypeForDef(meta: R3DirectiveMetadata, typeBase: o.ExternalReference): o.Type {
   // On the type side, remove newlines from the selector as it will need to fit into a TypeScript
@@ -526,10 +510,11 @@ function createTypeForDef(meta: R3DirectiveMetadata, typeBase: o.ExternalReferen
   return o.expressionType(o.importExpr(typeBase, [
     typeWithParameters(meta.type, meta.typeArgumentCount),
     stringAsType(selectorForType),
-    meta.exportAs !== null ? stringAsType(meta.exportAs) : o.NONE_TYPE,
+    stringAsType(meta.exportAs, o.NONE_TYPE),
     stringMapAsType(meta.inputs),
     stringMapAsType(meta.outputs),
     stringArrayAsType(meta.queries.map(q => q.propertyName)),
+    stringAsType(meta.importName, o.UNKNOWN_TYPE),
   ]));
 }
 

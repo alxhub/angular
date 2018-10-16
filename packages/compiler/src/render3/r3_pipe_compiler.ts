@@ -14,9 +14,16 @@ import {OutputContext, error} from '../util';
 
 import {R3DependencyMetadata, compileFactoryFunction, dependenciesFromGlobalMetadata} from './r3_factory';
 import {Identifiers as R3} from './r3_identifiers';
+import {stringAsType} from './util';
 
 export interface R3PipeMetadata {
   name: string;
+
+  /**
+   * Name by which this directive should be imported, if importing it is possible.
+   */
+  importName: string|null;
+
   type: o.Expression;
   pipeName: string;
   deps: R3DependencyMetadata[]|null;
@@ -53,6 +60,7 @@ export function compilePipeFromMetadata(metadata: R3PipeMetadata) {
   const type = new o.ExpressionType(o.importExpr(R3.PipeDefWithMeta, [
     new o.ExpressionType(metadata.type),
     new o.ExpressionType(new o.LiteralExpr(metadata.pipeName)),
+    stringAsType(metadata.importName, o.UNKNOWN_TYPE),
   ]));
   return {expression, type, statements: templateFactory.statements};
 }
@@ -71,6 +79,7 @@ export function compilePipeFromRender2(
 
   const metadata: R3PipeMetadata = {
     name,
+    importName: null,
     pipeName: pipe.name,
     type: outputCtx.importExpr(pipe.type.reference),
     deps: dependenciesFromGlobalMetadata(pipe.type, outputCtx, reflector),

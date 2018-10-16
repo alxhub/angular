@@ -306,6 +306,8 @@ export class TypeTranslatorVisitor implements ExpressionVisitor, TypeVisitor {
         return 'string';
       case BuiltinTypeName.None:
         return 'never';
+      case BuiltinTypeName.Unknown:
+        return 'unknown';
       default:
         throw new Error(`Unsupported builtin type: ${BuiltinTypeName[type.name]}`);
     }

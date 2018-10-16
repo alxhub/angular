@@ -10,6 +10,7 @@ import {LiteralExpr, R3PipeMetadata, WrappedNodeExpr, compilePipeFromMetadata} f
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
+import {ExportHost} from '../../entrypoint';
 import {Decorator, ReflectionHost} from '../../host';
 import {reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {AnalysisOutput, CompileResult, DecoratorHandler} from '../../transform';
@@ -20,7 +21,8 @@ import {getConstructorDependencies, isAngularCore, unwrapExpression} from './uti
 export class PipeDecoratorHandler implements DecoratorHandler<R3PipeMetadata, Decorator> {
   constructor(
       private checker: ts.TypeChecker, private reflector: ReflectionHost,
-      private scopeRegistry: SelectorScopeRegistry, private isCore: boolean) {}
+      private scopeRegistry: SelectorScopeRegistry, private exportHost: ExportHost,
+      private isCore: boolean) {}
 
   detect(node: ts.Declaration, decorators: Decorator[]|null): Decorator|undefined {
     if (!decorators) {
@@ -78,6 +80,7 @@ export class PipeDecoratorHandler implements DecoratorHandler<R3PipeMetadata, De
     return {
       analysis: {
         name,
+        importName: this.exportHost.getExportedAs(clazz),
         type,
         pipeName,
         deps: getConstructorDependencies(clazz, this.reflector, this.isCore), pure,

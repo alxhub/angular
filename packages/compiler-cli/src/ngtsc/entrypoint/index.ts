@@ -7,5 +7,5 @@
  */
 
 export {inferEntryPoint} from './src/detect';
-export {EntryPointOracle, ProgramEntryPointOracle} from './src/oracle';
-export {ExportTracker, getTopLevelExports} from './src/tracker';
+export {EntryPointExportHost, ExportHost, NoExportsExportHost} from './src/export_host';
+export {ExportTracker} from './src/tracker';

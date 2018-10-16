@@ -171,7 +171,7 @@ export class SelectorScopeRegistry {
         return;
       }
 
-      const name = this.lookupPipeName(node);
+      const name = this.lookupPipeName(ref);
       if (name != null) {
         pipes.set(name, ref);
       }
@@ -199,7 +199,9 @@ export class SelectorScopeRegistry {
       SelectorScopes {
     const result = this.lookupScopes(node, ngModuleImportedFrom);
     if (result === null) {
-      throw new Error(`Module not found: ${reflectIdentifierOfDeclaration(node)}`);
+      const id = reflectIdentifierOfDeclaration(node);
+      const name = id !== null ? id.text : '(unknown)';
+      throw new Error(`Module not found: ${name}`);
     }
     return result;
   }
@@ -272,11 +274,11 @@ export class SelectorScopeRegistry {
     }
   }
 
-  private lookupPipeName(node: ts.Declaration): string|null {
-    if (this._pipeToName.has(node)) {
-      return this._pipeToName.get(node) !;
+  private lookupPipeName(ref: Reference<ts.Declaration>): string|null {
+    if (this._pipeToName.has(ref.node)) {
+      return this._pipeToName.get(ref.node) !;
     } else {
-      return this._readNameFromCompiledClass(node);
+      return this._readPipeMetadataFromCompiledClass(ref);
     }
   }
 
@@ -288,8 +290,8 @@ export class SelectorScopeRegistry {
    * @param ngModuleImportedFrom module specifier of the import path to assume for all declarations
    * stemming from this module.
    */
-  private _readModuleDataFromCompiledClass(
-      clazz: ts.Declaration, ngModuleImportedFrom: string|null): ModuleData|null {
+  private _readModuleDataFromCompiledClass(clazz: ts.Declaration,
+      ngModuleImportedFrom: string|null): ModuleData|null {
     // This operation is explicitly not memoized, as it depends on `ngModuleImportedFrom`.
     // TODO(alxhub): investigate caching of .d.ts module metadata.
     const ngModuleDef = this.reflector.getMembersOfClass(clazz).find(
@@ -300,7 +302,7 @@ export class SelectorScopeRegistry {
         // Validate that the shape of the ngModuleDef type is correct.
         ngModuleDef.type === null || !ts.isTypeReferenceNode(ngModuleDef.type) ||
         ngModuleDef.type.typeArguments === undefined ||
-        ngModuleDef.type.typeArguments.length !== 4) {
+        ngModuleDef.type.typeArguments.length < 4) {
       return null;
     }
 
@@ -328,7 +330,7 @@ export class SelectorScopeRegistry {
       return null;
     } else if (
         def.type === null || !ts.isTypeReferenceNode(def.type) ||
-        def.type.typeArguments === undefined || def.type.typeArguments.length < 2) {
+        def.type.typeArguments === undefined || def.type.typeArguments.length < 7) {
       // The type metadata was the wrong shape.
       return null;
     }
@@ -337,6 +339,10 @@ export class SelectorScopeRegistry {
       return null;
     }
 
+    const importAs = readStringType(def.type.typeArguments[6]);
+    if (ref instanceof AbsoluteReference && importAs !== null) {
+      ref.setPublicSymbolName(importAs);
+    }
     return {
       ref,
       name: clazz.name !.text,
@@ -347,22 +353,22 @@ export class SelectorScopeRegistry {
       outputs: readStringMapType(def.type.typeArguments[4]),
       queries: readStringArrayType(def.type.typeArguments[5]),
       ...extractDirectiveGuards(clazz, this.reflector),
-    };
+    };;
   }
 
   /**
    * Get the selector from type metadata for a class with a precompiled ngComponentDef or
    * ngDirectiveDef.
    */
-  private _readNameFromCompiledClass(clazz: ts.Declaration): string|null {
-    const def = this.reflector.getMembersOfClass(clazz).find(
+  private _readPipeMetadataFromCompiledClass(ref: Reference<ts.Declaration>): string|null {
+    const def = this.reflector.getMembersOfClass(ref.node).find(
         field => field.isStatic && field.name === 'ngPipeDef');
     if (def === undefined) {
       // No definition could be found.
       return null;
     } else if (
         def.type === null || !ts.isTypeReferenceNode(def.type) ||
-        def.type.typeArguments === undefined || def.type.typeArguments.length < 2) {
+        def.type.typeArguments === undefined || def.type.typeArguments.length < 3) {
       // The type metadata was the wrong shape.
       return null;
     }
@@ -370,6 +376,10 @@ export class SelectorScopeRegistry {
     if (!ts.isLiteralTypeNode(type) || !ts.isStringLiteral(type.literal)) {
       // The type metadata was the wrong type.
       return null;
+    }
+    const importAs = readStringType(def.type.typeArguments[2]);
+    if (ref instanceof AbsoluteReference && importAs !== null) {
+      ref.setPublicSymbolName(importAs);
     }
     return type.literal.text;
   }

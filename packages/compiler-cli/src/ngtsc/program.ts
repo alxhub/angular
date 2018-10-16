@@ -20,14 +20,14 @@ import {TypeScriptReflectionHost} from './metadata';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
 import {IvyCompilation, ivyTransformFactory} from './transform';
 import {TypeCheckContext, TypeCheckProgramHost} from './typecheck';
-import {ExportTracker, getTopLevelExports, inferEntryPoint} from './entrypoint';
+import {ExportTracker, inferEntryPoint, EntryPointExportHost, ExportHost, NoExportsExportHost} from './entrypoint';
 import { FatalDiagnosticError, ErrorCode } from './diagnostics';
 
 export class NgtscProgram implements api.Program {
   private tsProgram: ts.Program;
   private resourceLoader: ResourceLoader;
   private compilation: IvyCompilation|undefined = undefined;
-  private exportTracker: ExportTracker = new ExportTracker();
+  private exportTracker: ExportTracker;
   private factoryToSourceInfo: Map<string, FactoryInfo>|null = null;
   private sourceToFactorySymbols: Map<string, Set<string>>|null = null;
   private host: ts.CompilerHost;
@@ -35,14 +35,14 @@ export class NgtscProgram implements api.Program {
   private _reflector: TypeScriptReflectionHost|undefined = undefined;
   private _isCore: boolean|undefined = undefined;
   private rootDirs: string[];
-  private rootNames: ReadonlyArray<string>;
   private closureCompilerEnabled: boolean;
+  private entryPoint: ts.SourceFile|null = null;
+  private exportHost: ExportHost;
 
 
   constructor(
       rootNames: ReadonlyArray<string>, private options: api.CompilerOptions,
       host: api.CompilerHost, oldProgram?: api.Program) {
-    this.rootNames = rootNames;
     this.rootDirs = [];
     if (options.rootDirs !== undefined) {
       this.rootDirs.push(...options.rootDirs);
@@ -74,6 +74,17 @@ export class NgtscProgram implements api.Program {
 
     this.tsProgram =
         ts.createProgram(rootFiles, options, this.host, oldProgram && oldProgram.getTsProgram());
+
+    const entryPointPath = inferEntryPoint(rootFiles);
+    if (entryPointPath !== null) {
+      this.entryPoint = this.tsProgram.getSourceFile(entryPointPath) || null;
+    }
+    if (this.entryPoint !== null) {
+      this.exportHost = new EntryPointExportHost(this.entryPoint, this.tsProgram.getTypeChecker());
+    } else {
+      this.exportHost = new NoExportsExportHost();
+    }
+    this.exportTracker = new ExportTracker(this.exportHost);
   }
 
   getTsProgram(): ts.Program { return this.tsProgram; }
@@ -145,25 +156,15 @@ export class NgtscProgram implements api.Program {
   }
 
   private getExportDiagnostics(): ts.Diagnostic[] {
-    const entryPoint = inferEntryPoint(this.rootNames);
-    if (entryPoint === null) {
+    // Don't generate export diagnostics if there is no entrypoint.
+    if (this.entryPoint === null) {
       return [];
     }
-    
-    const entryPointFile = this.tsProgram.getSourceFile(entryPoint)!;
-    
-    // First, add public exports to the tracker.
-    getTopLevelExports(entryPointFile, this.tsProgram.getTypeChecker()).forEach(publicExport => {
-      this.exportTracker.addTopLevelExport(publicExport);
-    });
 
     // Then, use the tracker to scan for export violations.
     return this.exportTracker.scanForPrivateExports().map(decl => {
       const id = declarationToIdentifier(decl);
-      let name = '(unknown)';
-      if (ts.isIdentifier(id)) {
-        name = id.text;
-      }
+      const name = ts.isIdentifier(id) ? id.text : '(unknown)';
       return new FatalDiagnosticError(ErrorCode.NOT_EXPORTED, id,
         `${name} is in a public NgModule's exports but not exported via the entrypoint.`)
         .toDiagnostic();
@@ -242,11 +243,11 @@ export class NgtscProgram implements api.Program {
     const handlers = [
       new BaseDefDecoratorHandler(checker, this.reflector),
       new ComponentDecoratorHandler(
-          checker, this.reflector, scopeRegistry, this.isCore, this.resourceLoader, this.rootDirs),
-      new DirectiveDecoratorHandler(checker, this.reflector, scopeRegistry, this.isCore),
+          checker, this.reflector, scopeRegistry, this.isCore, this.resourceLoader, this.exportHost, this.rootDirs),
+      new DirectiveDecoratorHandler(checker, this.reflector, scopeRegistry, this.exportHost, this.isCore),
       new InjectableDecoratorHandler(this.reflector, this.isCore),
-      new NgModuleDecoratorHandler(checker, this.reflector, scopeRegistry, this.exportTracker, this.isCore),
-      new PipeDecoratorHandler(checker, this.reflector, scopeRegistry, this.isCore),
+      new NgModuleDecoratorHandler(checker, this.reflector, scopeRegistry, this.exportTracker, this.exportHost, this.isCore),
+      new PipeDecoratorHandler(checker, this.reflector, scopeRegistry, this.exportHost, this.isCore),
     ];
 
     return new IvyCompilation(

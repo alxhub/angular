@@ -35,6 +35,7 @@ export enum BuiltinTypeName {
   Function,
   Inferred,
   None,
+  Unknown,
 }
 
 export class BuiltinType extends Type {
@@ -83,6 +84,7 @@ export const NUMBER_TYPE = new BuiltinType(BuiltinTypeName.Number);
 export const STRING_TYPE = new BuiltinType(BuiltinTypeName.String);
 export const FUNCTION_TYPE = new BuiltinType(BuiltinTypeName.Function);
 export const NONE_TYPE = new BuiltinType(BuiltinTypeName.None);
+export const UNKNOWN_TYPE = new BuiltinType(BuiltinTypeName.Unknown);
 
 export interface TypeVisitor {
   visitBuiltinType(type: BuiltinType, context: any): any;

@@ -15,7 +15,7 @@ import {OutputContext} from '../util';
 
 import {R3DependencyMetadata, compileFactoryFunction} from './r3_factory';
 import {Identifiers as R3} from './r3_identifiers';
-import {R3Reference, convertMetaToOutput, mapToMapExpression} from './util';
+import {R3Reference, convertMetaToOutput, mapToMapExpression, stringAsType} from './util';
 
 export interface R3NgModuleDef {
   expression: o.Expression;
@@ -31,6 +31,11 @@ export interface R3NgModuleMetadata {
    * An expression representing the module type being compiled.
    */
   type: o.Expression;
+
+  /**
+   * Name by which this directive should be imported, if importing it is possible.
+   */
+  importName: string|null;
 
   /**
    * An array of expressions representing the bootstrap components specified by the module.
@@ -75,7 +80,7 @@ export function compileNgModule(meta: R3NgModuleMetadata): R3NgModuleDef {
 
   const type = new o.ExpressionType(o.importExpr(R3.NgModuleDefWithMeta, [
     new o.ExpressionType(moduleType), tupleTypeOf(declarations), tupleTypeOf(imports),
-    tupleTypeOf(exports)
+    tupleTypeOf(exports), stringAsType(meta.importName, o.UNKNOWN_TYPE)
   ]));
 
   const additionalStatements: o.Statement[] = [];

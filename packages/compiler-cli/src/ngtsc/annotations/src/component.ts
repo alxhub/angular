@@ -11,6 +11,7 @@ import * as path from 'path';
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
+import {ExportHost} from '../../entrypoint';
 import {Decorator, ReflectionHost} from '../../host';
 import {filterToMembersWithDecorator, reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {AbsoluteReference, Reference, RelativeReference} from '../../references';
@@ -38,7 +39,8 @@ export class ComponentDecoratorHandler implements
   constructor(
       private checker: ts.TypeChecker, private reflector: ReflectionHost,
       private scopeRegistry: SelectorScopeRegistry, private isCore: boolean,
-      private resourceLoader: ResourceLoader, private rootDirs: string[]) {}
+      private resourceLoader: ResourceLoader, private exportHost: ExportHost,
+      private rootDirs: string[]) {}
 
   private literalCache = new Map<Decorator, ts.ObjectLiteralExpression>();
 
@@ -74,8 +76,8 @@ export class ComponentDecoratorHandler implements
 
     // @Component inherits @Directive, so begin by extracting the @Directive metadata and building
     // on it.
-    const directiveResult =
-        extractDirectiveMetadata(node, decorator, this.checker, this.reflector, this.isCore);
+    const directiveResult = extractDirectiveMetadata(node, decorator, this.checker, this.reflector,
+        this.exportHost, this.isCore);
     if (directiveResult === undefined) {
       // `extractDirectiveMetadata` returns undefined when the @Directive has `jit: true`. In this
       // case, compilation of the decorator is skipped. Returning an empty object signifies

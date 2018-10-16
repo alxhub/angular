@@ -22,6 +22,11 @@ export interface R3DirectiveMetadata {
   name: string;
 
   /**
+   * Name by which this directive should be imported, if importing it is possible.
+   */
+  importName: string|null;
+
+  /**
    * An expression representing a reference to the directive itself.
    */
   type: o.Expression;

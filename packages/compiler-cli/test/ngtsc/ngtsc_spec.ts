@@ -27,7 +27,7 @@ describe('ngtsc behavioral tests', () => {
         export class Dep {}
 
         @Injectable()
-        export class Service {
+        export class Service {  
           constructor(dep: Dep) {}
         }
     `);
@@ -65,7 +65,7 @@ describe('ngtsc behavioral tests', () => {
     const dtsContents = env.getContents('test.d.ts');
     expect(dtsContents)
         .toContain(
-            'static ngComponentDef: i0.ɵComponentDefWithMeta<TestCmp, \'test-cmp\', never, {}, {}, never>');
+            'static ngComponentDef: i0.ɵComponentDefWithMeta<TestCmp, \'test-cmp\', never, {}, {}, never, \'TestCmp\'>');
   });
 
   it('should compile Components without errors', () => {
@@ -116,10 +116,10 @@ describe('ngtsc behavioral tests', () => {
     const dtsContents = env.getContents('test.d.ts');
     expect(dtsContents)
         .toContain(
-            'static ngComponentDef: i0.ɵComponentDefWithMeta<TestCmp, \'test-cmp\', never, {}, {}, never>');
+            'static ngComponentDef: i0.ɵComponentDefWithMeta<TestCmp, \'test-cmp\', never, {}, {}, never, \'TestCmp\'>');
     expect(dtsContents)
         .toContain(
-            'static ngModuleDef: i0.ɵNgModuleDefWithMeta<TestModule, [typeof TestCmp], never, never>');
+            'static ngModuleDef: i0.ɵNgModuleDefWithMeta<TestModule, [typeof TestCmp], never, never, \'TestModule\'>');
     expect(dtsContents).not.toContain('__decorate');
   });
 
@@ -160,7 +160,7 @@ describe('ngtsc behavioral tests', () => {
     const dtsContents = env.getContents('test.d.ts');
     expect(dtsContents)
         .toContain(
-            'static ngModuleDef: i0.ɵNgModuleDefWithMeta<TestModule, [typeof TestCmp], [typeof OtherModule], never>');
+            'static ngModuleDef: i0.ɵNgModuleDefWithMeta<TestModule, [typeof TestCmp], [typeof OtherModule], never, \'TestModule\'>');
     expect(dtsContents).toContain('static ngInjectorDef: i0.ɵInjectorDef');
   });
 
@@ -241,7 +241,7 @@ describe('ngtsc behavioral tests', () => {
             'TestPipe.ngPipeDef = i0.ɵdefinePipe({ name: "test-pipe", type: TestPipe, ' +
             'factory: function TestPipe_Factory(t) { return new (t || TestPipe)(); }, pure: false })');
     expect(dtsContents)
-        .toContain('static ngPipeDef: i0.ɵPipeDefWithMeta<TestPipe, \'test-pipe\'>;');
+        .toContain('static ngPipeDef: i0.ɵPipeDefWithMeta<TestPipe, \'test-pipe\', \'TestPipe\'>;');
   });
 
   it('should compile pure Pipes without errors', () => {
@@ -265,7 +265,7 @@ describe('ngtsc behavioral tests', () => {
             'TestPipe.ngPipeDef = i0.ɵdefinePipe({ name: "test-pipe", type: TestPipe, ' +
             'factory: function TestPipe_Factory(t) { return new (t || TestPipe)(); }, pure: true })');
     expect(dtsContents)
-        .toContain('static ngPipeDef: i0.ɵPipeDefWithMeta<TestPipe, \'test-pipe\'>;');
+        .toContain('static ngPipeDef: i0.ɵPipeDefWithMeta<TestPipe, \'test-pipe\', \'TestPipe\'>;');
   });
 
   it('should compile Pipes with dependencies', () => {
@@ -313,7 +313,7 @@ describe('ngtsc behavioral tests', () => {
     const dtsContents = env.getContents('test.d.ts');
     expect(dtsContents)
         .toContain(
-            'i0.ɵNgModuleDefWithMeta<TestModule, [typeof TestPipe, typeof TestCmp], never, never>');
+            'i0.ɵNgModuleDefWithMeta<TestModule, [typeof TestPipe, typeof TestCmp], never, never, \'TestModule\'>');
   });
 
   it('should unwrap a ModuleWithProviders function if a generic type is provided for it', () => {
@@ -342,7 +342,7 @@ describe('ngtsc behavioral tests', () => {
     const dtsContents = env.getContents('test.d.ts');
     expect(dtsContents).toContain(`import * as i1 from 'router';`);
     expect(dtsContents)
-        .toContain('i0.ɵNgModuleDefWithMeta<TestModule, never, [typeof i1.RouterModule], never>');
+        .toContain('i0.ɵNgModuleDefWithMeta<TestModule, never, [typeof i1.RouterModule], never, \'TestModule\'>');
   });
 
   it('should inject special types according to the metadata', () => {
@@ -674,7 +674,7 @@ describe('ngtsc behavioral tests', () => {
        expect(jsContents).toContain('directives: function () { return [CmpB]; }');
      });
   
-  fit('should error when a directive is not exported but a module is', () => {
+  xit('should error when a directive is not exported but a module is', () => {
     env.tsconfig({}, 'index.ts');
     env.write('index.ts', `
       export {Module} from './module';
@@ -697,5 +697,61 @@ describe('ngtsc behavioral tests', () => {
     `);
 
     env.driveMain();
+  });
+  
+  it('should track aliased exports', () => {
+    env.tsconfig({}, 'index.ts');
+    env.write('index.ts', `
+      export {Module} from './module';
+      export {Dir as AliasedDir} from './directive';
+    `);
+    env.write('module.ts', `
+      import {NgModule} from '@angular/core';
+      import {Dir} from './directive';
+
+      @NgModule({
+        declarations: [Dir],
+        exports: [Dir],
+      })
+      export class Module {}
+    `);
+    env.write('directive.ts', `
+      import {Directive} from '@angular/core';
+
+      @Directive({selector: '[dir]'})
+      export class Dir {}
+    `);
+
+    env.driveMain();
+    expect(env.getContents('directive.d.ts')).toContain('AliasedDir');
+  });
+
+  it('should use alias name when importing a directive', () => {
+    env.tsconfig();
+    env.write('node_modules/lib/index.d.ts', `
+      import * as i0 from '@angular/core';
+      export declare class Dir {
+        static ngComponentDef: i0.ɵComponentDefWithMeta<Dir, 'div', never, {}, {}, never, 'AliasDir'>;
+      }
+
+      export declare class LibModule {
+        static ngModuleDef: i0.ɵNgModuleDefWithMeta<LibModule, [typeof Dir], never, [typeof Dir]>
+      }
+    `);
+    env.write('index.ts', `
+      import {Component, NgModule} from '@angular/core';
+      import {LibModule} from 'lib';
+      
+      @Component({selector: 'test', template: '<div></div>'})
+      export class Cmp {}
+
+      @NgModule({
+        declarations: [Cmp],
+        imports: [LibModule],
+      })
+      export class LocalModule {}
+    `);
+    env.driveMain();
+    expect(env.getContents('index.js')).toMatch(/directives: \[i\d\.AliasDir\]/);
   });
 });

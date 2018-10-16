@@ -8,21 +8,18 @@
 
 import * as ts from 'typescript';
 
+import {ExportHost} from './export_host';
+
 /**
  * Tracks export relationships (e.g. an NgModule exporting another NgModule or a Directive) to
  * certify that there are no unexported entities which are exposed via exported entities.
  */
 export class ExportTracker {
 
-  private publicExports = new Set<ts.Declaration>();
+  private exportedViaEntryPoint: Set<ts.Declaration>|undefined = undefined;
   private relationships = new Map<ts.Declaration, ts.Declaration[]>();
 
-  addTopLevelExport(decl: ts.Declaration) {
-    if (ts.isClassDeclaration(decl) && decl.name !== undefined) {
-      console.error('Add top level export', decl.name.text);
-    }
-    this.publicExports.add(decl);
-  }
+  constructor(private exportHost: ExportHost) {}
 
   addExportRelationship(decl: ts.Declaration, exportedBy: ts.Declaration) {
     console.error(`addExportRelationship(${nameOf(decl)} -> ${nameOf(exportedBy)})`);
@@ -33,12 +30,9 @@ export class ExportTracker {
     }
   }
 
-  isPubliclyVisible(decl: ts.Declaration): boolean {
-    if (ts.isClassDeclaration(decl) && decl.name) {
-      console.error('checking public exports for', decl.name.text);
-    }
+  private isPubliclyVisible(decl: ts.Declaration): boolean {
     // If the declaration is part of the public exports, then yes.
-    if (this.publicExports.has(decl)) {
+    if (this.exportedViaEntryPoint!.has(decl)) {
       return true;
     }
 
@@ -52,23 +46,15 @@ export class ExportTracker {
   }
 
   scanForPrivateExports(): ts.Declaration[] {
+    if (this.exportedViaEntryPoint === undefined) {
+      this.exportedViaEntryPoint = new Set<ts.Declaration>();
+      this.exportHost.enumeratePublicExports().forEach(exp => this.exportedViaEntryPoint!.add(exp));
+    }
     return Array
       .from(this.relationships.keys())
       .filter(decl => this.isPubliclyVisible(decl))
-      .filter(decl => !this.publicExports.has(decl));
+      .filter(decl => !this.exportedViaEntryPoint!.has(decl));
   }
-}
-
-export function getTopLevelExports(entryPoint: ts.SourceFile, checker: ts.TypeChecker): ts.Declaration[] {
-  const entrySymbol = checker.getSymbolAtLocation(entryPoint);
-  if (entrySymbol === undefined) {
-    throw new Error(`No symbol for entrypoint ${entryPoint.fileName}`);
-  }
-  return checker
-    .getExportsOfModule(entrySymbol)
-    .map(symbol => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol)
-    .filter(exportSym => exportSym.valueDeclaration !== undefined)
-    .map(exportSym => exportSym.valueDeclaration);    
 }
 
 function nameOf(decl: ts.Declaration): string {
