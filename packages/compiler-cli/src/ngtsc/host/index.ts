@@ -7,3 +7,4 @@
  */
 
 export * from './src/reflection';
+export * from './src/resolve';
