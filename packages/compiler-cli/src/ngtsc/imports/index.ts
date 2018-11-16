@@ -7,4 +7,4 @@
  */
 
 export {AbsoluteReference, ImportMode, NodeReference, Reference, ResolvedReference} from './src/references';
-export {NpmReferenceResolver, ReferenceResolver} from './src/resolver';
+export {ModuleResolver, NpmReferenceResolver, ReferenceResolver} from './src/resolver';
