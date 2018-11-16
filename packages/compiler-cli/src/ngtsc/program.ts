@@ -21,6 +21,7 @@ import {FactoryGenerator, FactoryInfo, GeneratedShimsHostWrapper, SummaryGenerat
 import {ivySwitchTransform} from './switch';
 import {IvyCompilation, ivyTransformFactory} from './transform';
 import {TypeCheckContext, TypeCheckProgramHost} from './typecheck';
+import {ModuleResolver} from './host';
 
 export class NgtscProgram implements api.Program {
   private tsProgram: ts.Program;
@@ -34,6 +35,7 @@ export class NgtscProgram implements api.Program {
   private _isCore: boolean|undefined = undefined;
   private rootDirs: string[];
   private closureCompilerEnabled: boolean;
+  private moduleResolver: ModuleResolver;
 
 
   constructor(
@@ -76,6 +78,8 @@ export class NgtscProgram implements api.Program {
 
     this.tsProgram =
         ts.createProgram(rootFiles, options, this.host, oldProgram && oldProgram.getTsProgram());
+
+    this.moduleResolver = new ModuleResolver(this.tsProgram, options, this.host);
   }
 
   getTsProgram(): ts.Program { return this.tsProgram; }
