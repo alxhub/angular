@@ -768,4 +768,37 @@ describe('ngtsc behavioral tests', () => {
     expect(jsContents).toContain('ɵsetClassMetadata(TestNgModule, ');
     expect(jsContents).toContain('ɵsetClassMetadata(TestPipe, ');
   });
+
+  fit('should detect a cycle', () => {
+    env.tsconfig();
+    env.write('test.ts', `
+      import {Component, NgModule} from '@angular/core';
+      import {NormalComponent} from './cyclic';
+
+      @Component({
+        selector: 'cyclic-component',
+        template: 'Importing this causes a cycle',
+      })
+      export class CyclicComponent {}
+
+      @NgModule({
+        declarations: [NormalComponent, CyclicComponent],
+      })
+      export class Module {}
+    `);
+    
+    env.write('cyclic.ts', `
+      import {Component} from '@angular/core';
+
+      @Component({
+        selector: 'normal-component',
+        template: '<cyclic-component></cyclic-component>',
+      })
+      export class NormalComponent {}
+    `);
+
+    env.driveMain();
+    const jsContents = env.getContents('test.js');
+    fail(jsContents);
+  });
 });

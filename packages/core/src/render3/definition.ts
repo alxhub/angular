@@ -313,6 +313,10 @@ export function defineComponent<T>(componentDefinition: {
   return def as never;
 }
 
+export function setDirectivesAndPipes(type: ComponentType<any>, defs: (ComponentDef<any>|DirectiveDef<any>)[]): void {
+  (type.ngComponentDef as ComponentDef<any>).directiveDefs = () => defs;
+}
+
 export function extractDirectiveDef(type: DirectiveType<any>& ComponentType<any>):
     DirectiveDef<any>|ComponentDef<any> {
   const def = getComponentDef(type) || getDirectiveDef(type);

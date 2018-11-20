@@ -6,12 +6,13 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ConstantPool, CssSelector, Expression, R3ComponentMetadata, R3DirectiveMetadata, SelectorMatcher, Statement, TmplAstNode, WrappedNodeExpr, compileComponentFromMetadata, makeBindingParser, parseTemplate} from '@angular/compiler';
+import {ConstantPool, CssSelector, Expression, R3ComponentMetadata, R3DirectiveMetadata, SelectorMatcher, Statement, TmplAstNode, WrappedNodeExpr, compileComponentFromMetadata, makeBindingParser, parseTemplate, ExternalExpr} from '@angular/compiler';
 import * as path from 'path';
 import * as ts from 'typescript';
 
+import {CycleAnalyzer} from '../../cycles';
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
-import {Decorator, ReflectionHost} from '../../host';
+import {Decorator, ReflectionHost, ModuleResolver} from '../../host';
 import {AbsoluteReference, Reference, ResolvedReference, filterToMembersWithDecorator, reflectObjectLiteral, staticallyResolve} from '../../metadata';
 import {AnalysisOutput, CompileResult, DecoratorHandler} from '../../transform';
 import {TypeCheckContext, TypeCheckableDirectiveMeta} from '../../typecheck';
@@ -38,7 +39,8 @@ export class ComponentDecoratorHandler implements
   constructor(
       private checker: ts.TypeChecker, private reflector: ReflectionHost,
       private scopeRegistry: SelectorScopeRegistry, private isCore: boolean,
-      private resourceLoader: ResourceLoader, private rootDirs: string[]) {}
+      private resourceLoader: ResourceLoader, private rootDirs: string[],
+      private moduleResolver: ModuleResolver, private cycleAnalyzer: CycleAnalyzer) {}
 
   private literalCache = new Map<Decorator, ts.ObjectLiteralExpression>();
 
@@ -227,24 +229,47 @@ export class ComponentDecoratorHandler implements
     }
   }
 
-  compile(node: ts.ClassDeclaration, analysis: ComponentHandlerData, pool: ConstantPool):
-      CompileResult {
+  resolve(node: ts.ClassDeclaration, analysis: ComponentHandlerData): void {
     // Check whether this component was registered with an NgModule. If so, it should be compiled
     // under that module's compilation scope.
     const scope = this.scopeRegistry.lookupCompilationScope(node);
     let metadata = analysis.meta;
     if (scope !== null) {
       // Replace the empty components and directives from the analyze() step with a fully expanded
-      // scope. This is possible now because during compile() the whole compilation unit has been
+      // scope. This is possible now because during resolve() the whole compilation unit has been
       // fully analyzed.
       const {pipes, containsForwardDecls} = scope;
       const directives = new Map<string, Expression>();
-      scope.directives.forEach((meta, selector) => directives.set(selector, meta.directive));
-      const wrapDirectivesAndPipesInClosure: boolean = !!containsForwardDecls;
-      metadata = {...metadata, directives, pipes, wrapDirectivesAndPipesInClosure};
-    }
+      let cycleDetected = false;
 
-    const res = compileComponentFromMetadata(metadata, pool, makeBindingParser());
+      const origin = node.getSourceFile();
+      scope.directives.forEach((meta, selector) => {
+        directives.set(selector, meta.directive);
+        if (meta.directive instanceof ExternalExpr) {
+          // Figure out what file is being imported.
+          const imported = this.moduleResolver.resolveModuleName(meta.directive.value.moduleName!, origin);
+          if (imported === null) {
+            return;
+          }
+          // Check whether the import is legal.
+          if (this.cycleAnalyzer.wouldCreateCycle(origin, imported)) {
+            this.scopeRegistry.setComponentAsRequiringRemoteScoping(node);
+            cycleDetected = true;
+          }
+        }
+      });
+      if (!cycleDetected) {
+        const wrapDirectivesAndPipesInClosure: boolean = !!containsForwardDecls;
+        metadata.directives = directives;
+        metadata.pipes = pipes;
+        metadata.wrapDirectivesAndPipesInClosure = wrapDirectivesAndPipesInClosure;
+      }
+    }
+  }
+
+  compile(node: ts.ClassDeclaration, analysis: ComponentHandlerData, pool: ConstantPool):
+      CompileResult {
+    const res = compileComponentFromMetadata(analysis.meta, pool, makeBindingParser());
 
     const statements = res.statements;
     if (analysis.metadataStmt !== null) {

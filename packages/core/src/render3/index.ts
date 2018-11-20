@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {LifecycleHooksFeature, getHostElement, getRenderedText, renderComponent, whenRendered} from './component';
-import {defineBase, defineComponent, defineDirective, defineNgModule, definePipe} from './definition';
+import {defineBase, defineComponent, defineDirective, defineNgModule, definePipe, setDirectivesAndPipes} from './definition';
 import {InheritDefinitionFeature} from './features/inherit_definition_feature';
 import {NgOnChangesFeature} from './features/ng_onchanges_feature';
 import {ProvidersFeature} from './features/providers_feature';
@@ -167,6 +167,7 @@ export {
   getHostElement,
   getRenderedText,
   renderComponent,
+  setDirectivesAndPipes,
   whenRendered,
 };
 

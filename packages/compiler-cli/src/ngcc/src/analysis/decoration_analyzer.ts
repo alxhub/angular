@@ -15,6 +15,7 @@ import {CompileResult, DecoratorHandler} from '../../../ngtsc/transform';
 import {DecoratedClass} from '../host/decorated_class';
 import {NgccReflectionHost} from '../host/ngcc_host';
 import {isDefined} from '../utils';
+import { ModuleResolver } from '@angular/compiler-cli/src/ngtsc/host';
 
 export interface AnalyzedFile {
   sourceFile: ts.SourceFile;
@@ -69,7 +70,7 @@ export class DecorationAnalyzer {
 
   constructor(
       private typeChecker: ts.TypeChecker, private host: NgccReflectionHost,
-      private rootDirs: string[], private isCore: boolean) {}
+      private rootDirs: string[], private isCore: boolean, private moduleResolver: ModuleResolver) {}
 
   /**
    * Analyze a program to find all the decorated files should be transformed.

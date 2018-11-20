@@ -86,6 +86,11 @@ export class SelectorScopeRegistry {
   private _pipeToName = new Map<ts.Declaration, string>();
 
   /**
+   * Components that require remote scoping.
+   */
+  private _requiresRemoteScope = new Set<ts.Declaration>();
+
+  /**
    * Map of components/directives/pipes to their module.
    */
   private _declararedTypeToModule = new Map<ts.Declaration, ts.Declaration>();
@@ -129,6 +134,14 @@ export class SelectorScopeRegistry {
     node = ts.getOriginalNode(node) as ts.Declaration;
 
     this._pipeToName.set(node, name);
+  }
+
+  setComponentAsRequiringRemoteScoping(component: ts.Declaration): void {
+    this._requiresRemoteScope.add(component);
+  }
+
+  requiresRemoteScope(component: ts.Declaration): boolean {
+    return this._requiresRemoteScope.has(ts.getOriginalNode(component) as ts.Declaration);
   }
 
   lookupCompilationScopeAsRefs(node: ts.Declaration): CompilationScope<Reference>|null {

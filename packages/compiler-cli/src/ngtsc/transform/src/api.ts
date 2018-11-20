@@ -44,6 +44,8 @@ export interface DecoratorHandler<A, M> {
    */
   analyze(node: ts.Declaration, metadata: M): AnalysisOutput<A>;
 
+  resolve?(node: ts.Declaration, analysis: A): void;
+
   typeCheck?(ctx: TypeCheckContext, node: ts.Declaration, metadata: A): void;
 
   /**
