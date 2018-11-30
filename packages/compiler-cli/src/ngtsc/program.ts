@@ -154,6 +154,7 @@ export class NgtscProgram implements api.Program {
       this.tsProgram.getSourceFiles()
           .filter(file => !file.fileName.endsWith('.d.ts'))
           .forEach(file => this.compilation !.analyzeSync(file));
+      this.compilation.resolve();
     }
     return this.compilation;
   }
