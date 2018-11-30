@@ -9,7 +9,13 @@ import {ConstantPool} from '@angular/compiler';
 import * as fs from 'fs';
 import * as ts from 'typescript';
 
+<<<<<<< HEAD
 import {BaseDefDecoratorHandler, ComponentDecoratorHandler, DirectiveDecoratorHandler, InjectableDecoratorHandler, NgModuleDecoratorHandler, PipeDecoratorHandler, ReferencesRegistry, ResourceLoader, SelectorScopeRegistry} from '../../../ngtsc/annotations';
+=======
+import {CycleAnalyzer, ImportGraph} from '../../../ngtsc/cycles';
+import {ModuleResolver} from '../../../ngtsc/host';
+import {BaseDefDecoratorHandler, ComponentDecoratorHandler, DirectiveDecoratorHandler, InjectableDecoratorHandler, NgModuleDecoratorHandler, PipeDecoratorHandler, ResourceLoader, SelectorScopeRegistry} from '../../../ngtsc/annotations';
+>>>>>>> 92300d8874... wip
 import {CompileResult, DecoratorHandler} from '../../../ngtsc/transform';
 import {DecoratedClass} from '../host/decorated_class';
 import {NgccReflectionHost} from '../host/ngcc_host';
@@ -55,11 +61,17 @@ export class FileResourceLoader implements ResourceLoader {
 export class DecorationAnalyzer {
   resourceLoader = new FileResourceLoader();
   scopeRegistry = new SelectorScopeRegistry(this.typeChecker, this.host);
+  importGraph = new ImportGraph(this.moduleResolver);
+  cycleAnalyzer = new CycleAnalyzer(this.importGraph);
   handlers: DecoratorHandler<any, any>[] = [
     new BaseDefDecoratorHandler(this.typeChecker, this.host),
     new ComponentDecoratorHandler(
         this.typeChecker, this.host, this.scopeRegistry, this.isCore, this.resourceLoader,
+<<<<<<< HEAD
         this.rootDirs, /* defaultPreserveWhitespaces */ false, /* i18nUseExternalIds */ true),
+=======
+        this.rootDirs, this.moduleResolver, this.cycleAnalyzer),
+>>>>>>> 92300d8874... wip
     new DirectiveDecoratorHandler(this.typeChecker, this.host, this.scopeRegistry, this.isCore),
     new InjectableDecoratorHandler(this.host, this.isCore),
     new NgModuleDecoratorHandler(
@@ -69,8 +81,12 @@ export class DecorationAnalyzer {
 
   constructor(
       private typeChecker: ts.TypeChecker, private host: NgccReflectionHost,
+<<<<<<< HEAD
       private referencesRegistry: ReferencesRegistry, private rootDirs: string[],
       private isCore: boolean) {}
+=======
+      private rootDirs: string[], private isCore: boolean, private moduleResolver: ModuleResolver) {}
+>>>>>>> 92300d8874... wip
 
   /**
    * Analyze a program to find all the decorated files should be transformed.

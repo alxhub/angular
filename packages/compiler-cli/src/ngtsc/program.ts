@@ -15,6 +15,7 @@ import {nocollapseHack} from '../transformers/nocollapse_hack';
 
 import {ComponentDecoratorHandler, DirectiveDecoratorHandler, InjectableDecoratorHandler, NgModuleDecoratorHandler, NoopReferencesRegistry, PipeDecoratorHandler, ResourceLoader, SelectorScopeRegistry} from './annotations';
 import {BaseDefDecoratorHandler} from './annotations/src/base_def';
+import {CycleAnalyzer, ImportGraph} from './cycles';
 import {TypeScriptReflectionHost} from './metadata';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
 import {FactoryGenerator, FactoryInfo, GeneratedShimsHostWrapper, SummaryGenerator, generatedFactoryTransform} from './shims';
@@ -36,6 +37,7 @@ export class NgtscProgram implements api.Program {
   private rootDirs: string[];
   private closureCompilerEnabled: boolean;
   private moduleResolver: ModuleResolver;
+  private cycleAnalyzer: CycleAnalyzer;
 
 
   constructor(
@@ -80,6 +82,7 @@ export class NgtscProgram implements api.Program {
         ts.createProgram(rootFiles, options, this.host, oldProgram && oldProgram.getTsProgram());
 
     this.moduleResolver = new ModuleResolver(this.tsProgram, options, this.host);
+    this.cycleAnalyzer = new CycleAnalyzer(new ImportGraph(this.moduleResolver));
   }
 
   getTsProgram(): ts.Program { return this.tsProgram; }
@@ -132,6 +135,7 @@ export class NgtscProgram implements api.Program {
                           .filter(file => !file.fileName.endsWith('.d.ts'))
                           .map(file => this.compilation !.analyzeAsync(file))
                           .filter((result): result is Promise<void> => result !== undefined));
+    this.compilation.resolve();
   }
 
   listLazyRoutes(entryRoute?: string|undefined): api.LazyRoute[] { return []; }
@@ -225,8 +229,12 @@ export class NgtscProgram implements api.Program {
     const handlers = [
       new BaseDefDecoratorHandler(checker, this.reflector),
       new ComponentDecoratorHandler(
+<<<<<<< HEAD
           checker, this.reflector, scopeRegistry, this.isCore, this.resourceLoader, this.rootDirs,
           this.options.preserveWhitespaces || false, this.options.i18nUseExternalIds !== false),
+=======
+          checker, this.reflector, scopeRegistry, this.isCore, this.resourceLoader, this.rootDirs, this.moduleResolver, this.cycleAnalyzer),
+>>>>>>> 92300d8874... wip
       new DirectiveDecoratorHandler(checker, this.reflector, scopeRegistry, this.isCore),
       new InjectableDecoratorHandler(this.reflector, this.isCore),
       new NgModuleDecoratorHandler(

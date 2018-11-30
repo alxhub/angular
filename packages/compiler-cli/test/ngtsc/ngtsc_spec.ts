@@ -884,6 +884,7 @@ describe('ngtsc behavioral tests', () => {
     expect(jsContents).toContain('ɵsetClassMetadata(TestPipe, ');
   });
 
+<<<<<<< HEAD
   it('should compile a template using multiple directives with the same selector', () => {
     env.tsconfig();
     env.write('test.ts', `
@@ -904,10 +905,42 @@ describe('ngtsc behavioral tests', () => {
         declarations: [Cmp, DirA, DirB],
       })
       class Module {}
+=======
+  fit('should detect a cycle', () => {
+    env.tsconfig();
+    env.write('test.ts', `
+      import {Component, NgModule} from '@angular/core';
+      import {NormalComponent} from './cyclic';
+
+      @Component({
+        selector: 'cyclic-component',
+        template: 'Importing this causes a cycle',
+      })
+      export class CyclicComponent {}
+
+      @NgModule({
+        declarations: [NormalComponent, CyclicComponent],
+      })
+      export class Module {}
+    `);
+    
+    env.write('cyclic.ts', `
+      import {Component} from '@angular/core';
+
+      @Component({
+        selector: 'normal-component',
+        template: '<cyclic-component></cyclic-component>',
+      })
+      export class NormalComponent {}
+>>>>>>> 92300d8874... wip
     `);
 
     env.driveMain();
     const jsContents = env.getContents('test.js');
+<<<<<<< HEAD
     expect(jsContents).toMatch(/directives: \[DirA,\s+DirB\]/);
+=======
+    fail(jsContents);
+>>>>>>> 92300d8874... wip
   });
 });
