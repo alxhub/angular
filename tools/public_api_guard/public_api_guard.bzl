@@ -26,7 +26,4 @@ def generate_targets(golden_files):
                 "//packages/%s:%s" % (package_name + target_suffix, directory_name),
             ],
             golden = "angular/tools/public_api_guard/%s" % golden_file,
-            tags = [
-                "fixme-ivy-aot",  # ivy no longer emits generated index file
-            ],
         )
