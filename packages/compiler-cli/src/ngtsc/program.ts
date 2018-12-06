@@ -17,7 +17,7 @@ import {ComponentDecoratorHandler, DirectiveDecoratorHandler, InjectableDecorato
 import {BaseDefDecoratorHandler} from './annotations/src/base_def';
 import {TypeScriptReflectionHost} from './metadata';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
-import {FactoryGenerator, FactoryInfo, GeneratedShimsHostWrapper, SummaryGenerator, generatedFactoryTransform} from './shims';
+import {FactoryGenerator, FactoryInfo, FlatIndexGenerator, GeneratedShimsHostWrapper, ShimGenerator, SummaryGenerator, generatedFactoryTransform} from './shims';
 import {ivySwitchTransform} from './switch';
 import {IvyCompilation, ivyTransformFactory} from './transform';
 import {TypeCheckContext, TypeCheckProgramHost} from './typecheck';
@@ -56,6 +56,8 @@ export class NgtscProgram implements api.Program {
     const shouldGenerateShims = options.allowEmptyCodegenFiles || false;
     this.host = host;
     let rootFiles = [...rootNames];
+
+    const generators: ShimGenerator[] = [];
     if (shouldGenerateShims) {
       // Summary generation.
       const summaryGenerator = SummaryGenerator.forRootFiles(rootNames);
@@ -73,7 +75,24 @@ export class NgtscProgram implements api.Program {
 
       const factoryFileNames = Array.from(factoryFileMap.keys());
       rootFiles.push(...factoryFileNames, ...summaryGenerator.getSummaryFileNames());
-      this.host = new GeneratedShimsHostWrapper(host, [summaryGenerator, factoryGenerator]);
+      generators.push(summaryGenerator, factoryGenerator);
+    }
+
+    if (options.flatModuleOutFile !== undefined) {
+      const flatModuleId = options.flatModuleId || null;
+      const flatIndexGenerator =
+          FlatIndexGenerator.forRootFiles(options.flatModuleOutFile, rootNames, flatModuleId);
+      if (flatIndexGenerator !== null) {
+        generators.push(flatIndexGenerator);
+        rootFiles.push(flatIndexGenerator.flatIndexPath);
+      } else {
+        throw new Error(
+            'Angular compiler option "flatModuleIndex" requires one and only one .ts file in the "files" field.');
+      }
+    }
+
+    if (generators.length > 0) {
+      this.host = new GeneratedShimsHostWrapper(host, generators);
     }
 
     this.tsProgram =
