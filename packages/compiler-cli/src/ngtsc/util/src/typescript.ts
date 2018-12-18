@@ -13,3 +13,11 @@ const D_TS = /\.d\.ts$/i;
 export function isDtsPath(filePath: string): boolean {
   return D_TS.test(filePath);
 }
+
+export function isFromDtsFile(node: ts.Node): boolean {
+  let sf: ts.SourceFile|undefined = node.getSourceFile();
+  if (sf === undefined) {
+    sf = ts.getOriginalNode(node).getSourceFile();
+  }
+  return sf !== undefined && D_TS.test(sf.fileName);
+}
