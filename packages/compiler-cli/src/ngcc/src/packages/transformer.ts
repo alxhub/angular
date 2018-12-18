@@ -103,11 +103,12 @@ export class Transformer {
     const typeChecker = bundle.src.program.getTypeChecker();
     const referencesRegistry = new NgccReferencesRegistry(reflectionHost);
     const decorationAnalyzer = new DecorationAnalyzer(
-        typeChecker, reflectionHost, referencesRegistry, bundle.rootDirs, isCore);
+        bundle.src.program, bundle.src.options, bundle.src.host, typeChecker, reflectionHost,
+        referencesRegistry, bundle.rootDirs, isCore);
     const switchMarkerAnalyzer = new SwitchMarkerAnalyzer(reflectionHost);
     const privateDeclarationsAnalyzer =
         new PrivateDeclarationsAnalyzer(reflectionHost, referencesRegistry);
-    const decorationAnalyses = decorationAnalyzer.analyzeProgram(bundle.src.program);
+    const decorationAnalyses = decorationAnalyzer.analyzeProgram();
     const switchMarkerAnalyses = switchMarkerAnalyzer.analyzeProgram(bundle.src.program);
     const privateDeclarationsAnalyses =
         privateDeclarationsAnalyzer.analyzeProgram(bundle.src.program);
