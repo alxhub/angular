@@ -16,7 +16,7 @@ import {ComponentDecoratorHandler, DirectiveDecoratorHandler, InjectableDecorato
 import {BaseDefDecoratorHandler} from './annotations/src/base_def';
 import {ErrorCode, ngErrorCode} from './diagnostics';
 import {FlatIndexGenerator, ReferenceGraph, checkForPrivateExports, findFlatIndexEntryPoint} from './entry_point';
-import {Reference} from './imports';
+import {NpmReferenceResolver, Reference} from './imports';
 import {PartialEvaluator} from './partial_evaluator';
 import {TypeScriptReflectionHost} from './reflection';
 import {FileResourceLoader, HostResourceLoader} from './resource_loader';
@@ -265,8 +265,9 @@ export class NgtscProgram implements api.Program {
 
   private makeCompilation(): IvyCompilation {
     const checker = this.tsProgram.getTypeChecker();
-    const evaluator = new PartialEvaluator(this.reflector, checker);
-    const scopeRegistry = new SelectorScopeRegistry(checker, this.reflector);
+    const refResolver = new NpmReferenceResolver(this.tsProgram, checker, this.options, this.host);
+    const evaluator = new PartialEvaluator(this.reflector, checker, refResolver);
+    const scopeRegistry = new SelectorScopeRegistry(checker, this.reflector, refResolver);
     let referencesRegistry: ReferencesRegistry;
     if (this.entryPoint !== null) {
       this.exportReferenceGraph = new ReferenceGraph();
@@ -381,10 +382,6 @@ export class ReferenceGraphAdapter implements ReferencesRegistry {
 
   add(source: ts.Declaration, ...references: Reference<ts.Declaration>[]): void {
     for (const ref of references) {
-      if (ref.node === undefined) {
-        console.error(ref);
-        throw new Error('wat');
-      }
       const node = ref.node;
       let sourceFile = node.getSourceFile();
       if (sourceFile === undefined) {
