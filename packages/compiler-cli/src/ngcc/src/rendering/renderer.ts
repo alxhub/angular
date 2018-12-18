@@ -13,8 +13,8 @@ import {basename, dirname, relative, resolve} from 'canonical-path';
 import {SourceMapConsumer, SourceMapGenerator, RawSourceMap} from 'source-map';
 import * as ts from 'typescript';
 
-import {Decorator} from '../../../ngtsc/host';
-import {CompileResult} from '@angular/compiler-cli/src/ngtsc/transform';
+import {Decorator} from '../../../ngtsc/reflection';
+import {CompileResult} from '../../../ngtsc/transform';
 import {translateStatement, translateType} from '../../../ngtsc/translator';
 import {NgccImportManager} from './ngcc_import_manager';
 import {CompiledClass, CompiledFile, DecorationAnalyses} from '../analysis/decoration_analyzer';
