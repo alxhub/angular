@@ -11,7 +11,6 @@
     "aio-use-local": "node tools/ng-packages-installer overwrite . --debug",
     "aio-use-npm": "node tools/ng-packages-installer restore .",
     "aio-check-local": "node tools/ng-packages-installer check .",
-    "ng": "yarn check-env && ng",
     "start": "yarn check-env && ng serve --configuration=fast",
     "prebuild": "yarn setup",
     "build": "yarn ~~build",
@@ -96,7 +95,7 @@
     "zone.js": "^0.9.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^0.12.1",
+    "@angular-devkit/build-angular": "0.800.0-beta.7",
     "@angular/cli": "7.2.1",
     "@angular/compiler": "^7.0.0",
     "@angular/compiler-cli": "^7.0.0",
