@@ -48,7 +48,6 @@ import {
   ɵresetCompiledComponents as resetCompiledComponents,
   ɵstringify as stringify,
   ɵtransitiveScopesFor as transitiveScopesFor,
-  CompilerOptions,
   StaticProvider,
   COMPILER_OPTIONS,
   ɵDirectiveDef as DirectiveDef,
@@ -56,7 +55,7 @@ import {
 // clang-format on
 import {ResourceLoader} from '@angular/compiler';
 
-import {clearResolutionOfComponentResourcesQueue, componentNeedsResolution, resolveComponentResources, maybeQueueResolutionOfComponentResources, isComponentDefPendingResolution, restoreComponentResolutionQueue} from '../../src/metadata/resource_loading';
+import {clearResolutionOfComponentResourcesQueue, componentNeedsResolution, resolveComponentResources, isComponentDefPendingResolution, restoreComponentResolutionQueue} from '../../src/metadata/resource_loading';
 import {ComponentFixture} from './component_fixture';
 import {MetadataOverride} from './metadata_override';
 import {ComponentResolver, DirectiveResolver, NgModuleResolver, PipeResolver, Resolver} from './resolvers';
@@ -245,9 +244,11 @@ export class TestBedRender3 implements Injector, TestBed {
   private _templateOverrides: Map<Type<any>, string> = new Map();
   private _resolvers: Resolvers = null !;
 
+  private _compilationQueue: Set<Type<any>> = new Set();
+  private _needsScopingQueue: Set<Type<any>> = new Set();
+
   // test module configuration
   private _providers: Provider[] = [];
-  private _compilerOptions: CompilerOptions[] = [];
   private _declarations: Array<Type<any>|any[]|any> = [];
   private _imports: Array<Type<any>|any[]|any> = [];
   private _schemas: Array<SchemaMetadata|any[]> = [];
@@ -313,11 +314,13 @@ export class TestBedRender3 implements Injector, TestBed {
     this._rootProviderOverrides = [];
     this._providerOverridesByToken.clear();
     this._templateOverrides.clear();
-    this._resolvers = null !;
+
+    // clear compilation queues
+    this._compilationQueue.clear();
+    this._needsScopingQueue.clear();
 
     // reset test module config
     this._providers = [];
-    this._compilerOptions = [];
     this._compilerProviders = [];
     this._declarations = [];
     this._imports = [];
@@ -356,6 +359,9 @@ export class TestBedRender3 implements Injector, TestBed {
     });
     this._initialNgDefs.clear();
     this._restoreComponentResolutionQueue();
+
+    // reset resolvers
+    this._resolvers = this._getResolvers();
   }
 
   configureCompiler(config: {providers?: any[]; useJit?: boolean;}): void {
@@ -388,7 +394,6 @@ export class TestBedRender3 implements Injector, TestBed {
   compileComponents(): Promise<any> {
     this._clearComponentResolutionQueue();
 
-    const resolvers = this._getResolvers();
     const declarations: Type<any>[] = flatten(this._declarations || EMPTY_ARRAY, resolveForwardRef);
 
     const componentOverrides: [Type<any>, Component][] = [];
@@ -398,15 +403,15 @@ export class TestBedRender3 implements Injector, TestBed {
     // Compile the components declared by this module
     // TODO(FW-1178): `compileComponents` should not duplicate `_compileNgModule` logic
     declarations.forEach(declaration => {
-      const component = resolvers.component.resolve(declaration);
+      const component = this._resolvers.component.resolve(declaration);
       if (component) {
         if (!declaration.hasOwnProperty(NG_COMPONENT_DEF) ||
             isComponentDefPendingResolution(declaration) ||  //
             // Compiler provider overrides (like ResourceLoader) might affect the outcome of
             // compilation, so we trigger `compileComponent` in case we have compilers overrides.
             this._compilerProviders.length > 0 ||
-            this._hasTypeOverrides(declaration, this._componentOverrides) ||
-            this._hasTemplateOverrides(declaration)) {
+            this._resolvers.component.hasOverrides(declaration) ||
+            this._hasTemplateOverrides(declaration, component)) {
           this._storeNgDef(NG_COMPONENT_DEF, declaration);
           // We make a copy of the metadata to ensure that we don't mutate the original metadata
           const metadata = {...component};
@@ -467,22 +472,28 @@ export class TestBedRender3 implements Injector, TestBed {
 
   overrideModule(ngModule: Type<any>, override: MetadataOverride<NgModule>): void {
     this._assertNotInstantiated('overrideModule', 'override module metadata');
-    this._moduleOverrides.push([ngModule, override]);
+    this._resolvers.module.addOverride(ngModule, override);
+    this._compilationQueue.add(ngModule);
+    this._needsScopingQueue.add(ngModule);
   }
 
   overrideComponent(component: Type<any>, override: MetadataOverride<Component>): void {
     this._assertNotInstantiated('overrideComponent', 'override component metadata');
-    this._componentOverrides.push([component, override]);
+    this._resolvers.component.addOverride(component, override);
+    this._compilationQueue.add(component);
+    this._needsScopingQueue.add(component);
   }
 
   overrideDirective(directive: Type<any>, override: MetadataOverride<Directive>): void {
     this._assertNotInstantiated('overrideDirective', 'override directive metadata');
-    this._directiveOverrides.push([directive, override]);
+    this._resolvers.directive.addOverride(directive, override);
+    this._compilationQueue.add(directive);
   }
 
   overridePipe(pipe: Type<any>, override: MetadataOverride<Pipe>): void {
     this._assertNotInstantiated('overridePipe', 'override pipe metadata');
-    this._pipeOverrides.push([pipe, override]);
+    this._resolvers.pipe.addOverride(pipe, override);
+    this._compilationQueue.add(pipe);
   }
 
   /**
@@ -567,7 +578,6 @@ export class TestBedRender3 implements Injector, TestBed {
       return;
     }
 
-    this._resolvers = this._getResolvers();
     this._testModuleType = this._createTestModule();
     this._compileNgModule(this._testModuleType);
 
@@ -597,19 +607,12 @@ export class TestBedRender3 implements Injector, TestBed {
 
   // creates resolvers taking overrides into account
   private _getResolvers() {
-    const module = new NgModuleResolver();
-    module.setOverrides(this._moduleOverrides);
-
-    const component = new ComponentResolver();
-    component.setOverrides(this._componentOverrides);
-
-    const directive = new DirectiveResolver();
-    directive.setOverrides(this._directiveOverrides);
-
-    const pipe = new PipeResolver();
-    pipe.setOverrides(this._pipeOverrides);
-
-    return {module, component, directive, pipe};
+    return {
+      module: new NgModuleResolver(),
+      component: new ComponentResolver(),
+      directive: new DirectiveResolver(),
+      pipe: new PipeResolver()
+    };
   }
 
   private _assertNotInstantiated(methodName: string, methodDescription: string) {
@@ -710,15 +713,14 @@ export class TestBedRender3 implements Injector, TestBed {
     return flatten(flatten(providers, (provider: any) => this._getProviderOverrides(provider)));
   }
 
-  private _hasProviderOverrides(providers: any) {
+  private _hasProviderOverrides(providers: any): boolean {
     return this._getProvidersOverrides(providers).length > 0;
   }
 
-  private _hasTypeOverrides(type: Type<any>, overrides: [Type<any>, MetadataOverride<any>][]) {
-    return overrides.some((override: [Type<any>, MetadataOverride<any>]) => override[0] === type);
+  private _hasTemplateOverrides(type: Type<any>, metadata: Component): boolean {
+    const override = this._templateOverrides.get(type);
+    return override !== undefined && override !== metadata.template;
   }
-
-  private _hasTemplateOverrides(type: Type<any>) { return this._templateOverrides.has(type); }
 
   private _getMetaWithOverrides(meta: Component|Directive|NgModule, type?: Type<any>) {
     const overrides: {providers?: any[], template?: string} = {};
@@ -777,8 +779,8 @@ export class TestBedRender3 implements Injector, TestBed {
       const component = this._resolvers.component.resolve(declaration);
       if (component) {
         if (!declaration.hasOwnProperty(NG_COMPONENT_DEF) ||
-            this._hasTypeOverrides(declaration, this._componentOverrides) ||
-            this._hasTemplateOverrides(declaration)) {
+            this._resolvers.component.hasOverrides(declaration) ||
+            this._hasTemplateOverrides(declaration, component)) {
           this._storeNgDef(NG_COMPONENT_DEF, declaration);
           const metadata = this._getMetaWithOverrides(component, declaration);
           compileComponent(declaration, metadata);
@@ -792,7 +794,7 @@ export class TestBedRender3 implements Injector, TestBed {
       const directive = this._resolvers.directive.resolve(declaration);
       if (directive) {
         if (!declaration.hasOwnProperty(NG_DIRECTIVE_DEF) ||
-            this._hasTypeOverrides(declaration, this._directiveOverrides)) {
+            this._resolvers.directive.hasOverrides(declaration)) {
           this._storeNgDef(NG_DIRECTIVE_DEF, declaration);
           const metadata = this._getMetaWithOverrides(directive);
           compileDirective(declaration, metadata);
@@ -805,7 +807,7 @@ export class TestBedRender3 implements Injector, TestBed {
       const pipe = this._resolvers.pipe.resolve(declaration);
       if (pipe) {
         if (!declaration.hasOwnProperty(NG_PIPE_DEF) ||
-            this._hasTypeOverrides(declaration, this._pipeOverrides)) {
+            this._resolvers.pipe.hasOverrides(declaration)) {
           this._storeNgDef(NG_PIPE_DEF, declaration);
           compilePipe(declaration, pipe);
         }
