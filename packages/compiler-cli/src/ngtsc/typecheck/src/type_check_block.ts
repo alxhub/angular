@@ -6,12 +6,13 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, BindingType, BoundTarget, ImplicitReceiver, PropertyRead, TmplAstBoundAttribute, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable} from '@angular/compiler';
+import {AST, BindingType, BoundTarget, ExpressionType, ImplicitReceiver, PropertyRead, TmplAstBoundAttribute, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable} from '@angular/compiler';
+import {BindingPipe} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {NOOP_DEFAULT_IMPORT_RECORDER, Reference, ReferenceEmitter} from '../../imports';
 import {ClassDeclaration} from '../../reflection';
-import {ImportManager, translateExpression} from '../../translator';
+import {ImportManager, translateExpression, translateType} from '../../translator';
 
 import {TypeCheckBlockMetadata, TypeCheckableDirectiveMeta, TypeCheckingConfig} from './api';
 import {astToTypescript} from './expression';
@@ -33,12 +34,17 @@ export function generateTypeCheckBlock(
     node: ClassDeclaration<ts.ClassDeclaration>, meta: TypeCheckBlockMetadata,
     config: TypeCheckingConfig, importManager: ImportManager,
     refEmitter: ReferenceEmitter): ts.FunctionDeclaration {
-  const tcb =
-      new Context(config, meta.boundTarget, node.getSourceFile(), importManager, refEmitter);
+  const tcb = new Context(
+      config, meta.boundTarget, meta.pipes, node.getSourceFile(), importManager, refEmitter);
   const scope = new Scope(tcb);
   tcbProcessNodes(meta.boundTarget.target.template !, tcb, scope);
 
-  const body = ts.createBlock([ts.createIf(ts.createTrue(), scope.getBlock())]);
+  const body: ts.Statement[] = [];
+  if (tcb.pipeVarStatement !== null) {
+    body.push(tcb.pipeVarStatement);
+  }
+
+  body.push(ts.createIf(ts.createTrue(), scope.getBlock()));
 
   return ts.createFunctionDeclaration(
       /* decorators */ undefined,
@@ -48,7 +54,7 @@ export function generateTypeCheckBlock(
       /* typeParameters */ node.typeParameters,
       /* parameters */[tcbCtxParam(node)],
       /* type */ undefined,
-      /* body */ body);
+      /* body */ ts.createBlock(body));
 }
 
 /**
@@ -61,11 +67,36 @@ export function generateTypeCheckBlock(
 class Context {
   private nextId = 1;
 
+  private pipeVars = new Map<string, ts.Identifier>();
+  readonly pipeVarStatement: ts.VariableStatement|null = null;
+
   constructor(
       readonly config: TypeCheckingConfig,
       readonly boundTarget: BoundTarget<TypeCheckableDirectiveMeta>,
+      readonly pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>,
       private sourceFile: ts.SourceFile, private importManager: ImportManager,
-      private refEmitter: ReferenceEmitter) {}
+      private refEmitter: ReferenceEmitter) {
+    // pipeVars needs to be populated with a variable identifier with a type as the instance of each
+    // pipe used in the template. pipeVarStatement will contain the declarations.
+    const pipeVarDecls: ts.VariableDeclaration[] = [];
+
+    pipes.forEach((ref, name) => {
+      // Allocate an ID for the pipe, and map to it by name.
+      const id = this.allocateId();
+      this.pipeVars.set(name, id);
+
+      // Construct a variable declaration for the type.
+      pipeVarDecls.push(ts.createVariableDeclaration(
+          /* name */ id,
+          /* typeNode */ this.referenceType(ref),
+          /* initializer */ ts.createNonNullExpression(ts.createNull())));
+    });
+
+    if (pipeVarDecls.length > 0) {
+      this.pipeVarStatement =
+          ts.createVariableStatement(undefined, ts.createVariableDeclarationList(pipeVarDecls));
+    }
+  }
 
   /**
    * Allocate a new variable name for use within the `Context`.
@@ -74,6 +105,17 @@ class Context {
    * might change depending on the type of data being stored.
    */
   allocateId(): ts.Identifier { return ts.createIdentifier(`_t${this.nextId++}`); }
+
+  /**
+   * Get a variable representing an instance of the given pipe name.
+   */
+  getPipeVariable(name: string): ts.Identifier {
+    if (!this.pipeVars.has(name)) {
+      throw new Error(
+          `Unknown pipe ${name} referenced in the AST but not included in generateTypeCheckBlock() pipe map.`);
+    }
+    return this.pipeVars.get(name) !;
+  }
 
   /**
    * Write a `ts.Expression` that references the given node.
@@ -88,6 +130,21 @@ class Context {
 
     // Use `translateExpression` to convert the `Expression` into a `ts.Expression`.
     return translateExpression(ngExpr, this.importManager, NOOP_DEFAULT_IMPORT_RECORDER);
+  }
+
+  /**
+   * Write a `ts.TypeNode` that references the given node as a type.
+   *
+   * This may involve importing the node into the file if it's not declared there already.
+   */
+  referenceType(ref: Reference<ts.Node>): ts.TypeNode {
+    const ngExpr = this.refEmitter.emit(ref, this.sourceFile);
+    if (ngExpr === null) {
+      throw new Error(`Unreachable reference: ${ref.node}`);
+    }
+
+    // Create an `ExpressionType` from the `Expression` and translate it via `translateType`.
+    return translateType(new ExpressionType(ngExpr), this.importManager);
   }
 }
 
@@ -630,7 +687,8 @@ function tsCallMethod(
  */
 function tcbResolve(ast: AST, tcb: Context, scope: Scope): ts.Expression|null {
   // Short circuit for AST types that won't have mappings.
-  if (!(ast instanceof ImplicitReceiver || ast instanceof PropertyRead)) {
+  if (!(ast instanceof ImplicitReceiver || ast instanceof PropertyRead ||
+        ast instanceof BindingPipe)) {
     return null;
   }
 
@@ -664,6 +722,11 @@ function tcbResolve(ast: AST, tcb: Context, scope: Scope): ts.Expression|null {
     // PropertyRead resolved to a variable or reference, and therefore this is a property read on
     // the component context itself.
     return ts.createIdentifier('ctx');
+  } else if (ast instanceof BindingPipe) {
+    const expr = tcbExpression(ast.exp, tcb, scope);
+    const pipe = tcb.getPipeVariable(ast.name);
+    const args = ast.args.map(arg => tcbExpression(arg, tcb, scope));
+    return tsCallMethod(pipe, 'transform', [expr, ...args]);
   } else {
     // This AST isn't special after all.
     return null;

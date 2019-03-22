@@ -9,7 +9,7 @@
 import {BoundTarget} from '@angular/compiler';
 import * as ts from 'typescript';
 
-import {NoopImportRewriter, ReferenceEmitter} from '../../imports';
+import {NoopImportRewriter, Reference, ReferenceEmitter} from '../../imports';
 import {ClassDeclaration} from '../../reflection';
 import {ImportManager} from '../../translator';
 
@@ -45,7 +45,8 @@ export class TypeCheckContext {
    */
   addTemplate(
       node: ClassDeclaration<ts.ClassDeclaration>,
-      boundTarget: BoundTarget<TypeCheckableDirectiveMeta>): void {
+      boundTarget: BoundTarget<TypeCheckableDirectiveMeta>,
+      pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>): void {
     // Get all of the directives used in the template and record type constructors for all of them.
     boundTarget.getUsedDirectives().forEach(dir => {
       const dirNode = dir.ref.node as ClassDeclaration<ts.ClassDeclaration>;
@@ -67,6 +68,7 @@ export class TypeCheckContext {
     // Record the type check block operation for the template itself.
     this.addTypeCheckBlock(node.getSourceFile(), node, {
       boundTarget,
+      pipes,
       fnName: `${node.name.text}_TypeCheckBlock`,
     });
   }
