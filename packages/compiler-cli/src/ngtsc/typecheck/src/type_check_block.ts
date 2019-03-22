@@ -13,7 +13,7 @@ import {NOOP_DEFAULT_IMPORT_RECORDER, Reference, ReferenceEmitter} from '../../i
 import {ClassDeclaration} from '../../reflection';
 import {ImportManager, translateExpression} from '../../translator';
 
-import {TypeCheckBlockMetadata, TypeCheckableDirectiveMeta} from './api';
+import {TypeCheckBlockMetadata, TypeCheckableDirectiveMeta, TypeCheckingConfig} from './api';
 import {astToTypescript} from './expression';
 
 
@@ -31,8 +31,10 @@ import {astToTypescript} from './expression';
  */
 export function generateTypeCheckBlock(
     node: ClassDeclaration<ts.ClassDeclaration>, meta: TypeCheckBlockMetadata,
-    importManager: ImportManager, refEmitter: ReferenceEmitter): ts.FunctionDeclaration {
-  const tcb = new Context(meta.boundTarget, node.getSourceFile(), importManager, refEmitter);
+    config: TypeCheckingConfig, importManager: ImportManager,
+    refEmitter: ReferenceEmitter): ts.FunctionDeclaration {
+  const tcb =
+      new Context(config, meta.boundTarget, node.getSourceFile(), importManager, refEmitter);
   const scope = new Scope(tcb);
   tcbProcessNodes(meta.boundTarget.target.template !, tcb, scope);
 
@@ -60,6 +62,7 @@ class Context {
   private nextId = 1;
 
   constructor(
+      readonly config: TypeCheckingConfig,
       readonly boundTarget: BoundTarget<TypeCheckableDirectiveMeta>,
       private sourceFile: ts.SourceFile, private importManager: ImportManager,
       private refEmitter: ReferenceEmitter) {}
@@ -322,7 +325,13 @@ function tcbProcessElement(el: TmplAstElement, tcb: Context, scope: Scope): ts.I
   // bindings go to the element itself.
   inputs.forEach(name => {
     const binding = el.inputs.find(input => input.name === name) !;
-    const expr = tcbExpression(binding.value, tcb, scope);
+    let expr = tcbExpression(binding.value, tcb, scope);
+
+    // If checking the type of bindings is disabled, cast the resulting expression to 'any' before
+    // the assignment.
+    if (!tcb.config.checkTypeOfBindings) {
+      expr = tsCastToAny(expr);
+    }
 
     const prop = ts.createPropertyAccess(id !, name);
     const assign = ts.createBinary(prop, ts.SyntaxKind.EqualsToken, expr);
@@ -693,4 +702,9 @@ function tcbResolveVariable(binding: TmplAstVariable, tcb: Context, scope: Scope
   // Declare the variable, and return its identifier.
   scope.addStatement(tsCreateVariable(id, initializer));
   return id;
+}
+
+function tsCastToAny(expr: ts.Expression): ts.Expression {
+  return ts.createParen(
+      ts.createAsExpression(expr, ts.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)));
 }
