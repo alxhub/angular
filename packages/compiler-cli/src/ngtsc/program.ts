@@ -188,14 +188,9 @@ export class NgtscProgram implements api.Program {
                                    undefined): ReadonlyArray<ts.Diagnostic|api.Diagnostic> {
     const compilation = this.ensureAnalyzed();
     const diagnostics = [...compilation.diagnostics];
-    if (!!this.options.fullTemplateTypeCheck) {
-      const config: TypeCheckingConfig = {
-        checkTypeOfBindings: true,
-      };
-      const ctx = new TypeCheckContext(config, this.refEmitter !);
-      compilation.typeCheck(ctx);
-      diagnostics.push(...this.compileTypeCheckProgram(ctx));
-    }
+
+    diagnostics.push(...this.getTemplateDiagnostics());
+
     if (this.entryPoint !== null && this.exportReferenceGraph !== null) {
       diagnostics.push(...checkForPrivateExports(
           this.entryPoint, this.tsProgram.getTypeChecker(), this.exportReferenceGraph));
@@ -373,7 +368,34 @@ export class NgtscProgram implements api.Program {
     return ((opts && opts.mergeEmitResultsCallback) || mergeEmitResults)(emitResults);
   }
 
-  private compileTypeCheckProgram(ctx: TypeCheckContext): ReadonlyArray<ts.Diagnostic> {
+  private getTemplateDiagnostics(): ReadonlyArray<ts.Diagnostic> {
+    // Skip template type-checking unless explicitly requested.
+    if (this.options.ivyTemplateTypeCheck !== true && this.options.fullTemplateTypeCheck !== true) {
+      return [];
+    }
+
+    const compilation = this.ensureAnalyzed();
+
+    // Run template type-checking.
+
+    // First select a type-checking configuration, based on whether full template type-checking is
+    // requested.
+    let typeCheckingConfig: TypeCheckingConfig;
+    if (this.options.fullTemplateTypeCheck) {
+      typeCheckingConfig = {
+        checkTypeOfBindings: true,
+      };
+    } else {
+      typeCheckingConfig = {
+        checkTypeOfBindings: false,
+      };
+    }
+
+    // Execute the typeCheck phase of each decorator in the program.
+    const ctx = new TypeCheckContext(typeCheckingConfig, this.refEmitter !);
+    compilation.typeCheck(ctx);
+
+    // Construct an auxiliary program for type checking.
     const host = new TypeCheckProgramHost(this.tsProgram, this.host, ctx);
     const auxProgram = ts.createProgram({
       host,
@@ -381,6 +403,8 @@ export class NgtscProgram implements api.Program {
       oldProgram: this.tsProgram,
       options: this.options,
     });
+
+    // TODO(alxhub): filter the diagnostics and map them back to the HTML templates.
     return auxProgram.getSemanticDiagnostics();
   }
 

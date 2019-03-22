@@ -150,7 +150,7 @@ export class TypeCheckContext {
  */
 interface Op {
   /**
-   * The node in the file which will have code generated for it.
+ * The node in the file which will have code generated for it.
    */
   readonly node: ClassDeclaration<ts.ClassDeclaration>;
 
