@@ -64,6 +64,7 @@ export interface SimpleChanges { [propName: string]: any; }
 
 export type ɵNgModuleDefWithMeta<ModuleT, DeclarationsT, ImportsT, ExportsT> = any;
 export type ɵDirectiveDefWithMeta<DirT, SelectorT, ExportAsT, InputsT, OutputsT, QueriesT> = any;
+export type ɵPipeDefWithMeta<PipeT, NameT> = any;
 
 export enum ViewEncapsulation {
   Emulated = 0,

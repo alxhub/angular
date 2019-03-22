@@ -7,6 +7,7 @@
  */
 
 import {BoundTarget, DirectiveMeta} from '@angular/compiler';
+import * as ts from 'typescript';
 
 import {Reference} from '../../imports';
 import {ClassDeclaration} from '../../reflection';
@@ -31,6 +32,11 @@ export interface TypeCheckBlockMetadata {
    * Semantic information about the template of the component.
    */
   boundTarget: BoundTarget<TypeCheckableDirectiveMeta>;
+
+  /**
+   * Pipes used in the template of the component.
+   */
+  pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>;
 
   /**
    * The name of the requested type check block function.
