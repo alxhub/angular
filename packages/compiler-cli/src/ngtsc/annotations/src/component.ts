@@ -308,7 +308,15 @@ export class ComponentDecoratorHandler implements
         matcher.addSelectables(CssSelector.parse(meta.selector), meta);
       }
       const bound = new R3TargetBinder(matcher).bind({template: meta.parsedTemplate});
-      ctx.addTemplate(node, bound);
+      const pipes = new Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>();
+      for (const {name, ref} of scope.compilation.pipes) {
+        if (!ts.isClassDeclaration(ref.node)) {
+          throw new Error(
+              `Unexpected non-class declaration ${ts.SyntaxKind[ref.node.kind]} for pipe ${ref.debugName}`);
+        }
+        pipes.set(name, ref as Reference<ClassDeclaration<ts.ClassDeclaration>>);
+      }
+      ctx.addTemplate(node, bound, pipes);
     }
   }
 
