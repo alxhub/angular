@@ -3969,6 +3969,37 @@ export const Foo = Foo__PRE_R3__;
       expect(jsContents).toContain('styles: ["h1[_ngcontent-%COMP%] {font-size: larger}"]');
     });
   });
+
+  fit('should not suck', () => {
+    env.tsconfig();
+    env.write('test.ts', `
+        import {Component, NgModule} from '@angular/core';
+        // import {CommonModule} from '@angular/common';
+
+        @Component({
+          selector: 'test',
+          template: \`
+  <div *ngIf="x; then a; else b"></div>
+
+<ng-template #a>
+</ng-template>
+
+<ng-template #b>
+</ng-template>
+
+          \`,
+        })
+        export class TestCmp {}
+
+        @NgModule({
+          declarations: [TestCmp],
+          // imports: [CommonModule],
+        })
+        export class Module {}
+      `);
+
+    env.driveMain();
+  });
 });
 
 function expectTokenAtPosition<T extends ts.Node>(

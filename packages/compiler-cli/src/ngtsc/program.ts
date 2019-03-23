@@ -391,11 +391,14 @@ export class NgtscProgram implements api.Program {
       };
     }
 
+    const prepSpan = this.perfRecorder.start('prepTypeCheck');
     // Execute the typeCheck phase of each decorator in the program.
     const ctx = new TypeCheckContext(typeCheckingConfig, this.refEmitter !);
     compilation.typeCheck(ctx);
+    this.perfRecorder.stop(prepSpan);
 
     // Construct an auxiliary program for type checking.
+    const typeCheckSpan = this.perfRecorder.start('typeCheckDiagnostics');
     const host = new TypeCheckProgramHost(this.tsProgram, this.host, ctx);
     const auxProgram = ts.createProgram({
       host,
@@ -405,7 +408,9 @@ export class NgtscProgram implements api.Program {
     });
 
     // TODO(alxhub): filter the diagnostics and map them back to the HTML templates.
-    return auxProgram.getSemanticDiagnostics();
+    const diagnostics = auxProgram.getSemanticDiagnostics();
+    this.perfRecorder.stop(typeCheckSpan);
+    return diagnostics;
   }
 
   private makeCompilation(): IvyCompilation {

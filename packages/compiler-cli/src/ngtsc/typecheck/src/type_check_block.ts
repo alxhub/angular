@@ -6,8 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, BindingType, BoundTarget, ExpressionType, ImplicitReceiver, PropertyRead, TmplAstBoundAttribute, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable} from '@angular/compiler';
-import {BindingPipe} from '@angular/compiler/src/compiler';
+import {AST, BindingPipe, BindingType, BoundTarget, ExpressionType, ImplicitReceiver, PropertyRead, SafePropertyRead, TmplAstBoundAttribute, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {NOOP_DEFAULT_IMPORT_RECORDER, Reference, ReferenceEmitter} from '../../imports';
@@ -470,8 +469,32 @@ function tcbProcessTemplateDeclaration(tmpl: TmplAstTemplate, tcb: Context, scop
   const type = ts.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
   scope.addStatement(tsDeclareVariable(ctx, type));
 
+  const all: TmplAstBoundAttribute[] = [...tmpl.inputs, ...tmpl.templateAttrs].filter(
+      (input: TmplAstBoundAttribute | TmplAstTextAttribute): input is TmplAstBoundAttribute =>
+          input instanceof TmplAstBoundAttribute);
+
+  const inputs: Set<string> =
+      new Set(all.filter(input => input.type === BindingType.Property).map(input => input.name));
+
   // Process directives on the template.
   tcbProcessDirectives(tmpl, new Set(), tcb, scope);
+
+
+  // At this point, `inputs` now contains only those bindings not matched by any directive. These
+  // bindings are "in the air" - they're not attached to any element, but we still want to check
+  // them.
+  inputs.forEach(name => {
+    const binding = all.find(input => input.name === name) !;
+    let expr = tcbExpression(binding.value, tcb, scope);
+
+    // If checking the type of bindings is disabled, cast the resulting expression to 'any' before
+    // the assignment.
+    if (!tcb.config.checkTypeOfBindings) {
+      expr = tsCastToAny(expr);
+    }
+
+    scope.addStatement(ts.createExpressionStatement(expr));
+  });
 
   // Process the template itself (inside the inner Scope).
   tcbProcessNodes(tmpl.children, tcb, tmplScope);
@@ -686,12 +709,6 @@ function tsCallMethod(
  * context). This method assists in resolving those.
  */
 function tcbResolve(ast: AST, tcb: Context, scope: Scope): ts.Expression|null {
-  // Short circuit for AST types that won't have mappings.
-  if (!(ast instanceof ImplicitReceiver || ast instanceof PropertyRead ||
-        ast instanceof BindingPipe)) {
-    return null;
-  }
-
   if (ast instanceof PropertyRead && ast.receiver instanceof ImplicitReceiver) {
     // Check whether the template metadata has bound a target for this expression. If so, then
     // resolve that target. If not, then the expression is referencing the top-level component
@@ -702,7 +719,7 @@ function tcbResolve(ast: AST, tcb: Context, scope: Scope): ts.Expression|null {
       if (binding instanceof TmplAstVariable) {
         return tcbResolveVariable(binding, tcb, scope);
       } else {
-        throw new Error(`Not handled: ${binding}`);
+        throw new Error(`Not handled: ${binding.name}`);
       }
     } else {
       // This is a PropertyRead(ImplicitReceiver) and probably refers to a property access on the

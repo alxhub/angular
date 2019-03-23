@@ -54,7 +54,7 @@ describe('ngtsc type checking', () => {
 
   beforeEach(() => {
     env = NgtscTestEnvironment.setup();
-    env.tsconfig({fullTemplateTypeCheck: true});
+    env.tsconfig({fullTemplateTypeCheck: false});
     setupCommon(env);
   });
 
@@ -223,4 +223,6 @@ describe('ngtsc type checking', () => {
     expect(diags.length).toBe(1);
     expect(diags[0].messageText).toContain('does_not_exist');
   });
+
+
 });

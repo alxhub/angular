@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, ASTWithSource, Binary, Conditional, Interpolation, LiteralArray, LiteralMap, LiteralPrimitive, MethodCall, PropertyRead} from '@angular/compiler';
+import {AST, ASTWithSource, Binary, Conditional, Interpolation, LiteralArray, LiteralMap, LiteralPrimitive, MethodCall, PrefixNot, PropertyRead, SafeMethodCall, SafePropertyRead} from '@angular/compiler';
+import {ImplicitReceiver} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 const BINARY_OPS = new Map<string, ts.SyntaxKind>([
@@ -85,6 +86,18 @@ export function astToTypescript(
       return ts.createPropertyAssignment(ts.createStringLiteral(key), value);
     });
     return ts.createObjectLiteral(properties, true);
+  } else if (ast instanceof PrefixNot) {
+    return ts.createLogicalNot(astToTypescript(ast.expression, maybeResolve));
+  } else if (ast instanceof SafePropertyRead) {
+    const receiver = astToTypescript(ast.receiver, maybeResolve);
+    const expr = ts.createPropertyAccess(receiver, ast.name);
+    return ts.createParen(ts.createBinary(receiver, ts.SyntaxKind.AmpersandAmpersandToken, expr));
+  } else if (ast instanceof SafeMethodCall) {
+    const receiver = astToTypescript(ast.receiver, maybeResolve);
+    const method = ts.createPropertyAccess(receiver, ast.name);
+    const args = ast.args.map(expr => astToTypescript(expr, maybeResolve));
+    const expr = ts.createCall(method, undefined, args);
+    return ts.createParen(ts.createBinary(receiver, ts.SyntaxKind.AmpersandAmpersandToken, expr));
   } else {
     throw new Error(`Unknown node type: ${Object.getPrototypeOf(ast).constructor}`);
   }

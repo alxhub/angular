@@ -136,10 +136,14 @@ class Scope implements Visitor {
   visitTextAttribute(attr: TextAttribute) {}
   visitIcu(icu: Icu) {}
 
-  private maybeDeclare(thing: Reference|Variable) {
-    // Declare something with a name, as long as that name isn't taken.
-    if (!this.namedEntities.has(thing.name)) {
-      this.namedEntities.set(thing.name, thing);
+  private maybeDeclare(thing: Reference|Variable): void {
+    if (thing instanceof Reference && this.parentScope !== undefined) {
+      this.parentScope.maybeDeclare(thing);
+    } else {
+      // Declare something with a name, as long as that name isn't taken.
+      if (!this.namedEntities.has(thing.name)) {
+        this.namedEntities.set(thing.name, thing);
+      }
     }
   }
 

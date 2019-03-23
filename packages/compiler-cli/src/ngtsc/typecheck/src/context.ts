@@ -131,6 +131,9 @@ export class TypeCheckContext {
                       .map(i => `import * as ${i.qualifier} from '${i.specifier}';`)
                       .join('\n');
     code = imports + '\n' + code;
+    if (!sf.isDeclarationFile) {
+      console.error(code);
+    }
 
     // Parse the new source file and return it.
     return ts.createSourceFile(sf.fileName, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
