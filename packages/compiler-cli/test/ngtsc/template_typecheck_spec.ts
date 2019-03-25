@@ -29,7 +29,7 @@ export declare class IndexPipe {
   transform<T>(value: T[], index: number): T;
 
   static ngPipeDef: i0.ɵPipeDefWithMeta<IndexPipe, 'index'>;
-}
+} 
 
 export declare class NgForOf<T> {
   ngForOf: T[];
@@ -39,8 +39,10 @@ export declare class NgForOf<T> {
 
 export declare class NgIf {
   ngIf: any;
+  ngIfThen: any;
+  ngIfElse: any;
   static ngTemplateGuard_ngIf<E>(dir: NgIf, expr: E): expr is NonNullable<E>
-  static ngDirectiveDef: i0.ɵDirectiveDefWithMeta<NgForOf<any>, '[ngIf]', never, {'ngIf': 'ngIf'}, {}, never>;
+  static ngDirectiveDef: i0.ɵDirectiveDefWithMeta<NgForOf<any>, '[ngIf]', never, {'ngIf': 'ngIf', 'ngIfThen': 'ngIfThen', 'ngIfElse': 'ngIfElse'}, {}, never>;
 }
 
 export declare class CommonModule {
@@ -225,4 +227,37 @@ describe('ngtsc type checking', () => {
   });
 
 
+
+  fit('should not suck', () => {
+    env.write('test.ts', `
+        import {Component, NgModule} from '@angular/core';
+        import {CommonModule} from '@angular/common';
+
+        @Component({
+          selector: 'test',
+          template: \`
+            <div *ngIf="x; then a; else b"></div>
+
+            <ng-template #a>
+            {{3}}
+            </ng-template>
+
+            <div #b>
+            {{4}}
+            </div>
+          \`,
+        })
+        export class TestCmp {
+          x: boolean = true;
+        }
+
+        @NgModule({
+          declarations: [TestCmp],
+          imports: [CommonModule],
+        })
+        export class Module {}
+      `);
+
+    env.driveMain();
+  });
 });

@@ -7,6 +7,7 @@
  */
 
 import {BoundTarget} from '@angular/compiler';
+import {fs} from 'mock-fs';
 import * as ts from 'typescript';
 
 import {NoopImportRewriter, Reference, ReferenceEmitter} from '../../imports';
@@ -34,6 +35,8 @@ export class TypeCheckContext {
    * or type-check blocks) that need to be eventually performed on that file.
    */
   private opMap = new Map<ts.SourceFile, Op[]>();
+
+  private typeCtorPending = new Set<ts.ClassDeclaration>();
 
   /**
    * Record a template for the given component `node`, with a `SelectorMatcher` for directive
@@ -79,6 +82,11 @@ export class TypeCheckContext {
   addTypeCtor(
       sf: ts.SourceFile, node: ClassDeclaration<ts.ClassDeclaration>,
       ctorMeta: TypeCtorMetadata): void {
+    if (this.typeCtorPending.has(node)) {
+      return;
+    }
+    this.typeCtorPending.add(node);
+
     // Lazily construct the operation map.
     if (!this.opMap.has(sf)) {
       this.opMap.set(sf, []);
@@ -132,7 +140,8 @@ export class TypeCheckContext {
                       .join('\n');
     code = imports + '\n' + code;
     if (!sf.isDeclarationFile) {
-      console.error(code);
+      const xformName = sf.fileName.replace(/\//g, '-').substr(1);
+      require('fs').writeFileSync('/tmp/' + xformName, code);
     }
 
     // Parse the new source file and return it.

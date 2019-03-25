@@ -88,28 +88,40 @@ class Scope implements Visitor {
   private ingest(template: Template|Node[]): void {
     if (template instanceof Template) {
       // Variables on an <ng-template> are defined in the inner scope.
-      template.variables.forEach(node => this.visitVariable(node));
+      for (const node of template.variables) {
+        this.visitVariable(node);
+      }
 
       // Process the nodes of the template.
-      template.children.forEach(node => node.visit(this));
+      for (const node of template.children) {
+        node.visit(this);
+      }
     } else {
       // No overarching `Template` instance, so process the nodes directly.
-      template.forEach(node => node.visit(this));
+      for (const node of template) {
+        node.visit(this);
+      }
     }
   }
 
   visitElement(element: Element) {
     // `Element`s in the template may have `Reference`s which are captured in the scope.
-    element.references.forEach(node => this.visitReference(node));
+    for (const node of element.references) {
+      this.visitReference(node);
+    }
 
     // Recurse into the `Element`'s children.
-    element.children.forEach(node => node.visit(this));
+    for (const node of element.children) {
+      node.visit(this);
+    }
   }
 
   visitTemplate(template: Template) {
     // References on a <ng-template> are defined in the outer scope, so capture them before
     // processing the template's child scope.
-    template.references.forEach(node => this.visitReference(node));
+    for (const node of template.references) {
+      this.visitReference(node);
+    }
 
     // Next, create an inner scope and process the template within it.
     const scope = new Scope(this);
@@ -137,13 +149,9 @@ class Scope implements Visitor {
   visitIcu(icu: Icu) {}
 
   private maybeDeclare(thing: Reference|Variable): void {
-    if (thing instanceof Reference && this.parentScope !== undefined) {
-      this.parentScope.maybeDeclare(thing);
-    } else {
-      // Declare something with a name, as long as that name isn't taken.
-      if (!this.namedEntities.has(thing.name)) {
-        this.namedEntities.set(thing.name, thing);
-      }
+    // Declare something with a name, as long as that name isn't taken.
+    if (!this.namedEntities.has(thing.name)) {
+      this.namedEntities.set(thing.name, thing);
     }
   }
 
@@ -200,7 +208,8 @@ class DirectiveBinder<DirectiveT extends DirectiveMeta> implements Visitor {
    * this template.
    * @returns three maps which contain information about directives in the template: the
    * `directives` map which lists directives matched on each node, the `bindings` map which
-   * indicates which directives claimed which bindings (inputs, outputs, etc), and the `references`
+   * indicates which directives claimed which bindings (inputs, outputs, etc), and the
+   * `references`
    * map which resolves #references (`Reference`s) within the template to the named directive or
    * template node.
    */
@@ -322,7 +331,8 @@ class DirectiveBinder<DirectiveT extends DirectiveMeta> implements Visitor {
 /**
  * Processes a template and extract metadata about expressions and symbols within.
  *
- * This is a companion to the `DirectiveBinder` that doesn't require knowledge of directives matched
+ * This is a companion to the `DirectiveBinder` that doesn't require knowledge of directives
+ * matched
  * within the template in order to operate.
  *
  * Expressions are visited by the superclass `RecursiveAstVisitor`, with custom logic provided
@@ -353,7 +363,8 @@ class TemplateBinder extends RecursiveAstVisitor implements Visitor {
    * special `AST` nodes in expressions as pointing to references or variables declared within the
    * template, `symbols` which maps those variables and references to the nested `Template` which
    * declares them, if any, and `nestingLevel` which associates each `Template` with a integer
-   * nesting level (how many levels deep within the template structure the `Template` is), starting
+   * nesting level (how many levels deep within the template structure the `Template` is),
+   * starting
    * at 1.
    */
   static apply(template: Node[], scope: Scope): {
@@ -527,6 +538,7 @@ export class R3BoundTarget<DirectiveT extends DirectiveMeta> implements BoundTar
   }
 
   getExpressionTarget(expr: AST): Reference|Variable|null {
+    debugger;
     return this.exprTargets.get(expr) || null;
   }
 

@@ -408,7 +408,14 @@ export class NgtscProgram implements api.Program {
     });
 
     // TODO(alxhub): filter the diagnostics and map them back to the HTML templates.
-    const diagnostics = auxProgram.getSemanticDiagnostics();
+    const diagnostics = auxProgram.getSemanticDiagnostics().filter(diag => {
+      if (diag.code === 6133 /* $var is declared but its value is never read. */) {
+        return false;
+      } else if (diag.code === 6199 /* All variables are unused. */) {
+        return false;
+      }
+      return true;
+    });
     this.perfRecorder.stop(typeCheckSpan);
     return diagnostics;
   }
