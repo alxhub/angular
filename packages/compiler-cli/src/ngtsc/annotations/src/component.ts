@@ -24,7 +24,7 @@ import {tsSourceMapBug29300Fixed} from '../../util/src/ts_source_map_bug_29300';
 import {ResourceLoader} from './api';
 import {extractDirectiveMetadata, extractQueriesFromDecorator, parseFieldArrayValue, queriesFromFields} from './directive';
 import {generateSetClassMetadataCall} from './metadata';
-import {findAngularDecorator, isAngularCoreReference, isExpressionForwardReference, unwrapExpression} from './util';
+import {findAngularDecorator, isAngularCoreReference, isExpressionForwardReference, readBaseClass, unwrapExpression} from './util';
 
 const EMPTY_MAP = new Map<string, Expression>();
 const EMPTY_ARRAY: any[] = [];
@@ -221,7 +221,7 @@ export class ComponentDecoratorHandler implements
         outputs: metadata.outputs,
         queries: metadata.queries.map(query => query.propertyName),
         isComponent: true, ...extractDirectiveGuards(node, this.reflector),
-        baseClass: null,
+        baseClass: readBaseClass(node, this.reflector, this.evaluator),
       });
     }
 
