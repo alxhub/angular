@@ -226,7 +226,7 @@ describe('ngtsc type checking', () => {
     expect(diags[0].messageText).toContain('does_not_exist');
   });
 
-  fit('should not suck', () => {
+  xit('should not suck', () => {
     env.write('test.ts', `
         import {Component, NgModule} from '@angular/core';
         import {CommonModule} from '@angular/common';
