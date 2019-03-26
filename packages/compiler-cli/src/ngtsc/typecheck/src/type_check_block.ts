@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, BindingPipe, BoundTarget, DYNAMIC_TYPE, ExpressionType, ExternalExpr, ImplicitReceiver, PropertyRead, SafePropertyRead, TmplAstBoundAttribute, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable, Type} from '@angular/compiler';
+import {AST, BindingPipe, BindingType, BoundTarget, DYNAMIC_TYPE, ExpressionType, ExternalExpr, ImplicitReceiver, PropertyRead, SafePropertyRead, TmplAstBoundAttribute, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable, Type} from '@angular/compiler';
+import {stringify} from '@angular/compiler/src/util';
 import * as ts from 'typescript';
 
 import {NOOP_DEFAULT_IMPORT_RECORDER, Reference, ReferenceEmitter} from '../../imports';
@@ -15,6 +16,7 @@ import {ImportManager, translateExpression, translateType} from '../../translato
 
 import {TypeCheckBlockMetadata, TypeCheckableDirectiveMeta, TypeCheckingConfig} from './api';
 import {astToTypescript} from './expression';
+
 
 
 /**
@@ -212,7 +214,7 @@ class TcbDirectiveOp extends TcbOp {
 class TcbUnclaimedInputsOp extends TcbOp {
   constructor(
       private tcb: Context, private scope: Scope, private node: TmplAstElement,
-      private inputs: Set<string>) {
+      private claimedInputs: Set<string>) {
     super();
   }
 
@@ -220,8 +222,12 @@ class TcbUnclaimedInputsOp extends TcbOp {
     // `this.inputs` contains only those bindings not matched by any directive. These bindings go to
     // the element itself.
     const elId = this.scope.resolve(this.node);
-    this.inputs.forEach(name => {
-      const binding = this.node.inputs.find(input => input.name === name) !;
+    for (const binding of this.node.inputs) {
+      if (binding.type === BindingType.Property && this.claimedInputs.has(binding.name)) {
+        // Skip this binding as it was claimed by a directive.
+        continue;
+      }
+
       let expr = tcbExpression(binding.value, this.tcb, this.scope);
 
       // If checking the type of bindings is disabled, cast the resulting expression to 'any' before
@@ -230,10 +236,18 @@ class TcbUnclaimedInputsOp extends TcbOp {
         expr = tsCastToAny(expr);
       }
 
-      const prop = ts.createPropertyAccess(elId, name);
-      const assign = ts.createBinary(prop, ts.SyntaxKind.EqualsToken, expr);
-      this.scope.addStatement(ts.createStatement(assign));
-    });
+      if (binding.type === BindingType.Property) {
+        // A direct binding to a property.
+        const prop = ts.createPropertyAccess(elId, binding.name);
+        const assign = ts.createBinary(prop, ts.SyntaxKind.EqualsToken, expr);
+        this.scope.addStatement(ts.createStatement(assign));
+      } else {
+        // A binding to an animation, attribute, class or style. For now, only validate the right-
+        // hand side of the expression.
+        // TODO: properly check class and style bindings.
+        this.scope.addStatement(ts.createExpressionStatement(expr));
+      }
+    }
 
     return null;
   }
@@ -502,13 +516,13 @@ class Scope {
 
   private appendDirectivesAndInputsOfNode(node: TmplAstElement|TmplAstTemplate): void {
     // Collect all the inputs on the element.
-    const elementInputs = new Set<string>(node.inputs.map(input => input.name));
+    const claimedInputs = new Set<string>();
     const directives = this.tcb.boundTarget.getDirectivesOfNode(node);
     if (directives === null || directives.length === 0) {
       // If there are no directives, then all inputs are unclaimed inputs, so queue an operation
       // to add them if needed.
-      if (node instanceof TmplAstElement && elementInputs.size > 0) {
-        this.opQueue.push(new TcbUnclaimedInputsOp(this.tcb, this, node, elementInputs));
+      if (node instanceof TmplAstElement) {
+        this.opQueue.push(new TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs));
       }
       return;
     }
@@ -526,13 +540,11 @@ class Scope {
       for (const dir of directives) {
         for (const fieldName of Object.keys(dir.inputs)) {
           const value = dir.inputs[fieldName];
-          elementInputs.delete(Array.isArray(value) ? value[0] : value);
+          claimedInputs.add(Array.isArray(value) ? value[0] : value);
         }
       }
 
-      if (elementInputs.size > 0) {
-        this.opQueue.push(new TcbUnclaimedInputsOp(this.tcb, this, node, elementInputs));
-      }
+      this.opQueue.push(new TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs));
     }
   }
 }

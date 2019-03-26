@@ -34,6 +34,7 @@
   "angularCompilerOptions": {
     "allowEmptyCodegenFiles": true,
     "enableIvy": "ngtsc",
-    "tracePerformance": "perf.json"
+    "tracePerformance": "perf.json",
+    "ivyTemplateTypeCheck": true
   },
 }

@@ -307,7 +307,6 @@ export class ComponentDecoratorHandler implements
       for (const meta of scope.compilation.directives) {
         matcher.addSelectables(CssSelector.parse(meta.selector), meta);
       }
-      debugger;
       const bound = new R3TargetBinder(matcher).bind({template: meta.parsedTemplate});
       const pipes = new Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>();
       for (const {name, ref} of scope.compilation.pipes) {

@@ -142,6 +142,7 @@ export class TypeCheckContext {
     if (!sf.isDeclarationFile) {
       const xformName = sf.fileName.replace(/\//g, '-').substr(1);
       require('fs').writeFileSync('/tmp/' + xformName, code);
+      console.error(code);
     }
 
     // Parse the new source file and return it.

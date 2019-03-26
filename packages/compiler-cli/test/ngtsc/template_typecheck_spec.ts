@@ -56,7 +56,7 @@ describe('ngtsc type checking', () => {
 
   beforeEach(() => {
     env = NgtscTestEnvironment.setup();
-    env.tsconfig({fullTemplateTypeCheck: false});
+    env.tsconfig({fullTemplateTypeCheck: true});
     setupCommon(env);
   });
 
@@ -226,8 +226,6 @@ describe('ngtsc type checking', () => {
     expect(diags[0].messageText).toContain('does_not_exist');
   });
 
-
-
   fit('should not suck', () => {
     env.write('test.ts', `
         import {Component, NgModule} from '@angular/core';
@@ -236,19 +234,11 @@ describe('ngtsc type checking', () => {
         @Component({
           selector: 'test',
           template: \`
-            <div *ngIf="x; then a; else b"></div>
-
-            <ng-template #a>
-            {{3}}
-            </ng-template>
-
-            <div #b>
-            {{4}}
-            </div>
+            <div [class.foo-bar]="x"></div>
           \`,
         })
         export class TestCmp {
-          x: boolean = true;
+          x = true;
         }
 
         @NgModule({
