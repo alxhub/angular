@@ -109,9 +109,8 @@ class TcbTemplateBodyOp extends TcbOp {
 
     // An `if` will be constructed, within which the template's children will be type checked. The
     // `if` is used for two reasons: it creates a new syntactic scope, isolating variables declared
-    // in
-    // the template's TCB from the outer context, and it allows any directives on the templates to
-    // perform type narrowing of either expressions or the template's context.
+    // in the template's TCB from the outer context, and it allows any directives on the templates
+    // to perform type narrowing of either expressions or the template's context.
 
     // The guard is the `if` block's condition. It's usually set to `true` but directives that exist
     // on the template can trigger extra guard expressions that serve to narrow types within the
@@ -149,7 +148,7 @@ class TcbTemplateBodyOp extends TcbOp {
 
         // The second kind of guard is a template context guard. This guard narrows the template
         // rendering context variable `ctx`.
-        if (dir.hasNgTemplateContextGuard) {
+        if (dir.hasNgTemplateContextGuard && this.tcb.config.applyTemplateContextGuards) {
           const guardInvoke = tsCallMethod(dirId, 'ngTemplateContextGuard', [dirInstId, ctx]);
           directiveGuards.push(guardInvoke);
         }
@@ -237,10 +236,14 @@ class TcbUnclaimedInputsOp extends TcbOp {
       }
 
       if (binding.type === BindingType.Property) {
-        // A direct binding to a property.
-        const prop = ts.createPropertyAccess(elId, binding.name);
-        const assign = ts.createBinary(prop, ts.SyntaxKind.EqualsToken, expr);
-        this.scope.addStatement(ts.createStatement(assign));
+        if (binding.name !== 'style' && binding.name !== 'class') {
+          // A direct binding to a property.
+          const prop = ts.createPropertyAccess(elId, binding.name);
+          const assign = ts.createBinary(prop, ts.SyntaxKind.EqualsToken, expr);
+          this.scope.addStatement(ts.createStatement(assign));
+        } else {
+          this.scope.addStatement(ts.createExpressionStatement(expr));
+        }
       } else {
         // A binding to an animation, attribute, class or style. For now, only validate the right-
         // hand side of the expression.
@@ -268,9 +271,6 @@ class Context {
   private pipeVars = new Map<string, ts.Identifier>();
   readonly pipeVarStatement: ts.VariableStatement|null = null;
 
-  private rootScope !: Scope;
-
-
   constructor(
       readonly config: TypeCheckingConfig,
       readonly boundTarget: BoundTarget<TypeCheckableDirectiveMeta>,
@@ -286,11 +286,17 @@ class Context {
       const id = this.allocateId();
       this.pipeVars.set(name, id);
 
+      const type = this.referenceType(ref);
+
+      let expr: ts.Expression = ts.createNull();
+      expr = ts.createAsExpression(expr, ts.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword));
+      expr = ts.createAsExpression(expr, type);
+
       // Construct a variable declaration for the type.
       pipeVarDecls.push(ts.createVariableDeclaration(
           /* name */ id,
           /* typeNode */ this.referenceType(ref),
-          /* initializer */ ts.createNonNullExpression(ts.createNull())));
+          /* initializer */ expr));
     });
 
     if (pipeVarDecls.length > 0) {
@@ -508,7 +514,9 @@ class Scope {
     } else if (node instanceof TmplAstTemplate) {
       // Template children are rendered in a child scope.
       this.appendDirectivesAndInputsOfNode(node);
-      this.opQueue.push(new TcbTemplateBodyOp(this.tcb, this, node));
+      if (this.tcb.config.checkTemplateBodies) {
+        this.opQueue.push(new TcbTemplateBodyOp(this.tcb, this, node));
+      }
     } else if (node instanceof TmplAstBoundText) {
       this.opQueue.push(new TcbTextInterpolationOp(this.tcb, this, node));
     }
@@ -581,7 +589,7 @@ function tcbExpression(ast: AST, tcb: Context, scope: Scope): ts.Expression {
   // `astToTypescript` actually does the conversion. A special resolver `tcbResolve` is passed which
   // interprets specific expression nodes that interact with the `ImplicitReceiver`. These nodes
   // actually refer to identifiers within the current scope.
-  return astToTypescript(ast, (ast) => tcbResolve(ast, tcb, scope));
+  return astToTypescript(ast, (ast) => tcbResolve(ast, tcb, scope), tcb.config);
 }
 
 /**
@@ -595,7 +603,12 @@ function tcbCallTypeCtor(
 
   // Construct an array of `ts.PropertyAssignment`s for each input of the directive that has a
   // matching binding.
-  const members = bindings.map(b => ts.createPropertyAssignment(b.field, b.expression));
+  const members = bindings.map(({field, expression}) => {
+    if (!tcb.config.checkTypeOfBindings) {
+      expression = tsCastToAny(expression);
+    }
+    return ts.createPropertyAssignment(field, expression);
+  });
 
   // Call the `ngTypeCtor` method on the directive class, with an object literal argument created
   // from the matched inputs.

@@ -727,6 +727,12 @@ class AngularCompilerProgram implements Program {
     if (tsStructureIsReused(tmpProgram) !== StructureIsReused.Completely) {
       throw new Error(`Internal Error: The structure of the program changed during codegen.`);
     }
+
+    this._tsProgram.getSourceFiles().forEach(file => {
+      if (!file.isDeclarationFile) {
+        console.error(file.fileName, file.text);
+      }
+    });
   }
 
   private _createProgramOnError(e: any) {

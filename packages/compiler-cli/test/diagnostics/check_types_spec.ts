@@ -85,7 +85,10 @@ describe('ng type checker', () => {
 
   describe('type narrowing', () => {
     const a = (files: MockFiles, options: ng.AngularCompilerOptions = {}) => {
-      accept(files, {fullTemplateTypeCheck: true, ...options});
+      accept(files, {
+        fullTemplateTypeCheck: false,
+        ...options,
+      });
     };
 
     it('should narrow an *ngIf like directive', () => {
@@ -287,6 +290,49 @@ describe('ng type checker', () => {
           constructor(templateRef: TemplateRef<MyIfContext>) {}
 
           @Input('my-if')
+          set myIf(condition: any) {}
+
+          static myIfUseIfTypeGuard: void;
+        }
+
+        @NgModule({
+          declarations: [MainComp, MyIf],
+        })
+        export class MainModule {}`
+      });
+    });
+
+    fit('blah', () => {
+      a({
+        'src/app.component.ts': '',
+        'src/lib.ts': '',
+        'src/app.module.ts': `
+        import {NgModule, Component, Directive, HostListener, TemplateRef, Input} from '@angular/core';
+
+        export interface Person {
+          name: string;
+          id: number;
+        }
+
+        @Component({
+          selector: 'comp',
+          template: '<div *myIf="person && person.id > 0"> {{blah + blah}} {{person.name}} {{foo}} </div>'
+        })
+        export class MainComp {
+          person: Person | null = null;
+          private foo = 'test';
+        }
+
+        export class MyIfContext {
+          public $implicit: any = null;
+          public myIf: any = null;
+        }
+
+        @Directive({selector: '[myIf]'})
+        export class MyIf {
+          constructor(templateRef: TemplateRef<MyIfContext>) {}
+
+          @Input()
           set myIf(condition: any) {}
 
           static myIfUseIfTypeGuard: void;

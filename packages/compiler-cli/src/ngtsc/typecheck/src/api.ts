@@ -71,4 +71,23 @@ export interface TypeCheckingConfig {
    * are checked.
    */
   checkTypeOfBindings: boolean;
+
+  /**
+   * Whether to narrow the types of template contexts.
+   */
+  applyTemplateContextGuards: boolean;
+
+  /**
+   * Whether to use a strict type for null-safe navigation operations.
+   *
+   * If this is `false`, then the return type of `a?.b` or `a?()` will be `any`. If set to `true`,
+   * then the return type of `a?.b` for example will be the same as the type of the ternary
+   * expression `a != null ? a.b : a`.
+   */
+  strictSafeNavigationTypes: boolean;
+
+  /**
+   * Whether to descend into template bodies and check any bindings there.
+   */
+  checkTemplateBodies: boolean;
 }

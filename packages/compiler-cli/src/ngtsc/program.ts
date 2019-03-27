@@ -65,6 +65,8 @@ export class NgtscProgram implements api.Program {
   private perfTracker: PerfTracker|null = null;
   private incrementalState: IncrementalState;
 
+  private wholeSpan: number;
+
   constructor(
       rootNames: ReadonlyArray<string>, private options: api.CompilerOptions,
       host: api.CompilerHost, oldProgram?: api.Program) {
@@ -72,6 +74,7 @@ export class NgtscProgram implements api.Program {
       this.perfTracker = PerfTracker.zeroedToNow();
       this.perfRecorder = this.perfTracker;
     }
+    this.wholeSpan = this.perfRecorder.start('ngtsc');
 
     this.rootDirs = getRootDirs(host, options);
     this.closureCompilerEnabled = !!options.annotateForClosureCompiler;
@@ -362,12 +365,14 @@ export class NgtscProgram implements api.Program {
     }
     this.perfRecorder.stop(emitSpan);
 
+    this.perfRecorder.stop(this.wholeSpan);
+
+    // Run the emit, including a custom transformer that will downlevel the Ivy decorators in code.
+    const res = ((opts && opts.mergeEmitResultsCallback) || mergeEmitResults)(emitResults);
     if (this.perfTracker !== null && this.options.tracePerformance !== undefined) {
       this.perfTracker.serializeToFile(this.options.tracePerformance, this.host);
     }
-
-    // Run the emit, including a custom transformer that will downlevel the Ivy decorators in code.
-    return ((opts && opts.mergeEmitResultsCallback) || mergeEmitResults)(emitResults);
+    return res;
   }
 
   private getTemplateDiagnostics(): ReadonlyArray<ts.Diagnostic> {
@@ -386,10 +391,16 @@ export class NgtscProgram implements api.Program {
     if (this.options.fullTemplateTypeCheck) {
       typeCheckingConfig = {
         checkTypeOfBindings: true,
+        applyTemplateContextGuards: true,
+        strictSafeNavigationTypes: true,
+        checkTemplateBodies: true,
       };
     } else {
       typeCheckingConfig = {
         checkTypeOfBindings: false,
+        applyTemplateContextGuards: false,
+        strictSafeNavigationTypes: false,
+        checkTemplateBodies: false,
       };
     }
 
@@ -406,20 +417,41 @@ export class NgtscProgram implements api.Program {
       host,
       rootNames: this.tsProgram.getRootFileNames(),
       oldProgram: this.tsProgram,
-      options: this.options,
+      options: {
+        ...this.options,
+        skipLibCheck: true,
+      },
     });
 
     // TODO(alxhub): filter the diagnostics and map them back to the HTML templates.
-    const diagnostics = auxProgram.getSemanticDiagnostics().filter(diag => {
+    const diagnostics: ts.Diagnostic[] = [];
+
+    const filterDiagnostic = (diag: ts.Diagnostic): boolean => {
       if (diag.code === 6133 /* $var is declared but its value is never read. */) {
         return false;
       } else if (diag.code === 6199 /* All variables are unused. */) {
         return false;
+      } else if (
+          diag.code === 2695 /* Left side of comma operator is unused and has no side effects. */) {
+        return false;
       }
       return true;
-    });
+    };
+
+    for (const sf of this.tsProgram.getSourceFiles()) {
+      if (sf.isDeclarationFile) {
+        continue;
+      }
+
+      if (ctx.hasTransforms(sf)) {
+        const auxSf = auxProgram.getSourceFile(sf.fileName) !;
+        diagnostics.push(...auxProgram.getSemanticDiagnostics(auxSf));
+      }
+    }
+
+
     this.perfRecorder.stop(typeCheckSpan);
-    return diagnostics;
+    return diagnostics.filter(filterDiagnostic);
   }
 
   private makeCompilation(): IvyCompilation {

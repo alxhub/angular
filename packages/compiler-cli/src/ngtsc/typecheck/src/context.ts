@@ -5,9 +5,12 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+/// <reference types="node" />
 
 
 import {BoundTarget} from '@angular/compiler';
+
+import fs = require('fs');
 import * as ts from 'typescript';
 
 import {NoopImportRewriter, Reference, ReferenceEmitter} from '../../imports';
@@ -37,6 +40,8 @@ export class TypeCheckContext {
   private opMap = new Map<ts.SourceFile, Op[]>();
 
   private typeCtorPending = new Set<ts.ClassDeclaration>();
+
+  hasTransforms(sf: ts.SourceFile): boolean { return this.opMap.has(sf); }
 
   /**
    * Record a template for the given component `node`, with a `SelectorMatcher` for directive
@@ -141,8 +146,7 @@ export class TypeCheckContext {
     code = imports + '\n' + code;
     if (!sf.isDeclarationFile) {
       const xformName = sf.fileName.replace(/\//g, '-').substr(1);
-      // require('fs').writeFileSync('/tmp/' + xformName, code);
-      console.error(code);
+      // fs.writeFileSync('/tmp/' + xformName, code);
     }
 
     // Parse the new source file and return it.
