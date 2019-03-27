@@ -226,23 +226,37 @@ describe('ngtsc type checking', () => {
     expect(diags[0].messageText).toContain('does_not_exist');
   });
 
-  xit('should not suck', () => {
+  fit('should not suck', () => {
     env.write('test.ts', `
-        import {Component, NgModule} from '@angular/core';
+        import {Component, Directive, Input, NgModule} from '@angular/core';
         import {CommonModule} from '@angular/common';
+
+        @Directive({
+          selector: '[baseDir]',
+        })
+        export class BaseDir {
+          @Input() base: string;
+        }
+
+        @Directive({
+          selector: '[childDir]',
+        })
+        export class ChildDir extends BaseDir {
+          @Input() child: string;
+        }
 
         @Component({
           selector: 'test',
           template: \`
-            <div [class.foo-bar]="x"></div>
+            <div childDir [base]="x"></div>
           \`,
         })
         export class TestCmp {
-          x = true;
+          x = 'testing';
         }
 
         @NgModule({
-          declarations: [TestCmp],
+          declarations: [TestCmp, ChildDir],
           imports: [CommonModule],
         })
         export class Module {}

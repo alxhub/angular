@@ -4,7 +4,6 @@ import {Reference} from '../../imports';
 import {ClassDeclaration} from '../../reflection';
 
 import {DirectiveMeta, MetadataReader, MetadataRegistry, NgModuleMeta, PipeMeta} from './api';
-
 export class LocalMetadataRegistry implements MetadataRegistry, MetadataReader {
   private directives = new Map<ClassDeclaration, DirectiveMeta>();
   private ngModules = new Map<ClassDeclaration, NgModuleMeta>();

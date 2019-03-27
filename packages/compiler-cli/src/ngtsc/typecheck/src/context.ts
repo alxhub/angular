@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+
 import {BoundTarget} from '@angular/compiler';
-import {fs} from 'mock-fs';
 import * as ts from 'typescript';
 
 import {NoopImportRewriter, Reference, ReferenceEmitter} from '../../imports';
@@ -51,14 +51,14 @@ export class TypeCheckContext {
       boundTarget: BoundTarget<TypeCheckableDirectiveMeta>,
       pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>): void {
     // Get all of the directives used in the template and record type constructors for all of them.
-    boundTarget.getUsedDirectives().forEach(dir => {
+    for (const dir of boundTarget.getUsedDirectives()) {
       const dirNode = dir.ref.node as ClassDeclaration<ts.ClassDeclaration>;
       // Add a type constructor operation for the directive.
       this.addTypeCtor(dirNode.getSourceFile(), dirNode, {
         fnName: 'ngTypeCtor',
         // The constructor should have a body if the directive comes from a .ts file, but not if it
         // comes from a .d.ts file. .d.ts declarations don't have bodies.
-        body: !dirNode.getSourceFile().fileName.endsWith('.d.ts'),
+        body: !dirNode.getSourceFile().isDeclarationFile,
         fields: {
           inputs: Object.keys(dir.inputs),
           outputs: Object.keys(dir.outputs),
@@ -66,7 +66,7 @@ export class TypeCheckContext {
           queries: dir.queries,
         },
       });
-    });
+    }
 
     // Record the type check block operation for the template itself.
     this.addTypeCheckBlock(node.getSourceFile(), node, {
@@ -141,7 +141,7 @@ export class TypeCheckContext {
     code = imports + '\n' + code;
     if (!sf.isDeclarationFile) {
       const xformName = sf.fileName.replace(/\//g, '-').substr(1);
-      require('fs').writeFileSync('/tmp/' + xformName, code);
+      // require('fs').writeFileSync('/tmp/' + xformName, code);
       console.error(code);
     }
 

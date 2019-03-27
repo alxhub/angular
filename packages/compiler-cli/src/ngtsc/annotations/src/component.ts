@@ -13,7 +13,8 @@ import * as ts from 'typescript';
 import {CycleAnalyzer} from '../../cycles';
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
 import {DefaultImportRecorder, ModuleResolver, Reference, ReferenceEmitter} from '../../imports';
-import {DirectiveMeta, MetadataRegistry, extractDirectiveGuards} from '../../metadata';
+import {DirectiveMeta, MetadataReader, MetadataRegistry, extractDirectiveGuards} from '../../metadata';
+import {flattenInheritedMetadata} from '../../metadata/src/inheritance';
 import {EnumValue, PartialEvaluator} from '../../partial_evaluator';
 import {ClassDeclaration, Decorator, ReflectionHost, filterToMembersWithDecorator, reflectObjectLiteral} from '../../reflection';
 import {LocalModuleScopeRegistry} from '../../scope';
@@ -42,8 +43,9 @@ export class ComponentDecoratorHandler implements
     DecoratorHandler<ComponentHandlerData, Decorator> {
   constructor(
       private reflector: ReflectionHost, private evaluator: PartialEvaluator,
-      private metaRegistry: MetadataRegistry, private scopeRegistry: LocalModuleScopeRegistry,
-      private isCore: boolean, private resourceLoader: ResourceLoader, private rootDirs: string[],
+      private metaRegistry: MetadataRegistry, private metaReader: MetadataReader,
+      private scopeRegistry: LocalModuleScopeRegistry, private isCore: boolean,
+      private resourceLoader: ResourceLoader, private rootDirs: string[],
       private defaultPreserveWhitespaces: boolean, private i18nUseExternalIds: boolean,
       private moduleResolver: ModuleResolver, private cycleAnalyzer: CycleAnalyzer,
       private refEmitter: ReferenceEmitter, private defaultImportRecorder: DefaultImportRecorder) {}
@@ -307,7 +309,8 @@ export class ComponentDecoratorHandler implements
     const matcher = new SelectorMatcher<DirectiveMeta>();
     if (scope !== null) {
       for (const meta of scope.compilation.directives) {
-        matcher.addSelectables(CssSelector.parse(meta.selector), meta);
+        const extMeta = flattenInheritedMetadata(this.metaReader, meta.ref);
+        matcher.addSelectables(CssSelector.parse(meta.selector), extMeta);
       }
       const bound = new R3TargetBinder(matcher).bind({template: meta.parsedTemplate});
       const pipes = new Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>();

@@ -6,6 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {ConstantPool} from '@angular/compiler';
+import {DtsMetadataReader, LocalMetadataRegistry} from '@angular/compiler-cli/src/ngtsc/metadata';
+import {CompoundMetadataReader} from '@angular/compiler-cli/src/ngtsc/metadata/src/util';
 import {NOOP_PERF_RECORDER} from '@angular/compiler-cli/src/ngtsc/perf';
 import * as path from 'canonical-path';
 import * as fs from 'fs';
@@ -65,6 +67,9 @@ class NgccResourceLoader implements ResourceLoader {
  */
 export class DecorationAnalyzer {
   resourceManager = new NgccResourceLoader();
+  metaRegistry = new LocalMetadataRegistry();
+  dtsMetaReader = new DtsMetadataReader(this.typeChecker, this.reflectionHost);
+  metaReader = new CompoundMetadataReader([this.metaRegistry, this.dtsMetaReader]);
   refEmitter = new ReferenceEmitter([
     new LocalIdentifierStrategy(),
     new AbsoluteModuleStrategy(this.program, this.typeChecker, this.options, this.host),
@@ -73,10 +78,10 @@ export class DecorationAnalyzer {
     // on whether a bestGuessOwningModule is present in the Reference.
     new LogicalProjectStrategy(this.typeChecker, new LogicalFileSystem(this.rootDirs)),
   ]);
-  dtsModuleScopeResolver = new MetadataDtsModuleScopeResolver(
-      this.typeChecker, this.reflectionHost, /* aliasGenerator */ null);
+  dtsModuleScopeResolver =
+      new MetadataDtsModuleScopeResolver(this.dtsMetaReader, /* aliasGenerator */ null);
   scopeRegistry = new LocalModuleScopeRegistry(
-      this.dtsModuleScopeResolver, this.refEmitter, /* aliasGenerator */ null);
+      this.metaRegistry, this.dtsModuleScopeResolver, this.refEmitter, /* aliasGenerator */ null);
   evaluator = new PartialEvaluator(this.reflectionHost, this.typeChecker);
   moduleResolver = new ModuleResolver(this.program, this.options, this.host);
   importGraph = new ImportGraph(this.moduleResolver);
@@ -84,20 +89,22 @@ export class DecorationAnalyzer {
   handlers: DecoratorHandler<any, any>[] = [
     new BaseDefDecoratorHandler(this.reflectionHost, this.evaluator, this.isCore),
     new ComponentDecoratorHandler(
-        this.reflectionHost, this.evaluator, this.scopeRegistry, this.isCore, this.resourceManager,
-        this.rootDirs, /* defaultPreserveWhitespaces */ false, /* i18nUseExternalIds */ true,
-        this.moduleResolver, this.cycleAnalyzer, this.refEmitter, NOOP_DEFAULT_IMPORT_RECORDER),
+        this.reflectionHost, this.evaluator, this.metaRegistry, this.metaReader, this.scopeRegistry,
+        this.isCore, this.resourceManager, this.rootDirs, /* defaultPreserveWhitespaces */ false,
+        /* i18nUseExternalIds */ true, this.moduleResolver, this.cycleAnalyzer, this.refEmitter,
+        NOOP_DEFAULT_IMPORT_RECORDER),
     new DirectiveDecoratorHandler(
-        this.reflectionHost, this.evaluator, this.scopeRegistry, NOOP_DEFAULT_IMPORT_RECORDER,
+        this.reflectionHost, this.evaluator, this.metaRegistry, NOOP_DEFAULT_IMPORT_RECORDER,
         this.isCore),
     new InjectableDecoratorHandler(
         this.reflectionHost, NOOP_DEFAULT_IMPORT_RECORDER, this.isCore,
         /* strictCtorDeps */ false),
     new NgModuleDecoratorHandler(
-        this.reflectionHost, this.evaluator, this.scopeRegistry, this.referencesRegistry,
-        this.isCore, /* routeAnalyzer */ null, this.refEmitter, NOOP_DEFAULT_IMPORT_RECORDER),
+        this.reflectionHost, this.evaluator, this.metaRegistry, this.scopeRegistry,
+        this.referencesRegistry, this.isCore, /* routeAnalyzer */ null, this.refEmitter,
+        NOOP_DEFAULT_IMPORT_RECORDER),
     new PipeDecoratorHandler(
-        this.reflectionHost, this.evaluator, this.scopeRegistry, NOOP_DEFAULT_IMPORT_RECORDER,
+        this.reflectionHost, this.evaluator, this.metaRegistry, NOOP_DEFAULT_IMPORT_RECORDER,
         this.isCore),
   ];
 
