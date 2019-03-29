@@ -125,7 +125,7 @@ describe('ngtsc type checking', () => {
     env.driveMain();
   });
 
-  it('should report an error inside the NgFor template', () => {
+  fit('should report an error inside the NgFor template', () => {
     env.write('test.ts', `
     import {CommonModule} from '@angular/common';
     import {Component, NgModule} from '@angular/core';
@@ -134,7 +134,7 @@ describe('ngtsc type checking', () => {
       selector: 'test',
       template: '<div *ngFor="let user of users">{{user.does_not_exist}}</div>',
     })
-    class TestCmp {
+    export class TestCmp {
       users: {name: string}[];
     }
 
@@ -142,7 +142,7 @@ describe('ngtsc type checking', () => {
       declarations: [TestCmp],
       imports: [CommonModule],
     })
-    class Module {}
+    export class Module {}
     `);
 
     const diags = env.driveDiagnostics();
@@ -226,7 +226,7 @@ describe('ngtsc type checking', () => {
     expect(diags[0].messageText).toContain('does_not_exist');
   });
 
-  fit('should not suck', () => {
+  it('should not suck', () => {
     env.write('test.ts', `
         import {Component, Directive, Input, NgModule} from '@angular/core';
         import {CommonModule} from '@angular/common';

@@ -27,11 +27,12 @@ import {TypeScriptReflectionHost} from './reflection';
 import {HostResourceLoader} from './resource_loader';
 import {NgModuleRouteAnalyzer, entryPointKeyFor} from './routing';
 import {LocalModuleScopeRegistry, MetadataDtsModuleScopeResolver} from './scope';
-import {FactoryGenerator, FactoryInfo, GeneratedShimsHostWrapper, ShimGenerator, SummaryGenerator, generatedFactoryTransform} from './shims';
+import {FactoryGenerator, FactoryInfo, GeneratedShimsHostWrapper, ShimGenerator, SummaryGenerator, TypeCheckShimGenerator, generatedFactoryTransform} from './shims';
 import {ivySwitchTransform} from './switch';
 import {IvyCompilation, declarationTransformFactory, ivyTransformFactory} from './transform';
 import {aliasTransformFactory} from './transform/src/alias';
 import {TypeCheckContext, TypeCheckProgramHost, TypeCheckingConfig} from './typecheck';
+import {typeCheckFilePath} from './typecheck/src/type_check_file';
 import {normalizeSeparators} from './util/src/path';
 import {getRootDirs, isDtsPath} from './util/src/typescript';
 
@@ -108,6 +109,10 @@ export class NgtscProgram implements api.Program {
       generators.push(summaryGenerator, factoryGenerator);
     }
 
+    const typeCheckFile = typeCheckFilePath(this.rootDirs);
+    generators.push(new TypeCheckShimGenerator(typeCheckFile));
+    rootFiles.push(typeCheckFile);
+
     let entryPoint: string|null = null;
     if (options.flatModuleOutFile !== undefined) {
       entryPoint = findFlatIndexEntryPoint(normalizedRootNames);
@@ -143,8 +148,10 @@ export class NgtscProgram implements api.Program {
       this.host = new GeneratedShimsHostWrapper(host, generators);
     }
 
+    const start = Date.now();
     this.tsProgram =
         ts.createProgram(rootFiles, options, this.host, oldProgram && oldProgram.getTsProgram());
+    console.error('first program in', (Date.now() - start) + 'ms');
 
     this.entryPoint = entryPoint !== null ? this.tsProgram.getSourceFile(entryPoint) || null : null;
     this.moduleResolver = new ModuleResolver(this.tsProgram, options, this.host);
@@ -406,52 +413,16 @@ export class NgtscProgram implements api.Program {
 
     const prepSpan = this.perfRecorder.start('prepTypeCheck');
     // Execute the typeCheck phase of each decorator in the program.
-    const ctx = new TypeCheckContext(typeCheckingConfig, this.refEmitter !);
+    const ctx = new TypeCheckContext(typeCheckingConfig, this.refEmitter !, this.rootDirs);
     compilation.typeCheck(ctx);
     this.perfRecorder.stop(prepSpan);
 
-    // Construct an auxiliary program for type checking.
+    // Get the diagnostics.
     const typeCheckSpan = this.perfRecorder.start('typeCheckDiagnostics');
-    const host = new TypeCheckProgramHost(this.tsProgram, this.host, ctx);
-    const auxProgram = ts.createProgram({
-      host,
-      rootNames: this.tsProgram.getRootFileNames(),
-      oldProgram: this.tsProgram,
-      options: {
-        ...this.options,
-        skipLibCheck: true,
-      },
-    });
-
-    // TODO(alxhub): filter the diagnostics and map them back to the HTML templates.
-    const diagnostics: ts.Diagnostic[] = [];
-
-    const filterDiagnostic = (diag: ts.Diagnostic): boolean => {
-      if (diag.code === 6133 /* $var is declared but its value is never read. */) {
-        return false;
-      } else if (diag.code === 6199 /* All variables are unused. */) {
-        return false;
-      } else if (
-          diag.code === 2695 /* Left side of comma operator is unused and has no side effects. */) {
-        return false;
-      }
-      return true;
-    };
-
-    for (const sf of this.tsProgram.getSourceFiles()) {
-      if (sf.isDeclarationFile) {
-        continue;
-      }
-
-      if (ctx.hasTransforms(sf)) {
-        const auxSf = auxProgram.getSourceFile(sf.fileName) !;
-        diagnostics.push(...auxProgram.getSemanticDiagnostics(auxSf));
-      }
-    }
-
-
+    const diagnostics = ctx.calculateTemplateDiagnostics(this.tsProgram, this.host, this.options);
     this.perfRecorder.stop(typeCheckSpan);
-    return diagnostics.filter(filterDiagnostic);
+
+    return diagnostics;
   }
 
   private makeCompilation(): IvyCompilation {

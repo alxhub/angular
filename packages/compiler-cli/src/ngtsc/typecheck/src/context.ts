@@ -18,8 +18,12 @@ import {ClassDeclaration} from '../../reflection';
 import {ImportManager} from '../../translator';
 
 import {TypeCheckBlockMetadata, TypeCheckableDirectiveMeta, TypeCheckingConfig, TypeCtorMetadata} from './api';
-import {generateTypeCheckBlock} from './type_check_block';
-import {generateTypeCtor} from './type_constructor';
+import {generateTypeCheckBlock, requiresInlineTypeCheckBlock} from './type_check_block';
+import {generateInlineTypeCtor, requiresInlineTypeCtor} from './type_constructor';
+import {TypeCheckFile, typeCheckFilePath} from './type_check_file';
+import {AbsoluteFsPath} from '../../path';
+import {Environment} from './environment';
+import {TypeCheckProgramHost} from './host';
 
 
 
@@ -31,15 +35,21 @@ import {generateTypeCtor} from './type_constructor';
  * checking code.
  */
 export class TypeCheckContext {
-  constructor(private config: TypeCheckingConfig, private refEmitter: ReferenceEmitter) {}
+  private typeCheckFile: TypeCheckFile;
 
+  constructor(
+      private config: TypeCheckingConfig, private refEmitter: ReferenceEmitter,
+      rootDirs: AbsoluteFsPath[]) {
+    const fileName = typeCheckFilePath(rootDirs);
+    this.typeCheckFile = new TypeCheckFile(fileName, this.config, this.refEmitter);
+  }
+
+  private typeCtorPending = new Set<ClassDeclaration>();
   /**
    * A `Map` of `ts.SourceFile`s that the context has seen to the operations (additions of methods
    * or type-check blocks) that need to be eventually performed on that file.
    */
   private opMap = new Map<ts.SourceFile, Op[]>();
-
-  private typeCtorPending = new Set<ts.ClassDeclaration>();
 
   hasTransforms(sf: ts.SourceFile): boolean { return this.opMap.has(sf); }
 
@@ -52,45 +62,53 @@ export class TypeCheckContext {
    * @param matcher `SelectorMatcher` which tracks directives that are in scope for this template.
    */
   addTemplate(
-      node: ClassDeclaration<ts.ClassDeclaration>,
+      ref: Reference<ClassDeclaration<ts.ClassDeclaration>>,
       boundTarget: BoundTarget<TypeCheckableDirectiveMeta>,
       pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>): void {
     // Get all of the directives used in the template and record type constructors for all of them.
     for (const dir of boundTarget.getUsedDirectives()) {
-      const dirNode = dir.ref.node as ClassDeclaration<ts.ClassDeclaration>;
-      // Add a type constructor operation for the directive.
-      this.addTypeCtor(dirNode.getSourceFile(), dirNode, {
-        fnName: 'ngTypeCtor',
-        // The constructor should have a body if the directive comes from a .ts file, but not if it
-        // comes from a .d.ts file. .d.ts declarations don't have bodies.
-        body: !dirNode.getSourceFile().isDeclarationFile,
-        fields: {
-          inputs: Object.keys(dir.inputs),
-          outputs: Object.keys(dir.outputs),
-          // TODO: support queries
-          queries: dir.queries,
-        },
-      });
+      const dirRef = dir.ref as Reference<ClassDeclaration<ts.ClassDeclaration>>;
+      const dirNode = dirRef.node;
+      if (requiresInlineTypeCtor(dirNode)) {
+        // Add a type constructor operation for the directive.
+        this.addInlineTypeCtor(dirNode.getSourceFile(), dirRef, {
+          fnName: 'ngTypeCtor',
+          // The constructor should have a body if the directive comes from a .ts file, but not if
+          // it
+          // comes from a .d.ts file. .d.ts declarations don't have bodies.
+          body: !dirNode.getSourceFile().isDeclarationFile,
+          fields: {
+            inputs: Object.keys(dir.inputs),
+            outputs: Object.keys(dir.outputs),
+            // TODO: support queries
+            queries: dir.queries,
+          },
+        });
+      }
     }
 
-    // Record the type check block operation for the template itself.
-    this.addTypeCheckBlock(node.getSourceFile(), node, {
-      boundTarget,
-      pipes,
-      fnName: `${node.name.text}_TypeCheckBlock`,
-    });
+    if (requiresInlineTypeCheckBlock(ref.node)) {
+      // This class didn't meet the requirements for external type checking, so generate an inline
+      // TCB for the class.
+      this.addInlineTypeCheckBlock(ref, {boundTarget, pipes});
+    } else {
+      // The class can be type-checked externally as normal.
+      this.typeCheckFile.addTypeCheckBlock(ref, {boundTarget, pipes});
+    }
   }
 
   /**
    * Record a type constructor for the given `node` with the given `ctorMetadata`.
+   *
+   * @internal
    */
-  addTypeCtor(
-      sf: ts.SourceFile, node: ClassDeclaration<ts.ClassDeclaration>,
+  addInlineTypeCtor(
+      sf: ts.SourceFile, ref: Reference<ClassDeclaration<ts.ClassDeclaration>>,
       ctorMeta: TypeCtorMetadata): void {
-    if (this.typeCtorPending.has(node)) {
+    if (this.typeCtorPending.has(ref.node)) {
       return;
     }
-    this.typeCtorPending.add(node);
+    this.typeCtorPending.add(ref.node);
 
     // Lazily construct the operation map.
     if (!this.opMap.has(sf)) {
@@ -99,7 +117,7 @@ export class TypeCheckContext {
     const ops = this.opMap.get(sf) !;
 
     // Push a `TypeCtorOp` into the operation queue for the source file.
-    ops.push(new TypeCtorOp(node, ctorMeta));
+    ops.push(new TypeCtorOp(ref, ctorMeta));
   }
 
   /**
@@ -153,14 +171,66 @@ export class TypeCheckContext {
     return ts.createSourceFile(sf.fileName, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   }
 
-  private addTypeCheckBlock(
-      sf: ts.SourceFile, node: ClassDeclaration<ts.ClassDeclaration>,
+  calculateTemplateDiagnostics(
+      originalProgram: ts.Program, originalHost: ts.CompilerHost,
+      originalOptions: ts.CompilerOptions): ts.Diagnostic[] {
+    const typeCheckSf = this.typeCheckFile.render();
+    console.error(
+        'got type check file, of', originalProgram.getSourceFiles().length,
+        'needed ' + this.opMap.size, 'file:', typeCheckSf.fileName);
+    // First, build the map of original source files.
+    const sfMap = new Map<string, ts.SourceFile>();
+    const interestingFiles: ts.SourceFile[] = [typeCheckSf];
+    for (const originalSf of originalProgram.getSourceFiles()) {
+      const sf = this.transform(originalSf);
+      sfMap.set(sf.fileName, sf);
+      if (!sf.isDeclarationFile && this.opMap.has(originalSf)) {
+        interestingFiles.push(sf);
+      }
+    }
+
+    sfMap.set(typeCheckSf.fileName, typeCheckSf);
+
+    const start = Date.now();
+    debugger;
+    const typeCheckProgram = ts.createProgram({
+      host: new TypeCheckProgramHost(sfMap, originalHost),
+      options: originalOptions,
+      oldProgram: originalProgram,
+      rootNames: originalProgram.getRootFileNames(),
+    });
+    console.error('after create program', (Date.now() - start) + 'ms');
+
+    const diagnostics: ts.Diagnostic[] = [];
+    for (const sf of interestingFiles) {
+      console.error(sf.fileName + ':');
+      console.error(sf.text);
+      diagnostics.push(...typeCheckProgram.getSemanticDiagnostics(sf));
+    }
+    console.error('after diagnostics');
+
+    return diagnostics.filter((diag: ts.Diagnostic): boolean => {
+      if (diag.code === 6133 /* $var is declared but its value is never read. */) {
+        return false;
+      } else if (diag.code === 6199 /* All variables are unused. */) {
+        return false;
+      } else if (
+          diag.code === 2695 /* Left side of comma operator is unused and has no side effects. */) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private addInlineTypeCheckBlock(
+      ref: Reference<ClassDeclaration<ts.ClassDeclaration>>,
       tcbMeta: TypeCheckBlockMetadata): void {
+    const sf = ref.node.getSourceFile();
     if (!this.opMap.has(sf)) {
       this.opMap.set(sf, []);
     }
     const ops = this.opMap.get(sf) !;
-    ops.push(new TcbOp(node, tcbMeta, this.config));
+    ops.push(new TcbOp(ref, tcbMeta, this.config));
   }
 }
 
@@ -171,7 +241,7 @@ interface Op {
   /**
  * The node in the file which will have code generated for it.
    */
-  readonly node: ClassDeclaration<ts.ClassDeclaration>;
+  readonly ref: Reference<ClassDeclaration<ts.ClassDeclaration>>;
 
   /**
    * Index into the source text where the code generated by the operation should be inserted.
@@ -190,18 +260,20 @@ interface Op {
  */
 class TcbOp implements Op {
   constructor(
-      readonly node: ClassDeclaration<ts.ClassDeclaration>, readonly meta: TypeCheckBlockMetadata,
-      readonly config: TypeCheckingConfig) {}
+      readonly ref: Reference<ClassDeclaration<ts.ClassDeclaration>>,
+      readonly meta: TypeCheckBlockMetadata, readonly config: TypeCheckingConfig) {}
 
   /**
    * Type check blocks are inserted immediately after the end of the component class.
    */
-  get splitPoint(): number { return this.node.end + 1; }
+  get splitPoint(): number { return this.ref.node.end + 1; }
 
   execute(im: ImportManager, sf: ts.SourceFile, refEmitter: ReferenceEmitter, printer: ts.Printer):
       string {
-    const tcb = generateTypeCheckBlock(this.node, this.meta, this.config, im, refEmitter);
-    return printer.printNode(ts.EmitHint.Unspecified, tcb, sf);
+    const env = new Environment(this.config, im, refEmitter, sf);
+    const fnName = ts.createIdentifier(`_tcb_${this.ref.node.pos}`);
+    const fn = generateTypeCheckBlock(env, this.ref, fnName, this.meta);
+    return printer.printNode(ts.EmitHint.Unspecified, fn, sf);
   }
 }
 
@@ -210,16 +282,17 @@ class TcbOp implements Op {
  */
 class TypeCtorOp implements Op {
   constructor(
-      readonly node: ClassDeclaration<ts.ClassDeclaration>, readonly meta: TypeCtorMetadata) {}
+      readonly ref: Reference<ClassDeclaration<ts.ClassDeclaration>>,
+      readonly meta: TypeCtorMetadata) {}
 
   /**
    * Type constructor operations are inserted immediately before the end of the directive class.
    */
-  get splitPoint(): number { return this.node.end - 1; }
+  get splitPoint(): number { return this.ref.node.end - 1; }
 
   execute(im: ImportManager, sf: ts.SourceFile, refEmitter: ReferenceEmitter, printer: ts.Printer):
       string {
-    const tcb = generateTypeCtor(this.node, this.meta);
+    const tcb = generateInlineTypeCtor(this.ref.node, this.meta);
     return printer.printNode(ts.EmitHint.Unspecified, tcb, sf);
   }
 }

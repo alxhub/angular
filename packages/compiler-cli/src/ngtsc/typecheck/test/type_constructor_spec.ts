@@ -9,7 +9,7 @@
 import * as ts from 'typescript';
 
 import {AbsoluteModuleStrategy, LocalIdentifierStrategy, LogicalProjectStrategy, ReferenceEmitter} from '../../imports';
-import {LogicalFileSystem} from '../../path';
+import {AbsoluteFsPath, LogicalFileSystem} from '../../path';
 import {isNamedClassDeclaration} from '../../reflection';
 import {getDeclaration, makeProgram} from '../../testing/in_memory_typescript';
 import {getRootDirs} from '../../util/src/typescript';
@@ -52,9 +52,10 @@ TestClass.ngTypeCtor({value: 'test'});
         new AbsoluteModuleStrategy(program, checker, options, host),
         new LogicalProjectStrategy(checker, logicalFs),
       ]);
-      const ctx = new TypeCheckContext(ALL_ENABLED_CONFIG, emitter);
+      const ctx =
+          new TypeCheckContext(ALL_ENABLED_CONFIG, emitter, [AbsoluteFsPath.fromUnchecked('/')]);
       const TestClass = getDeclaration(program, 'main.ts', 'TestClass', isNamedClassDeclaration);
-      ctx.addTypeCtor(program.getSourceFile('main.ts') !, TestClass, {
+      ctx.addInlineTypeCtor(program.getSourceFile('main.ts') !, TestClass, {
         fnName: 'ngTypeCtor',
         body: true,
         fields: {

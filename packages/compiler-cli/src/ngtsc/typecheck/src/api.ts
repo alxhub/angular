@@ -37,11 +37,6 @@ export interface TypeCheckBlockMetadata {
    * Pipes used in the template of the component.
    */
   pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>;
-
-  /**
-   * The name of the requested type check block function.
-   */
-  fnName: string;
 }
 
 export interface TypeCtorMetadata {
