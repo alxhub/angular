@@ -72,6 +72,29 @@ describe('ngc transformer command-line', () => {
     expect(exitCode).toBe(0);
   });
 
+  fit('should fail', () => {
+    writeConfig();
+    write('test.ts', `
+      import {Directive, NgModule} from '@angular/core';
+
+      export class Base {}
+
+      @Directive({
+        selector: '[test]',
+      })
+      export class Derived extends Base {}
+
+      @NgModule({declarations: [Derived]})
+      export class Module {}
+    
+    `);
+
+    const exitCode = main(['-p', basePath], errorSpy);
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(exitCode).toBe(0);
+  });
+
+
   it('should respect the "newLine" compiler option when printing diagnostics', () => {
     writeConfig(`{
       "extends": "./tsconfig-base.json",

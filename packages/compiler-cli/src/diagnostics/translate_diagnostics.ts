@@ -7,6 +7,7 @@
  */
 
 import {ParseSourceSpan} from '@angular/compiler';
+import {ParseLocation, ParseSourceFile} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {DEFAULT_ERROR_CODE, Diagnostic, SOURCE} from '../transformers/api';
@@ -19,7 +20,7 @@ export interface TypeCheckHost {
 export function translateDiagnostics(
     host: TypeCheckHost, untranslatedDiagnostics: ReadonlyArray<ts.Diagnostic>):
     {ts: ts.Diagnostic[], ng: Diagnostic[]} {
-  const ts: ts.Diagnostic[] = [];
+  const tsDiags: ts.Diagnostic[] = [];
   const ng: Diagnostic[] = [];
 
   untranslatedDiagnostics.forEach((diagnostic) => {
@@ -40,11 +41,26 @@ export function translateDiagnostics(
           code: DEFAULT_ERROR_CODE
         });
       }
+    } else if (diagnostic.code === 111) {
+      const file = new ParseSourceFile(diagnostic.file !.getFullText(), diagnostic.file !.fileName);
+      const startPos = ts.getLineAndCharacterOfPosition(diagnostic.file !, diagnostic.start !);
+      const start = new ParseLocation(file, diagnostic.start !, startPos.line, startPos.character);
+      const endPos = ts.getLineAndCharacterOfPosition(
+          diagnostic.file !, diagnostic.start ! + diagnostic.length !);
+      const end = new ParseLocation(
+          file, diagnostic.start ! + diagnostic.length !, endPos.character, endPos.line);
+      ng.push({
+        category: diagnostic.category,
+        code: diagnostic.code,
+        span: new ParseSourceSpan(start, end),
+        messageText: diagnostic.messageText as string,
+        source: 'angular',
+      });
     } else {
-      ts.push(diagnostic);
+      tsDiags.push(diagnostic);
     }
   });
-  return {ts, ng};
+  return {ts: tsDiags, ng};
 }
 
 function sourceSpanOf(host: TypeCheckHost, source: ts.SourceFile, start: number): ParseSourceSpan|

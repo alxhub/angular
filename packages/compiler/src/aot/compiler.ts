@@ -58,12 +58,12 @@ export class AotCompiler {
   constructor(
       private _config: CompilerConfig, private _options: AotCompilerOptions,
       private _host: AotCompilerHost, readonly reflector: StaticReflector,
-      private _metadataResolver: CompileMetadataResolver, private _templateParser: TemplateParser,
+      readonly _metadataResolver: CompileMetadataResolver, private _templateParser: TemplateParser,
       private _styleCompiler: StyleCompiler, private _viewCompiler: ViewCompiler,
       private _typeCheckCompiler: TypeCheckCompiler, private _ngModuleCompiler: NgModuleCompiler,
       private _injectableCompiler: InjectableCompiler, private _outputEmitter: OutputEmitter,
       private _summaryResolver: SummaryResolver<StaticSymbol>,
-      private _symbolResolver: StaticSymbolResolver) {}
+      readonly _symbolResolver: StaticSymbolResolver) {}
 
   clearCache() { this._metadataResolver.clearCache(); }
 

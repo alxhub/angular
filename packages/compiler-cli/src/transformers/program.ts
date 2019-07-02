@@ -219,14 +219,90 @@ class AngularCompilerProgram implements Program {
     return diags;
   }
 
+  private hasOwnConstructor(clazz: ts.ClassDeclaration): boolean {
+    return clazz.members.some(member => ts.isConstructorDeclaration(member));
+  }
+
+  private getBaseClass(clazz: ts.ClassDeclaration, checker: ts.TypeChecker): ts.ClassDeclaration
+      |null {
+    if (clazz.heritageClauses === undefined) {
+      return null;
+    }
+    const extendsClause =
+        clazz.heritageClauses.find(clause => clause.token === ts.SyntaxKind.ExtendsKeyword);
+    if (extendsClause === undefined) {
+      return null;
+    }
+    let symbol = checker.getSymbolAtLocation(extendsClause.types[0].expression);
+    if (symbol === undefined) {
+      return null;
+    }
+    while (symbol.flags & ts.SymbolFlags.Alias) {
+      symbol = checker.getAliasedSymbol(symbol);
+      if (symbol === undefined) {
+        return null;
+      }
+    }
+    if (symbol.valueDeclaration === undefined || !ts.isClassDeclaration(symbol.valueDeclaration)) {
+      return null;
+    }
+    return symbol.valueDeclaration;
+  }
+
+  private isDirective(clazz: ts.ClassDeclaration): boolean {
+    const symbol = this._compiler._symbolResolver.getStaticSymbol(
+        clazz.getSourceFile().fileName, clazz.name !.text);
+    return this._compiler._metadataResolver.isDirective(symbol);
+  }
+
   getNgSemanticDiagnostics(fileName?: string, cancellationToken?: ts.CancellationToken):
       ReadonlyArray<Diagnostic> {
     let diags: ts.Diagnostic[] = [];
+    debugger;
+    const checker = this.tsProgram.getTypeChecker();
     this.tsProgram.getSourceFiles().forEach(sf => {
       if (GENERATED_FILES.test(sf.fileName) && !sf.isDeclarationFile) {
         diags.push(...this.tsProgram.getSemanticDiagnostics(sf, cancellationToken));
       }
+      if (!sf.isDeclarationFile && !GENERATED_FILES.test(sf.fileName)) {
+        sf.statements.forEach(stmt => {
+          if (!ts.isClassDeclaration(stmt)) {
+            return;
+          }
+          const baseClass = this.getBaseClass(stmt, checker);
+          if (baseClass === null) {
+            return;
+          }
+          const selfIsDirective = this.isDirective(stmt);
+          const baseIsDirective = this.isDirective(baseClass);
+          if (selfIsDirective && !baseIsDirective && !this.hasOwnConstructor(stmt)) {
+            diags.push({
+              category: ts.DiagnosticCategory.Error,
+              code: 111,
+              file: stmt.getSourceFile(),
+              start: stmt.pos,
+              length: 1 + stmt.end - stmt.pos,
+              messageText:
+                  `${stmt.name!.text} is a directive which inherits its constructor, but its base class ${baseClass.name!.text} (${baseClass.getSourceFile().fileName}) is not`,
+            });
+            // Diagnostic
+          } else if (!selfIsDirective && baseIsDirective) {
+            diags.push({
+              category: ts.DiagnosticCategory.Error,
+              code: 111,
+              file: stmt.getSourceFile(),
+              start: stmt.pos,
+              length: 1 + stmt.end - stmt.pos,
+              messageText:
+                  `${stmt.name!.text} is an undecorated class which inherits from a directive, ${baseClass.name!.text} (${baseClass.getSourceFile().fileName}). It should be decorated.`,
+            });
+          }
+        });
+      }
     });
+
+
+
     const {ng} = translateDiagnostics(this.hostAdapter, diags);
     return ng;
   }
