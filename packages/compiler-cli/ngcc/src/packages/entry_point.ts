@@ -50,6 +50,8 @@ export interface PackageJsonFormatProperties {
   typings?: string;  // TypeScript .d.ts files
 }
 
+export type PackageJsonFormatKey = keyof PackageJsonFormatProperties;
+
 /**
  * The properties that may be loaded from the `package.json` file.
  */

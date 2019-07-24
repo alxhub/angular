@@ -58,7 +58,10 @@ export interface DependencyDiagnostics {
  * Some entry points or their dependencies may be have been ignored. These are captured for
  * diagnostic purposes in `invalidEntryPoints` and `ignoredDependencies` respectively.
  */
-export interface SortedEntryPointsInfo extends DependencyDiagnostics { entryPoints: EntryPoint[]; }
+export interface SortedEntryPointsInfo extends DependencyDiagnostics {
+  entryPoints: EntryPoint[];
+  graph: DepGraph<EntryPoint>;
+}
 
 /**
  * A class that resolves dependencies between entry-points.
@@ -93,6 +96,7 @@ export class DependencyResolver {
 
     return {
       entryPoints: sortedEntryPointNodes.map(path => graph.getNodeData(path)),
+      graph,
       invalidEntryPoints,
       ignoredDependencies,
     };

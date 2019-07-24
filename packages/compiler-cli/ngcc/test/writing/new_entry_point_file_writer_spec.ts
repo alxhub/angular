@@ -13,6 +13,7 @@ import {EntryPoint, EntryPointFormat, EntryPointJsonProperty, getEntryPointInfo}
 import {EntryPointBundle, makeEntryPointBundle} from '../../src/packages/entry_point_bundle';
 import {FileWriter} from '../../src/writing/file_writer';
 import {NewEntryPointFileWriter} from '../../src/writing/new_entry_point_file_writer';
+import {DirectPackageJsonWriter} from '../../src/writing/package_json_writer';
 import {MockLogger} from '../helpers/mock_logger';
 import {loadPackageJson} from '../packages/entry_point_spec';
 
@@ -86,7 +87,7 @@ runInEachFileSystem(() => {
     describe('writeBundle() [primary entry-point]', () => {
       beforeEach(() => {
         fs = getFileSystem();
-        fileWriter = new NewEntryPointFileWriter(fs);
+        fileWriter = new NewEntryPointFileWriter(fs, new DirectPackageJsonWriter(fs));
         const config = new NgccConfiguration(fs, _('/'));
         entryPoint = getEntryPointInfo(
             fs, config, new MockLogger(), _('/node_modules/test'), _('/node_modules/test')) !;
@@ -175,7 +176,7 @@ runInEachFileSystem(() => {
     describe('writeBundle() [secondary entry-point]', () => {
       beforeEach(() => {
         fs = getFileSystem();
-        fileWriter = new NewEntryPointFileWriter(fs);
+        fileWriter = new NewEntryPointFileWriter(fs, new DirectPackageJsonWriter(fs));
         const config = new NgccConfiguration(fs, _('/'));
         entryPoint = getEntryPointInfo(
             fs, config, new MockLogger(), _('/node_modules/test'), _('/node_modules/test/a')) !;
@@ -253,7 +254,7 @@ runInEachFileSystem(() => {
     describe('writeBundle() [entry-point (with files placed outside entry-point folder)]', () => {
       beforeEach(() => {
         fs = getFileSystem();
-        fileWriter = new NewEntryPointFileWriter(fs);
+        fileWriter = new NewEntryPointFileWriter(fs, new DirectPackageJsonWriter(fs));
         const config = new NgccConfiguration(fs, _('/'));
         entryPoint = getEntryPointInfo(
             fs, config, new MockLogger(), _('/node_modules/test'), _('/node_modules/test/b')) !;

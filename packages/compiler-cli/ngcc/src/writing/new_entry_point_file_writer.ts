@@ -6,13 +6,14 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {AbsoluteFsPath, absoluteFromSourceFile, dirname, join, relative} from '../../../src/ngtsc/file_system';
+import {AbsoluteFsPath, FileSystem, absoluteFromSourceFile, dirname, join, relative} from '../../../src/ngtsc/file_system';
 import {isDtsPath} from '../../../src/ngtsc/util/src/typescript';
 import {EntryPoint, EntryPointJsonProperty} from '../packages/entry_point';
 import {EntryPointBundle} from '../packages/entry_point_bundle';
 import {FileToWrite} from '../rendering/utils';
 
 import {InPlaceFileWriter} from './in_place_file_writer';
+import {PackageJsonWriter} from './package_json_writer';
 
 const NGCC_DIRECTORY = '__ivy_ngcc__';
 
@@ -25,6 +26,8 @@ const NGCC_DIRECTORY = '__ivy_ngcc__';
  * `InPlaceFileWriter`).
  */
 export class NewEntryPointFileWriter extends InPlaceFileWriter {
+  constructor(fs: FileSystem, private packageJsonWriter: PackageJsonWriter) { super(fs); }
+
   writeBundle(entryPoint: EntryPoint, bundle: EntryPointBundle, transformedFiles: FileToWrite[]) {
     // The new folder is at the root of the overall package
     const ngccFolder = join(entryPoint.package, NGCC_DIRECTORY);
@@ -63,9 +66,9 @@ export class NewEntryPointFileWriter extends InPlaceFileWriter {
       entryPoint: EntryPoint, formatProperty: EntryPointJsonProperty, ngccFolder: AbsoluteFsPath) {
     const formatPath = join(entryPoint.path, entryPoint.packageJson[formatProperty] !);
     const newFormatPath = join(ngccFolder, relative(entryPoint.package, formatPath));
+    const packageJsonPath = join(entryPoint.path, 'package.json');
     const newFormatProperty = formatProperty + '_ivy_ngcc';
-    (entryPoint.packageJson as any)[newFormatProperty] = relative(entryPoint.path, newFormatPath);
-    this.fs.writeFile(
-        join(entryPoint.path, 'package.json'), JSON.stringify(entryPoint.packageJson));
+    this.packageJsonWriter.write(
+        packageJsonPath, [newFormatProperty], relative(entryPoint.path, newFormatPath));
   }
 }
