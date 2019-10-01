@@ -45,6 +45,11 @@ if (require.main === module) {
                 'If specified then only the first matching package.json property will be compiled.',
             type: 'boolean'
           })
+          .option('async', {
+            describe: 'Whether to compile asynchronously',
+            type: 'boolean',
+            default: true,
+          })
           .option('l', {
             alias: 'loglevel',
             describe: 'The lowest severity logging message that should be output.',
@@ -77,7 +82,7 @@ if (require.main === module) {
         targetEntryPointPath,
         compileAllFormats,
         logger,
-        async: true,
+        async: options['async'],
       });
 
       if (logger) {
