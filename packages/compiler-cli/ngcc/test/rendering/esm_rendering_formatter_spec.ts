@@ -49,7 +49,7 @@ function setup(files: TestFile[], dtsFiles?: TestFile[]) {
   };
 }
 
-runInEachFileSystem(() => {
+runInEachFileSystem.native(() => {
   describe('EsmRenderingFormatter', () => {
 
     let _: typeof absoluteFrom;
@@ -287,6 +287,28 @@ A.decorators = [
              expect(output.toString())
                  .toContain(`{ type: Directive, args: [{ selector: '[c]' }] }`);
            });
+
+        fit('should handle a decorator with a trailing comment', () => {
+          const text = `
+import {Directive} from '@angular/core';
+export class A {}
+A.decorators = [
+  { type: Directive, args: [{ selector: '[a]' }] },
+  { type: OtherA }
+];
+          `;
+          const file = {name: _('/index.js'), contents: text};
+          const {decorationAnalyses, sourceFile, renderer} = setup([file]);
+          const output = new MagicString(text);
+          const compiledClass =
+              decorationAnalyses.get(sourceFile) !.compiledClasses.find(c => c.name === 'A') !;
+          const decorator = compiledClass.decorators ![0];
+          const decoratorsToRemove = new Map<ts.Node, ts.Node[]>();
+          decoratorsToRemove.set(decorator.node.parent !, [decorator.node]);
+          renderer.removeDecorators(output, decoratorsToRemove);
+          fail(output.toString());
+          // .not.toContain('Directive')
+        });
 
 
         it('should delete the decorator (and its container if there are no other decorators left) that was matched in the analysis',
