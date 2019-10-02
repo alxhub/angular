@@ -42,6 +42,8 @@ export interface NgccEntryPointConfig {
    * entry-point's package.json file.
    */
   override?: PackageJsonFormatPropertiesMap;
+
+  ignoreMissingDependencies?: boolean;
 }
 
 const NGCC_CONFIG_FILENAME = 'ngcc.config.js';
