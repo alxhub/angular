@@ -23,16 +23,31 @@ export class FatalDiagnosticError {
   }
 }
 
-export function makeDiagnostic(
-    code: ErrorCode, node: ts.Node, messageText: string): ts.DiagnosticWithLocation {
+export function makeDiagnostic(code: ErrorCode, node: ts.Node, messageText: string, relatedInfo?: {
+  node: ts.Node,
+  messageText: string,
+}[]): ts.DiagnosticWithLocation {
   node = ts.getOriginalNode(node);
-  return {
+  const diag: ts.DiagnosticWithLocation = {
     category: ts.DiagnosticCategory.Error,
     code: Number('-99' + code.valueOf()),
     file: ts.getOriginalNode(node).getSourceFile(),
     start: node.getStart(undefined, false),
     length: node.getWidth(), messageText,
   };
+  if (relatedInfo !== undefined) {
+    diag.relatedInformation = relatedInfo.map(info => {
+      return {
+        category: ts.DiagnosticCategory.Message,
+        code: 0,
+        file: info.node.getSourceFile(),
+        start: info.node.getStart(),
+        length: info.node.getEnd() - info.node.getStart(),
+        messageText: info.messageText,
+      };
+    });
+  }
+  return diag;
 }
 
 export function isFatalDiagnosticError(err: any): err is FatalDiagnosticError {

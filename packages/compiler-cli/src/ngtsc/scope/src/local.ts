@@ -10,7 +10,7 @@ import {ExternalExpr, SchemaMetadata} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {ErrorCode, makeDiagnostic} from '../../diagnostics';
-import {AliasGenerator, Reexport, Reference, ReferenceEmitter} from '../../imports';
+import {AliasingHost, Reexport, Reference, ReferenceEmitter} from '../../imports';
 import {DirectiveMeta, MetadataReader, MetadataRegistry, NgModuleMeta, PipeMeta} from '../../metadata';
 import {ClassDeclaration} from '../../reflection';
 import {identifierOfNode, nodeNameForError} from '../../util/src/typescript';
@@ -104,7 +104,7 @@ export class LocalModuleScopeRegistry implements MetadataRegistry, ComponentScop
 
   constructor(
       private localReader: MetadataReader, private dependencyScopeReader: DtsModuleScopeResolver,
-      private refEmitter: ReferenceEmitter, private aliasGenerator: AliasGenerator|null,
+      private refEmitter: ReferenceEmitter, private aliasingHost: AliasingHost|null,
       private componentScopeRegistry: ComponentScopeRegistry = new NoopComponentScopeRegistry()) {}
 
   /**
@@ -322,28 +322,44 @@ export class LocalModuleScopeRegistry implements MetadataRegistry, ComponentScop
     };
 
     let reexports: Reexport[]|null = null;
-    if (this.aliasGenerator !== null) {
+    if (this.aliasingHost !== null) {
       reexports = [];
+      // Track re-exports by symbol name, to produce diagnostics if two alias re-exports would share
+      // the same name.
+      const reexportMap = new Map<string, Reference<ClassDeclaration>>();
+      const ngModuleRef = ref;
       const addReexport = (ref: Reference<ClassDeclaration>) => {
-        if (!declared.has(ref.node) && ref.node.getSourceFile() !== sourceFile) {
-          const exportName = this.aliasGenerator !.aliasSymbolName(ref.node, sourceFile);
-          if (ref.alias && ref.alias instanceof ExternalExpr) {
-            reexports !.push({
-              fromModule: ref.alias.value.moduleName !,
-              symbolName: ref.alias.value.name !,
-              asAlias: exportName,
-            });
-          } else {
-            const expr = this.refEmitter.emit(ref.cloneWithNoIdentifiers(), sourceFile);
-            if (!(expr instanceof ExternalExpr) || expr.value.moduleName === null ||
-                expr.value.name === null) {
-              throw new Error('Expected ExternalExpr');
+        if (ref.node.getSourceFile() !== sourceFile) {
+          const isReExport = !declared.has(ref.node);
+          const exportName = this.aliasingHost !.maybeAliasSymbolAs(
+              ref.node, sourceFile, ngModule.ref.node.name.text, isReExport);
+          if (exportName === null) {
+            return;
+          }
+          if (!reexportMap.has(exportName)) {
+            if (ref.alias && ref.alias instanceof ExternalExpr) {
+              reexports !.push({
+                fromModule: ref.alias.value.moduleName !,
+                symbolName: ref.alias.value.name !,
+                asAlias: exportName,
+              });
+            } else {
+              const expr = this.refEmitter.emit(ref.cloneWithNoIdentifiers(), sourceFile);
+              if (!(expr instanceof ExternalExpr) || expr.value.moduleName === null ||
+                  expr.value.name === null) {
+                throw new Error('Expected ExternalExpr');
+              }
+              reexports !.push({
+                fromModule: expr.value.moduleName,
+                symbolName: expr.value.name,
+                asAlias: exportName,
+              });
             }
-            reexports !.push({
-              fromModule: expr.value.moduleName,
-              symbolName: expr.value.name,
-              asAlias: exportName,
-            });
+            reexportMap.set(exportName, ref);
+          } else {
+            // Another re-export already used this name. Produce a diagnostic.
+            const prevRef = reexportMap.get(exportName) !;
+            diagnostics.push(reexportCollision(ngModuleRef.node, prevRef, ref));
           }
         }
       };
@@ -471,4 +487,26 @@ function invalidReexport(clazz: ts.Declaration, decl: Reference<ts.Declaration>)
   return makeDiagnostic(
       ErrorCode.NGMODULE_INVALID_REEXPORT, identifierOfNode(decl.node) || decl.node,
       `Present in the NgModule.exports of ${nodeNameForError(clazz)} but neither declared nor imported`);
+}
+
+/**
+ * Produce a `ts.Diagnostic` for a collision in re-export names between two directives/pipes.
+ */
+function reexportCollision(
+    module: ClassDeclaration, refA: Reference<ClassDeclaration>,
+    refB: Reference<ClassDeclaration>): ts.Diagnostic {
+  const childMessageText =
+      `This directive/pipe is part of the exports of ${module.name.text} and shares the same name as another exported directive/pipe.`;
+  return makeDiagnostic(
+      ErrorCode.NGMODULE_REEXPORT_NAME_COLLISION, module.name, `
+    There was a name collision between two classes named ${refA.node.name.text}, which are both part of the exports of ${module.name.text}.
+
+    Angular generates re-exports of an NgModule's exported directives/pipes from the module's source file in certain cases, using the declared name of the class. If two classes of the same name are exported, this automatic naming does not work.
+    
+    To fix this problem please re-export one or both classes directly from this file.
+  `.trim(),
+      [
+        {node: refA.node.name, messageText: childMessageText},
+        {node: refB.node.name, messageText: childMessageText},
+      ]);
 }

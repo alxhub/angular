@@ -36,7 +36,7 @@ const setClassMetadataRegExp = (expectedType: string): RegExp =>
 
 const testFiles = loadStandardTestFiles();
 
-runInEachFileSystem(os => {
+runInEachFileSystem.native(os => {
   describe('ngtsc behavioral tests', () => {
     let env !: NgtscTestEnvironment;
 
@@ -4260,6 +4260,94 @@ export const Foo = Foo__PRE_R3__;
         env.driveMain();
         const jsContents = env.getContents('test.js');
         expect(jsContents).toContain('styles: ["h1[_ngcontent-%COMP%] {font-size: larger}"]');
+      });
+
+
+      fit('should not suck', () => {
+        env.write('dir.ts', `
+          import {Directive} from '@angular/core';
+
+          @Directive({
+            selector: 'test',
+          })
+          export class Dir {}
+        `);
+        env.write('module2.ts', `
+        import {NgModule} from '@angular/core';
+        import {Dir} from './dir2';
+
+        @NgModule({
+          declarations: [Dir],
+          exports: [Dir],
+        })
+        export class Module2 {}
+        `);
+
+        env.write('dir2.ts', `
+          import {Directive} from '@angular/core';
+
+          @Directive({
+            selector: 'test',
+          })
+          export class Dir {}
+        `);
+        env.write('module.ts', `
+          import {NgModule} from '@angular/core';
+          import {Dir} from './dir';
+          import {Module2} from './module2';
+
+          @NgModule({
+            declarations: [Dir],
+            exports: [Dir, Module2],
+          })
+          export class Module {}
+
+          export {Dir as Dir2} from './dir2';
+    `);
+
+        env.driveMain();
+
+        const jsContents = env.getContents('module.d.ts');
+        fail(jsContents);
+      });
+
+      xit('should not doubly suck', () => {
+        env.write(`node_modules/external/dir.d.ts`, `
+        import {ɵɵDirectiveDefWithMeta} from '@angular/core';
+
+        export declare class ExternalDir {
+          static ngDirectiveDef: ɵɵDirectiveDefWithMeta<ExternalDir, '[test]', never, never, never, never>;
+        }
+        `);
+        env.write('node_modules/external/module.d.ts', `
+        import {ɵɵNgModuleDefWithMeta} from '@angular/core';
+        import {ExternalDir} from './dir';
+
+        export declare class ExternalModule {
+          static ngModuleDef: ɵɵNgModuleDefWithMeta<ExternalModule, [typeof ExternalDir], never, [typeof ExternalDir]>;
+        }
+
+        export {ExternalDir as ɵngExportɵExternalModuleɵExternalDir};
+      `);
+        env.write('test.ts', `
+        import {Component, Directive, NgModule} from '@angular/core';
+        import {ExternalModule} from 'external/module';
+
+        @Component({
+          template: '<div test></div>',
+        })
+        class Cmp {}
+
+        @NgModule({
+          declarations: [Cmp],
+          imports: [ExternalModule],
+        })
+        class Module {}
+      `);
+
+        env.driveMain();
+        const jsContents = env.getContents('test.js');
+        fail(jsContents);
       });
     });
   });

@@ -23,6 +23,7 @@ import {Renderer} from '../../src/rendering/renderer';
 import {MockLogger} from '../helpers/mock_logger';
 import {RenderingFormatter, RedundantDecoratorMap} from '../../src/rendering/rendering_formatter';
 import {makeTestEntryPointBundle, getRootFiles} from '../helpers/utils';
+import {Reexport} from '@angular/compiler-cli/src/ngtsc/imports';
 
 class TestRenderingFormatter implements RenderingFormatter {
   addImports(output: MagicString, imports: Import[], sf: ts.SourceFile) {
@@ -30,6 +31,9 @@ class TestRenderingFormatter implements RenderingFormatter {
   }
   addExports(output: MagicString, baseEntryPointPath: string, exports: ExportInfo[]) {
     output.prepend('\n// ADD EXPORTS\n');
+  }
+  addDirectExports(output: MagicString, exports: Reexport[]): void {
+    output.prepend('\n// ADD DIRECT EXPORTS\n');
   }
   addConstants(output: MagicString, constants: string, file: ts.SourceFile): void {
     output.prepend('\n// ADD CONSTANTS\n');

@@ -7,11 +7,12 @@
  */
 import {ConstantPool} from '@angular/compiler';
 import * as ts from 'typescript';
+
 import {BaseDefDecoratorHandler, ComponentDecoratorHandler, DirectiveDecoratorHandler, InjectableDecoratorHandler, NgModuleDecoratorHandler, PipeDecoratorHandler, ReferencesRegistry, ResourceLoader} from '../../../src/ngtsc/annotations';
 import {CycleAnalyzer, ImportGraph} from '../../../src/ngtsc/cycles';
 import {isFatalDiagnosticError} from '../../../src/ngtsc/diagnostics';
 import {FileSystem, LogicalFileSystem, absoluteFrom, dirname, resolve} from '../../../src/ngtsc/file_system';
-import {AbsoluteModuleStrategy, LocalIdentifierStrategy, LogicalProjectStrategy, ModuleResolver, NOOP_DEFAULT_IMPORT_RECORDER, ReferenceEmitter} from '../../../src/ngtsc/imports';
+import {AbsoluteModuleStrategy, LocalIdentifierStrategy, LogicalProjectStrategy, ModuleResolver, NOOP_DEFAULT_IMPORT_RECORDER, PrivateExportAliasingHost, Reexport, ReferenceEmitter} from '../../../src/ngtsc/imports';
 import {CompoundMetadataReader, CompoundMetadataRegistry, DtsMetadataReader, LocalMetadataRegistry} from '../../../src/ngtsc/metadata';
 import {PartialEvaluator} from '../../../src/ngtsc/partial_evaluator';
 import {LocalModuleScopeRegistry, MetadataDtsModuleScopeResolver} from '../../../src/ngtsc/scope';
@@ -20,9 +21,12 @@ import {NgccClassSymbol, NgccReflectionHost} from '../host/ngcc_host';
 import {Migration, MigrationHost} from '../migrations/migration';
 import {EntryPointBundle} from '../packages/entry_point_bundle';
 import {isDefined} from '../utils';
+
 import {DefaultMigrationHost} from './migration_host';
 import {AnalyzedClass, AnalyzedFile, CompiledClass, CompiledFile, DecorationAnalyses} from './types';
 import {analyzeDecorators, isWithinPackage} from './util';
+
+
 
 /**
  * Simple class that resolves and loads files directly from the filesystem.
@@ -48,6 +52,7 @@ export class DecorationAnalyzer {
   private rootDirs = this.bundle.rootDirs;
   private packagePath = this.bundle.entryPoint.package;
   private isCore = this.bundle.isCore;
+  private reexportMap = new Map<ts.Node, Map<string, [string, string]>>();
   resourceManager = new NgccResourceLoader(this.fs);
   metaRegistry = new LocalMetadataRegistry();
   dtsMetaReader = new DtsMetadataReader(this.typeChecker, this.reflectionHost);
@@ -62,10 +67,11 @@ export class DecorationAnalyzer {
     new LogicalProjectStrategy(
         this.typeChecker, this.reflectionHost, new LogicalFileSystem(this.rootDirs)),
   ]);
+  aliasingHost = new PrivateExportAliasingHost(this.reflectionHost);
   dtsModuleScopeResolver =
-      new MetadataDtsModuleScopeResolver(this.dtsMetaReader, /* aliasGenerator */ null);
+      new MetadataDtsModuleScopeResolver(this.dtsMetaReader, this.aliasingHost);
   scopeRegistry = new LocalModuleScopeRegistry(
-      this.metaRegistry, this.dtsModuleScopeResolver, this.refEmitter, /* aliasGenerator */ null);
+      this.metaRegistry, this.dtsModuleScopeResolver, this.refEmitter, this.aliasingHost);
   fullRegistry = new CompoundMetadataRegistry([this.metaRegistry, this.scopeRegistry]);
   evaluator = new PartialEvaluator(this.reflectionHost, this.typeChecker);
   moduleResolver = new ModuleResolver(this.program, this.options, this.host);
@@ -162,9 +168,17 @@ export class DecorationAnalyzer {
     const constantPool = new ConstantPool();
     const compiledClasses: CompiledClass[] = analyzedFile.analyzedClasses.map(analyzedClass => {
       const compilation = this.compileClass(analyzedClass, constantPool);
-      return {...analyzedClass, compilation};
+      const declaration = analyzedClass.declaration;
+      const reexports: Reexport[] = [];
+      if (this.reexportMap.has(declaration)) {
+        this.reexportMap.get(declaration) !.forEach(([fromModule, symbolName], asAlias) => {
+          reexports.push({asAlias, fromModule, symbolName});
+        });
+      }
+      return {...analyzedClass, compilation, reexports};
     });
-    return {constantPool, sourceFile: analyzedFile.sourceFile, compiledClasses};
+    const sourceFile = analyzedFile.sourceFile;
+    return {sourceFile, compiledClasses, constantPool};
   }
 
   protected compileClass(clazz: AnalyzedClass, constantPool: ConstantPool): CompileResult[] {
@@ -184,7 +198,18 @@ export class DecorationAnalyzer {
     analyzedFile.analyzedClasses.forEach(({declaration, matches}) => {
       matches.forEach(({handler, analysis}) => {
         if ((handler.resolve !== undefined) && analysis) {
-          handler.resolve(declaration, analysis);
+          const res = handler.resolve(declaration, analysis);
+          console.error('resolve', declaration.name.text, res);
+          if (res.reexports !== undefined) {
+            const map = new Map<string, [string, string]>();
+            for (const reexport of res.reexports) {
+              map.set(reexport.asAlias, [reexport.fromModule, reexport.symbolName]);
+            }
+            this.reexportMap.set(declaration, map);
+            if (declaration.name.text === 'NativeScriptFormsModule') {
+              debugger;
+            }
+          }
         }
       });
     });

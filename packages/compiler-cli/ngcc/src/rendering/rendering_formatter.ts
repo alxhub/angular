@@ -12,6 +12,7 @@ import {ExportInfo} from '../analysis/private_declarations_analyzer';
 import {CompiledClass} from '../analysis/types';
 import {SwitchableVariableDeclaration} from '../host/ngcc_host';
 import {ModuleWithProvidersInfo} from '../analysis/module_with_providers_analyzer';
+import {Reexport} from '@angular/compiler-cli/src/ngtsc/imports';
 
 /**
  * The collected decorators that have become redundant after the compilation
@@ -31,6 +32,9 @@ export interface RenderingFormatter {
   addExports(
       output: MagicString, entryPointBasePath: string, exports: ExportInfo[],
       importManager: ImportManager, file: ts.SourceFile): void;
+  addDirectExports(
+      output: MagicString, exports: Reexport[], importManager: ImportManager,
+      file: ts.SourceFile): void;
   addDefinitions(output: MagicString, compiledClass: CompiledClass, definitions: string): void;
   removeDecorators(output: MagicString, decoratorsToRemove: RedundantDecoratorMap): void;
   rewriteSwitchableDeclarations(

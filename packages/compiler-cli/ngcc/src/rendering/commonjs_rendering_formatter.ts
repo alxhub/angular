@@ -14,6 +14,7 @@ import {isRequireCall} from '../host/commonjs_host';
 import {NgccReflectionHost} from '../host/ngcc_host';
 import {Esm5RenderingFormatter} from './esm5_rendering_formatter';
 import {stripExtension} from './utils';
+import {Reexport} from '@angular/compiler-cli/src/ngtsc/imports';
 
 /**
  * A RenderingFormatter that works with CommonJS files, instead of `import` and `export` statements
@@ -51,6 +52,17 @@ export class CommonJsRenderingFormatter extends Esm5RenderingFormatter {
       const exportStr = `\nexports.${e.identifier} = ${importNamespace}${namedImport.symbol};`;
       output.append(exportStr);
     });
+  }
+
+  addDirectExports(
+      output: MagicString, exports: Reexport[], importManager: ImportManager,
+      file: ts.SourceFile): void {
+    for (const e of exports) {
+      const namedImport = importManager.generateNamedImport(e.fromModule, e.symbolName);
+      const importNamespace = namedImport.moduleImport ? `${namedImport.moduleImport}.` : '';
+      const exportStr = `\nexports.${e.asAlias} = ${importNamespace}${namedImport.symbol};`;
+      output.append(exportStr);
+    }
   }
 
   protected findEndOfImports(sf: ts.SourceFile): number {

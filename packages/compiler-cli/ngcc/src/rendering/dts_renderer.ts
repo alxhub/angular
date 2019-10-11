@@ -20,6 +20,7 @@ import {Logger} from '../logging/logger';
 import {FileToWrite, getImportRewriter} from './utils';
 import {RenderingFormatter} from './rendering_formatter';
 import {extractSourceMap, renderSourceAndMap} from './source_maps';
+import {Reexport} from '@angular/compiler-cli/src/ngtsc/imports';
 
 /**
  * A structure that captures information about what needs to be rendered
@@ -33,6 +34,7 @@ class DtsRenderInfo {
   classInfo: DtsClassInfo[] = [];
   moduleWithProviders: ModuleWithProvidersInfo[] = [];
   privateExports: ExportInfo[] = [];
+  reexports: Reexport[] = [];
 }
 
 
@@ -94,6 +96,13 @@ export class DtsRenderer {
         const newStatement = `    static ${declaration.name}: ${typeStr};\n`;
         outputText.appendRight(endOfClass - 1, newStatement);
       });
+
+      if (renderInfo.reexports.length > 0) {
+        for (const e of renderInfo.reexports) {
+          const newStatement = `\nexport {${e.symbolName} as ${e.asAlias}} from '${e.fromModule}';`;
+          outputText.appendRight(endOfClass, newStatement);
+        }
+      }
     });
 
     this.dtsFormatter.addModuleWithProvidersParams(
@@ -102,8 +111,6 @@ export class DtsRenderer {
         outputText, dtsFile.fileName, renderInfo.privateExports, importManager, dtsFile);
     this.dtsFormatter.addImports(
         outputText, importManager.getAllImports(dtsFile.fileName), dtsFile);
-
-
 
     return renderSourceAndMap(dtsFile, input, outputText);
   }
@@ -123,6 +130,15 @@ export class DtsRenderer {
           const dtsFile = dtsDeclaration.getSourceFile();
           const renderInfo = dtsMap.has(dtsFile) ? dtsMap.get(dtsFile) ! : new DtsRenderInfo();
           renderInfo.classInfo.push({dtsDeclaration, compilation: compiledClass.compilation});
+          console.error('setting renderinfo for', compiledClass.name, compiledClass.reexports);
+          if (compiledClass.name === 'NativeScriptFormsModule') {
+            debugger;
+          }
+          // Only add re-exports if the .d.ts tree is overlayed with the .js tree.
+          if (compiledClass.declaration.getSourceFile().fileName ===
+              dtsFile.fileName.replace(/\.d\.ts$/, '.js')) {
+            renderInfo.reexports.push(...compiledClass.reexports);
+          }
           dtsMap.set(dtsFile, renderInfo);
         }
       });
