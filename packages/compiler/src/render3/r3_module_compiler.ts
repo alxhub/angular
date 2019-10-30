@@ -32,6 +32,15 @@ export interface R3NgModuleMetadata {
   type: o.Expression;
 
   /**
+   * An expression representing the module type being compiled, intended for use within a class
+   * definition itself.
+   *
+   * This can differ from the outer `type` if the class is being compiled by ngcc and is inside
+   * an IIFE structure that uses a different name internally.
+   */
+  internalType: o.Expression;
+
+  /**
    * An array of expressions representing the bootstrap components specified by the module.
    */
   bootstrap: R3Reference[];
@@ -198,6 +207,7 @@ export interface R3InjectorDef {
 export interface R3InjectorMetadata {
   name: string;
   type: o.Expression;
+  internalType: o.Expression;
   deps: R3DependencyMetadata[]|null;
   providers: o.Expression|null;
   imports: o.Expression[];
@@ -207,6 +217,7 @@ export function compileInjector(meta: R3InjectorMetadata): R3InjectorDef {
   const result = compileFactoryFunction({
     name: meta.name,
     type: meta.type,
+    internalType: meta.internalType,
     typeArgumentCount: 0,
     deps: meta.deps,
     injectFn: R3.inject,

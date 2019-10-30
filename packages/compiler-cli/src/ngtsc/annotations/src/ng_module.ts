@@ -198,6 +198,7 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
 
     const ngModuleDef: R3NgModuleMetadata = {
       type: new WrappedNodeExpr(node.name),
+      internalType: new WrappedNodeExpr(this.reflector.getInternalNameOfClass(node)),
       bootstrap,
       declarations,
       exports,
@@ -227,6 +228,7 @@ export class NgModuleDecoratorHandler implements DecoratorHandler<NgModuleAnalys
     const ngInjectorDef: R3InjectorMetadata = {
       name,
       type: new WrappedNodeExpr(node.name),
+      internalType: new WrappedNodeExpr(this.reflector.getInternalNameOfClass(node)),
       deps: getValidConstructorDependencies(
           node, this.reflector, this.defaultImportRecorder, this.isCore),
       providers,

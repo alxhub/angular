@@ -622,4 +622,13 @@ export interface ReflectionHost {
    * `ts.Program` as the input declaration.
    */
   getDtsDeclaration(declaration: ts.Declaration): ts.Declaration|null;
+
+  /**
+   * Get a `ts.Identifier` for a given `ClassDeclaration` which can be used to refer to the class
+   * within its definition (such as in static fields).
+   *
+   * This can differ from `clazz.name` when ngcc runs over ES5 code, since the class may have a
+   * different name within its IIFE wrapper than it does externally.
+   */
+  getInternalNameOfClass(clazz: ClassDeclaration): ts.Identifier;
 }
