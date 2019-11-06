@@ -7,11 +7,16 @@
  */
 import {Expression, ExternalExpr, ExternalReference, WrappedNodeExpr} from '@angular/compiler';
 import * as ts from 'typescript';
-import {LogicalFileSystem, LogicalProjectPath, absoluteFrom} from '../../file_system';
+
+import {LogicalFileSystem, LogicalProjectPath, PathSegment, absoluteFrom, dirname, relative, resolve} from '../../file_system';
+import {stripExtension} from '../../file_system/src/util';
 import {ReflectionHost} from '../../reflection';
 import {getSourceFile, getSourceFileOrNull, isDeclaration, nodeNameForError, resolveModuleName} from '../../util/src/typescript';
+
 import {findExportedNameOfNode} from './find_export';
 import {ImportMode, Reference} from './references';
+
+
 
 /**
  * A host which supports an operation to convert a file name into a module name.
@@ -230,6 +235,45 @@ export class LogicalProjectStrategy implements ReferenceEmitStrategy {
     // path is now straightforward.
     const moduleName = LogicalProjectPath.relativePathBetween(originPath, destPath);
     return new ExternalExpr({moduleName, name});
+  }
+}
+
+/**
+ * A `ReferenceEmitStrategy` which uses a relative import from one file to another.
+ */
+export class RelativeImportStrategy implements ReferenceEmitStrategy {
+  constructor(private reflector: ReflectionHost) {}
+
+  emit(ref: Reference<ts.Node>, context: ts.SourceFile, importMode: ImportMode): Expression|null {
+    const destSf = getSourceFile(ref.node);
+    if (!destSf.isDeclarationFile) {
+      return null;
+    }
+
+    if (/[\/\\]node_modules[\/\\]/.test(destSf.fileName)) {
+      // Relative imports into node_modules are unlikely to work, so avoid doing them.
+      return null;
+    }
+
+    let relativePath = relative(
+        dirname(resolve(getSourceFile(context).fileName)),
+        resolve(stripExtension(destSf.fileName)));
+    if (!relativePath.startsWith('../')) {
+      relativePath = ('./' + relativePath) as PathSegment;
+    }
+
+    const name = findExportedNameOfNode(ref.node, destSf, this.reflector);
+    if (name === null) {
+      // The target declaration isn't exported from the file it's declared in. This is an issue!
+      return null;
+    }
+
+    // With both files expressed as LogicalProjectPaths, getting the module specifier as a relative
+    // path is now straightforward.
+    return new ExternalExpr({
+      moduleName: relativePath,
+      name,
+    });
   }
 }
 

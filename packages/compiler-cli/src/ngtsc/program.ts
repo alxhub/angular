@@ -19,6 +19,7 @@ import {ErrorCode, ngErrorCode} from './diagnostics';
 import {FlatIndexGenerator, ReferenceGraph, checkForPrivateExports, findFlatIndexEntryPoint} from './entry_point';
 import {AbsoluteFsPath, LogicalFileSystem, absoluteFrom} from './file_system';
 import {AbsoluteModuleStrategy, AliasStrategy, AliasingHost, DefaultImportTracker, FileToModuleAliasingHost, FileToModuleHost, FileToModuleStrategy, ImportRewriter, LocalIdentifierStrategy, LogicalProjectStrategy, ModuleResolver, NoopImportRewriter, PrivateExportAliasingHost, R3SymbolsImportRewriter, Reference, ReferenceEmitter} from './imports';
+import {RelativeImportStrategy} from './imports/src/emitter';
 import {IncrementalState} from './incremental';
 import {IndexedComponent, IndexingContext} from './indexer';
 import {generateAnalysis} from './indexer/src/transform';
@@ -532,6 +533,8 @@ export class NgtscProgram implements api.Program {
         // file system, and use a relative import if so. If this fails, ReferenceEmitter will throw
         // an error.
         new LogicalProjectStrategy(this.reflector, new LogicalFileSystem(this.rootDirs)),
+
+        new RelativeImportStrategy(this.reflector),
       ]);
 
       // If an entrypoint is present, then all user imports should be directed through the

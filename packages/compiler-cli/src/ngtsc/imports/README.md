@@ -76,6 +76,10 @@ This `ReferenceEmitStrategy` uses the `bestGuessOwningModule` of a `Reference` t
 
 Note that the `bestGuessOwningModule` only gives the module specifier for the import, not the symbol name. The user may have renamed the class as part of re-exporting it from an entrypoint, so the `AbsoluteModuleStrategy` searches the exports of the target module and finds the symbol name by which the class is re-exported, if it exists.
 
+### `RelativeImportStrategy`
+
+This `ReferenceEmitStrategy` is used to import referenced classes that come from outside the current project (outside of any `rootDir` or `rootDirs`). This can happen when a big compilation is split up into multiple independent builds.
+
 ### `FileToModuleStrategy`
 
 This `ReferenceEmitStrategy` uses a `FileToModuleHost` to implement the major import mode #2 described at the beginning of this document.

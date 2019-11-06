@@ -37,7 +37,7 @@ const setClassMetadataRegExp = (expectedType: string): RegExp =>
 
 const testFiles = loadStandardTestFiles();
 
-runInEachFileSystem(os => {
+runInEachFileSystem.native(os => {
   describe('ngtsc behavioral tests', () => {
     let env !: NgtscTestEnvironment;
 
@@ -1599,6 +1599,46 @@ runInEachFileSystem(os => {
           expect(jsContents).toContain('Template Content');
         });
       });
+    });
+
+    fit('should not suck', () => {
+      env.write(
+          'tsconfig.json', JSON.stringify(
+                               {
+                                 extends: './tsconfig-base.json',
+                                 compilerOptions: {
+                                   'rootDir': './root',
+                                 },
+                                 files: ['./root/test.ts']
+                               },
+                               null, 2))
+      env.write(`root/test.ts`, `
+      import {NgModule} from '@angular/core';
+      import {RouterModule} from '../router';
+
+      @NgModule({imports: [RouterModule.forRoot()]})
+      export class TestModule {}
+  `);
+
+      env.write('router.d.ts', `
+      import {ModuleWithProviders, ɵɵNgModuleDefWithMeta} from '@angular/core';
+
+      declare class RouterModule {
+        static forRoot(): ModuleWithProviders<RouterModule>;
+        static ɵmod: ɵɵNgModuleDefWithMeta<RouterModule, never, never, never>;
+      }
+  `);
+
+      env.driveMain();
+
+      const jsContents = env.getContents('test.js');
+      expect(jsContents).toContain('imports: [[RouterModule.forRoot()]]');
+
+      const dtsContents = env.getContents('test.d.ts');
+      expect(dtsContents).toContain(`import * as i1 from "../router";`);
+      expect(dtsContents)
+          .toContain(
+              'i0.ɵɵNgModuleDefWithMeta<TestModule, never, [typeof i1.RouterModule], never>');
     });
 
     describe('former View Engine AST transform bugs', () => {
