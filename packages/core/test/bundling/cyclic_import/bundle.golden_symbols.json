@@ -24,9 +24,6 @@
     "name": "ChangeDetectionStrategy"
   },
   {
-    "name": "DECLARATION_COMPONENT_VIEW"
-  },
-  {
     "name": "DECLARATION_VIEW"
   },
   {
@@ -559,9 +556,6 @@
   },
   {
     "name": "refreshDynamicEmbeddedViews"
-  },
-  {
-    "name": "refreshTransplantedViews"
   },
   {
     "name": "refreshView"
