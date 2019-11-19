@@ -13,6 +13,7 @@ import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
 import {ImportRewriter} from '../../imports';
 import {IncrementalState} from '../../incremental';
 import {IndexingContext} from '../../indexer';
+import {ModuleWithProvidersScanner} from '../../modulewithproviders';
 import {PerfRecorder} from '../../perf';
 import {ClassDeclaration, ReflectionHost, isNamedClassDeclaration, reflectNameOfDeclaration} from '../../reflection';
 import {LocalModuleScopeRegistry} from '../../scope';
@@ -80,7 +81,8 @@ export class IvyCompilation {
       private handlers: DecoratorHandler<any, any>[], private reflector: ReflectionHost,
       private importRewriter: ImportRewriter, private incrementalState: IncrementalState,
       private perf: PerfRecorder, private sourceToFactorySymbols: Map<string, Set<string>>|null,
-      private scopeRegistry: LocalModuleScopeRegistry) {}
+      private scopeRegistry: LocalModuleScopeRegistry,
+      private mwpScanner: ModuleWithProvidersScanner) {}
 
 
   get exportStatements(): Map<string, Map<string, [string, string]>> { return this.reexportMap; }
@@ -243,6 +245,10 @@ export class IvyCompilation {
     };
 
     visit(sf);
+
+    if (!preanalyze) {
+      this.mwpScanner.scan(sf, this.getDtsTransformer(sf.fileName));
+    }
 
     if (preanalyze && promises.length > 0) {
       return Promise.all(promises).then(() => undefined);

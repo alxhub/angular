@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {Type} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {ImportRewriter} from '../../imports';
@@ -35,6 +36,7 @@ export function declarationTransformFactory(compilation: IvyCompilation):
  */
 export class DtsFileTransformer {
   private ivyFields = new Map<string, CompileResult[]>();
+  private typeReplacement = new Map<ts.Declaration, Type>();
   private imports: ImportManager;
 
   constructor(private importRewriter: ImportRewriter, importPrefix?: string) {
@@ -46,11 +48,16 @@ export class DtsFileTransformer {
    */
   recordStaticField(name: string, decls: CompileResult[]): void { this.ivyFields.set(name, decls); }
 
+  addTypeReplacement(node: ts.Declaration, type: Type): void {
+    this.typeReplacement.set(node, type);
+  }
+
   /**
    * Transform the declaration file and add any declarations which were recorded.
    */
   transform(file: ts.SourceFile, context: ts.TransformationContext): ts.SourceFile {
     const visitor: ts.Visitor = (node: ts.Node): ts.VisitResult<ts.Node> => {
+      debugger;
       // This class declaration needs to have fields added to it.
       if (ts.isClassDeclaration(node) && node.name !== undefined &&
           this.ivyFields.has(node.name.text)) {
@@ -63,7 +70,21 @@ export class DtsFileTransformer {
 
         return ts.updateClassDeclaration(
             node, node.decorators, node.modifiers, node.name, node.typeParameters,
-            node.heritageClauses, [...node.members, ...newMembers]);
+            node.heritageClauses,
+            [...node.members.map(member => ts.visitNode(member, visitor)), ...newMembers]);
+      } else if (ts.isMethodSignature(node)) {
+        const original = ts.getOriginalNode(node) as ts.MethodDeclaration;
+        console.error('visit method decl', original.getFullText());
+        if (this.typeReplacement.has(original)) {
+          const newType = translateType(this.typeReplacement.get(original) !, this.imports);
+          return ts.updateMethodSignature(
+              node,
+              /* typeParameters */ node.typeParameters,
+              /* parameters */ node.parameters,
+              /* type */ newType,
+              /* name */ node.name,
+              /* questionToken */ node.questionToken);
+        }
       }
 
       // Otherwise return node as is.
@@ -71,7 +92,7 @@ export class DtsFileTransformer {
     };
 
     // Recursively scan through the AST and add all class members needed.
-    const sf = ts.visitNode(file, visitor);
+    let sf = ts.visitNode(file, visitor);
 
     // Add new imports for this file.
     return addImports(this.imports, sf);

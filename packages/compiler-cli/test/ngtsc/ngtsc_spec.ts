@@ -37,7 +37,7 @@ const setClassMetadataRegExp = (expectedType: string): RegExp =>
 
 const testFiles = loadStandardTestFiles();
 
-runInEachFileSystem(os => {
+runInEachFileSystem.native(os => {
   describe('ngtsc behavioral tests', () => {
     let env !: NgtscTestEnvironment;
 
@@ -524,9 +524,9 @@ runInEachFileSystem(os => {
               `static ɵdir: i0.ɵɵDirectiveDefWithMeta<TestBase, never, never, { 'input': "input" }, {}, never>;`);
     });
 
-    it('should compile NgModules without errors', () => {
+    fit('should compile NgModules without errors', () => {
       env.write('test.ts', `
-        import {Component, NgModule} from '@angular/core';
+        import {Component, NgModule, ModuleWithProviders} from '@angular/core';
 
         @Component({
           selector: 'test-cmp',
@@ -538,7 +538,14 @@ runInEachFileSystem(os => {
           declarations: [TestCmp],
           bootstrap: [TestCmp],
         })
-        export class TestModule {}
+        export class TestModule {
+
+          static forRoot() {
+            return {
+              ngModule: TestModule,
+            };
+          }
+        }
     `);
 
       env.driveMain();
@@ -555,6 +562,7 @@ runInEachFileSystem(os => {
               'function TestModule_Factory(t) { return new (t || TestModule)(); } });');
 
       const dtsContents = env.getContents('test.d.ts');
+      fail(dtsContents);
       expect(dtsContents)
           .toContain(
               'static ɵcmp: i0.ɵɵComponentDefWithMeta<TestCmp, "test-cmp", never, {}, {}, never>');
