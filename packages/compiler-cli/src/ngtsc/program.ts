@@ -31,7 +31,7 @@ import {NgModuleRouteAnalyzer, entryPointKeyFor} from './routing';
 import {CompoundComponentScopeReader, LocalModuleScopeRegistry, MetadataDtsModuleScopeResolver} from './scope';
 import {FactoryGenerator, FactoryInfo, GeneratedShimsHostWrapper, ShimGenerator, SummaryGenerator, TypeCheckShimGenerator, generatedFactoryTransform} from './shims';
 import {ivySwitchTransform} from './switch';
-import {IvyCompilation, declarationTransformFactory, ivyTransformFactory} from './transform';
+import {IvyCompilation, IvyDeclarationDtsTransform, declarationTransformFactory, ivyTransformFactory} from './transform';
 import {aliasTransformFactory} from './transform/src/alias';
 import {TypeCheckContext, TypeCheckingConfig, typeCheckFilePath} from './typecheck';
 import {normalizeSeparators} from './util/src/path';
@@ -352,8 +352,13 @@ export class NgtscProgram implements api.Program {
       aliasTransformFactory(compilation.exportStatements) as ts.TransformerFactory<ts.SourceFile>,
       this.defaultImportTracker.importPreservingTransformer(),
     ];
+
+    const dtsTransforms = [
+      new IvyDeclarationDtsTransform(compilation),
+    ];
+
     const afterDeclarationsTransforms = [
-      declarationTransformFactory(compilation),
+      declarationTransformFactory(dtsTransforms, this.importRewriter),
     ];
 
     // Only add aliasing re-exports to the .d.ts output if the `AliasingHost` requests it.

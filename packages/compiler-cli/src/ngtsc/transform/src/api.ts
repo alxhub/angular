@@ -12,6 +12,7 @@ import * as ts from 'typescript';
 import {Reexport} from '../../imports';
 import {IndexingContext} from '../../indexer';
 import {ClassDeclaration, Decorator} from '../../reflection';
+import {ImportManager} from '../../translator';
 import {TypeCheckContext} from '../../typecheck';
 
 export enum HandlerPrecedence {
@@ -141,11 +142,16 @@ export interface AnalysisOutput<A> {
   typeCheck?: boolean;
 }
 
+export interface IvyDeclarationField {
+  name: string;
+  type: Type;
+}
+
 /**
  * A description of the static field to add to a class, including an initialization expression
  * and a type for the .d.ts file.
  */
-export interface CompileResult {
+export interface CompileResult extends IvyDeclarationField {
   name: string;
   initializer: Expression;
   statements: Statement[];
@@ -155,4 +161,11 @@ export interface CompileResult {
 export interface ResolveResult {
   reexports?: Reexport[];
   diagnostics?: ts.Diagnostic[];
+}
+
+export interface DtsTransform {
+  transformClassElement?(element: ts.ClassElement, imports: ImportManager): ts.ClassElement;
+  transformClass?
+      (clazz: ts.ClassDeclaration, elements: ReadonlyArray<ts.ClassElement>,
+       imports: ImportManager): ts.ClassDeclaration;
 }
