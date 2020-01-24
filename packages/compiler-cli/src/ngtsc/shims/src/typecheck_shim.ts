@@ -20,12 +20,16 @@ import {ShimGenerator} from './api';
  * each are exactly the same. Thus, the main program also needs the synthetic type-checking file.
  */
 export class TypeCheckShimGenerator implements ShimGenerator {
-  constructor(private typeCheckFile: AbsoluteFsPath) {}
+  constructor(private typeCheckFile: AbsoluteFsPath, private previousFile: ts.SourceFile|null) {}
 
   recognize(fileName: AbsoluteFsPath): boolean { return fileName === this.typeCheckFile; }
 
   generate(genFileName: AbsoluteFsPath, readFile: (fileName: string) => ts.SourceFile | null):
       ts.SourceFile|null {
+    if (this.previousFile !== null) {
+      return this.previousFile;
+    }
+
     return ts.createSourceFile(
         genFileName, 'export const USED_FOR_NG_TYPE_CHECKING = true;', ts.ScriptTarget.Latest, true,
         ts.ScriptKind.TS);

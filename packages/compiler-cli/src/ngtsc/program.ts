@@ -67,9 +67,16 @@ export class NgtscProgram implements api.Program {
     }
     this.closureCompilerEnabled = !!options.annotateForClosureCompiler;
 
-    this.host = NgCompilerHost.wrap(delegateHost, rootNames, options);
+    let reuseProgram: ts.Program|undefined = undefined;
+    let previousTypeCheckFile: ts.SourceFile|null = null;
 
-    const reuseProgram = oldProgram && oldProgram.reuseTsProgram;
+    if (oldProgram !== undefined) {
+      reuseProgram = oldProgram.reuseTsProgram;
+      previousTypeCheckFile = reuseProgram.getSourceFile(oldProgram.host.typeCheckFile) || null;
+    }
+
+    this.host = NgCompilerHost.wrap(delegateHost, rootNames, options, previousTypeCheckFile);
+
     this.tsProgram = ts.createProgram(this.host.inputFiles, options, this.host, reuseProgram);
     this.reuseTsProgram = this.tsProgram;
 
@@ -88,13 +95,15 @@ export class NgtscProgram implements api.Program {
   getTsSyntacticDiagnostics(
       sourceFile?: ts.SourceFile|undefined,
       cancellationToken?: ts.CancellationToken|undefined): readonly ts.Diagnostic[] {
-    return this.tsProgram.getSyntacticDiagnostics(sourceFile, cancellationToken);
+    return this.filterDiagnostics(
+        sourceFile, () => this.tsProgram.getSyntacticDiagnostics(sourceFile, cancellationToken));
   }
 
   getTsSemanticDiagnostics(
       sourceFile?: ts.SourceFile|undefined,
       cancellationToken?: ts.CancellationToken|undefined): readonly ts.Diagnostic[] {
-    return this.tsProgram.getSemanticDiagnostics(sourceFile, cancellationToken);
+    return this.filterDiagnostics(
+        sourceFile, () => this.tsProgram.getSemanticDiagnostics(sourceFile, cancellationToken));
   }
 
   getNgOptionDiagnostics(cancellationToken?: ts.CancellationToken|
@@ -120,7 +129,7 @@ export class NgtscProgram implements api.Program {
       }
     }
 
-    const diagnostics = this.compiler.getDiagnostics(sf);
+    const diagnostics = this.compiler.getNgDiagnostics(sf);
     this.reuseTsProgram = this.compiler.getNextProgram();
     return diagnostics;
   }
@@ -234,6 +243,25 @@ export class NgtscProgram implements api.Program {
 
   getEmittedSourceFiles(): Map<string, ts.SourceFile> {
     throw new Error('Method not implemented.');
+  }
+
+  private filterDiagnostics(
+      sf: ts.SourceFile|undefined,
+      diagnostics: () => ReadonlyArray<ts.Diagnostic>): ReadonlyArray<ts.Diagnostic> {
+    if (sf === this.compiler.typeCheckFile) {
+      // If diagnostics are requested specifically for the type-checking file, then there are none.
+      // This is a short-circuit path which avoids asking TypeScript to even produce diagnostics for
+      // this file, as they would only be filtered out anyway.
+      return [];
+    } else if (sf !== undefined) {
+      // If diagnostics for a specific file were requested, it's safe to return the results TS
+      // produces without any further filtration.
+      return diagnostics();
+    } else {
+      // If diagnostics for the whole program were requested, those for the type-checking file need
+      // to be filtered out first.
+      return diagnostics().filter(diag => diag.file !== this.compiler.typeCheckFile);
+    }
   }
 }
 

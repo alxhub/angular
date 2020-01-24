@@ -118,8 +118,8 @@ export class NgCompilerHost extends DelegatingCompilerHost implements
    * of TypeScript and Angular compiler options.
    */
   static wrap(
-      delegate: ts.CompilerHost, inputFiles: ReadonlyArray<string>,
-      options: NgCompilerOptions): NgCompilerHost {
+      delegate: ts.CompilerHost, inputFiles: ReadonlyArray<string>, options: NgCompilerOptions,
+      previousTypeCheckFile: ts.SourceFile|null): NgCompilerHost {
     // TODO(alxhub): remove the fallback to allowEmptyCodegenFiles after verifying that the rest of
     // our build tooling is no longer relying on it.
     const allowEmptyCodegenFiles = options.allowEmptyCodegenFiles || false;
@@ -166,7 +166,7 @@ export class NgCompilerHost extends DelegatingCompilerHost implements
     const rootDirs = getRootDirs(delegate, options as ts.CompilerOptions);
 
     const typeCheckFile = typeCheckFilePath(rootDirs);
-    generators.push(new TypeCheckShimGenerator(typeCheckFile));
+    generators.push(new TypeCheckShimGenerator(typeCheckFile, previousTypeCheckFile));
     rootFiles.push(typeCheckFile);
 
     let diagnostics: ts.Diagnostic[] = [];

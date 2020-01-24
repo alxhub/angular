@@ -90,7 +90,7 @@ export class NgCompiler {
   private diagnostics: ts.Diagnostic[]|null = null;
 
   private closureCompilerEnabled: boolean;
-  private typeCheckFile: ts.SourceFile;
+  readonly typeCheckFile: ts.SourceFile;
   private nextProgram: ts.Program;
   private entryPoint: ts.SourceFile|null;
   private moduleResolver: ModuleResolver;
@@ -149,7 +149,7 @@ export class NgCompiler {
    *
    * If a `ts.SourceFile` is passed, only diagnostics related to that file are returned.
    */
-  getDiagnostics(file?: ts.SourceFile): ts.Diagnostic[] {
+  getNgDiagnostics(file?: ts.SourceFile): ts.Diagnostic[] {
     if (this.diagnostics === null) {
       const compilation = this.ensureAnalyzed();
       this.diagnostics =
