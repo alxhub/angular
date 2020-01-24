@@ -10,6 +10,7 @@ import {ConstantPool} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {DefaultImportRecorder, ImportRewriter} from '../../imports';
+import {PerfRecorder} from '../../perf';
 import {Decorator, ReflectionHost} from '../../reflection';
 import {ImportManager, translateExpression, translateStatement} from '../../translator';
 import {VisitListEntryResult, Visitor, visit} from '../../util/src/visitor';
@@ -33,12 +34,13 @@ interface FileOverviewMeta {
 export function ivyTransformFactory(
     compilation: TraitCompiler, reflector: ReflectionHost, importRewriter: ImportRewriter,
     defaultImportRecorder: DefaultImportRecorder, isCore: boolean,
-    isClosureCompilerEnabled: boolean): ts.TransformerFactory<ts.SourceFile> {
+    isClosureCompilerEnabled: boolean,
+    perfRecorder: PerfRecorder): ts.TransformerFactory<ts.SourceFile> {
   return (context: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
     return (file: ts.SourceFile): ts.SourceFile => {
       return transformIvySourceFile(
           compilation, context, reflector, importRewriter, file, isCore, isClosureCompilerEnabled,
-          defaultImportRecorder);
+          defaultImportRecorder, perfRecorder);
     };
   };
 }
@@ -47,7 +49,8 @@ class IvyVisitor extends Visitor {
   constructor(
       private compilation: TraitCompiler, private reflector: ReflectionHost,
       private importManager: ImportManager, private defaultImportRecorder: DefaultImportRecorder,
-      private isCore: boolean, private constantPool: ConstantPool) {
+      private isCore: boolean, private constantPool: ConstantPool,
+      private perfRecorder: PerfRecorder) {
     super();
   }
 
@@ -208,28 +211,35 @@ class IvyVisitor extends Visitor {
 function transformIvySourceFile(
     compilation: TraitCompiler, context: ts.TransformationContext, reflector: ReflectionHost,
     importRewriter: ImportRewriter, file: ts.SourceFile, isCore: boolean,
-    isClosureCompilerEnabled: boolean,
-    defaultImportRecorder: DefaultImportRecorder): ts.SourceFile {
+    isClosureCompilerEnabled: boolean, defaultImportRecorder: DefaultImportRecorder,
+    perfRecorder: PerfRecorder): ts.SourceFile {
   const constantPool = new ConstantPool();
   const importManager = new ImportManager(importRewriter);
 
+  const span = perfRecorder.start('ivyXformVisitFile', file);
   // Recursively scan through the AST and perform any updates requested by the IvyCompilation.
   const visitor = new IvyVisitor(
-      compilation, reflector, importManager, defaultImportRecorder, isCore, constantPool);
+      compilation, reflector, importManager, defaultImportRecorder, isCore, constantPool,
+      perfRecorder);
   let sf = visit(file, visitor, context);
+  perfRecorder.stop(span);
 
+  const cpoolSpan = perfRecorder.start('ivyXformConstantPool', file);
   // Generate the constant statements first, as they may involve adding additional imports
   // to the ImportManager.
   const constants = constantPool.statements.map(
       stmt =>
           translateStatement(stmt, importManager, defaultImportRecorder, ts.ScriptTarget.ES2015));
+  perfRecorder.stop(cpoolSpan);
 
   // Preserve @fileoverview comments required by Closure, since the location might change as a
   // result of adding extra imports and constant pool statements.
   const fileOverviewMeta = isClosureCompilerEnabled ? getFileOverviewComment(sf.statements) : null;
 
+  const imports = perfRecorder.start('ivyXformAddImports', file);
   // Add new imports for this file.
   sf = addImports(importManager, sf, constants);
+  perfRecorder.stop(imports);
 
   if (fileOverviewMeta !== null) {
     setFileOverviewComment(sf, fileOverviewMeta);

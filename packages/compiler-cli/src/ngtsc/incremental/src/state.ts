@@ -57,6 +57,7 @@ export class IncrementalDriver implements IncrementalBuild<ClassRecord> {
         lastGood: oldDriver.state.lastGood,
       };
     }
+    console.error('inherited state, has lastGood?', oldDriver.state.lastGood !== null);
 
     // Merge the freshly modified resource files with any prior ones.
     if (modifiedResourceFiles !== null) {
@@ -97,7 +98,8 @@ export class IncrementalDriver implements IncrementalBuild<ClassRecord> {
         // It's a .d.ts file. Currently the compiler does not do a great job of tracking
         // dependencies on .d.ts files, so bail out of incremental builds here and do a full build.
         // This usually only happens if something in node_modules changes.
-        return IncrementalDriver.fresh(newProgram);
+        console.error('avoid bailout on unexpected change', newFile.fileName);
+        // return IncrementalDriver.fresh(newProgram);
       }
     }
 
@@ -149,6 +151,11 @@ export class IncrementalDriver implements IncrementalBuild<ClassRecord> {
     // Initialize the set of files which need to be emitted to the set of all TS files in the
     // program.
     const tsFiles = tsOnlyFiles(program);
+    try {
+      throw new Error();
+    } catch (e) {
+      console.error('starting fresh', e.stack);
+    }
 
     const state: PendingBuildState = {
       kind: BuildStateKind.Pending,
@@ -203,6 +210,7 @@ export class IncrementalDriver implements IncrementalBuild<ClassRecord> {
       return null;
     } else if (this.logicalChanges.has(sf.fileName)) {
       // Prior work might exist, but would be stale as the file in question has logically changed.
+      console.error('cannot reuse', sf.fileName + ', logically changed');
       return null;
     } else {
       // Prior work might exist, and if it does then it's usable!

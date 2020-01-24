@@ -75,6 +75,7 @@ export function createPerformWatchHost(
         persistent: true,
       });
       watcher.on('all', (event: string, path: string) => {
+        console.error('chokidar', event, path);
         switch (event) {
           case 'change':
             listener(FileChangeEvent.Change, path);
@@ -227,8 +228,8 @@ export function performWatchCompilation(host: PerformWatchHost):
       host.reportDiagnostics([totalCompilationTimeDiagnostic(endTime - startTime)]);
     }
     const exitCode = exitCodeFromResult(compileResult.diagnostics);
+    cachedProgram = compileResult.program;
     if (exitCode == 0) {
-      cachedProgram = compileResult.program;
       host.reportDiagnostics(
           [createMessageDiagnostic('Compilation complete. Watching for file changes.')]);
     } else {

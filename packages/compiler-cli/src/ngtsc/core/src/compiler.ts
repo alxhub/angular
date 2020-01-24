@@ -128,6 +128,7 @@ export class NgCompiler {
     }
 
     if (oldProgram === null) {
+      console.error('no old program, wth?');
       this.incrementalDriver = IncrementalDriver.fresh(tsProgram);
     } else {
       const oldDriver = getIncrementalDriver(oldProgram);
@@ -138,6 +139,7 @@ export class NgCompiler {
         // A previous ts.Program was used to create the current one, but it wasn't from an
         // `NgCompiler`. That doesn't hurt anything, but the Angular analysis will have to start
         // from a fresh state.
+        console.error('fresh incremental compilation from old program?');
         this.incrementalDriver = IncrementalDriver.fresh(tsProgram);
       }
     }
@@ -233,7 +235,9 @@ export class NgCompiler {
 
     this.perfRecorder.stop(analyzeSpan);
 
+    const resolveSpan = this.perfRecorder.start('resolve');
     this.resolveCompilation(this.compilation.traitCompiler);
+    this.perfRecorder.stop(resolveSpan);
   }
 
   /**
@@ -300,7 +304,8 @@ export class NgCompiler {
     const before = [
       ivyTransformFactory(
           compilation.traitCompiler, compilation.reflector, importRewriter,
-          compilation.defaultImportTracker, compilation.isCore, this.closureCompilerEnabled),
+          compilation.defaultImportTracker, compilation.isCore, this.closureCompilerEnabled,
+          this.perfRecorder),
       aliasTransformFactory(compilation.traitCompiler.exportStatements),
       compilation.defaultImportTracker.importPreservingTransformer(),
     ];
@@ -359,7 +364,9 @@ export class NgCompiler {
     }
     this.perfRecorder.stop(analyzeSpan);
 
+    const resolveSpan = this.perfRecorder.start('resolve');
     this.resolveCompilation(this.compilation.traitCompiler);
+    this.perfRecorder.stop(resolveSpan);
   }
 
   private resolveCompilation(traitCompiler: TraitCompiler): void {
@@ -470,7 +477,8 @@ export class NgCompiler {
     // Execute the typeCheck phase of each decorator in the program.
     const prepSpan = this.perfRecorder.start('typeCheckPrep');
     const ctx = new TypeCheckContext(
-        typeCheckingConfig, compilation.refEmitter !, compilation.reflector, host.typeCheckFile);
+        typeCheckingConfig, compilation.refEmitter !, compilation.reflector, host.typeCheckFile,
+        this.perfRecorder);
     compilation.traitCompiler.typeCheck(ctx);
     this.perfRecorder.stop(prepSpan);
 

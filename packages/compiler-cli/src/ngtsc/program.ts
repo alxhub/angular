@@ -78,6 +78,9 @@ export class NgtscProgram implements api.Program {
     this.host = NgCompilerHost.wrap(delegateHost, rootNames, options, previousTypeCheckFile);
 
     this.tsProgram = ts.createProgram(this.host.inputFiles, options, this.host, reuseProgram);
+    if (reuseProgram) {
+      console.error('structure reuse', (reuseProgram as any).structureIsReused);
+    }
     this.reuseTsProgram = this.tsProgram;
 
     // Create the NgCompiler which will drive the rest of the compilation.
@@ -95,15 +98,23 @@ export class NgtscProgram implements api.Program {
   getTsSyntacticDiagnostics(
       sourceFile?: ts.SourceFile|undefined,
       cancellationToken?: ts.CancellationToken|undefined): readonly ts.Diagnostic[] {
-    return this.filterDiagnostics(
-        sourceFile, () => this.tsProgram.getSyntacticDiagnostics(sourceFile, cancellationToken));
+    const span = this.perfRecorder.start('getTsSyntacticDiagnostics', sourceFile);
+    const diags = this.filterDiagnostics(
+        sourceFile,
+        (file: ts.SourceFile) => this.tsProgram.getSyntacticDiagnostics(file, cancellationToken));
+    this.perfRecorder.stop(span);
+    return diags;
   }
 
   getTsSemanticDiagnostics(
       sourceFile?: ts.SourceFile|undefined,
       cancellationToken?: ts.CancellationToken|undefined): readonly ts.Diagnostic[] {
-    return this.filterDiagnostics(
-        sourceFile, () => this.tsProgram.getSemanticDiagnostics(sourceFile, cancellationToken));
+    const span = this.perfRecorder.start('getTsSemanticDiagnostics', sourceFile);
+    const diags = this.filterDiagnostics(
+        sourceFile,
+        (file: ts.SourceFile) => this.tsProgram.getSemanticDiagnostics(file, cancellationToken));
+    this.perfRecorder.stop(span);
+    return diags;
   }
 
   getNgOptionDiagnostics(cancellationToken?: ts.CancellationToken|
@@ -247,7 +258,8 @@ export class NgtscProgram implements api.Program {
 
   private filterDiagnostics(
       sf: ts.SourceFile|undefined,
-      diagnostics: () => ReadonlyArray<ts.Diagnostic>): ReadonlyArray<ts.Diagnostic> {
+      diagnostics: (file: ts.SourceFile) => ReadonlyArray<ts.Diagnostic>):
+      ReadonlyArray<ts.Diagnostic> {
     if (sf === this.compiler.typeCheckFile) {
       // If diagnostics are requested specifically for the type-checking file, then there are none.
       // This is a short-circuit path which avoids asking TypeScript to even produce diagnostics for
@@ -256,11 +268,17 @@ export class NgtscProgram implements api.Program {
     } else if (sf !== undefined) {
       // If diagnostics for a specific file were requested, it's safe to return the results TS
       // produces without any further filtration.
-      return diagnostics();
+      return diagnostics(sf);
     } else {
       // If diagnostics for the whole program were requested, those for the type-checking file need
       // to be filtered out first.
-      return diagnostics().filter(diag => diag.file !== this.compiler.typeCheckFile);
+      const diags: ts.Diagnostic[] = [];
+      for (const file of this.tsProgram.getSourceFiles()) {
+        if (file !== this.compiler.typeCheckFile) {
+          diags.push(...diagnostics(file));
+        }
+      }
+      return diags;
     }
   }
 }

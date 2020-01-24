@@ -11,6 +11,7 @@ import * as ts from 'typescript';
 
 import {AbsoluteFsPath} from '../../file_system';
 import {NoopImportRewriter, Reference, ReferenceEmitter} from '../../imports';
+import {PerfRecorder} from '../../perf';
 import {ClassDeclaration, ReflectionHost} from '../../reflection';
 import {ImportManager} from '../../translator';
 
@@ -39,7 +40,8 @@ export class TypeCheckContext {
 
   constructor(
       private config: TypeCheckingConfig, private refEmitter: ReferenceEmitter,
-      private reflector: ReflectionHost, typeCheckFilePath: AbsoluteFsPath) {
+      private reflector: ReflectionHost, typeCheckFilePath: AbsoluteFsPath,
+      private perfRecorder: PerfRecorder) {
     this.typeCheckFile = new TypeCheckFile(typeCheckFilePath, config, refEmitter, reflector);
   }
 
@@ -184,7 +186,9 @@ export class TypeCheckContext {
     diagnostics: ts.Diagnostic[],
     program: ts.Program,
   } {
+    const render = this.perfRecorder.start('ttcTransformAndRender');
     const typeCheckSf = this.typeCheckFile.render();
+    console.error('ttc file bytes', typeCheckSf.text.length);
     // First, build the map of original source files.
     const sfMap = new Map<string, ts.SourceFile>();
     const interestingFiles: ts.SourceFile[] = [typeCheckSf];
@@ -197,15 +201,20 @@ export class TypeCheckContext {
     }
 
     sfMap.set(typeCheckSf.fileName, typeCheckSf);
+    this.perfRecorder.stop(render);
 
+    const ttcProgram = this.perfRecorder.start('ttcProgram');
     const typeCheckProgram = ts.createProgram({
       host: new TypeCheckProgramHost(sfMap, originalHost),
       options: originalOptions,
       oldProgram: originalProgram,
       rootNames: originalProgram.getRootFileNames(),
     });
+    console.error('ttc program reuse', (originalProgram as any).structureIsReused);
+    this.perfRecorder.stop(ttcProgram);
 
     const diagnostics: ts.Diagnostic[] = [];
+    const ttcDiagnostics = this.perfRecorder.start('ttcDiagnostics');
     const collectDiagnostics = (diags: readonly ts.Diagnostic[]): void => {
       for (const diagnostic of diags) {
         if (shouldReportDiagnostic(diagnostic)) {
@@ -219,8 +228,12 @@ export class TypeCheckContext {
     };
 
     for (const sf of interestingFiles) {
+      const perFile = this.perfRecorder.start('ttcDiagnosticsForFile', sf);
       collectDiagnostics(typeCheckProgram.getSemanticDiagnostics(sf));
+      this.perfRecorder.stop(perFile);
     }
+
+    this.perfRecorder.stop(ttcDiagnostics);
 
     diagnostics.push(...this.domSchemaChecker.diagnostics);
     diagnostics.push(...this.oobRecorder.diagnostics);

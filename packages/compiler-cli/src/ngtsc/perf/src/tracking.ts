@@ -18,6 +18,13 @@ export class PerfTracker implements PerfRecorder {
 
   readonly enabled = true;
 
+  private spans = new Map<number, {
+    name: string,
+    category?: string,
+    detail?: string,
+    start: number, node?: ts.SourceFile|ts.Declaration,
+  }>();
+
   private constructor(private zeroTime: HrTime) {}
 
   static zeroedToNow(): PerfTracker { return new PerfTracker(mark()); }
@@ -33,15 +40,34 @@ export class PerfTracker implements PerfRecorder {
     const span = this.nextSpanId++;
     const msg = this.makeLogMessage(PerfLogEventType.SPAN_OPEN, name, node, category, detail, span);
     this.log.push(msg);
+    this.spans.set(span, {name, category, detail, start: msg.stamp, node});
     return span;
   }
 
   stop(span: number): void {
+    const stamp = timeSinceInMicros(this.zeroTime);
     this.log.push({
       type: PerfLogEventType.SPAN_CLOSE,
       span,
-      stamp: timeSinceInMicros(this.zeroTime),
+      stamp,
     });
+    if (this.spans.has(span)) {
+      const log = this.spans.get(span) !;
+      const micros = stamp - log.start;
+      let node: string|undefined = undefined;
+      if (log.node) {
+        if (ts.isSourceFile(log.node)) {
+          node = log.node.fileName;
+        } else if (ts.isIdentifier((log.node as any).name)) {
+          node = ((log.node as any).name as ts.Identifier).text + ' @ ' +
+              log.node.getSourceFile().fileName;
+        }
+      }
+      if (micros > 60000) {
+        console.error(
+            `perf[${micros} us] name=${log.name}, category=${log.category}, detail=${log.detail}, node=${node}`);
+      }
+    }
   }
 
   private makeLogMessage(
