@@ -39,7 +39,7 @@ export type RequiredCompilerHostDelegations = {
  * generated for this class.
  */
 export class DelegatingCompilerHost implements
-    Omit<RequiredCompilerHostDelegations, 'getSourceFile'|'fileExists'> {
+    Omit<RequiredCompilerHostDelegations, 'getSourceFile'|'fileExists'|'resolveModuleNames'> {
   constructor(protected delegate: ExtendedTsCompilerHost) {}
 
   private delegateMethod<M extends keyof ExtendedTsCompilerHost>(name: M):
@@ -68,7 +68,6 @@ export class DelegatingCompilerHost implements
   readFile = this.delegateMethod('readFile');
   readResource = this.delegateMethod('readResource');
   realpath = this.delegateMethod('realpath');
-  resolveModuleNames = this.delegateMethod('resolveModuleNames');
   resolveTypeReferenceDirectives = this.delegateMethod('resolveTypeReferenceDirectives');
   resourceNameToFileName = this.delegateMethod('resourceNameToFileName');
   trace = this.delegateMethod('trace');
@@ -97,6 +96,8 @@ export class NgCompilerHost extends DelegatingCompilerHost implements
   readonly inputFiles: ReadonlyArray<string>;
   readonly rootDirs: ReadonlyArray<AbsoluteFsPath>;
   readonly typeCheckFile: AbsoluteFsPath;
+
+  private moduleResolutionCache: ts.ModuleResolutionCache|null = null;
 
   constructor(
       delegate: ExtendedTsCompilerHost, inputFiles: ReadonlyArray<string>,
@@ -238,6 +239,26 @@ export class NgCompilerHost extends DelegatingCompilerHost implements
     // internally only passes POSIX-like paths.
     return this.delegate.fileExists(fileName) ||
         this.shims.some(shim => shim.recognize(resolve(fileName)));
+  }
+
+  resolveModuleNames(
+      moduleNames: string[], containingFile: string, reusedNames: string[]|undefined,
+      redirectedReference: ts.ResolvedProjectReference|undefined,
+      options: ts.CompilerOptions): (ts.ResolvedModule|undefined)[] {
+    if (this.delegate.resolveModuleNames !== undefined) {
+      return this.delegate.resolveModuleNames(
+          moduleNames, containingFile, reusedNames, redirectedReference, options);
+    }
+
+    if (this.moduleResolutionCache === null) {
+      this.moduleResolutionCache = ts.createModuleResolutionCache(
+          this.delegate.getCurrentDirectory(),
+          this.delegate.getCanonicalFileName.bind(this.delegate), options);
+    }
+    return moduleNames.map(
+        moduleName => ts.resolveModuleName(
+                            moduleName, containingFile, options, this, this.moduleResolutionCache !)
+                          .resolvedModule);
   }
 
   get unifiedModulesHost(): UnifiedModulesHost|null {
