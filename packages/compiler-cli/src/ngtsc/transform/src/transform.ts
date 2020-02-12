@@ -60,7 +60,46 @@ class IvyVisitor extends Visitor {
     if (res !== null) {
       // There is at least one field to add.
       const statements: ts.Statement[] = [];
-      const members = [...node.members];
+      const members =
+          [...node.members.map(member => {
+            if (!ts.isMethodDeclaration(member) || !ts.isIdentifier(member.name) ||
+                member.name.text !== 'render' || member.body === undefined) {
+              return member;
+            }
+
+            const stmts = [...member.body.statements];
+            const last = stmts.pop();
+            if (last === undefined || !ts.isReturnStatement(last) ||
+                last.expression === undefined || !ts.isTaggedTemplateExpression(last.expression)) {
+              return member;
+            }
+
+            const tmpl = last.expression.template;
+
+            const props: ts.PropertyAssignment[] = [];
+
+            if (ts.isTemplateExpression(tmpl)) {
+              for (const span of tmpl.templateSpans) {
+                props.push(ts.createPropertyAssignment(
+                    /* name */ `arg${props.length}`,
+                    /* initializer */ span.expression));
+              }
+            }
+
+            stmts.push(ts.updateReturn(last, ts.createObjectLiteral(props)));
+
+            return ts.updateMethod(
+                /* node */ member,
+                /* decorators */ member.decorators,
+                /* modifiers */ member.modifiers,
+                /* asteriskToken */ member.asteriskToken,
+                /* name */ member.name,
+                /* questionToken */ member.questionToken,
+                /* typeParameters */ member.typeParameters,
+                /* parameters */ member.parameters,
+                /* type */ member.type,
+                /* body */ ts.updateBlock(member.body, stmts));
+          })] as ts.ClassElement[];
 
       res.forEach(field => {
         // Translate the initializer for the field into TS nodes.

@@ -173,10 +173,11 @@ export function compileComponentFromMetadata(
   const changeDetection = meta.changeDetection;
 
   const template = meta.template;
+  BindingScope.ROOT_SCOPE.hasRender = meta.hasRender || false;
   const templateBuilder = new TemplateDefinitionBuilder(
       constantPool, BindingScope.ROOT_SCOPE, 0, templateTypeName, null, null, templateName,
       directiveMatcher, directivesUsed, meta.pipes, pipesUsed, R3.namespaceHTML,
-      meta.relativeContextFilePath, meta.i18nUseExternalIds);
+      meta.relativeContextFilePath, meta.i18nUseExternalIds, undefined, meta.hasRender);
 
   const templateFunctionExpression = templateBuilder.buildTemplateFunction(template.nodes, []);
 

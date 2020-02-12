@@ -166,12 +166,18 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
       private directiveMatcher: SelectorMatcher|null, private directives: Set<o.Expression>,
       private pipeTypeByName: Map<string, o.Expression>, private pipes: Set<o.Expression>,
       private _namespace: o.ExternalReference, relativeContextFilePath: string,
-      private i18nUseExternalIds: boolean, private _constants: o.Expression[] = []) {
+      private i18nUseExternalIds: boolean, private _constants: o.Expression[] = [],
+      private hasRender = false) {
     this._bindingScope = parentBindingScope.nestedScope(level);
 
     // Turn the relative context file path into an identifier by replacing non-alphanumeric
     // characters with underscores.
     this.fileBasedI18nSuffix = relativeContextFilePath.replace(/[^A-Za-z0-9]/g, '_') + '_';
+
+    if (hasRender) {
+      this._prefixCode.push(
+          new o.WriteVarExpr('ctx', new o.ReadVarExpr('ctx').callMethod('render', [])).toStmt());
+    }
 
     this._valueConverter = new ValueConverter(
         constantPool, () => this.allocateDataSlot(),
@@ -321,7 +327,9 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
           } else {
             const sharedCtxVar = scope.getSharedContextName(retrievalLevel);
             // e.g. ctx_r0   OR  x(2);
-            rhs = sharedCtxVar ? sharedCtxVar : generateNextContextExpr(relativeLevel);
+            rhs = sharedCtxVar ?
+                sharedCtxVar :
+                generateNextContextExpr(relativeLevel, retrievalLevel === 0 && this.hasRender);
           }
           // e.g. const $item$ = x(2).$implicit;
           return [lhs.set(rhs.prop(variable.value || IMPLICIT_REFERENCE)).toConstDecl()];
@@ -862,7 +870,7 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
         this.constantPool, this._bindingScope, this.level + 1, contextName, this.i18n,
         templateIndex, templateName, this.directiveMatcher, this.directives, this.pipeTypeByName,
         this.pipes, this._namespace, this.fileBasedI18nSuffix, this.i18nUseExternalIds,
-        this._constants);
+        this._constants, false);
 
     // Nested templates must not be visited until after their parent templates have completed
     // processing, so they are queued here until after the initial pass. Otherwise, we wouldn't
@@ -1340,8 +1348,10 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
           retrievalLevel, reference.name, lhs,
           DeclarationPriority.DEFAULT, (scope: BindingScope, relativeLevel: number) => {
             // e.g. nextContext(2);
-            const nextContextStmt =
-                relativeLevel > 0 ? [generateNextContextExpr(relativeLevel).toStmt()] : [];
+            const nextContextStmt = relativeLevel > 0 ?
+                [generateNextContextExpr(relativeLevel, retrievalLevel === 0 && this.hasRender)
+                     .toStmt()] :
+                [];
 
             // e.g. const $foo$ = reference(1);
             const refExpr = lhs.set(o.importExpr(R3.reference).callFn([o.literal(slot)]));
@@ -1467,9 +1477,15 @@ function instruction(
 }
 
 // e.g. x(2);
-function generateNextContextExpr(relativeLevelDiff: number): o.Expression {
-  return o.importExpr(R3.nextContext)
-      .callFn(relativeLevelDiff > 1 ? [o.literal(relativeLevelDiff)] : []);
+function generateNextContextExpr(relativeLevelDiff: number, shouldRender: boolean): o.Expression {
+  const res =
+      o.importExpr(R3.nextContext).callFn(relativeLevelDiff > 1 ? [o.literal(relativeLevelDiff)] : [
+      ]);
+  if (shouldRender) {
+    return res.callMethod('render', []);
+  } else {
+    return res;
+  }
 }
 
 function getLiteralFactory(
@@ -1557,6 +1573,7 @@ export class BindingScope implements LocalResolver {
   private referenceNameIndex = 0;
   private restoreViewVariable: o.ReadVarExpr|null = null;
   private static _ROOT_SCOPE: BindingScope;
+  public hasRender: boolean = false;
 
   static get ROOT_SCOPE(): BindingScope {
     if (!BindingScope._ROOT_SCOPE) {
@@ -1565,7 +1582,11 @@ export class BindingScope implements LocalResolver {
     return BindingScope._ROOT_SCOPE;
   }
 
-  private constructor(public bindingLevel: number = 0, private parent: BindingScope|null = null) {}
+  private constructor(public bindingLevel: number = 0, private parent: BindingScope|null = null) {
+    if (this.parent !== null) {
+      this.hasRender = this.parent.hasRender;
+    }
+  }
 
   get(name: string): o.Expression|null {
     let current: BindingScope|null = this;
@@ -1695,7 +1716,9 @@ export class BindingScope implements LocalResolver {
       lhs: lhs,
       declareLocalCallback: (scope: BindingScope, relativeLevel: number) => {
         // const ctx_r0 = nextContext(2);
-        return [lhs.set(generateNextContextExpr(relativeLevel)).toConstDecl()];
+        return [lhs.set(generateNextContextExpr(
+                            relativeLevel, retrievalLevel === 0 && this.hasRender))
+                    .toConstDecl()];
       },
       declare: false,
       priority: DeclarationPriority.SHARED_CONTEXT,

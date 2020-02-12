@@ -7,6 +7,7 @@
  */
 
 import {ConstantPool, CssSelector, DEFAULT_INTERPOLATION_CONFIG, DomElementSchemaRegistry, Expression, ExternalExpr, Identifiers, InterpolationConfig, LexerRange, ParseError, ParseSourceFile, ParseTemplateOptions, R3ComponentMetadata, R3FactoryTarget, R3TargetBinder, SchemaMetadata, SelectorMatcher, Statement, TmplAstNode, WrappedNodeExpr, compileComponentFromMetadata, makeBindingParser, parseTemplate} from '@angular/compiler';
+import * as o from '@angular/compiler/src/output/output_ast';
 import * as ts from 'typescript';
 
 import {CycleAnalyzer} from '../../cycles';
@@ -18,7 +19,7 @@ import {IndexingContext} from '../../indexer';
 import {DirectiveMeta, InjectableClassRegistry, MetadataReader, MetadataRegistry, extractDirectiveGuards} from '../../metadata';
 import {flattenInheritedDirectiveMetadata} from '../../metadata/src/inheritance';
 import {EnumValue, PartialEvaluator} from '../../partial_evaluator';
-import {ClassDeclaration, Decorator, ReflectionHost, reflectObjectLiteral} from '../../reflection';
+import {ClassDeclaration, ClassMemberKind, Decorator, ReflectionHost, reflectObjectLiteral} from '../../reflection';
 import {ComponentScopeReader, LocalModuleScopeRegistry} from '../../scope';
 import {AnalysisOutput, CompileResult, DecoratorHandler, DetectResult, HandlerFlags, HandlerPrecedence, ResolveResult} from '../../transform';
 import {TemplateSourceMapping, TypeCheckContext} from '../../typecheck';
@@ -51,6 +52,7 @@ export interface ComponentAnalysisData {
    */
   meta: Omit<R3ComponentMetadata, ComponentMetadataResolvedFields>;
   baseClass: Reference<ClassDeclaration>|'dynamic'|null;
+  hasRender: boolean;
   guards: ReturnType<typeof extractDirectiveGuards>;
   template: ParsedTemplateWithSource;
   metadataStmt: Statement|null;
@@ -224,6 +226,9 @@ export class ComponentDecoratorHandler implements
           component.get('providers') !, this.reflector, this.evaluator);
     }
 
+    const hasRender = this.reflector.getMembersOfClass(node).some(
+        member => member.kind === ClassMemberKind.Method && member.name === 'render');
+
     // Parse the template.
     // If a preanalyze phase was executed, the template may already exist in parsed form, so check
     // the preanalyzeTemplateCache.
@@ -247,6 +252,8 @@ export class ComponentDecoratorHandler implements
         }
         const resourceUrl = this.resourceLoader.resolve(templateUrl, containingFile);
         template = this._extractExternalTemplate(node, component, templateUrlExpr, resourceUrl);
+      } else if (hasRender) {
+        template = this._extractRenderTemplate(component, node);
       } else {
         // Expect an inline template to be present.
         template = this._extractInlineTemplate(node, decorator, component, containingFile);
@@ -309,8 +316,10 @@ export class ComponentDecoratorHandler implements
     const output: AnalysisOutput<ComponentAnalysisData> = {
       analysis: {
         baseClass: readBaseClass(node, this.reflector, this.evaluator),
+        hasRender,
         meta: {
           ...metadata,
+          hasRender,
           template: {
             nodes: template.emitNodes,
           },
@@ -391,7 +400,7 @@ export class ComponentDecoratorHandler implements
 
   typeCheck(ctx: TypeCheckContext, node: ClassDeclaration, meta: Readonly<ComponentAnalysisData>):
       void {
-    if (!ts.isClassDeclaration(node)) {
+    if (!ts.isClassDeclaration(node) || meta.hasRender) {
       return;
     }
 
@@ -568,6 +577,7 @@ export class ComponentDecoratorHandler implements
       node: ClassDeclaration, analysis: Readonly<ComponentAnalysisData>,
       resolution: Readonly<ComponentResolutionData>, pool: ConstantPool): CompileResult[] {
     const meta: R3ComponentMetadata = {...analysis.meta, ...resolution};
+    const stmtCount = pool.statements.length;
     const res = compileComponentFromMetadata(meta, pool, makeBindingParser());
     const factoryRes = compileNgFactoryDefField(
         {...meta, injectFn: Identifiers.directiveInject, target: R3FactoryTarget.Component});
@@ -692,6 +702,52 @@ export class ComponentDecoratorHandler implements
         templateUrl: resourceUrl,
       },
     };
+  }
+
+  private _extractRenderTemplate(meta: Map<string, ts.Expression>, clazz: ClassDeclaration):
+      ParsedTemplateWithSource {
+    const renderMethod = this.reflector.getMembersOfClass(clazz).find(
+        member => member.kind === ClassMemberKind.Method && member.name === 'render') !;
+    const node = renderMethod.node as ts.MethodDeclaration;
+    const statements = node.body !.statements;
+    const lastStatement = statements[statements.length - 1];
+    if (!ts.isReturnStatement(lastStatement) || lastStatement.expression === undefined ||
+        !ts.isTaggedTemplateExpression(lastStatement.expression)) {
+      throw new FatalDiagnosticError(
+          ErrorCode.COMPONENT_MISSING_TEMPLATE, lastStatement,
+          `expected to return an ngTemplate string`);
+    }
+
+    const tag = this.evaluator.evaluate(lastStatement.expression.tag);
+    if (!(tag instanceof Reference) || tag.ownedByModuleGuess !== '@angular/core' ||
+        tag.debugName !== 'ngTemplate') {
+      throw new FatalDiagnosticError(
+          ErrorCode.COMPONENT_MISSING_TEMPLATE, lastStatement,
+          `expected to return an ngTemplate string`);
+    }
+
+    const tmpl = lastStatement.expression.template;
+    let tmplString: string = '';
+    if (ts.isNoSubstitutionTemplateLiteral(tmpl)) {
+      tmplString = tmpl.text;
+    } else {
+      let argCount = 0;
+      tmplString = tmpl.head.text;
+      for (const span of tmpl.templateSpans) {
+        tmplString += `arg${argCount++}${span.literal.text}`;
+      }
+    }
+
+    const template =
+        this._parseTemplate(meta, tmplString, '', /* templateRange */ undefined, false);
+    return {
+      ...template, sourceMapping: {
+        type: 'indirect',
+        node: lastStatement.expression,
+        componentClass: node.parent as ClassDeclaration,
+        template: tmplString,
+      }
+    }
   }
 
   private _extractInlineTemplate(

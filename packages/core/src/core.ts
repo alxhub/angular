@@ -51,3 +51,5 @@ if (ngDevMode) {
         'For server-side rendering applications add the import to your `main.server.ts` file.)');
   };
 }
+
+export const ngTemplate: any = () => ({});

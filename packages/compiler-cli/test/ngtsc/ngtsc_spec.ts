@@ -37,7 +37,8 @@ const setClassMetadataRegExp = (expectedType: string): RegExp =>
 
 const testFiles = loadStandardTestFiles();
 
-runInEachFileSystem(os => {
+const run = runInEachFileSystem.native;
+run(os => {
   describe('ngtsc behavioral tests', () => {
     let env !: NgtscTestEnvironment;
 
@@ -45,6 +46,29 @@ runInEachFileSystem(os => {
       env = NgtscTestEnvironment.setup(testFiles);
       env.tsconfig();
     });
+
+    fit('should be awesome', () => {
+      env.write('test.ts', `
+        import {Component, ngTemplate} from '@angular/core';
+
+        @Component({
+          selector: 'my-app',
+        })
+        export class Dep {
+          value: string;
+
+          render(): unknown {
+            return ngTemplate\`this is a test: {{\${this.value}}}\`;
+          }
+        }
+    `);
+      env.driveMain();
+
+
+      const jsContents = env.getContents('test.js');
+      fail(jsContents);
+    });
+
 
     it('should compile Injectables without errors', () => {
       env.write('test.ts', `

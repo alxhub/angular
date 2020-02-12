@@ -137,6 +137,8 @@ export interface R3ComponentMetadata extends R3DirectiveMetadata {
    */
   pipes: Map<string, o.Expression>;
 
+  hasRender?: boolean;
+
   /**
    * A list of directive selectors and an expression referencing the directive type which are in the
    * scope of the compilation.
