@@ -57,6 +57,7 @@ export class NgtscTestEnvironment {
         "noEmitOnError": true,
         "strictNullChecks": true,
         "outDir": "built",
+        "rootDir": ".",
         "baseUrl": ".",
         "declaration": true,
         "target": "es5",

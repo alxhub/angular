@@ -4963,6 +4963,7 @@ runInEachFileSystem(os => {
           const fileoverview = `
         /**
          * @fileoverview added by tsickle
+         * Generated from: test.ts
          * @suppress {checkTypes,constantProperty,extraRequire,missingOverride,missingReturn,unusedPrivateMembers,uselessCode} checked by tsc
          */
       `;
@@ -4980,6 +4981,7 @@ runInEachFileSystem(os => {
           const fileoverview = `
         /**
          * @fileoverview added by tsickle
+         * Generated from: test.ts
          * @suppress {checkTypes,constantProperty,extraRequire,missingOverride,missingReturn,unusedPrivateMembers,uselessCode} checked by tsc
          */
       `;
@@ -5005,6 +5007,7 @@ runInEachFileSystem(os => {
           const fileoverview = `
         /**
          * @fileoverview added by tsickle
+         * Generated from: test.ngfactory.ts
          * @suppress {checkTypes,constantProperty,extraRequire,missingOverride,missingReturn,unusedPrivateMembers,uselessCode} checked by tsc
          */
       `;
@@ -5035,6 +5038,7 @@ runInEachFileSystem(os => {
         /**
          *
          * @fileoverview Some Comp overview
+         * Generated from: test.ts
          * @modName {some_comp}
          *
          * @suppress {checkTypes,constantProperty,extraRequire,missingOverride,missingReturn,unusedPrivateMembers,uselessCode} checked by tsc
@@ -5064,6 +5068,7 @@ runInEachFileSystem(os => {
         /**
          *
          * @fileoverview Some Comp overview
+         * Generated from: test.ts
          * @modName {some_comp}
          *
          * @suppress {checkTypes,constantProperty,extraRequire,missingOverride,missingReturn,unusedPrivateMembers,uselessCode} checked by tsc

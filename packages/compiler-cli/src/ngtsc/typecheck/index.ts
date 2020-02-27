@@ -7,7 +7,9 @@
  */
 
 export * from './src/api';
+export {TemplateTypeChecker} from './src/checker';
 export {TypeCheckContext} from './src/context';
 export {TemplateDiagnostic, isTemplateDiagnostic} from './src/diagnostics';
+export {TypeCheckShimGenerator} from './src/shim';
 export {TypeCheckProgramHost} from './src/host';
 export {typeCheckFilePath} from './src/type_check_file';
