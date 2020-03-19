@@ -9,7 +9,7 @@
 /// <reference types="node" />
 
 export {PerFileShimGenerator, TopLevelShimGenerator} from './api';
-export {isFileShimSourceFile, isShim} from './src/expando';
+export {copyFileShimData, isFileShimSourceFile, isShim} from './src/expando';
 export {FactoryGenerator, FactoryInfo, FactoryTracker, generatedFactoryTransform} from './src/factory_generator';
 export {ShimHostAdapter} from './src/host_adapter';
 export {ShimReferenceTagger} from './src/reference_tagger';

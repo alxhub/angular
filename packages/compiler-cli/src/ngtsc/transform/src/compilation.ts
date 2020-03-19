@@ -87,7 +87,7 @@ export class TraitCompiler {
   constructor(
       private handlers: DecoratorHandler<unknown, unknown, unknown>[],
       private reflector: ReflectionHost, private perf: PerfRecorder,
-      private incrementalBuild: IncrementalBuild<ClassRecord>,
+      private incrementalBuild: IncrementalBuild<ClassRecord, unknown>,
       private compileNonExportedClasses: boolean, private dtsTransforms: DtsTransformRegistry) {
     for (const handler of handlers) {
       this.handlersByName.set(handler.name, handler);
@@ -423,8 +423,12 @@ export class TraitCompiler {
     }
   }
 
-  typeCheck(ctx: TypeCheckContext): void {
-    for (const clazz of this.classes.keys()) {
+  typeCheck(sf: ts.SourceFile, ctx: TypeCheckContext): void {
+    if (!this.fileToClasses.has(sf)) {
+      return;
+    }
+
+    for (const clazz of this.fileToClasses.get(sf)!) {
       const record = this.classes.get(clazz)!;
       for (const trait of record.traits) {
         if (trait.state !== TraitState.RESOLVED) {

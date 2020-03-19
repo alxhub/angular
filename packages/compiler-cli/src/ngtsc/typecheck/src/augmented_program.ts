@@ -51,5 +51,7 @@ export class ReusedProgramStrategy implements TypeCheckingProgramStrategy {
       options: this.options,
       oldProgram: this.program,
     });
+
+    host.cleanup();
   }
 }

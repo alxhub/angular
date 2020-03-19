@@ -9,7 +9,7 @@
 import * as ts from 'typescript';
 
 import {absoluteFrom, absoluteFromSourceFile, resolve} from '../../file_system';
-import {ShimHostAdapter, ShimReferenceTagger} from '../../shims';
+import {copyFileShimData, ShimReferenceTagger} from '../../shims';
 
 import {TypeCheckContext} from './context';
 import {TypeCheckShimGenerator} from './shim';
@@ -28,14 +28,6 @@ export class TypeCheckProgramHost implements ts.CompilerHost {
 
 
   private shimReferenceHostAdapter = new ShimReferenceTagger(this.shimExtensionPrefixes);
-
-  // The oldProgram is explicitly not passed here, even though one exists. This is because:
-  // - ngfactory/ngsummary shims, if present, should be treated effectively as original files. As
-  //   they are still marked as shims, they won't have a typecheck shim generated for them, but
-  //   otherwise they should be reused as-is.
-  // - ngtypecheck shims are always generated as fresh, and not reused.
-  private shimAdapter =
-      ShimHostAdapter.create([], [new TypeCheckShimGenerator()], /* oldProgram */ null);
 
   readonly resolveModuleNames?: ts.CompilerHost['resolveModuleNames'];
 
@@ -57,28 +49,26 @@ export class TypeCheckProgramHost implements ts.CompilerHost {
       fileName: string, languageVersion: ts.ScriptTarget,
       onError?: ((message: string) => void)|undefined,
       shouldCreateNewSourceFile?: boolean|undefined): ts.SourceFile|undefined {
-    // Look in the cache for the source file.
+    const delegateSf =
+        this.delegate.getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile)!;
+    if (delegateSf === undefined) {
+      throw new Error(
+          `AssertionError: TypeCheckProgramHost could not find contents for ${fileName}`);
+    }
+
+    // Look for replacements.
     let sf: ts.SourceFile;
     if (this.sfMap.has(fileName)) {
       sf = this.sfMap.get(fileName)!;
+      copyFileShimData(delegateSf, sf);
     } else {
-      const sfShim = this.shimAdapter.maybeGetShim(
-          absoluteFrom(fileName),
-          (path: string) => this.delegate.getSourceFile(path, ts.ScriptTarget.Latest));
-
-      if (sfShim === undefined) {
-        return undefined;
-      } else if (sfShim === null) {
-        const maybeSf = this.delegate.getSourceFile(
-            fileName, languageVersion, onError, shouldCreateNewSourceFile)!;
-        if (maybeSf === undefined) {
-          throw new Error(
-              `AssertionError: TypeCheckProgramHost could not find contents for ${fileName}`);
-        }
-        sf = maybeSf;
-      } else {
-        sf = sfShim;
+      const maybeSf = this.delegate.getSourceFile(
+          fileName, languageVersion, onError, shouldCreateNewSourceFile);
+      if (maybeSf === undefined) {
+        throw new Error(
+            `AssertionError: TypeCheckProgramHost could not find contents for ${fileName}`);
       }
+      sf = maybeSf;
     }
     // TypeScript doesn't allow returning redirect source files. To avoid unforseen errors we
     // return the original source file instead of the redirect target.
@@ -87,10 +77,13 @@ export class TypeCheckProgramHost implements ts.CompilerHost {
       sf = redirectInfo.unredirected;
     }
 
-    const absoluteFileName = absoluteFromSourceFile(sf);
+    this.shimReferenceHostAdapter.maybeAddReferences(sf);
 
-    this.shimAdapter.maybeAddShims(sf, absoluteFileName);
     return sf;
+  }
+
+  cleanup(): void {
+    this.shimReferenceHostAdapter.cleanup();
   }
 
   // The rest of the methods simply delegate to the underlying `ts.CompilerHost`.

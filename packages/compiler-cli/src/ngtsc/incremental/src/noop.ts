@@ -8,6 +8,8 @@
 
 import {IncrementalBuild} from '../api';
 
-export const NOOP_INCREMENTAL_BUILD: IncrementalBuild<any> = {
-  priorWorkFor: () => null
+export const NOOP_INCREMENTAL_BUILD: IncrementalBuild<any, any> = {
+  priorWorkFor: () => null,
+  priorTypeCheckingResultsFor: () => null,
+  recordSuccessfulTypeCheck: () => {},
 };
