@@ -16,6 +16,9 @@ import {countBindings} from './util';
 
 export class StyleProp extends ir.UpdateNode implements ir.BindingSlotConsumerAspect,
                                                         ir.UpdateSlotAspect {
+  readonly[ir.BindingSlotConsumerAspect] = true;
+  readonly[ir.UpdateSlotAspect] = true;
+
   slot: ir.DataSlot|null = null;
 
   constructor(
@@ -35,6 +38,9 @@ export class StyleProp extends ir.UpdateNode implements ir.BindingSlotConsumerAs
 
 export class StyleMap extends ir.UpdateNode implements ir.BindingSlotConsumerAspect,
                                                        ir.UpdateSlotAspect {
+  readonly[ir.BindingSlotConsumerAspect] = true;
+  readonly[ir.UpdateSlotAspect] = true;
+
   slot: ir.DataSlot|null = null;
 
   constructor(

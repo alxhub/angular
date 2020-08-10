@@ -11,6 +11,8 @@ import {Identifiers as R3} from '../../../../r3_identifiers';
 import * as ir from '../../ir';
 
 export class Pipe extends ir.CreateNode implements ir.CreateSlotAspect {
+  readonly[ir.CreateSlotAspect] = true;
+
   slot: ir.DataSlot|null = null;
 
   constructor(readonly id: ir.Id, readonly name: string) {

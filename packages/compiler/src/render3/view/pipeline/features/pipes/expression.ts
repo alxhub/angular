@@ -11,6 +11,9 @@ import {Identifiers as R3} from '../../../../r3_identifiers';
 import * as ir from '../../ir';
 
 export class PipeBindExpr extends ir.Expression implements ir.BindingSlotOffsetAspect {
+  readonly[ir.BindingSlotConsumerAspect] = true;
+  readonly[ir.BindingSlotOffsetAspect] = true;
+
   readonly kind = 'pipeBind';
 
   slot: ir.DataSlot|null = null;
@@ -59,6 +62,9 @@ export class PipeBindExpr extends ir.Expression implements ir.BindingSlotOffsetA
 }
 
 export class PipeBindVExpr extends ir.Expression implements ir.BindingSlotOffsetAspect {
+  readonly[ir.BindingSlotConsumerAspect] = true;
+  readonly[ir.BindingSlotOffsetAspect] = true;
+
   readonly kind = 'pipeBindV';
 
   slot: ir.DataSlot|null = null;

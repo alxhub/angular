@@ -16,6 +16,8 @@ export type Selector = string|Array<string|number>;
 export type ElementAttrs = Array<string|number|Selector>;
 
 export class ElementBase extends ir.CreateNode implements ir.CreateSlotAspect {
+  readonly[ir.CreateSlotAspect] = true;
+
   refs: ir.Reference[]|number|null = null;
   attrs: ElementAttrs|number|null = null;
   slot: ir.DataSlot|null = null;

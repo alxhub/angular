@@ -8,16 +8,26 @@
 
 import * as o from '../../../../output/output_ast';
 
-export interface ExpressionVisitor<C = unknown> extends o.ExpressionVisitor {
-  visitIrExpression?(node: Expression, ctx: C): any;
-}
-
+/**
+ * Base class for all IR `o.Expression`s.
+ *
+ * The IR defines several new kinds of expression nodes, all of which can exist within an
+ * `o.Expression` AST (for example, pure function expressions). This base class provides a
+ * foundation which bridges the `o.Expression` abstraction with the IR abstraction, and allows for
+ * visitors and transformers which specifically understand IR expression nodes (like the
+ * `ExpressionTransformer` defined below).
+ *
+ * IR `Expression`s cannot be output during code generation, and an exception will be thrown if one
+ * is left in an `o.Expression` AST and passed to the code generator. `Expression`s should be
+ * converted into a non-IR `o.Expression` via `toFinalExpression` prior to code generation.
+ */
 export abstract class Expression extends o.Expression {
   constructor() {
     super(/* type */ undefined);
   }
 
   visitExpression(visitor: ExpressionVisitor, ctx: any): o.Expression {
+    // IR expressions can only be visited by a visitor which implements `visitIrExpression`.
     if (visitor.visitIrExpression !== undefined) {
       return visitor.visitIrExpression(this, ctx);
     } else {
@@ -34,11 +44,36 @@ export abstract class Expression extends o.Expression {
   }
 
   abstract readonly kind: string;
+
+  /**
+   * Visit any `o.Expression`s which are stored in the current `Expression` with the given visitor.
+   */
   abstract visitChildren(visitor: o.ExpressionVisitor, ctx?: any): void;
+
+  /**
+   * Finalize this expression into a non-IR `o.Expression` suitable for code generation.
+   */
   abstract toFinalExpression(): o.Expression;
 }
 
-export class ExpressionTransformer<C = unknown> implements ExpressionVisitor {
+/**
+ * An `o.ExpressionVisitor` which is potentially capable of visiting IR `Expression` nodes.
+ *
+ * This interface is directly compatible with `o.ExpressionVisitor` as the `visitIrExpression`
+ * method is optional.
+ */
+export interface ExpressionVisitor<C = unknown> extends o.ExpressionVisitor {
+  /**
+   * Visit an IR `Expression`.
+   */
+  visitIrExpression?(node: Expression, ctx: C): any;
+}
+
+/**
+ * A base class for transformers which process `o.Expression` ASTs that include embedded IR
+ * `Expression`s.
+ */
+export abstract class ExpressionTransformer<C = unknown> implements ExpressionVisitor {
   visitIrExpression(expr: Expression, ctx: C): o.Expression {
     expr.visitChildren(this, ctx);
     return expr;

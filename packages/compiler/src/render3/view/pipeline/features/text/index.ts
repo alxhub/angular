@@ -13,6 +13,8 @@ import * as ir from '../../ir';
 import {emitInterpolationExpr, InterpolationConfig, InterpolationExpr} from '../binding/interpolation';
 
 export class Text extends ir.CreateNode implements ir.CreateSlotAspect {
+  readonly[ir.CreateSlotAspect] = true;
+
   slot: ir.DataSlot|null = null;
 
   constructor(
@@ -25,6 +27,8 @@ export class Text extends ir.CreateNode implements ir.CreateSlotAspect {
 }
 
 export class TextInterpolate extends ir.UpdateNode implements ir.BindingSlotConsumerAspect {
+  readonly[ir.BindingSlotConsumerAspect] = true;
+
   constructor(
       readonly id: ir.Id, public expression: InterpolationExpr,
       public readonly sourceSpan: ParseSourceSpan) {

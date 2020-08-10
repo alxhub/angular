@@ -36,7 +36,7 @@ export type Target = Reference|Variable|RootContext;
 
 
 export class Scope implements ir.Scope {
-  private _targets = new Map<string, Target>();
+  readonly targets = new Map<string, Target>();
   private children = new Map<ir.Id, Scope>();
 
   constructor(private idGen: IdGenerator, readonly parent: Scope|null) {}
@@ -54,25 +54,21 @@ export class Scope implements ir.Scope {
       value,
     };
 
-    this._targets.set(name, ref);
+    this.targets.set(name, ref);
     return ref;
   }
 
   recordVariable(name: string, templateId: ir.Id, value: string): void {
-    this._targets.set(name, {
+    this.targets.set(name, {
       kind: TargetKind.Variable,
       template: templateId,
       value,
     });
   }
 
-  get targets(): IterableIterator<[string, Target]> {
-    return this._targets.entries();
-  }
-
   lookup(name: string): Target {
-    if (this._targets.has(name)) {
-      return this._targets.get(name)!;
+    if (this.targets.has(name)) {
+      return this.targets.get(name)!;
     } else if (this.parent !== null) {
       return this.parent.lookup(name);
     } else {

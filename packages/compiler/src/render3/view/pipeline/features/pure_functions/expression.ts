@@ -11,6 +11,9 @@ import {Identifiers as R3} from '../../../../r3_identifiers';
 import * as ir from '../../ir';
 
 export class PureFunctionExpr extends ir.Expression implements ir.BindingSlotOffsetAspect {
+  readonly[ir.BindingSlotConsumerAspect] = true;
+  readonly[ir.BindingSlotOffsetAspect] = true;
+
   readonly kind = 'PureFunctionExpr';
   slotOffset: number|null = null;
 

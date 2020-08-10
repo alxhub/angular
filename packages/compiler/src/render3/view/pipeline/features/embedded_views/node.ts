@@ -13,6 +13,8 @@ import * as ir from '../../ir';
 import {produceBodyStatements, produceTemplateFunctionParams} from '../../output/util';
 
 export class Template extends ir.CreateNode implements ir.CreateSlotAspect {
+  readonly[ir.CreateSlotAspect] = true;
+
   functionName: string|null = null;
   refs: ir.Reference[]|null = null;
 
