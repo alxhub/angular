@@ -1,12 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {hasTemplateAspect, TemplateAspect, TemplateWithIdAspect} from './aspect/template';
+import {TemplateAspect, TemplateWithIdAspect} from './aspect/template';
+import {hasTemplateAspect} from './aspect/template_util';
 import {ExpressionTransformer} from './expression';
 import {CreateTransform, UpdateTransform} from './node';
 import {RootTemplate, TemplateStage} from './root';
@@ -69,7 +70,7 @@ export abstract class BaseTemplateStage<CT extends CreateTransform, UT extends U
     }
 
     // Recurse into any child create nodes that have the TemplateAspect.
-    for (let node = tmpl.create.head; node !== null; node = node.next) {
+    for (const node of tmpl.create) {
       if (hasTemplateAspect(node)) {
         this.transformImpl(root, node, currCreate, currUpdate);
       }
@@ -129,12 +130,12 @@ export abstract class UpdateOnlyTemplateStage extends BaseTemplateStage<never, U
 export abstract class ExpressionOnlyTemplateStage extends ExpressionTransformer implements
     TemplateStage {
   transform(tmpl: TemplateAspect): void {
-    for (let node = tmpl.update.head; node !== null; node = node.next) {
+    for (const node of tmpl.update) {
       node.visitExpressions(this);
     }
 
     // Recurse into any child create nodes that have the TemplateAspect.
-    for (let node = tmpl.create.head; node !== null; node = node.next) {
+    for (const node of tmpl.create) {
       if (hasTemplateAspect(node)) {
         this.transform(node);
       }

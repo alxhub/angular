@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -90,7 +90,7 @@ export class Host {
   decls: number|null = null;
   vars: number|null = null;
 
-  constructor(public name: string) {}
+  constructor(readonly name: string) {}
 
   /**
    * Transform this `Host` with a sequence of `HostStage`s.
