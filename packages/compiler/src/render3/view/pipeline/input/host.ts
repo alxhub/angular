@@ -15,7 +15,7 @@ import {R3HostMetadata} from '../../api';
 import {Listener, Property} from '../features/binding';
 import * as ir from '../ir';
 
-import {ValuePreprocessor} from './value';
+import {TemplateExpressionConverter} from './value';
 
 export function fromHostDef(
     name: string, meta: R3HostMetadata, parser: BindingParser, span: ParseSourceSpan): ir.Host {
@@ -26,7 +26,7 @@ export function fromHostDef(
       return 0 as ir.Id;
     }
   };
-  const valuePreprocessor = new ValuePreprocessor(allocator);
+  const valuePreprocessor = new TemplateExpressionConverter(allocator);
   buildAttributeInstructions(host, meta.attributes, span);
   buildPropertyInstructions(host, valuePreprocessor, parser, summary, span);
   buildListenerInstructions(host, valuePreprocessor, parser, summary, span);
@@ -44,7 +44,7 @@ function buildAttributeInstructions(
 }
 
 function buildPropertyInstructions(
-    host: ir.Host, valuePreprocessor: ValuePreprocessor, parser: BindingParser,
+    host: ir.Host, valuePreprocessor: TemplateExpressionConverter, parser: BindingParser,
     summary: CompileDirectiveSummary, span: ParseSourceSpan): void {
   const properties = parser.createBoundHostProperties(summary, span);
   if (properties === null) {
@@ -53,7 +53,7 @@ function buildPropertyInstructions(
 
   for (let property of properties) {
     const instruction: ir.UpdateNode = new Property(
-        0 as ir.Id, property.name, valuePreprocessor.process(property.expression),
+        0 as ir.Id, property.name, valuePreprocessor.convert(property.expression),
         property.sourceSpan);
 
     host.update.append(instruction);
@@ -61,7 +61,7 @@ function buildPropertyInstructions(
 }
 
 function buildListenerInstructions(
-    host: ir.Host, valuePreprocessor: ValuePreprocessor, parser: BindingParser,
+    host: ir.Host, valuePreprocessor: TemplateExpressionConverter, parser: BindingParser,
     summary: CompileDirectiveSummary, span: ParseSourceSpan): void {
   const listeners = parser.createDirectiveHostEventAsts(summary, span);
   if (listeners === null) {
@@ -70,7 +70,7 @@ function buildListenerInstructions(
 
   for (let listener of listeners) {
     const instruction: ir.CreateNode =
-        new Listener(listener.name, valuePreprocessor.process(listener.handler));
+        new Listener(listener.name, valuePreprocessor.convert(listener.handler));
 
     host.create.append(instruction);
   }

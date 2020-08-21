@@ -9,7 +9,7 @@
 import {ConstantPool, parseTemplate} from '../../../../../src/compiler';
 import * as o from '../../../../../src/output/output_ast';
 import {TemplateEmitter} from '../../../../../src/render3/view/pipeline/features/embedded_views';
-import {parse as parseNodes} from '../../../../../src/render3/view/pipeline/input/template';
+import {templateToIr as parseNodes} from '../../../../../src/render3/view/pipeline/input/template';
 import * as ir from '../../../../../src/render3/view/pipeline/ir';
 import {produceBodyStatements} from '../../../../../src/render3/view/pipeline/output/util';
 

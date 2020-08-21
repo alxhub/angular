@@ -8,46 +8,51 @@
 
 import * as ir from '../ir';
 
-export enum TargetKind {
-  Reference,
-  Variable,
-  RootContext,
-}
-
-export interface Reference extends ir.Reference {
-  kind: TargetKind.Reference;
-  element: ir.Id;
-}
-
-export interface Variable {
-  kind: TargetKind.Variable;
-  template: ir.Id;
-  value: string;
-}
-
-export interface RootContext {
-  kind: TargetKind.RootContext;
-}
-const ROOT_CONTEXT: RootContext = {
-  kind: TargetKind.RootContext,
+const ROOT_CONTEXT: ir.RootContext = {
+  kind: ir.TargetKind.RootContext,
 };
 
-export type Target = Reference|Variable|RootContext;
-
-
+/**
+ * Tracks named entities in the nested structure of a template.
+ *
+ * A `Scope` represents a given view (either a root template or an embedded view) and tracks any
+ * references or variables declared in/for that view, plus the `Scope`s of any child views.
+ */
 export class Scope implements ir.Scope {
-  readonly targets = new Map<string, Target>();
+  /**
+   * Map of names declared in this scope to metadata about the named entity.
+   *
+   * This is left readable for consumers to iterate over all such entities.
+   */
+  readonly targets = new Map<string, ir.Target>();
+
+  /**
+   * Map of child embedded view `ir.Id`s to the `Scope`s for those views.
+   */
   private children = new Map<ir.Id, Scope>();
 
-  constructor(private idGen: IdGenerator, readonly parent: Scope|null) {}
+  private constructor(private idGen: IdGenerator, readonly parent: Scope|null) {}
 
+  static root(): Scope {
+    return new Scope(new IdGenerator(), /* parent */ null);
+  }
+
+  /**
+   * Allocate a new `ir.Id`.
+   *
+   * All `Scope`s nested within the same `ir.RootTemplate` share their ID namespace, so it does not
+   * matter at which level `allocateId()` is called.
+   */
   allocateId(): ir.Id {
     return this.idGen.next();
   }
 
-  recordReference(name: string, toElementId: ir.Id, value: string): Reference {
-    const ref: Reference = {
-      kind: TargetKind.Reference,
+  /**
+   * Record `name` as a reference declared within this `Scope`.
+   */
+  recordReference(name: string, toElementId: ir.Id, value: string): ir.Reference {
+    const ref: ir.Reference = {
+      kind: ir.TargetKind.Reference,
       slot: null,
       element: toElementId,
       name,
@@ -58,15 +63,18 @@ export class Scope implements ir.Scope {
     return ref;
   }
 
+  /**
+   *  Record `
+   */
   recordVariable(name: string, templateId: ir.Id, value: string): void {
     this.targets.set(name, {
-      kind: TargetKind.Variable,
+      kind: ir.TargetKind.Variable,
       template: templateId,
       value,
     });
   }
 
-  lookup(name: string): Target {
+  lookup(name: string): ir.Target {
     if (this.targets.has(name)) {
       return this.targets.get(name)!;
     } else if (this.parent !== null) {
@@ -74,10 +82,6 @@ export class Scope implements ir.Scope {
     } else {
       return ROOT_CONTEXT;
     }
-  }
-
-  static root(): Scope {
-    return new Scope(new IdGenerator(), /* parent */ null);
   }
 
   child(id: ir.Id): Scope {

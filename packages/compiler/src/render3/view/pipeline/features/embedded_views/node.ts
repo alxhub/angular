@@ -12,8 +12,11 @@ import {Identifiers as R3Identifiers} from '../../../../r3_identifiers';
 import * as ir from '../../ir';
 import {produceBodyStatements, produceTemplateFunctionParams} from '../../output/util';
 
-export class Template extends ir.CreateNode implements ir.CreateSlotAspect {
+export class Template extends ir.CreateNode implements ir.CreateSlotAspect,
+                                                       ir.TemplateWithIdAspect {
   readonly[ir.CreateSlotAspect] = true;
+  readonly[ir.TemplateAspect] = true;
+  readonly[ir.TemplateWithIdAspect] = true;
 
   functionName: string|null = null;
   refs: ir.Reference[]|null = null;

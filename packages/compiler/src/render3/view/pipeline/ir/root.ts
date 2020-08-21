@@ -40,16 +40,11 @@ export class RootTemplate implements TemplateAspect {
    */
   scope: Scope;
 
-  constructor(create: CreateList, update: UpdateList, scope: Scope) {
+  constructor(readonly name: string, create: CreateList, update: UpdateList, scope: Scope) {
     this.create = create;
     this.update = update;
     this.scope = scope;
   }
-
-  /**
-   * Name of the template function (usually the name of the component which declared the template).
-   */
-  name: string|null = null;
 
   /**
    * Array of constants extracted from the template during processing.

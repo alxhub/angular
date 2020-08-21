@@ -82,6 +82,8 @@ export interface Reference {
    */
   slot: DataSlot|null;
 
+  element: Id;
+
   /**
    * Name of the local reference.
    */

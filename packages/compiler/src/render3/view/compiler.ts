@@ -41,7 +41,7 @@ import {PureFunctionStage} from './pipeline/features/pure_functions';
 import {ClassHostStage, ClassTemplateStage, StyleHostStage, StyleTemplateStage} from './pipeline/features/styling';
 import {ResolverHostStage, ResolverStage, VarNamesStage} from './pipeline/features/tmp_variables';
 import {fromHostDef} from './pipeline/input/host';
-import {parse} from './pipeline/input/template';
+import {templateToIr} from './pipeline/input/template';
 import {emitHostBindingsFunction} from './pipeline/output/host_bindings_function';
 import {emitTemplateFunction} from './pipeline/output/template_function';
 import {MIN_STYLING_BINDING_SLOTS_REQUIRED, StylingBuilder, StylingInstructionCall} from './styling_builder';
@@ -207,7 +207,7 @@ export function compileComponentFromMetadata(
 
   const template = meta.template;
 
-  const root = parse(template.nodes, meta.name);
+  const root = templateToIr(template.nodes, meta.name);
 
   // clang-format off
   root.transform(

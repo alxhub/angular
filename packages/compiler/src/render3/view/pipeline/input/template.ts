@@ -18,45 +18,49 @@ import {Text, TextInterpolate} from '../features/text';
 import * as ir from '../ir';
 
 import {Scope} from './scope';
-import {ValuePreprocessor} from './value';
+import {TemplateExpressionConverter} from './value';
 
-export interface IrTemplate {
-  create: ir.CreateList;
-  update: ir.UpdateList;
-  scope: Scope;
-}
-
-export function parse(input: tmpl.Node[], name: string): ir.RootTemplate {
-  const root = TemplateToIrConverter.parseRoot(input);
-  root.name = name;
+/**
+ * Convert the given template AST to an `ir.RootTemplate` in the template IR.
+ */
+export function templateToIr(input: tmpl.Node[], name: string): ir.RootTemplate {
+  const root = TemplateToIrConverter.parseRoot(input, name);
   return root;
 }
 
-class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
+/**
+ * Processes a template (either a root template or an embedded view) and converts it to its IR
+ * representation as lists of create and update nodes.
+ *
+ * `TemplateToIrConverter` is invoked via its `parseRoot()` static function, which will create an
+ * `ir.RootTemplate` from the given template AST. It will recurse as necessary into embedded views.
+ */
+class TemplateToIrConverter implements tmpl.Visitor<void> {
   private create = new ir.CreateList();
   private update = new ir.UpdateList();
 
-  private preprocessor = new ValuePreprocessor(this.scope);
+  private expressionConverter = new TemplateExpressionConverter(this.scope);
 
-  constructor(private scope: Scope) {}
+  private constructor(private scope: Scope) {}
 
   /**
    * Parse a template beginning from its top-level, including all sub-templates.
    */
-  static parseRoot(input: tmpl.Node[]): ir.RootTemplate {
-    const parser = new TemplateToIrConverter(Scope.root());
+  static parseRoot(input: tmpl.Node[], name: string): ir.RootTemplate {
+    const scope = Scope.root();
+    const parser = new TemplateToIrConverter(scope);
     for (const node of input) {
       node.visit(parser);
     }
 
-    const {create, update, scope} = parser.finalize();
-    return new ir.RootTemplate(create, update, scope);
+    const {create, update} = parser.finalize();
+    return new ir.RootTemplate(name, create, update, scope);
   }
 
   /**
    * Parse a child template of a higher-level template, including all sub-templates.
    */
-  private parseChild(id: ir.Id, input: tmpl.Template): IrTemplate {
+  private parseChild(id: ir.Id, input: tmpl.Template): CreateUpdateBlocks {
     const childScope = this.scope.child(id);
     const parser = new TemplateToIrConverter(childScope);
 
@@ -72,9 +76,10 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
   }
 
   visitElement(element: tmpl.Element): void {
-    // Allocate an id.
+    // All elements have an id.
     const id = this.scope.allocateId();
 
+    // Parse the references list, and add a reference in the current scope for each one.
     let refs: ir.Reference[]|null = null;
     if (element.references.length > 0) {
       refs = [];
@@ -83,18 +88,22 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
       }
     }
 
+    // Start building the ElementStart node.
     const elementStart = new ElementStart(id, element.name, element.sourceSpan);
     elementStart.refs = refs;
 
-    this.create.append(elementStart);
-
+    // If the element has bindings (either attributes or inputs), it'll need an attrs array, which
+    // is initialized lazily to avoid allocating it unnecessarily.
     if (element.attributes.length > 0 || element.inputs.length > 0) {
       elementStart.attrs = [];
+
+      // First, add all static attributes for the element.
       for (const attr of element.attributes) {
         elementStart.attrs.push(attr.name);
         elementStart.attrs.push(attr.value);
       }
 
+      // Then add an inputs section, and all of the inputs if needed.
       if (element.inputs.length > 0) {
         elementStart.attrs.push(AttributeMarker.Bindings);
       }
@@ -103,14 +112,15 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
         const name = normalizeBindingName(input.type, input.name);
         elementStart.attrs.push(name);
         const property =
-            new Property(id, name, this.preprocessor.process(input.value), input.sourceSpan);
+            new Property(id, name, this.expressionConverter.convert(input.value), input.sourceSpan);
         this.update.append(property);
       }
     }
 
-
+    // Add the ElementStart node for this element, followed by processing all of its children, and
+    // then the ElementEnd.
+    this.create.append(elementStart);
     tmpl.visitAll(this, element.children);
-
     this.create.append(new ElementEnd(id));
   }
 
@@ -121,6 +131,8 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
 
   visitBoundText(text: tmpl.BoundText): void {
     const id = this.scope.allocateId();
+
+    // TODO(alxhub): static text nodes?
     this.create.append(new Text(id, null, text.sourceSpan));
 
     let top = text.value;
@@ -131,11 +143,11 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
     if (top instanceof ast.Interpolation) {
       const sourceSpan = text.sourceSpan;
       const interpolationExpr = new InterpolationExpr(
-          top.expressions.map(e => this.preprocessor.process(e)), top.strings);
+          top.expressions.map(e => this.expressionConverter.convert(e)), top.strings);
       const textInterpolate = new TextInterpolate(id, interpolationExpr, sourceSpan);
       this.update.append(textInterpolate);
     } else {
-      throw new Error('BoundText is not an interpolation expression?');
+      throw new Error('AssertionError: BoundText should have an ast.Interpolation value');
     }
   }
 
@@ -143,6 +155,7 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
     const id = this.scope.allocateId();
     const parsed = this.parseChild(id, template);
 
+    // Template nodes still have references.
     let refs: ir.Reference[]|null = null;
     if (template.references.length > 0) {
       refs = [];
@@ -161,112 +174,61 @@ class TemplateToIrConverter implements tmpl.Visitor<void>, ast.AstVisitor {
   visitContent(content: tmpl.Content): void {
     throw new Error('Method not implemented.');
   }
+
   visitVariable(variable: tmpl.Variable): void {
     throw new Error('Method not implemented.');
   }
+
   visitReference(reference: tmpl.Reference): void {
     throw new Error('Method not implemented.');
   }
+
   visitTextAttribute(attribute: tmpl.TextAttribute): void {
     throw new Error('Method not implemented.');
   }
+
   visitBoundAttribute(attribute: tmpl.BoundAttribute): void {
     throw new Error('Method not implemented.');
   }
+
   visitBoundEvent(attribute: tmpl.BoundEvent): void {
     throw new Error('Method not implemented.');
   }
+
   visitIcu(icu: tmpl.Icu): void {
     throw new Error('Method not implemented.');
   }
 
-  finalize(): IrTemplate {
+  finalize(): CreateUpdateBlocks {
     return {
       create: this.create,
       update: this.update,
-      scope: this.scope,
     };
-  }
-
-
-  visitBinary(ast: ast.Binary, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitChain(ast: ast.Chain, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitConditional(ast: ast.Conditional, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitFunctionCall(ast: ast.FunctionCall, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitImplicitReceiver(ast: ast.ImplicitReceiver, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitInterpolation(ast: ast.Interpolation, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitKeyedRead(ast: ast.KeyedRead, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitKeyedWrite(ast: ast.KeyedWrite, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitLiteralArray(ast: ast.LiteralArray, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitLiteralMap(ast: ast.LiteralMap, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitLiteralPrimitive(ast: ast.LiteralPrimitive, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitMethodCall(ast: ast.MethodCall, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitPipe(ast: ast.BindingPipe, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitPrefixNot(ast: ast.PrefixNot, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitNonNullAssert(ast: ast.NonNullAssert, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitPropertyRead(ast: ast.PropertyRead, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitPropertyWrite(ast: ast.PropertyWrite, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitQuote(ast: ast.Quote, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitSafeMethodCall(ast: ast.SafeMethodCall, context: any) {
-    throw new Error('Method not implemented.');
-  }
-  visitSafePropertyRead(ast: ast.SafePropertyRead, context: any) {
-    throw new Error('Method not implemented.');
   }
 }
 
-const FRESH_NODE = {
-  next: null,
-  prev: null,
-};
-
-function normalizeBindingName(type: ast.BindingType, name: string) {
+/**
+ * Recover the original binding name for a binding of a given type.
+ *
+ * The template parser converts special bindings like `[style.foo]` to a binding with name 'foo'
+ * that has a special `ast.BindingType`. This normalizing operation undoes this conversion, because
+ * in the template IR such special bindings are (initially) treated no differently than any other
+ * kind.
+ */
+function normalizeBindingName(type: ast.BindingType, name: string): string {
   switch (type) {
     case ast.BindingType.Style:
       // this will convert [width] => [style.width]
-      return name !== 'style' ? `style.${name}` : name;
-
+      return name !== 'style' ? `style.${name}` : 'style';
     case ast.BindingType.Class:
       // this will convert [foo] => [class.foo]
-      return name !== 'class' ? `class.${name}` : name;
-
+      return name !== 'class' ? `class.${name}` : 'class';
     default:
       return name;
   }
+}
+
+interface CreateUpdateBlocks {
+  create: ir.CreateList;
+  update: ir.UpdateList;
 }
