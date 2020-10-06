@@ -42,10 +42,11 @@ export class QuickInfoBuilder {
     }
     const {template, component} = templateInfo;
 
-    const node = findNodeAtPosition(template, position);
-    if (node === undefined) {
+    const nodeInfo = findNodeAtPosition(template, position);
+    if (nodeInfo === undefined) {
       return undefined;
     }
+    const {node} = nodeInfo;
 
     const symbol = this.compiler.getTemplateTypeChecker().getSymbolOfNode(node, component);
     if (symbol === null) {

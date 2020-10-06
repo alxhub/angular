@@ -18,7 +18,8 @@ import {isTemplateNode, isTemplateNodeWithKeyAndValue} from './utils';
  * @param ast AST tree
  * @param position cursor position
  */
-export function findNodeAtPosition(ast: t.Node[], position: number): t.Node|e.AST|undefined {
+export function findNodeAtPosition(
+    ast: t.Node[], position: number): {node: t.Node|e.AST, template: t.Template|null}|undefined {
   const visitor = new R3Visitor(position);
   visitor.visitAll(ast);
   const candidate = visitor.path[visitor.path.length - 1];
@@ -33,7 +34,15 @@ export function findNodeAtPosition(ast: t.Node[], position: number): t.Node|e.AS
       return;
     }
   }
-  return candidate;
+  let template: t.Template|null = null;
+  for (let i = visitor.path.length - 1; i >= 0; i--) {
+    const nodeOrParent = visitor.path[i];
+    if (nodeOrParent instanceof t.Template) {
+      template = nodeOrParent;
+      break;
+    }
+  }
+  return {node: candidate, template};
 }
 
 class R3Visitor implements t.Visitor {

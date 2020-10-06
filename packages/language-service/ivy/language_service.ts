@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {AST, ImplicitReceiver, PropertyRead} from '@angular/compiler';
 import {CompilerOptions, createNgCompilerOptions} from '@angular/compiler-cli';
 import {NgCompiler} from '@angular/compiler-cli/src/ngtsc/core';
 import {NgCompilerAdapter} from '@angular/compiler-cli/src/ngtsc/core/api';
@@ -13,10 +14,12 @@ import {absoluteFrom, absoluteFromSourceFile, AbsoluteFsPath} from '@angular/com
 import {PatchedProgramIncrementalBuildStrategy} from '@angular/compiler-cli/src/ngtsc/incremental';
 import {isShim} from '@angular/compiler-cli/src/ngtsc/shims';
 import {TypeCheckShimGenerator} from '@angular/compiler-cli/src/ngtsc/typecheck';
-import {OptimizeFor, TypeCheckingProgramStrategy} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
+import {CompletionKind, OptimizeFor, TypeCheckingProgramStrategy} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
 import * as ts from 'typescript/lib/tsserverlibrary';
 
+import {findNodeAtPosition} from './hybrid_visitor';
 import {QuickInfoBuilder} from './quick_info';
+import {getTemplateInfoAtPosition} from './utils';
 
 export class LanguageService {
   private options: CompilerOptions;
@@ -52,6 +55,102 @@ export class LanguageService {
     const compiler = this.createCompiler(program);
     return new QuickInfoBuilder(this.tsLS, compiler).get(fileName, position);
   }
+
+  getCompletionsAtPosition(
+      fileName: string, position: number, options: ts.GetCompletionsAtPositionOptions|undefined):
+      ts.WithMetadata<ts.CompletionInfo>|undefined {
+    const program = this.strategy.getProgram();
+    const compiler = this.createCompiler(program);
+    const templateInfo = getTemplateInfoAtPosition(fileName, position, compiler);
+    if (templateInfo === undefined) {
+      return undefined;
+    }
+    const {template, component} = templateInfo;
+
+    const nodeInfo = findNodeAtPosition(template, position);
+    if (nodeInfo === undefined) {
+      return undefined;
+    }
+
+    const {node, template: templateContext} = nodeInfo;
+
+    const ttc = compiler.getTemplateTypeChecker();
+
+
+    if (node instanceof PropertyRead && node.receiver instanceof ImplicitReceiver) {
+      const replacementSpan = {
+        start: node.sourceSpan.start,
+        length: node.sourceSpan.end - node.sourceSpan.start,
+      };
+      // Completion of a top-level property.
+      let entries: ts.CompletionEntry[] = [];
+      for (const completion of ttc.getGlobalCompletions(templateContext, component)) {
+        console.error('got completion', CompletionKind[completion.kind]);
+        if (completion.kind === CompletionKind.ContextComponent) {
+          const ctxCompletions = this.tsLS.getCompletionsAtPosition(
+              completion.shimPath, completion.positionInShimFile, options);
+          if (ctxCompletions !== undefined) {
+            console.error('ts returned', ctxCompletions.entries.length, 'context completions');
+            entries.push(...ctxCompletions.entries.map(entry => ({...entry, replacementSpan})));
+          } else {
+            console.error('ts gave undefined context completions');
+          }
+        } else {
+          entries.push({
+            kind: ts.ScriptElementKind.constElement,
+            name: completion.node.name,
+            sortText: completion.node.name,
+            kindModifiers: '(varRef)',
+            replacementSpan,
+          });
+        }
+      }
+
+      return {
+        entries,
+        isGlobalCompletion: true,
+        isMemberCompletion: false,
+        isNewIdentifierLocation: false,
+      };
+    } else if (node instanceof PropertyRead) {
+      const replacementSpan = {
+        start: node.nameSpan.start,
+        length: node.nameSpan.end - node.nameSpan.start,
+      };
+
+      const shimLocation = ttc.getExpressionCompletionLocation(node, position, component);
+      if (shimLocation === null) {
+        console.error('no shim location from Angular Compiler');
+        return undefined;
+      }
+
+      const tsCompletions = this.tsLS.getCompletionsAtPosition(
+          shimLocation.shimPath, shimLocation.positionInShimFile, options);
+      if (tsCompletions === undefined) {
+        console.error('TS has no completions');
+        return undefined;
+      }
+
+      console.error(
+          'TS found', tsCompletions.entries.length,
+          'completions:', tsCompletions.entries.map(c => c.name));
+
+      return {
+        entries: tsCompletions.entries.map(entry => ({...entry, replacementSpan})),
+        isGlobalCompletion: false,
+        isMemberCompletion: false,
+        isNewIdentifierLocation: false,
+      };
+    } else {
+      return undefined;
+    }
+
+    console.error(
+        'ngLS: got completion requestion', fileName, position, (node as any).constructor.name);
+
+    return undefined;
+  }
+
 
   private createCompiler(program: ts.Program): NgCompiler {
     return new NgCompiler(

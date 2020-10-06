@@ -28,6 +28,17 @@ export function create(info: ts.server.PluginCreateInfo): ts.LanguageService {
     return undefined;
   }
 
+  function getCompletionsAtPosition(
+      fileName: string, position: number, options: ts.GetCompletionsAtPositionOptions|undefined):
+      ts.WithMetadata<ts.CompletionInfo>|undefined {
+    if (angularOnly) {
+      return ngLS.getCompletionsAtPosition(fileName, position, options);
+    } else {
+      return tsLS.getCompletionsAtPosition(fileName, position, options) ??
+          ngLS.getCompletionsAtPosition(fileName, position, options);
+    }
+  }
+
   function getQuickInfoAtPosition(fileName: string, position: number): ts.QuickInfo|undefined {
     if (angularOnly) {
       return ngLS.getQuickInfoAtPosition(fileName, position);
@@ -43,5 +54,6 @@ export function create(info: ts.server.PluginCreateInfo): ts.LanguageService {
     getSemanticDiagnostics,
     getTypeDefinitionAtPosition,
     getQuickInfoAtPosition,
+    getCompletionsAtPosition,
   };
 }

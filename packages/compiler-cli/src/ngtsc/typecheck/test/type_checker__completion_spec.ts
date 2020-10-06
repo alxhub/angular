@@ -16,7 +16,7 @@ import {CompletionKind, TypeCheckingConfig} from '../api';
 
 import {getClass, setup as baseTestSetup, TypeCheckingTarget} from './test_utils';
 
-runInEachFileSystem(() => {
+runInEachFileSystem.native(() => {
   describe('TemplateTypeChecker.getGlobalCompletions()', () => {
     it('should return a completion point in the TCB for the component context', () => {
       const MAIN_TS = absoluteFrom('/main.ts');
@@ -49,7 +49,7 @@ runInEachFileSystem(() => {
       expect(tcbSf.text.substr(global.positionInShimFile - 1, 2)).toEqual('. ');
     });
 
-    it('should return additional completions for references and variables when available', () => {
+    fit('should return additional completions for references and variables when available', () => {
       const MAIN_TS = absoluteFrom('/main.ts');
       const {templateTypeChecker, programStrategy} = setup([
         {
@@ -66,8 +66,13 @@ runInEachFileSystem(() => {
           `
           },
           source: `
-            export class SomeCmp {
+            export class Base {
+              fromBase = true;
+              static baseStatic = true;
+            }
+            export class SomeCmp extends Base {
               users: string[];
+              static other = true;
             }
           `,
         },
@@ -80,6 +85,8 @@ runInEachFileSystem(() => {
 
       const [contextCmp, ...rest] =
           templateTypeChecker.getGlobalCompletions(ngForTemplate, SomeCmp);
+      // programStrategy.getProgram().getTypeChecker().getA
+      debugger;
       if (contextCmp.kind !== CompletionKind.ContextComponent) {
         return fail(`Expected first completion to be a ContextComponent`);
       }

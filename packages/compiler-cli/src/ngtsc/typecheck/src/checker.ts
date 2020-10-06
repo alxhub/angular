@@ -7,6 +7,7 @@
  */
 
 import {AST, ParseError, parseTemplate, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
+import {MethodCall, PropertyRead, XmlParser} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {absoluteFromSourceFile, AbsoluteFsPath, getSourceFileOrError} from '../../file_system';
@@ -15,7 +16,7 @@ import {IncrementalBuild} from '../../incremental/api';
 import {ReflectionHost} from '../../reflection';
 import {isShim} from '../../shims';
 import {getSourceFileOrNull} from '../../util/src/typescript';
-import {CompletionKind, GlobalCompletion, OptimizeFor, ProgramTypeCheckAdapter, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
+import {CompletionKind, GlobalCompletion, OptimizeFor, ProgramTypeCheckAdapter, ShimLocation, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
 import {TemplateDiagnostic} from '../diagnostics';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
@@ -252,6 +253,49 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
     }
 
     return completions;
+  }
+
+  getExpressionCompletionLocation(ast: AST, position: number, component: ts.ClassDeclaration):
+      ShimLocation|null {
+    if (!(ast instanceof PropertyRead)) {
+      return null;
+    }
+    let span = ast.nameSpan;
+
+    if (position < span.start || position > span.end) {
+      throw new Error(
+          `Expected position ${position} to be in range of AST node ${span.start} - ${span.end}`);
+    }
+
+    console.error('ast is', (ast as any).constructor.name);
+
+    const {tcb, data, shimPath} = this.getLatestComponentState(component);
+    if (tcb === null || data === null) {
+      console.error('No component data');
+      return null;
+    }
+
+    const expr = findFirstMatchingNode(tcb, {
+      filter: ts.isPropertyAccessExpression,
+      withSpan: span,
+    });
+
+    if (expr === null) {
+      console.error(
+          'No matches in template', tcb.getSourceFile().text, `${span.start} - ${span.end}`);
+      return null;
+    }
+
+    console.error('completion expression:', expr.getText());
+
+    const positionInShimFile = expr.name.getStart() + (position - span.start);
+    const source = tcb.getSourceFile().text;
+    console.error(source.substr(0, positionInShimFile) + '|' + source.substr(positionInShimFile));
+
+    return {
+      positionInShimFile,
+      shimPath,
+    };
   }
 
   private maybeAdoptPriorResultsForFile(sf: ts.SourceFile): void {

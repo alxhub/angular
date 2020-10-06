@@ -9,8 +9,8 @@
 import {AST, ParseError, TmplAstNode, TmplAstTemplate} from '@angular/compiler';
 import * as ts from 'typescript';
 
-import {GlobalCompletion} from './completion';
-import {Symbol} from './symbols';
+import {Completion, GlobalCompletion} from './completion';
+import {ShimLocation, Symbol} from './symbols';
 
 /**
  * Interface to the Angular Template Type Checker to extract diagnostics and intelligence from the
@@ -101,6 +101,9 @@ export interface TemplateTypeChecker {
    */
   getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
       GlobalCompletion[];
+
+  getExpressionCompletionLocation(
+      expression: AST, position: number, component: ts.ClassDeclaration): ShimLocation|null;
 }
 
 /**
