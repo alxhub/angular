@@ -13,17 +13,25 @@ import * as ts from 'typescript';
 import {absoluteFromSourceFile, AbsoluteFsPath, getSourceFileOrError} from '../../file_system';
 import {ReferenceEmitter} from '../../imports';
 import {IncrementalBuild} from '../../incremental/api';
-import {ReflectionHost} from '../../reflection';
+import {ClassDeclaration, isNamedClassDeclaration, ReflectionHost} from '../../reflection';
+import {ComponentScopeReader} from '../../scope';
 import {isShim} from '../../shims';
 import {getSourceFileOrNull} from '../../util/src/typescript';
 import {CompletionKind, GlobalCompletion, OptimizeFor, ProgramTypeCheckAdapter, ShimLocation, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
+import {DirectiveInScope, PipeInScope} from '../api/in_scope';
 import {TemplateDiagnostic} from '../diagnostics';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
+import {CompletionEngine} from './completion';
 import {InliningMode, ShimTypeCheckingData, TemplateData, TypeCheckContextImpl, TypeCheckingHost} from './context';
 import {findTypeCheckBlock, shouldReportDiagnostic, TemplateSourceResolver, translateDiagnostic} from './diagnostics';
 import {TemplateSourceManager} from './source';
 import {SymbolBuilder} from './template_symbol_builder';
+
+interface ScopeData {
+  directives: DirectiveInScope[];
+  pipes: PipeInScope[];
+}
 
 /**
  * Primary template type-checking engine, which performs type-checking using a
@@ -32,7 +40,17 @@ import {SymbolBuilder} from './template_symbol_builder';
  */
 export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
   private state = new Map<AbsoluteFsPath, FileTypeCheckingData>();
+  private completionCache = new Map<ts.ClassDeclaration, CompletionEngine>();
+  private symbolCache = new Map<ts.ClassDeclaration, SymbolBuilder>();
   private isComplete = false;
+
+  /**
+   * Caches `DirectiveInScope` and `PipeInScope` data for each component.
+   *
+   * Notably, this information is independent of overrides, and so this cache does not need to be
+   * invalidated when a component has its template overridden.
+   */
+  private scopeCache = new Map<ts.ClassDeclaration, ScopeData>();
 
   constructor(
       private originalProgram: ts.Program,
@@ -40,7 +58,8 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       private typeCheckAdapter: ProgramTypeCheckAdapter, private config: TypeCheckingConfig,
       private refEmitter: ReferenceEmitter, private reflector: ReflectionHost,
       private compilerHost: Pick<ts.CompilerHost, 'getCanonicalFileName'>,
-      private priorBuild: IncrementalBuild<unknown, FileTypeCheckingData>) {}
+      private priorBuild: IncrementalBuild<unknown, FileTypeCheckingData>,
+      private scopeReader: ComponentScopeReader) {}
 
   resetOverrides(): void {
     for (const fileRecord of this.state.values()) {
@@ -50,7 +69,74 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
         fileRecord.isComplete = false;
       }
     }
+
+    this.completionCache.clear();
+    this.symbolCache.clear();
   }
+
+  getDirectivesInScope(component: ts.ClassDeclaration): DirectiveInScope[] {
+    return this.getScopeDataForComponent(component).directives;
+  }
+
+  getPipesInScope(component: ts.ClassDeclaration): PipeInScope[] {
+    return this.getScopeDataForComponent(component).pipes;
+  }
+
+  private getScopeDataForComponent(component: ts.ClassDeclaration): ScopeData {
+    if (!isNamedClassDeclaration(component)) {
+      throw new Error(`AssertionError: components must have names`);
+    }
+
+    if (this.scopeCache.has(component)) {
+      return this.scopeCache.get(component)!;
+    }
+
+    const typeChecker = this.typeCheckingStrategy.getProgram().getTypeChecker();
+
+    const directives: DirectiveInScope[] = [];
+    const pipes: PipeInScope[] = [];
+
+    const scope = this.scopeReader.getScopeForComponent(component);
+    if (scope === null || scope === 'error') {
+      return {directives, pipes};
+    }
+
+    for (const dir of scope.exported.directives) {
+      if (dir.selector === null) {
+        // Skip this directive, it can't be added to a template anyway.
+        continue;
+      }
+
+      const tsSymbol = typeChecker.getSymbolAtLocation(dir.ref.node);
+      if (tsSymbol === undefined) {
+        continue;
+      }
+
+      directives.push({
+        isComponent: dir.isComponent,
+        selector: dir.selector,
+        tsSymbol,
+        isStructural: false,
+      });
+    }
+
+    for (const pipe of scope.exported.pipes) {
+      const tsSymbol = typeChecker.getSymbolAtLocation(pipe.ref.node);
+      if (tsSymbol === undefined) {
+        continue;
+      }
+
+      pipes.push({
+        name: pipe.name,
+        tsSymbol,
+      });
+    }
+
+    const scopeData: ScopeData = {directives, pipes};
+    this.scopeCache.set(component, scopeData);
+    return scopeData;
+  }
+
 
   getTemplate(component: ts.ClassDeclaration): TmplAstNode[]|null {
     const {data} = this.getLatestComponentState(component);
@@ -128,6 +214,9 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
     fileRecord.shimData.delete(shimFile);
     fileRecord.isComplete = false;
     this.isComplete = false;
+
+    this.symbolCache.delete(component);
+    this.completionCache.delete(component);
 
     return {nodes};
   }
@@ -207,52 +296,29 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
     return this.getLatestComponentState(component).tcb;
   }
 
-  getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
-      GlobalCompletion[] {
+  private getCompletionEngine(component: ts.ClassDeclaration): CompletionEngine|null {
+    if (this.completionCache.has(component)) {
+      return this.completionCache.get(component)!;
+    }
+
+
     const {tcb, data, shimPath} = this.getLatestComponentState(component);
     if (tcb === null || data === null) {
-      return [];
+      return null;
     }
 
-    const {boundTarget} = data;
+    const engine = new CompletionEngine(tcb, data, shimPath, component, this.scopeReader);
+    this.completionCache.set(component, engine);
+    return engine;
+  }
 
-    // Global completions are the union of two separate pieces: a `ContextComponentCompletion` which
-    // is created from an expression within the TCB, and a list of named entities (variables and
-    // references) which are visible within the given `context` template.
-    const completions: GlobalCompletion[] = [];
-
-    const globalRead = findFirstMatchingNode(tcb, {
-      filter: ts.isPropertyAccessExpression,
-      withExpressionIdentifier: ExpressionIdentifier.COMPONENT_COMPLETION
-    });
-
-    if (globalRead === null) {
-      return [];
+  getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
+      GlobalCompletion|null {
+    const engine = this.getCompletionEngine(component);
+    if (engine === null) {
+      return null;
     }
-
-    completions.push({
-      kind: CompletionKind.ContextComponent,
-      shimPath,
-      positionInShimFile: globalRead.name.getStart(),
-    });
-
-    // Add completions for each entity in the template scope. Since each entity is uniquely named,
-    // there is no special ordering applied here.
-    for (const node of boundTarget.getEntitiesInTemplateScope(context)) {
-      if (node instanceof TmplAstReference) {
-        completions.push({
-          kind: CompletionKind.Reference,
-          node: node,
-        });
-      } else {
-        completions.push({
-          kind: CompletionKind.Variable,
-          node: node,
-        });
-      }
-    }
-
-    return completions;
+    return engine.getGlobalCompletions(context);
   }
 
   getExpressionCompletionLocation(ast: AST, position: number, component: ts.ClassDeclaration):
@@ -447,13 +513,21 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
   }
 
   getSymbolOfNode(node: AST|TmplAstNode, component: ts.ClassDeclaration): Symbol|null {
-    const {tcb, data, shimPath} = this.getLatestComponentState(component);
-    if (tcb === null || data === null) {
-      return null;
+    let symbolBuilder: SymbolBuilder;
+    if (this.symbolCache.has(component)) {
+      symbolBuilder = this.symbolCache.get(component)!;
+    } else {
+      const {tcb, data, shimPath} = this.getLatestComponentState(component);
+      if (tcb === null || data === null) {
+        return null;
+      }
+
+      symbolBuilder = new SymbolBuilder(
+          shimPath, tcb, data, () => this.typeCheckingStrategy.getProgram().getTypeChecker());
+      this.symbolCache.set(component, symbolBuilder);
     }
 
-    const typeChecker = this.typeCheckingStrategy.getProgram().getTypeChecker();
-    return new SymbolBuilder(typeChecker, shimPath, tcb, data).getSymbol(node);
+    return symbolBuilder.getSymbol(node);
   }
 }
 
@@ -471,8 +545,8 @@ function convertDiagnostic(
  */
 export interface FileTypeCheckingData {
   /**
-   * Whether the type-checking shim required any inline changes to the original file, which affects
-   * whether the shim can be reused.
+   * Whether the type-checking shim required any inline changes to the original file, which
+   * affects whether the shim can be reused.
    */
   hasInlines: boolean;
 
@@ -496,8 +570,8 @@ export interface FileTypeCheckingData {
   shimData: Map<AbsoluteFsPath, ShimTypeCheckingData>;
 
   /**
-   * Whether the template type-checker is certain that all components from this input file have had
-   * type-checking code generated into shims.
+   * Whether the template type-checker is certain that all components from this input file have
+   * had type-checking code generated into shims.
    */
   isComplete: boolean;
 }
@@ -598,9 +672,9 @@ class SingleFileTypeCheckingHost implements TypeCheckingHost {
     // supported). If the current operation also requires inlines, this presents a problem:
     // generating new inlines may invalidate any old inlines that old state depends on.
     //
-    // Rather than resolve this issue by tracking specific dependencies on inlines, if the new state
-    // relies on inlines, any old state that relied on them is simply cleared. This happens when the
-    // first new state that uses inlines is encountered.
+    // Rather than resolve this issue by tracking specific dependencies on inlines, if the new
+    // state relies on inlines, any old state that relied on them is simply cleared. This happens
+    // when the first new state that uses inlines is encountered.
     if (data.hasInlines && !this.seenInlines) {
       this.impl.clearAllShimDataUsingInlines();
       this.seenInlines = true;
@@ -619,8 +693,8 @@ class SingleFileTypeCheckingHost implements TypeCheckingHost {
 }
 
 /**
- * Drives a `TypeCheckContext` to generate type-checking code efficiently for only those components
- * which map to a single shim of a single input file.
+ * Drives a `TypeCheckContext` to generate type-checking code efficiently for only those
+ * components which map to a single shim of a single input file.
  */
 class SingleShimTypeCheckingHost extends SingleFileTypeCheckingHost {
   constructor(

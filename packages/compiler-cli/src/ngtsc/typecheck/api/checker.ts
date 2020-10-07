@@ -9,7 +9,8 @@
 import {AST, ParseError, TmplAstNode, TmplAstTemplate} from '@angular/compiler';
 import * as ts from 'typescript';
 
-import {Completion, GlobalCompletion} from './completion';
+import {GlobalCompletion} from './completion';
+import {DirectiveInScope, PipeInScope} from './in_scope';
 import {ShimLocation, Symbol} from './symbols';
 
 /**
@@ -90,6 +91,9 @@ export interface TemplateTypeChecker {
    */
   getSymbolOfNode(node: AST|TmplAstNode, component: ts.ClassDeclaration): Symbol|null;
 
+  getDirectivesInScope(component: ts.ClassDeclaration): DirectiveInScope[];
+  getPipesInScope(component: ts.ClassDeclaration): PipeInScope[];
+
   /**
    * Get "global" `Completion`s in the given context.
    *
@@ -100,10 +104,7 @@ export interface TemplateTypeChecker {
    * template variables which are in scope for that expression.
    */
   getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
-      GlobalCompletion[];
-
-  getExpressionCompletionLocation(
-      expression: AST, position: number, component: ts.ClassDeclaration): ShimLocation|null;
+      GlobalCompletion|null;
 }
 
 /**

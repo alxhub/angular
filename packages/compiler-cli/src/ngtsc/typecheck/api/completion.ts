@@ -8,55 +8,48 @@
 
 import {TmplAstReference, TmplAstVariable} from '@angular/compiler';
 
+import * as ts from 'typescript';
+
+import {DirectiveInScope} from './in_scope';
 import {ShimLocation} from './symbols';
 
-/**
- * An autocompletion source of any kind.
- */
-export type Completion = CompletionContextComponent|CompletionReference|CompletionVariable;
+export interface GlobalCompletion {
+  componentContext: ShimLocation;
+  templateContext: Map<string, ReferenceCompletion|VariableCompletion>;
+}
 
-/**
- * An autocompletion source that drives completion in a global context.
- */
-export type GlobalCompletion = CompletionContextComponent|CompletionReference|CompletionVariable;
-
-/**
- * Discriminant of an autocompletion source (a `Completion`).
- */
 export enum CompletionKind {
-  ContextComponent,
+  Input,
+  Output,
+  Selector,
   Reference,
   Variable,
 }
 
-/**
- * An autocompletion source backed by a shim file position where TS APIs can be used to retrieve
- * completions for the context component of a template.
- */
-export interface CompletionContextComponent extends ShimLocation {
-  kind: CompletionKind.ContextComponent;
-}
-
-/**
- * An autocompletion result representing a local reference declared in the template.
- */
-export interface CompletionReference {
+export interface ReferenceCompletion {
   kind: CompletionKind.Reference;
-
-  /**
-   * The `TmplAstReference` from the template which should be available as a completion.
-   */
   node: TmplAstReference;
 }
 
-/**
- * An autocompletion result representing a variable declared in the template.
- */
-export interface CompletionVariable {
+export interface VariableCompletion {
   kind: CompletionKind.Variable;
-
-  /**
-   * The `TmplAstVariable` from the template which should be available as a completion.
-   */
   node: TmplAstVariable;
 }
+
+export interface InputCompletion {
+  kind: CompletionKind.Input;
+  name: string;
+  directive: DirectiveInScope;
+  field: ts.Symbol|null;
+  bananaInABox: boolean;
+}
+
+export interface OutputCompletion {
+  kind: CompletionKind.Output;
+  name: string;
+  directive: DirectiveInScope;
+  field: ts.Symbol|null;
+}
+
+export type BindingCompletion = InputCompletion|OutputCompletion;
+export type BindingCompletionMap = Map<string, BindingCompletion>;

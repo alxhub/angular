@@ -279,6 +279,8 @@ export class NgForOf<T, U extends NgIterable<T> = NgIterable<T>> implements DoCh
       ctx is NgForOfContext<T, U> {
     return true;
   }
+
+  static ngCompletion = ['VAR:$implicit', 'INPUT:of'] as const;
 }
 
 class RecordViewTuple<T, U extends NgIterable<T>> {

@@ -74,79 +74,91 @@ export class LanguageService {
 
     const {node, template: templateContext} = nodeInfo;
 
-    const ttc = compiler.getTemplateTypeChecker();
-
-
-    if (node instanceof PropertyRead && node.receiver instanceof ImplicitReceiver) {
-      const replacementSpan = {
-        start: node.sourceSpan.start,
-        length: node.sourceSpan.end - node.sourceSpan.start,
-      };
-      // Completion of a top-level property.
-      let entries: ts.CompletionEntry[] = [];
-      for (const completion of ttc.getGlobalCompletions(templateContext, component)) {
-        console.error('got completion', CompletionKind[completion.kind]);
-        if (completion.kind === CompletionKind.ContextComponent) {
-          const ctxCompletions = this.tsLS.getCompletionsAtPosition(
-              completion.shimPath, completion.positionInShimFile, options);
-          if (ctxCompletions !== undefined) {
-            console.error('ts returned', ctxCompletions.entries.length, 'context completions');
-            entries.push(...ctxCompletions.entries.map(entry => ({...entry, replacementSpan})));
-          } else {
-            console.error('ts gave undefined context completions');
-          }
-        } else {
-          entries.push({
-            kind: ts.ScriptElementKind.constElement,
-            name: completion.node.name,
-            sortText: completion.node.name,
-            kindModifiers: '(varRef)',
-            replacementSpan,
-          });
-        }
-      }
-
-      return {
-        entries,
-        isGlobalCompletion: true,
-        isMemberCompletion: false,
-        isNewIdentifierLocation: false,
-      };
-    } else if (node instanceof PropertyRead) {
-      const replacementSpan = {
-        start: node.nameSpan.start,
-        length: node.nameSpan.end - node.nameSpan.start,
-      };
-
-      const shimLocation = ttc.getExpressionCompletionLocation(node, position, component);
-      if (shimLocation === null) {
-        console.error('no shim location from Angular Compiler');
-        return undefined;
-      }
-
-      const tsCompletions = this.tsLS.getCompletionsAtPosition(
-          shimLocation.shimPath, shimLocation.positionInShimFile, options);
-      if (tsCompletions === undefined) {
-        console.error('TS has no completions');
-        return undefined;
-      }
-
-      console.error(
-          'TS found', tsCompletions.entries.length,
-          'completions:', tsCompletions.entries.map(c => c.name));
-
-      return {
-        entries: tsCompletions.entries.map(entry => ({...entry, replacementSpan})),
-        isGlobalCompletion: false,
-        isMemberCompletion: false,
-        isNewIdentifierLocation: false,
-      };
-    } else {
+    if (!(node instanceof PropertyRead) || !(node.receiver instanceof ImplicitReceiver)) {
       return undefined;
     }
 
-    console.error(
-        'ngLS: got completion requestion', fileName, position, (node as any).constructor.name);
+    const ttc = compiler.getTemplateTypeChecker();
+
+    const completions = ttc.getGlobalCompletions(templateContext, component);
+    if (completions === null) {
+      return undefined;
+    }
+
+    const ctx = completions.componentContext;
+
+    return this.tsLS.getCompletionsAtPosition(ctx.shimPath, ctx.positionInShimFile, options);
+
+    // if (node instanceof PropertyRead && node.receiver instanceof ImplicitReceiver) {
+    //   const replacementSpan = {
+    //     start: node.sourceSpan.start,
+    //     length: node.sourceSpan.end - node.sourceSpan.start,
+    //   };
+    //   // Completion of a top-level property.
+    //   let entries: ts.CompletionEntry[] = [];
+    //   for (const completion of ttc.getGlobalCompletions(templateContext, component)) {
+    //     console.error('got completion', CompletionKind[completion.kind]);
+    //     if (completion.kind === CompletionKind.ContextComponent) {
+    //       const ctxCompletions = this.tsLS.getCompletionsAtPosition(
+    //           completion.shimPath, completion.positionInShimFile, options);
+    //       if (ctxCompletions !== undefined) {
+    //         console.error('ts returned', ctxCompletions.entries.length, 'context completions');
+    //         entries.push(...ctxCompletions.entries.map(entry => ({...entry, replacementSpan})));
+    //       } else {
+    //         console.error('ts gave undefined context completions');
+    //       }
+    //     } else {
+    //       entries.push({
+    //         kind: ts.ScriptElementKind.constElement,
+    //         name: completion.node.name,
+    //         sortText: completion.node.name,
+    //         kindModifiers: '(varRef)',
+    //         replacementSpan,
+    //       });
+    //     }
+    //   }
+
+    //   return {
+    //     entries,
+    //     isGlobalCompletion: true,
+    //     isMemberCompletion: false,
+    //     isNewIdentifierLocation: false,
+    //   };
+    // } else if (node instanceof PropertyRead) {
+    //   const replacementSpan = {
+    //     start: node.nameSpan.start,
+    //     length: node.nameSpan.end - node.nameSpan.start,
+    //   };
+
+    //   const shimLocation = ttc.getExpressionCompletionLocation(node, position, component);
+    //   if (shimLocation === null) {
+    //     console.error('no shim location from Angular Compiler');
+    //     return undefined;
+    //   }
+
+    //   const tsCompletions = this.tsLS.getCompletionsAtPosition(
+    //       shimLocation.shimPath, shimLocation.positionInShimFile, options);
+    //   if (tsCompletions === undefined) {
+    //     console.error('TS has no completions');
+    //     return undefined;
+    //   }
+
+    //   console.error(
+    //       'TS found', tsCompletions.entries.length,
+    //       'completions:', tsCompletions.entries.map(c => c.name));
+
+    //   return {
+    //     entries: tsCompletions.entries.map(entry => ({...entry, replacementSpan})),
+    //     isGlobalCompletion: false,
+    //     isMemberCompletion: false,
+    //     isNewIdentifierLocation: false,
+    //   };
+    // } else {
+    //   return undefined;
+    // }
+
+    // console.error(
+    // 'ngLS: got completion requestion', fileName, position, (node as any).constructor.name);
 
     return undefined;
   }
