@@ -13,8 +13,8 @@ import * as e from '@angular/compiler/src/expression_parser/ast';  // e for expr
 import * as t from '@angular/compiler/src/render3/r3_ast';         // t for template AST
 import * as ts from 'typescript';
 
-import {ALIAS_NAME, SYMBOL_PUNC} from '../common/quick_info';
 import {findTightestNode, getClassDeclOfInlineTemplateNode} from '../common/ts_utils';
+import {ALIAS_NAME, SYMBOL_PUNC} from './display_parts';
 
 export function getTextSpanOfNode(node: t.Node|e.AST): ts.TextSpan {
   if (isTemplateNodeWithKeyAndValue(node)) {
