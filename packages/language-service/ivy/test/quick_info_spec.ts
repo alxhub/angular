@@ -184,6 +184,17 @@ describe('quick info', () => {
 
       it('should work for $event from native element', () => {
         expectQuickInfo({
+          templateOverride: `<div (cl¦ick)="myClick($event)"></div>`,
+          expectedSpanText: '(click)="myClick($event)"',
+          expectedDisplayString:
+              '(event) HTMLDivElement.addEventListener<"click">(type: "click", ' +
+              'listener: (this: HTMLDivElement, ev: MouseEvent) => any, ' +
+              'options?: boolean | AddEventListenerOptions | undefined): void (+1 overload)'
+        });
+      });
+
+      it('should work for $event from native element', () => {
+        expectQuickInfo({
           templateOverride: `<div (click)="myClick($e¦vent)"></div>`,
           expectedSpanText: '$event',
           expectedDisplayString: '(parameter) $event: MouseEvent'
