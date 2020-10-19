@@ -16,7 +16,7 @@ import {isNamedClassDeclaration, ReflectionHost} from '../../reflection';
 import {ComponentScopeReader} from '../../scope';
 import {isShim} from '../../shims';
 import {getSourceFileOrNull} from '../../util/src/typescript';
-import {CompletionKind, DirectiveInScope, GlobalCompletion, OptimizeFor, PipeInScope, ProgramTypeCheckAdapter, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
+import {Completion, CompletionKind, DirectiveInScope, GlobalCompletion, OptimizeFor, PipeInScope, ProgramTypeCheckAdapter, ShimLocation, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
 import {TemplateDiagnostic} from '../diagnostics';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
@@ -254,6 +254,14 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       return null;
     }
     return engine.getGlobalCompletions(context);
+  }
+
+  getExpressionCompletionLocation(expr: AST, component: ts.ClassDeclaration): ShimLocation|null {
+    const engine = this.getCompletionEngine(component);
+    if (engine === null) {
+      return null;
+    }
+    return engine.getExpressionCompletionLocation(expr);
   }
 
   private getCompletionEngine(component: ts.ClassDeclaration): CompletionEngine|null {

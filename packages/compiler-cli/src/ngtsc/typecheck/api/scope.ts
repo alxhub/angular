@@ -28,6 +28,11 @@ export interface DirectiveInScope {
   isComponent: boolean;
 }
 
+export interface DirectiveInput {
+  name: string;
+  field: ts.Symbol;
+}
+
 /**
  * Metadata for a pipe which is available in the scope of a template.
  */
