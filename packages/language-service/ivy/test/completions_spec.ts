@@ -86,6 +86,75 @@ describe('completions', () => {
       const completions = ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
       expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title']);
     });
+
+    describe('in an expression scope', () => {
+      it('should return completions in a property access expression', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name.f¦}}`, `name!: {first: string; last: string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first']);
+      });
+
+      it('should return completions in an empty property access expression', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name.¦}}`, `name!: {first: string; last: string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first', 'last']);
+      });
+
+      it('should return completions in a method call expression', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name.f¦()}}`, `name!: {first: string; full(): string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first']);
+        expectContain(completions, ts.ScriptElementKind.memberFunctionElement, ['full']);
+      });
+
+      it('should return completions in an empty method call expression', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name.¦()}}`, `name!: {first: string; full(): string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first']);
+        expectContain(completions, ts.ScriptElementKind.memberFunctionElement, ['full']);
+      });
+
+      it('should return completions in a safe property navigation context', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name?.f¦}}`, `name?: {first: string; last: string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first']);
+      });
+
+      it('should return completions in an empty safe property navigation context', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name?.¦}}`, `name?: {first: string; last: string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first', 'last']);
+      });
+
+      it('should return completions in a safe method call context', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name?.f¦()}}`, `name!: {first: string; full(): string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first']);
+        expectContain(completions, ts.ScriptElementKind.functionElement, ['full']);
+      });
+
+      it('should return completions in an empty safe method call context', () => {
+        const {ngLS, fileName, cursor} =
+            setup(`{{name?.¦()}}`, `name!: {first: string; full(): string;};`);
+        const completions =
+            ngLS.getCompletionsAtPosition(fileName, cursor, /* options */ undefined);
+        expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['first']);
+      });
+    });
   });
 });
 

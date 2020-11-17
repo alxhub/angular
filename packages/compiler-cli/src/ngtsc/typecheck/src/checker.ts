@@ -7,6 +7,7 @@
  */
 
 import {AST, ParseError, parseTemplate, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
+import {MethodCall, PropertyRead, SafeMethodCall, SafePropertyRead} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {absoluteFromSourceFile, AbsoluteFsPath, getSourceFileOrError} from '../../file_system';
@@ -16,7 +17,7 @@ import {isNamedClassDeclaration, ReflectionHost} from '../../reflection';
 import {ComponentScopeReader} from '../../scope';
 import {isShim} from '../../shims';
 import {getSourceFileOrNull} from '../../util/src/typescript';
-import {CompletionKind, DirectiveInScope, GlobalCompletion, OptimizeFor, PipeInScope, ProgramTypeCheckAdapter, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
+import {CompletionKind, DirectiveInScope, GlobalCompletion, OptimizeFor, PipeInScope, ProgramTypeCheckAdapter, ShimLocation, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
 import {TemplateDiagnostic} from '../diagnostics';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
@@ -250,6 +251,16 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       return null;
     }
     return engine.getGlobalCompletions(context);
+  }
+
+  getExpressionCompletionLocation(
+      ast: PropertyRead|SafePropertyRead|MethodCall|SafeMethodCall,
+      component: ts.ClassDeclaration): ShimLocation|null {
+    const engine = this.getOrCreateCompletionEngine(component);
+    if (engine === null) {
+      return null;
+    }
+    return engine.getExpressionCompletionLocation(ast);
   }
 
   private getOrCreateCompletionEngine(component: ts.ClassDeclaration): CompletionEngine|null {

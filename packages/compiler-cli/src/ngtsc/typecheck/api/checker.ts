@@ -7,11 +7,12 @@
  */
 
 import {AST, ParseError, TmplAstNode, TmplAstTemplate} from '@angular/compiler';
+import {MethodCall, PropertyRead, SafeMethodCall, SafePropertyRead} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {GlobalCompletion} from './completion';
 import {DirectiveInScope, PipeInScope} from './scope';
-import {Symbol} from './symbols';
+import {ShimLocation, Symbol} from './symbols';
 
 /**
  * Interface to the Angular Template Type Checker to extract diagnostics and intelligence from the
@@ -102,6 +103,15 @@ export interface TemplateTypeChecker {
    */
   getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
       GlobalCompletion|null;
+
+
+  /**
+   * For the given expression node, retrieve a `ShimLocation` that can be used to perform
+   * autocompletion at that point in the expression, if such a location exists.
+   */
+  getExpressionCompletionLocation(
+      expr: PropertyRead|SafePropertyRead|MethodCall|SafeMethodCall,
+      component: ts.ClassDeclaration): ShimLocation|null;
 
   /**
    * Get basic metadata on the directives which are in scope for the given component.

@@ -6,14 +6,16 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, ImplicitReceiver, MethodCall, PropertyRead, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
+import {AST, ImplicitReceiver, MethodCall, PropertyRead, SafeMethodCall, SafePropertyRead, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
 import {NgCompiler} from '@angular/compiler-cli/src/ngtsc/core';
 import {CompletionKind, ReferenceSymbol, TemplateDeclarationSymbol, VariableSymbol} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
 import * as ts from 'typescript';
 
 import {DisplayInfoKind, getDisplayInfo, unsafeCastDisplayInfoKindToScriptElementKind} from './display_parts';
+import {filterAliasImports} from './utils';
 
-type PropertyExpressionCompletionBuilder = CompletionBuilder<PropertyRead|MethodCall>;
+type PropertyExpressionCompletionBuilder =
+    CompletionBuilder<PropertyRead|MethodCall|SafePropertyRead|SafeMethodCall>;
 
 /**
  * Performs autocompletion operations on a given node in the template.
@@ -63,7 +65,6 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
    * Analogue for `ts.LanguageService.getCompletionEntrySymbol`.
    */
   getCompletionEntrySymbol(name: string): ts.Symbol|undefined {
-    console.error('getCompletionEntrySymbol()', name);
     if (this.isPropertyExpressionCompletion()) {
       return this.getPropertyExpressionCompletionSymbol(name);
     } else {
@@ -80,7 +81,8 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
    */
   private isPropertyExpressionCompletion(this: CompletionBuilder<TmplAstNode|AST>):
       this is PropertyExpressionCompletionBuilder {
-    return this.node instanceof PropertyRead || this.node instanceof MethodCall;
+    return this.node instanceof PropertyRead || this.node instanceof MethodCall ||
+        this.node instanceof SafePropertyRead || this.node instanceof SafeMethodCall;
   }
 
   /**
@@ -93,8 +95,30 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
     if (this.node.receiver instanceof ImplicitReceiver) {
       return this.getGlobalPropertyExpressionCompletion(options);
     } else {
-      // TODO(alxhub): implement completion of non-global expressions.
-      return undefined;
+      const location = this.compiler.getTemplateTypeChecker().getExpressionCompletionLocation(
+          this.node, this.component);
+      if (location === null) {
+        return undefined;
+      }
+      const tsResults = this.tsLS.getCompletionsAtPosition(
+          location.shimPath, location.positionInShimFile, options);
+      if (tsResults === undefined) {
+        return undefined;
+      }
+
+      const replacementSpan = makeReplacementSpan(this.node);
+
+      let ngResults: ts.CompletionEntry[] = [];
+      for (const result of tsResults.entries) {
+        ngResults.push({
+          ...result,
+          replacementSpan,
+        });
+      }
+      return {
+        ...tsResults,
+        entries: ngResults,
+      };
     }
   }
 
@@ -105,13 +129,24 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
       this: PropertyExpressionCompletionBuilder, entryName: string,
       formatOptions: ts.FormatCodeOptions|ts.FormatCodeSettings|undefined,
       preferences: ts.UserPreferences|undefined): ts.CompletionEntryDetails|undefined {
+    let details: ts.CompletionEntryDetails|undefined = undefined;
     if (this.node.receiver instanceof ImplicitReceiver) {
-      return this.getGlobalPropertyExpressionCompletionDetails(
-          entryName, formatOptions, preferences);
+      details =
+          this.getGlobalPropertyExpressionCompletionDetails(entryName, formatOptions, preferences);
     } else {
-      // TODO(alxhub): implement completion of non-global expressions.
-      return undefined;
+      const location = this.compiler.getTemplateTypeChecker().getExpressionCompletionLocation(
+          this.node, this.component);
+      if (location === null) {
+        return undefined;
+      }
+      details = this.tsLS.getCompletionEntryDetails(
+          location.shimPath, location.positionInShimFile, entryName, formatOptions,
+          /* source */ undefined, preferences);
     }
+    if (details !== undefined) {
+      details.displayParts = filterAliasImports(details.displayParts);
+    }
+    return details;
   }
 
   /**
@@ -122,8 +157,13 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
     if (this.node.receiver instanceof ImplicitReceiver) {
       return this.getGlobalPropertyExpressionCompletionSymbol(name);
     } else {
-      // TODO(alxhub): implement completion of non-global expressions.
-      return undefined;
+      const location = this.compiler.getTemplateTypeChecker().getExpressionCompletionLocation(
+          this.node, this.component);
+      if (location === null) {
+        return undefined;
+      }
+      return this.tsLS.getCompletionEntrySymbol(
+          location.shimPath, location.positionInShimFile, name, /* source */ undefined);
     }
   }
 
@@ -259,4 +299,12 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
           /* source */ undefined);
     }
   }
+}
+
+function makeReplacementSpan(node: PropertyRead|MethodCall|SafePropertyRead|
+                             SafeMethodCall): ts.TextSpan {
+  return {
+    start: node.nameSpan.start,
+    length: node.nameSpan.end - node.nameSpan.start,
+  };
 }
