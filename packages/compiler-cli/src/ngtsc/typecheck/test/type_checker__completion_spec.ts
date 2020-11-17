@@ -7,6 +7,7 @@
  */
 
 import {TmplAstTemplate} from '@angular/compiler';
+import {ASTWithSource, Interpolation, MethodCall, PropertyRead, SafeMethodCall, SafePropertyRead, TmplAstBoundText} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {absoluteFrom, getSourceFileOrError} from '../../file_system';
@@ -135,6 +136,228 @@ runInEachFileSystem(() => {
       const pipes = templateTypeChecker.getPipesInScope(SomeCmp) ?? [];
       expect(directives.map(dir => dir.selector)).toEqual(['other-dir']);
       expect(pipes.map(pipe => pipe.name)).toEqual(['otherPipe']);
+    });
+
+    fit('should get inputs from a directive in scope', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {program, templateTypeChecker} = setup([{
+        fileName: MAIN_TS,
+        templates: {
+          'SomeCmp': 'Not important',
+        },
+        declarations: [
+          {
+            type: 'directive',
+            file: MAIN_TS,
+            name: 'SomeDir',
+            selector: '[dir]',
+            inputs: {
+              'onBase': 'onBase',
+              'onClass': 'onClass',
+            },
+          },
+        ],
+        source: `
+          export class SomeCmp {}
+          export class BaseDir {
+            onBase: number;
+          }
+          export class SomeDir extends BaseDir {
+            onClass: string;
+          }
+          export class SomeCmpModule {}
+        `
+      }]);
+
+      const sf = getSourceFileOrError(program, MAIN_TS);
+      const dir = getClass(sf, 'SomeDir');
+
+      const onClass = templateTypeChecker.getFieldsOfInputBinding(dir, 'onClass')!;
+      expect(onClass).toBeDefined();
+      expect(onClass.length).toBe(1);
+      const onBase = templateTypeChecker.getFieldsOfInputBinding(dir, 'onBase')!;
+      expect(onBase).toBeDefined();
+      expect(onBase.length).toBe(1);
+    });
+
+    fit('should get outputs from a directive in scope', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {program, templateTypeChecker} = setup([{
+        fileName: MAIN_TS,
+        templates: {
+          'SomeCmp': 'Not important',
+        },
+        declarations: [
+          {
+            type: 'directive',
+            file: MAIN_TS,
+            name: 'SomeDir',
+            selector: '[dir]',
+            outputs: {
+              'onBase': 'onBase',
+              'onClass': 'onClass',
+            },
+          },
+        ],
+        source: `
+          export class SomeCmp {}
+          export class BaseDir {
+            onBase: number;
+          }
+          export class SomeDir extends BaseDir {
+            onClass: string;
+          }
+          export class SomeCmpModule {}
+        `
+      }]);
+
+      const sf = getSourceFileOrError(program, MAIN_TS);
+      const dir = getClass(sf, 'SomeDir');
+
+      const onClass = templateTypeChecker.getFieldsOfOutputBinding(dir, 'onClass')!;
+      expect(onClass).toBeDefined();
+      expect(onClass.length).toBe(1);
+      const onBase = templateTypeChecker.getFieldsOfOutputBinding(dir, 'onBase')!;
+      expect(onBase).toBeDefined();
+      expect(onBase.length).toBe(1);
+    });
+  });
+
+  describe('TemplateTypeChecker.getExpressionCompletionLocation()', () => {
+    it('should handle a basic property read', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {templateTypeChecker, programStrategy} = setup(
+          [{
+            fileName: MAIN_TS,
+            templates: {'SomeCmp': `{{foo.bar.baz}}`},
+            source: `export class SomeCmp {}`,
+          }],
+          ({inlining: false, config: {enableTemplateTypeChecker: true}}));
+      const sf = getSourceFileOrError(programStrategy.getProgram(), MAIN_TS);
+      const SomeCmp = getClass(sf, 'SomeCmp');
+      const template = templateTypeChecker.getTemplate(SomeCmp)!;
+      const readOfBaz =
+          (((template[0] as TmplAstBoundText).value as ASTWithSource).ast as Interpolation)
+              .expressions[0] as PropertyRead;
+      const readOfBar = readOfBaz.receiver as PropertyRead;
+
+      const res = templateTypeChecker.getExpressionCompletionLocation(readOfBar, SomeCmp)!;
+      expect(res).toBeDefined();
+      const tcbSf = getSourceFileOrError(programStrategy.getProgram(), res.shimPath);
+
+      // Get the text immediately prior to the indicated position. This should be the part of the
+      // TCB expression for the property access of `bar`.
+      const beforeCursor = tcbSf.text.substr(res.positionInShimFile - 4, 4);
+      expect(beforeCursor).toEqual('.bar');
+    });
+
+
+    it('should handle a basic property read', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {templateTypeChecker, programStrategy} = setup(
+          [{
+            fileName: MAIN_TS,
+            templates: {'SomeCmp': `{{foo.}}`},
+            source: `export class SomeCmp {}`,
+          }],
+          ({inlining: false, config: {enableTemplateTypeChecker: true}}));
+      const sf = getSourceFileOrError(programStrategy.getProgram(), MAIN_TS);
+      const SomeCmp = getClass(sf, 'SomeCmp');
+      const template = templateTypeChecker.getTemplate(SomeCmp)!;
+      const readOfBar =
+          (((template[0] as TmplAstBoundText).value as ASTWithSource).ast as Interpolation)
+              .expressions[0] as PropertyRead;
+
+      const res = templateTypeChecker.getExpressionCompletionLocation(readOfBar, SomeCmp)!;
+      expect(res).toBeDefined();
+      const tcbSf = getSourceFileOrError(programStrategy.getProgram(), res.shimPath);
+
+      // Get the text immediately prior to the indicated position. This should be the part of the
+      // TCB expression for the property access of `bar`.
+      const beforeCursor = tcbSf.text.substr(res.positionInShimFile - 4, 4);
+      expect(beforeCursor).toEqual('.bar');
+    });
+
+
+    it('should handle a safe property read', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {templateTypeChecker, programStrategy} = setup(
+          [{
+            fileName: MAIN_TS,
+            templates: {'SomeCmp': `{{foo?.bar?.baz}}`},
+            source: `export class SomeCmp {}`,
+          }],
+          ({inlining: false, config: {enableTemplateTypeChecker: true}}));
+      const sf = getSourceFileOrError(programStrategy.getProgram(), MAIN_TS);
+      const SomeCmp = getClass(sf, 'SomeCmp');
+      const template = templateTypeChecker.getTemplate(SomeCmp)!;
+      const readOfBaz =
+          (((template[0] as TmplAstBoundText).value as ASTWithSource).ast as Interpolation)
+              .expressions[0] as SafePropertyRead;
+      const readOfBar = readOfBaz.receiver as SafePropertyRead;
+
+      const res = templateTypeChecker.getExpressionCompletionLocation(readOfBar, SomeCmp)!;
+      expect(res).toBeDefined();
+      const tcbSf = getSourceFileOrError(programStrategy.getProgram(), res.shimPath);
+
+      // Get the text immediately prior to the indicated position. This should be the part of the
+      // TCB expression for the property access of `bar`.
+      const beforeCursor = tcbSf.text.substr(res.positionInShimFile - 4, 4);
+      expect(beforeCursor).toEqual('.bar');
+    });
+
+    it('should handle a safe method call', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {templateTypeChecker, programStrategy} = setup(
+          [{
+            fileName: MAIN_TS,
+            templates: {'SomeCmp': `{{foo?.bar()?.baz()}}`},
+            source: `export class SomeCmp {}`,
+          }],
+          ({inlining: false, config: {enableTemplateTypeChecker: true}}));
+      const sf = getSourceFileOrError(programStrategy.getProgram(), MAIN_TS);
+      const SomeCmp = getClass(sf, 'SomeCmp');
+      const template = templateTypeChecker.getTemplate(SomeCmp)!;
+      const callOfBaz =
+          (((template[0] as TmplAstBoundText).value as ASTWithSource).ast as Interpolation)
+              .expressions[0] as SafeMethodCall;
+      const callOfBar = callOfBaz.receiver as SafeMethodCall;
+
+      const res = templateTypeChecker.getExpressionCompletionLocation(callOfBar, SomeCmp)!;
+      expect(res).toBeDefined();
+      const tcbSf = getSourceFileOrError(programStrategy.getProgram(), res.shimPath);
+
+      // Get the text immediately prior to the indicated position. This should be the part of the
+      // TCB expression for the property access of `bar`.
+      const beforeCursor = tcbSf.text.substr(res.positionInShimFile - 4, 4);
+      expect(beforeCursor).toEqual('.bar');
+    });
+
+    it('should handle a basic method call', () => {
+      const MAIN_TS = absoluteFrom('/main.ts');
+      const {templateTypeChecker, programStrategy} = setup(
+          [{
+            fileName: MAIN_TS,
+            templates: {'SomeCmp': `{{foo.bar().baz}}`},
+            source: `export class SomeCmp {}`,
+          }],
+          ({inlining: false, config: {enableTemplateTypeChecker: true}}));
+      const sf = getSourceFileOrError(programStrategy.getProgram(), MAIN_TS);
+      const SomeCmp = getClass(sf, 'SomeCmp');
+      const template = templateTypeChecker.getTemplate(SomeCmp)!;
+      const readOfBaz =
+          (((template[0] as TmplAstBoundText).value as ASTWithSource).ast as Interpolation)
+              .expressions[0] as PropertyRead;
+      const readOfBar = readOfBaz.receiver as MethodCall;
+
+      const res = templateTypeChecker.getExpressionCompletionLocation(readOfBar, SomeCmp)!;
+      expect(res).toBeDefined();
+      const tcbSf = getSourceFileOrError(programStrategy.getProgram(), res.shimPath);
+
+      // Get the text immediately prior to the indicated position. This should be the part of the
+      // TCB expression for the property access of `bar`.
+      const beforeCursor = tcbSf.text.substr(res.positionInShimFile - 4, 4);
+      expect(beforeCursor).toEqual('.bar');
     });
   });
 });

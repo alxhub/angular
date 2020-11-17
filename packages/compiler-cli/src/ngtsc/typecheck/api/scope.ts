@@ -26,6 +26,14 @@ export interface DirectiveInScope {
    * `true` if this directive is a component.
    */
   isComponent: boolean;
+
+  inputs: ReadonlyArray<string>;
+  outputs: ReadonlyArray<string>;
+}
+
+export interface DirectiveInput {
+  name: string;
+  field: ts.Symbol;
 }
 
 /**

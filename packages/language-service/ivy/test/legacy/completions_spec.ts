@@ -7,9 +7,9 @@
  */
 
 import * as ts from 'typescript';
-import {DisplayInfoKind} from '../display_parts';
+import {DisplayInfoKind} from '../../display_parts';
 
-import {LanguageService} from '../language_service';
+import {LanguageService} from '../../language_service';
 
 import {APP_COMPONENT, setup} from './mock_host';
 
@@ -87,6 +87,10 @@ describe('completions', () => {
           ngLS.getCompletionsAtPosition(APP_COMPONENT, position, /* options */ undefined);
       expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title']);
     });
+  });
+
+  describe('in an element scope', () => {
+    const {position} = service.overwriteInlineTemplate(APP_COMPONENT, '<div dir ')
   });
 });
 

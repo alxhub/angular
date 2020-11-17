@@ -8,7 +8,7 @@
 import {AbsoluteSourceSpan, CssSelector, ParseSourceSpan, SelectorMatcher} from '@angular/compiler';
 import {NgCompiler} from '@angular/compiler-cli/src/ngtsc/core';
 import {DeclarationNode} from '@angular/compiler-cli/src/ngtsc/reflection';
-import {DirectiveSymbol} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
+import {DirectiveInScope, DirectiveSymbol} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
 import * as e from '@angular/compiler/src/expression_parser/ast';  // e for expression AST
 import * as t from '@angular/compiler/src/render3/r3_ast';         // t for template AST
 import * as ts from 'typescript';
@@ -218,7 +218,7 @@ export function getDirectiveMatchesForElementTag(
  */
 export function getDirectiveMatchesForAttribute(
     name: string, hostNode: t.Template|t.Element,
-    directives: DirectiveSymbol[]): Set<DirectiveSymbol> {
+    directives: DirectiveInScope[]): Set<DirectiveInScope> {
   const attributes = getAttributes(hostNode);
   const allAttrs = attributes.map(toAttributeString);
   const allDirectiveMatches =
@@ -234,7 +234,7 @@ export function getDirectiveMatchesForAttribute(
  * for the selector.
  */
 function getDirectiveMatchesForSelector(
-    directives: DirectiveSymbol[], selector: string): Set<DirectiveSymbol> {
+    directives: DirectiveInScope[], selector: string): Set<DirectiveInScope> {
   const selectors = CssSelector.parse(selector);
   if (selectors.length === 0) {
     return new Set();

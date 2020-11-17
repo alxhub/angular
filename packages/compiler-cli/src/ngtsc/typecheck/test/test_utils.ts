@@ -13,8 +13,8 @@ import {absoluteFrom, AbsoluteFsPath, getSourceFileOrError, LogicalFileSystem} f
 import {TestFile} from '../../file_system/testing';
 import {AbsoluteModuleStrategy, LocalIdentifierStrategy, LogicalProjectStrategy, ModuleResolver, Reexport, Reference, ReferenceEmitter} from '../../imports';
 import {NOOP_INCREMENTAL_BUILD} from '../../incremental';
-import {ClassPropertyMapping} from '../../metadata';
-import {ClassDeclaration, isNamedClassDeclaration, TypeScriptReflectionHost} from '../../reflection';
+import {ClassPropertyMapping, DirectiveMeta, MetadataReader, NgModuleMeta, PipeMeta} from '../../metadata';
+import {ClassDeclaration, DeclarationNode, isNamedClassDeclaration, TypeScriptReflectionHost} from '../../reflection';
 import {ComponentScopeReader, LocalModuleScope, ScopeData} from '../../scope';
 import {makeProgram} from '../../testing';
 import {getRootDirs} from '../../util/src/typescript';
@@ -336,6 +336,8 @@ export function setup(targets: TypeCheckingTarget[], overrides: {
     }
   }
 
+  const metaRegistry = new TestMetadataRegistry();
+
   const opts = overrides.options ?? {};
   const config = overrides.config ?? {};
 
@@ -364,6 +366,9 @@ export function setup(targets: TypeCheckingTarget[], overrides: {
     for (const className of Object.keys(target.templates)) {
       const classDecl = getClass(sf, className);
       scopeMap.set(classDecl, scope);
+      for (const dir of scope.directives) {
+        metaRegistry.registerDirective(dir);
+      }
     }
   }
 
@@ -462,7 +467,7 @@ export function setup(targets: TypeCheckingTarget[], overrides: {
 
   const templateTypeChecker = new TemplateTypeCheckerImpl(
       program, programStrategy, checkAdapter, fullConfig, emitter, reflectionHost, host,
-      NOOP_INCREMENTAL_BUILD, fakeScopeReader);
+      NOOP_INCREMENTAL_BUILD, metaRegistry, fakeScopeReader);
   return {
     templateTypeChecker,
     program,
@@ -639,4 +644,30 @@ export class NoopOobRecorder implements OutOfBandDiagnosticRecorder {
   duplicateTemplateVar(): void {}
   requiresInlineTcb(): void {}
   requiresInlineTypeConstructors(): void {}
+}
+
+class TestMetadataRegistry implements MetadataReader {
+  private metadataMap = new Map<ClassDeclaration, TypeCheckableDirectiveMeta>();
+
+  registerDirective(meta: DirectiveMeta): void {
+    this.metadataMap.set(meta.ref.node, meta);
+  }
+
+  getDirectiveMetadata(dir: Reference<ClassDeclaration>): DirectiveMeta|null {
+    if (!this.metadataMap.has(dir.node)) {
+      return null;
+    }
+
+    return {
+      ...this.metadataMap.get(dir.node)!,
+      baseClass: null,
+    };
+  }
+
+  getNgModuleMetadata(node: Reference<ClassDeclaration>): NgModuleMeta|null {
+    throw new Error('Method not implemented.');
+  }
+  getPipeMetadata(node: Reference<ClassDeclaration>): PipeMeta|null {
+    throw new Error('Method not implemented.');
+  }
 }

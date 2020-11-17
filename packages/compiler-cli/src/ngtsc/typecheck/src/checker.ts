@@ -10,13 +10,14 @@ import {AST, ParseError, parseTemplate, TmplAstNode, TmplAstReference, TmplAstTe
 import * as ts from 'typescript';
 
 import {absoluteFromSourceFile, AbsoluteFsPath, getSourceFileOrError} from '../../file_system';
-import {ReferenceEmitter} from '../../imports';
+import {Reference, ReferenceEmitter} from '../../imports';
 import {IncrementalBuild} from '../../incremental/api';
+import {MetadataReader} from '../../metadata';
 import {isNamedClassDeclaration, ReflectionHost} from '../../reflection';
 import {ComponentScopeReader} from '../../scope';
 import {isShim} from '../../shims';
 import {getSourceFileOrNull} from '../../util/src/typescript';
-import {CompletionKind, DirectiveInScope, GlobalCompletion, OptimizeFor, PipeInScope, ProgramTypeCheckAdapter, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
+import {Completion, CompletionKind, DirectiveInScope, GlobalCompletion, OptimizeFor, PipeInScope, ProgramTypeCheckAdapter, ShimLocation, Symbol, TemplateId, TemplateTypeChecker, TypeCheckingConfig, TypeCheckingProgramStrategy, UpdateMode} from '../api';
 import {TemplateDiagnostic} from '../diagnostics';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
@@ -70,6 +71,7 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       private refEmitter: ReferenceEmitter, private reflector: ReflectionHost,
       private compilerHost: Pick<ts.CompilerHost, 'getCanonicalFileName'>,
       private priorBuild: IncrementalBuild<unknown, FileTypeCheckingData>,
+      private metadataReader: MetadataReader,
       private readonly componentScopeReader: ComponentScopeReader) {}
 
   resetOverrides(): void {
@@ -254,6 +256,70 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       return null;
     }
     return engine.getGlobalCompletions(context);
+  }
+
+  getExpressionCompletionLocation(expr: AST, component: ts.ClassDeclaration): ShimLocation|null {
+    const engine = this.getCompletionEngine(component);
+    if (engine === null) {
+      return null;
+    }
+    return engine.getExpressionCompletionLocation(expr);
+  }
+
+  getFieldsOfInputBinding(directive: ts.ClassDeclaration, outputBindingName: string):
+      ts.Symbol[]|null {
+    if (!isNamedClassDeclaration(directive)) {
+      return null;
+    }
+    const dir = this.metadataReader.getDirectiveMetadata(new Reference(directive));
+    if (dir === null) {
+      return null;
+    }
+
+    const typeChecker = this.typeCheckingStrategy.getProgram().getTypeChecker();
+    const classPropertyInputs = dir.inputs.getByBindingPropertyName(outputBindingName);
+    if (classPropertyInputs === null) {
+      return null;
+    }
+
+    const dirType = typeChecker.getTypeAtLocation(directive.name);
+
+    const symbols: ts.Symbol[] = [];
+    for (const input of classPropertyInputs) {
+      const symbol = dirType.getProperty(input.classPropertyName);
+      if (symbol !== undefined) {
+        symbols.push(symbol);
+      }
+    }
+    return symbols;
+  }
+
+  getFieldsOfOutputBinding(directive: ts.ClassDeclaration, inputBindingName: string):
+      ts.Symbol[]|null {
+    if (!isNamedClassDeclaration(directive)) {
+      return null;
+    }
+    const dir = this.metadataReader.getDirectiveMetadata(new Reference(directive));
+    if (dir === null) {
+      return null;
+    }
+
+    const typeChecker = this.typeCheckingStrategy.getProgram().getTypeChecker();
+    const classPropertyOutputs = dir.outputs.getByBindingPropertyName(inputBindingName);
+    if (classPropertyOutputs === null) {
+      return null;
+    }
+
+    const dirType = typeChecker.getTypeAtLocation(directive.name);
+
+    const symbols: ts.Symbol[] = [];
+    for (const input of classPropertyOutputs) {
+      const symbol = dirType.getProperty(input.classPropertyName);
+      if (symbol !== undefined) {
+        symbols.push(symbol);
+      }
+    }
+    return symbols;
   }
 
   private getCompletionEngine(component: ts.ClassDeclaration): CompletionEngine|null {
@@ -493,6 +559,8 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
         isComponent: dir.isComponent,
         selector: dir.selector,
         tsSymbol,
+        inputs: dir.inputs.propertyNames,
+        outputs: dir.outputs.propertyNames,
       });
     }
 

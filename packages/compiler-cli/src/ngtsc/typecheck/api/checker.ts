@@ -11,7 +11,7 @@ import * as ts from 'typescript';
 
 import {GlobalCompletion} from './completion';
 import {DirectiveInScope, PipeInScope} from './scope';
-import {Symbol} from './symbols';
+import {ShimLocation, Symbol} from './symbols';
 
 /**
  * Interface to the Angular Template Type Checker to extract diagnostics and intelligence from the
@@ -103,6 +103,8 @@ export interface TemplateTypeChecker {
   getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
       GlobalCompletion|null;
 
+  getExpressionCompletionLocation(expr: AST, component: ts.ClassDeclaration): ShimLocation|null;
+
   /**
    * Get basic metadata on the directives which are in scope for the given component.
    */
@@ -112,6 +114,12 @@ export interface TemplateTypeChecker {
    * Get basic metadata on the pipes which are in scope for the given component.
    */
   getPipesInScope(component: ts.ClassDeclaration): PipeInScope[]|null;
+
+  getFieldsOfInputBinding(directive: ts.ClassDeclaration, inputBindingName: string):
+      ts.Symbol[]|null;
+
+  getFieldsOfOutputBinding(directive: ts.ClassDeclaration, outputBindingName: string):
+      ts.Symbol[]|null;
 }
 
 /**

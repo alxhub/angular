@@ -7,10 +7,11 @@
  */
 
 import {TmplAstReference, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
+import {AST, MethodCall, PropertyRead, SafeMethodCall, SafePropertyRead} from '@angular/compiler/src/compiler';
 import * as ts from 'typescript';
 
 import {AbsoluteFsPath} from '../../file_system';
-import {CompletionKind, GlobalCompletion, ReferenceCompletion, VariableCompletion} from '../api';
+import {CompletionKind, GlobalCompletion, ReferenceCompletion, ShimLocation, VariableCompletion} from '../api';
 
 import {ExpressionIdentifier, findFirstMatchingNode} from './comments';
 import {TemplateData} from './context';
@@ -26,6 +27,11 @@ export class CompletionEngine {
    * Cache of `GlobalCompletion`s for various levels of the template.
    */
   private globalCompletionCache = new Map<TmplAstTemplate|null, GlobalCompletion>();
+
+  /**
+   * Cache of `ShimLocation`s for `AST` expressions in the template.
+   */
+  private expressionCompletionCache = new Map<AST, ShimLocation>();
 
   constructor(private tcb: ts.Node, private data: TemplateData, private shimPath: AbsoluteFsPath) {}
 
@@ -73,5 +79,49 @@ export class CompletionEngine {
 
     this.globalCompletionCache.set(context, completion);
     return completion;
+  }
+
+  getExpressionCompletionLocation(expr: AST): ShimLocation|null {
+    if (this.expressionCompletionCache.has(expr)) {
+      return this.expressionCompletionCache.get(expr)!;
+    }
+
+    // Completion works inside property reads and method calls.
+    let tsExpr: ts.PropertyAccessExpression|null = null;
+    if (expr instanceof PropertyRead || expr instanceof MethodCall) {
+      tsExpr = findFirstMatchingNode(this.tcb, {
+        filter: ts.isPropertyAccessExpression,
+        withSpan: expr.nameSpan,
+
+      });
+    } else if (expr instanceof SafePropertyRead || expr instanceof SafeMethodCall) {
+      const ternaryExpr = findFirstMatchingNode(this.tcb, {
+        filter: ts.isParenthesizedExpression,
+        withSpan: expr.sourceSpan,
+      });
+      if (ternaryExpr === null || !ts.isConditionalExpression(ternaryExpr.expression)) {
+        return null;
+      }
+      const whenTrue = ternaryExpr.expression.whenTrue;
+
+      if (expr instanceof SafePropertyRead && ts.isPropertyAccessExpression(whenTrue)) {
+        tsExpr = whenTrue;
+      } else if (
+          expr instanceof SafeMethodCall && ts.isCallExpression(whenTrue) &&
+          ts.isPropertyAccessExpression(whenTrue.expression)) {
+        tsExpr = whenTrue.expression;
+      }
+    }
+
+    if (tsExpr === null) {
+      return null;
+    }
+
+    const res: ShimLocation = {
+      shimPath: this.shimPath,
+      positionInShimFile: tsExpr.name.getEnd(),
+    };
+    this.expressionCompletionCache.set(expr, res);
+    return res;
   }
 }
