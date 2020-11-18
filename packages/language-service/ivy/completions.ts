@@ -34,7 +34,7 @@ export class CompletionBuilder<N extends TmplAstNode|AST> {
   constructor(
       private readonly tsLS: ts.LanguageService, private readonly compiler: NgCompiler,
       private readonly component: ts.ClassDeclaration, private readonly node: N,
-      private readonly context: TmplAstTemplate|null) {}
+      private readonly template: TmplAstTemplate|null) {}
 
   /**
    * Analogue for `ts.LanguageService.getCompletionsAtPosition`.

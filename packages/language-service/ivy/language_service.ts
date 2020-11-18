@@ -92,7 +92,8 @@ export class LanguageService {
       return undefined;
     }
     const results =
-        new QuickInfoBuilder(this.tsLS, compiler, templateInfo.component, positionDetails.node)
+        new QuickInfoBuilder(
+            this.tsLS, compiler, templateInfo.component, positionDetails.nodeInContext.node)
             .get();
     this.compilerFactory.registerLastKnownProgram();
     return results;
@@ -112,8 +113,8 @@ export class LanguageService {
     }
 
     const result = new CompletionBuilder(
-                       this.tsLS, compiler, templateInfo.component, positionDetails.node,
-                       positionDetails.context)
+                       this.tsLS, compiler, templateInfo.component,
+                       positionDetails.nodeInContext.node, positionDetails.template)
                        .getCompletionsAtPosition(options);
     this.compilerFactory.registerLastKnownProgram();
     return result;
@@ -135,8 +136,8 @@ export class LanguageService {
     }
 
     const result = new CompletionBuilder(
-                       this.tsLS, compiler, templateInfo.component, positionDetails.node,
-                       positionDetails.context)
+                       this.tsLS, compiler, templateInfo.component,
+                       positionDetails.nodeInContext.node, positionDetails.template)
                        .getCompletionEntryDetails(entryName, formatOptions, preferences);
     this.compilerFactory.registerLastKnownProgram();
     return result;
@@ -155,8 +156,8 @@ export class LanguageService {
     }
 
     const result = new CompletionBuilder(
-                       this.tsLS, compiler, templateInfo.component, positionDetails.node,
-                       positionDetails.context)
+                       this.tsLS, compiler, templateInfo.component,
+                       positionDetails.nodeInContext.node, positionDetails.template)
                        .getCompletionEntrySymbol(name);
     this.compilerFactory.registerLastKnownProgram();
     return result;
