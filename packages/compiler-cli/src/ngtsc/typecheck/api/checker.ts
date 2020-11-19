@@ -122,6 +122,8 @@ export interface TemplateTypeChecker {
    * Get basic metadata on the pipes which are in scope for the given component.
    */
   getPipesInScope(component: ts.ClassDeclaration): PipeInScope[]|null;
+
+  getPotentialElementTags(component: ts.ClassDeclaration): Map<string, DirectiveInScope|null>;
 }
 
 /**

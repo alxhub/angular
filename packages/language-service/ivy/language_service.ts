@@ -14,10 +14,10 @@ import * as ts from 'typescript/lib/tsserverlibrary';
 
 import {LanguageServiceAdapter, LSParseConfigHost} from './adapters';
 import {CompilerFactory} from './compiler_factory';
-import {CompletionBuilder} from './completions';
+import {CompletionBuilder, CompletionNodeContext} from './completions';
 import {DefinitionBuilder} from './definitions';
 import {QuickInfoBuilder} from './quick_info';
-import {getTargetAtPosition} from './template_target';
+import {getTargetAtPosition, TargetNode, TargetNodeKind} from './template_target';
 import {getTemplateInfoAtPosition, isTypeScriptFile} from './utils';
 
 export class LanguageService {
@@ -112,10 +112,11 @@ export class LanguageService {
       return undefined;
     }
 
-    const result = new CompletionBuilder(
-                       this.tsLS, compiler, templateInfo.component,
-                       positionDetails.nodeInContext.node, positionDetails.template)
-                       .getCompletionsAtPosition(options);
+    const result =
+        new CompletionBuilder(
+            this.tsLS, compiler, templateInfo.component, positionDetails.nodeInContext.node,
+            nodeContextFromTarget(positionDetails.nodeInContext), positionDetails.template)
+            .getCompletionsAtPosition(options);
     this.compilerFactory.registerLastKnownProgram();
     return result;
   }
@@ -135,10 +136,11 @@ export class LanguageService {
       return undefined;
     }
 
-    const result = new CompletionBuilder(
-                       this.tsLS, compiler, templateInfo.component,
-                       positionDetails.nodeInContext.node, positionDetails.template)
-                       .getCompletionEntryDetails(entryName, formatOptions, preferences);
+    const result =
+        new CompletionBuilder(
+            this.tsLS, compiler, templateInfo.component, positionDetails.nodeInContext.node,
+            nodeContextFromTarget(positionDetails.nodeInContext), positionDetails.template)
+            .getCompletionEntryDetails(entryName, formatOptions, preferences);
     this.compilerFactory.registerLastKnownProgram();
     return result;
   }
@@ -155,10 +157,11 @@ export class LanguageService {
       return undefined;
     }
 
-    const result = new CompletionBuilder(
-                       this.tsLS, compiler, templateInfo.component,
-                       positionDetails.nodeInContext.node, positionDetails.template)
-                       .getCompletionEntrySymbol(name);
+    const result =
+        new CompletionBuilder(
+            this.tsLS, compiler, templateInfo.component, positionDetails.nodeInContext.node,
+            nodeContextFromTarget(positionDetails.nodeInContext), positionDetails.template)
+            .getCompletionEntrySymbol(name);
     this.compilerFactory.registerLastKnownProgram();
     return result;
   }
@@ -246,4 +249,17 @@ function getOrCreateTypeCheckScriptInfo(
     project.addRoot(scriptInfo);
   }
   return scriptInfo;
+}
+
+function nodeContextFromTarget(target: TargetNode): CompletionNodeContext {
+  switch (target.kind) {
+    case TargetNodeKind.ElementInTagContext:
+      return CompletionNodeContext.ElementTag;
+    case TargetNodeKind.ElementInBodyContext:
+      // Completions in element bodies are for new attributes.
+      return CompletionNodeContext.ElementAttributeKey;
+    default:
+      // No special context is available.
+      return CompletionNodeContext.None;
+  }
 }
