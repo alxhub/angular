@@ -216,8 +216,8 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
   }
 
   /**
-   * Retrieve type-checking diagnostics from the given `ts.SourceFile` using the most recent
-   * type-checking program.
+   * Retrieve type-checking and template parse diagnostics from the given `ts.SourceFile` using the
+   * most recent type-checking program.
    */
   getDiagnosticsForFile(sf: ts.SourceFile, optimizeFor: OptimizeFor): ts.Diagnostic[] {
     switch (optimizeFor) {
@@ -246,6 +246,10 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       diagnostics.push(...typeCheckProgram.getSemanticDiagnostics(shimSf).map(
           diag => convertDiagnostic(diag, fileRecord.sourceManager)));
       diagnostics.push(...shimRecord.genesisDiagnostics);
+
+      for (let templateData of shimRecord.templates.values()) {
+        diagnostics.push(...templateData.parseErrors);
+      }
     }
 
     return diagnostics.filter((diag: ts.Diagnostic|null): diag is ts.Diagnostic => diag !== null);
@@ -280,6 +284,10 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
     diagnostics.push(...typeCheckProgram.getSemanticDiagnostics(shimSf).map(
         diag => convertDiagnostic(diag, fileRecord.sourceManager)));
     diagnostics.push(...shimRecord.genesisDiagnostics);
+
+    for (let templateData of shimRecord.templates.values()) {
+      diagnostics.push(...templateData.parseErrors);
+    }
 
     return diagnostics.filter(
         (diag: TemplateDiagnostic|null): diag is TemplateDiagnostic =>
