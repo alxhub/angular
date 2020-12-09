@@ -20,7 +20,7 @@ import {DirectiveInScope, ElementSymbol, FullTemplateMapping, GlobalCompletion, 
 import {TemplateDiagnostic} from '../diagnostics';
 
 import {CompletionEngine} from './completion';
-import {InliningMode, ShimTypeCheckingData, TemplateData, TypeCheckContextImpl, TypeCheckingHost} from './context';
+import {InliningMode, ShimTypeCheckingData, TemplateData, TemplateOverride, TypeCheckContextImpl, TypeCheckingHost} from './context';
 import {shouldReportDiagnostic, translateDiagnostic} from './diagnostics';
 import {TemplateSourceManager} from './source';
 import {findTypeCheckBlock, getTemplateMapping, TemplateSourceResolver} from './tcb_util';
@@ -167,7 +167,7 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
       fileRecord.templateOverrides = new Map();
     }
 
-    fileRecord.templateOverrides.set(id, nodes);
+    fileRecord.templateOverrides.set(id, {nodes, errors});
 
     // Clear data for the shim in question, so it'll be regenerated on the next request.
     const shimFile = this.typeCheckingStrategy.shimPathForComponent(component);
@@ -660,7 +660,7 @@ export interface FileTypeCheckingData {
   /**
    * Map of template overrides applied to any components in this input file.
    */
-  templateOverrides: Map<TemplateId, TmplAstNode[]>|null;
+  templateOverrides: Map<TemplateId, TemplateOverride>|null;
 
   /**
    * Data for each shim generated from this input file.
@@ -694,7 +694,7 @@ class WholeProgramTypeCheckingHost implements TypeCheckingHost {
     return !fileData.shimData.has(shimPath);
   }
 
-  getTemplateOverride(sfPath: AbsoluteFsPath, node: ts.ClassDeclaration): TmplAstNode[]|null {
+  getTemplateOverride(sfPath: AbsoluteFsPath, node: ts.ClassDeclaration): TemplateOverride|null {
     const fileData = this.impl.getFileData(sfPath);
     if (fileData.templateOverrides === null) {
       return null;
@@ -752,7 +752,7 @@ class SingleFileTypeCheckingHost implements TypeCheckingHost {
     return !this.fileData.shimData.has(shimPath);
   }
 
-  getTemplateOverride(sfPath: AbsoluteFsPath, node: ts.ClassDeclaration): TmplAstNode[]|null {
+  getTemplateOverride(sfPath: AbsoluteFsPath, node: ts.ClassDeclaration): TemplateOverride|null {
     this.assertPath(sfPath);
     if (this.fileData.templateOverrides === null) {
       return null;
