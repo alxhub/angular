@@ -79,48 +79,7 @@ export interface PipeType<T> extends Type<T> {
   ɵpipe: unknown;
 }
 
-/**
- * An object literal of this type is used to represent the metadata of a constructor dependency.
- * The type itself is never referred to from generated code.
- */
-export type CtorDependency = {
-  /**
-   * If an `@Attribute` decorator is used, this represents the injected attribute's name. If the
-   * attribute name is a dynamic expression instead of a string literal, this will be the unknown
-   * type.
-   */
-  attribute?: string|unknown;
 
-  /**
-   * If `@Optional()` is used, this key is set to true.
-   */
-  optional?: true;
-
-  /**
-   * If `@Host` is used, this key is set to true.
-   */
-  host?: true;
-
-  /**
-   * If `@Self` is used, this key is set to true.
-   */
-  self?: true;
-
-  /**
-   * If `@SkipSelf` is used, this key is set to true.
-   */
-  skipSelf?: true;
-}|null;
-
-/**
- * @codeGenApi
- */
-export type ɵɵDirectiveDefWithMeta<
-    T, Selector extends string, ExportAs extends
-        string[], InputMap extends {[key: string]: string},
-                                   OutputMap extends {[key: string]: string},
-                                                     QueryFields extends string[]> =
-    DirectiveDef<T>;
 
 /**
  * Runtime link information for Directives.
@@ -246,20 +205,6 @@ export interface DirectiveDef<T> {
            this: DirectiveDef<U>, instance: U, value: any, publicName: string,
            privateName: string) => void)|null;
 }
-
-/**
- * @codeGenApi
- */
-export type ɵɵComponentDefWithMeta<
-    T, Selector extends String, ExportAs extends
-        string[], InputMap extends {[key: string]: string},
-                                   OutputMap extends {[key: string]: string}, QueryFields extends
-            string[], NgContentSelectors extends string[]> = ComponentDef<T>;
-
-/**
- * @codeGenApi
- */
-export type ɵɵFactoryDef<T, CtorDependencies extends CtorDependency[]> = () => T;
 
 /**
  * Runtime link information for Components.
@@ -413,11 +358,6 @@ export interface PipeDef<T> {
   /* The following are lifecycle hooks for this pipe */
   onDestroy: (() => void)|null;
 }
-
-/**
- * @codeGenApi
- */
-export type ɵɵPipeDefWithMeta<T, Name extends string> = PipeDef<T>;
 
 export interface DirectiveDefFeature {
   <T>(directiveDef: DirectiveDef<T>): void;

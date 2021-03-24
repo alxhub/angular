@@ -348,6 +348,84 @@ runInEachFileSystem(() => {
          });
     });
 
+    it(`should be able to detect synthesized constructors in ES5 with downlevelIteration enabled (imported helpers)`,
+       () => {
+         setupAngularCoreEsm5();
+         compileIntoApf(
+             'test-package', {
+               '/index.ts': `
+                import {Injectable} from '@angular/core';
+
+                @Injectable()
+                export class Base {}
+
+                @Injectable()
+                export class SubClass extends Base {
+                  constructor() {
+                    // Note: mimic the situation where TS is first emitted into ES2015, resulting
+                    // in the spread super call below, and then downleveled into ES5 using the
+                    // "downlevelIteration" option.
+                    super(...arguments);
+                    this.foo = 'bar';
+                  }
+                }
+              `,
+             },
+             {importHelpers: true, noEmitHelpers: true, downlevelIteration: true});
+
+         mainNgcc({
+           basePath: '/node_modules',
+           targetEntryPointPath: 'test-package',
+           propertiesToConsider: ['esm5'],
+         });
+
+         const jsContents = fs.readFile(_(`/node_modules/test-package/esm5/src/index.js`));
+         // Verify that the ES5 bundle does contain the expected downleveling syntax.
+         expect(jsContents).toContain('__spreadArray([], __read(arguments))');
+         expect(jsContents)
+             .toContain(
+                 'var ɵSubClass_BaseFactory = /*@__PURE__*/ ɵngcc0.ɵɵgetInheritedFactory(SubClass);');
+       });
+
+    it(`should be able to detect synthesized constructors in ES5 with downlevelIteration enabled (emitted helpers)`,
+       () => {
+         setupAngularCoreEsm5();
+         compileIntoApf(
+             'test-package', {
+               '/index.ts': `
+                import {Injectable} from '@angular/core';
+
+                @Injectable()
+                export class Base {}
+
+                @Injectable()
+                export class SubClass extends Base {
+                  constructor() {
+                    // Note: mimic the situation where TS is first emitted into ES2015, resulting
+                    // in the spread super call below, and then downleveled into ES5 using the
+                    // "downlevelIteration" option.
+                    super(...arguments);
+                    this.foo = 'bar';
+                  }
+                }
+              `,
+             },
+             {importHelpers: false, noEmitHelpers: false, downlevelIteration: true});
+
+         mainNgcc({
+           basePath: '/node_modules',
+           targetEntryPointPath: 'test-package',
+           propertiesToConsider: ['esm5'],
+         });
+
+         const jsContents = fs.readFile(_(`/node_modules/test-package/esm5/src/index.js`));
+         // Verify that the ES5 bundle does contain the expected downleveling syntax.
+         expect(jsContents).toContain('__spreadArray([], __read(arguments))');
+         expect(jsContents)
+             .toContain(
+                 'var ɵSubClass_BaseFactory = /*@__PURE__*/ ɵngcc0.ɵɵgetInheritedFactory(SubClass);');
+       });
+
     it('should not add `const` in ES5 generated code', () => {
       setupAngularCoreEsm5();
       compileIntoFlatEs5Package('test-package', {
@@ -774,7 +852,8 @@ runInEachFileSystem(() => {
          expect(dtsContents)
              .toContain(`export declare class ${exportedName} extends PlatformLocation`);
          // And that ngcc's modifications to that class use the correct (exported) name
-         expect(dtsContents).toContain(`static ɵfac: ɵngcc0.ɵɵFactoryDef<${exportedName}, never>`);
+         expect(dtsContents)
+             .toContain(`static ɵfac: ɵngcc0.ɵɵFactoryDeclaration<${exportedName}, never>`);
        });
 
     it('should include constructor metadata in factory definitions', () => {
@@ -787,7 +866,7 @@ runInEachFileSystem(() => {
       const dtsContents = fs.readFile(_('/node_modules/@angular/common/common.d.ts'));
       expect(dtsContents)
           .toContain(
-              `static ɵfac: ɵngcc0.ɵɵFactoryDef<NgPluralCase, [{ attribute: "ngPluralCase"; }, null, null, { host: true; }]>`);
+              `static ɵfac: ɵngcc0.ɵɵFactoryDeclaration<NgPluralCase, [{ attribute: "ngPluralCase"; }, null, null, { host: true; }]>`);
     });
 
     it('should add generic type for ModuleWithProviders and generate exports for private modules',
@@ -2193,7 +2272,7 @@ runInEachFileSystem(() => {
            const dtsContents = fs.readFile(_(`/node_modules/test-package/index.d.ts`));
            expect(dtsContents)
                .toContain(
-                   'static ɵdir: ɵngcc0.ɵɵDirectiveDefWithMeta<DerivedDir, "[base]", ["base1", "base2"], {}, {}, never>;');
+                   'static ɵdir: ɵngcc0.ɵɵDirectiveDeclaration<DerivedDir, "[base]", ["base1", "base2"], {}, {}, never>;');
          });
 
       it('should generate a component definition with CopyDefinitionFeature for an undecorated child component',
@@ -2233,7 +2312,7 @@ runInEachFileSystem(() => {
            const dtsContents = fs.readFile(_(`/node_modules/test-package/index.d.ts`));
            expect(dtsContents)
                .toContain(
-                   'static ɵcmp: ɵngcc0.ɵɵComponentDefWithMeta<DerivedCmp, "[base]", never, {}, {}, never, never>;');
+                   'static ɵcmp: ɵngcc0.ɵɵComponentDeclaration<DerivedCmp, "[base]", never, {}, {}, never, never>;');
          });
 
       it('should generate directive definitions with CopyDefinitionFeature for undecorated child directives in a long inheritance chain',
@@ -2269,13 +2348,13 @@ runInEachFileSystem(() => {
            const dtsContents = fs.readFile(_(`/node_modules/test-package/index.d.ts`));
            expect(dtsContents)
                .toContain(
-                   'static ɵdir: ɵngcc0.ɵɵDirectiveDefWithMeta<DerivedDir1, "[base]", never, {}, {}, never>;');
+                   'static ɵdir: ɵngcc0.ɵɵDirectiveDeclaration<DerivedDir1, "[base]", never, {}, {}, never>;');
            expect(dtsContents)
                .toContain(
-                   'static ɵdir: ɵngcc0.ɵɵDirectiveDefWithMeta<DerivedDir2, "[base]", never, {}, {}, never>;');
+                   'static ɵdir: ɵngcc0.ɵɵDirectiveDeclaration<DerivedDir2, "[base]", never, {}, {}, never>;');
            expect(dtsContents)
                .toContain(
-                   'static ɵdir: ɵngcc0.ɵɵDirectiveDefWithMeta<DerivedDir3, "[base]", never, {}, {}, never>;');
+                   'static ɵdir: ɵngcc0.ɵɵDirectiveDeclaration<DerivedDir3, "[base]", never, {}, {}, never>;');
          });
     });
 

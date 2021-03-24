@@ -62,24 +62,24 @@ import * as i0 from "@angular/core";
 export declare class MyPipe implements PipeTransform, OnDestroy {
     transform(value: any, ...args: any[]): any;
     ngOnDestroy(): void;
-    static ɵfac: i0.ɵɵFactoryDef<MyPipe, never>;
-    static ɵpipe: i0.ɵɵPipeDefWithMeta<MyPipe, "myPipe">;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyPipe, never>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<MyPipe, "myPipe">;
 }
 export declare class MyPurePipe implements PipeTransform {
     transform(value: any, ...args: any[]): any;
-    static ɵfac: i0.ɵɵFactoryDef<MyPurePipe, never>;
-    static ɵpipe: i0.ɵɵPipeDefWithMeta<MyPurePipe, "myPurePipe">;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyPurePipe, never>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<MyPurePipe, "myPurePipe">;
 }
 export declare class MyApp {
     name: string;
     size: number;
-    static ɵfac: i0.ɵɵFactoryDef<MyApp, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyApp, "my-app", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "my-app", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyPipe, typeof MyPurePipe, typeof MyApp], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyPipe, typeof MyPurePipe, typeof MyApp], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -131,18 +131,18 @@ import * as i0 from "@angular/core";
 export declare class MyPipe implements PipeTransform, OnDestroy {
     transform(value: any, ...args: any[]): any;
     ngOnDestroy(): void;
-    static ɵfac: i0.ɵɵFactoryDef<MyPipe, never>;
-    static ɵpipe: i0.ɵɵPipeDefWithMeta<MyPipe, "myPipe">;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyPipe, never>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<MyPipe, "myPipe">;
 }
 export declare class MyApp {
     name: string;
-    static ɵfac: i0.ɵɵFactoryDef<MyApp, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyApp, "my-app", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "my-app", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyPipe, typeof MyApp], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyPipe, typeof MyApp], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -205,23 +205,23 @@ import * as i0 from "@angular/core";
 export declare class MyPipe implements PipeTransform {
     constructor(changeDetectorRef: ChangeDetectorRef);
     transform(value: any, ...args: any[]): any;
-    static ɵfac: i0.ɵɵFactoryDef<MyPipe, never>;
-    static ɵpipe: i0.ɵɵPipeDefWithMeta<MyPipe, "myPipe">;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyPipe, never>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<MyPipe, "myPipe">;
 }
 export declare class MyOtherPipe implements PipeTransform {
     constructor(changeDetectorRef: ChangeDetectorRef);
     transform(value: any, ...args: any[]): any;
-    static ɵfac: i0.ɵɵFactoryDef<MyOtherPipe, [{ optional: true; }]>;
-    static ɵpipe: i0.ɵɵPipeDefWithMeta<MyOtherPipe, "myOtherPipe">;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyOtherPipe, [{ optional: true; }]>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<MyOtherPipe, "myOtherPipe">;
 }
 export declare class MyApp {
     name: string;
-    static ɵfac: i0.ɵɵFactoryDef<MyApp, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyApp, "my-app", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyApp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyApp, "my-app", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyPipe, typeof MyOtherPipe, typeof MyApp], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyPipe, typeof MyOtherPipe, typeof MyApp], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 

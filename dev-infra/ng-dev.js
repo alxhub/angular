@@ -8,7 +8,6 @@ var tslib = require('tslib');
 var chalk = _interopDefault(require('chalk'));
 var fs = require('fs');
 var inquirer = require('inquirer');
-var inquirerAutocomplete = require('inquirer-autocomplete-prompt');
 var path = require('path');
 var shelljs = require('shelljs');
 var url = require('url');
@@ -20,6 +19,7 @@ var fetch = _interopDefault(require('node-fetch'));
 var semver = require('semver');
 var multimatch = require('multimatch');
 var yaml = require('yaml');
+var conventionalCommitsParser = require('conventional-commits-parser');
 var cliProgress = require('cli-progress');
 var os = require('os');
 var minimatch = require('minimatch');
@@ -227,53 +227,6 @@ function promptConfirm(message, defaultValue) {
                     })];
                 case 1: return [2 /*return*/, (_a.sent())
                         .result];
-            }
-        });
-    });
-}
-function promptAutocomplete(message, choices, noChoiceText) {
-    return tslib.__awaiter(this, void 0, void 0, function () {
-        var prompt, result;
-        return tslib.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    prompt = inquirer.createPromptModule({}).registerPrompt('autocomplete', inquirerAutocomplete);
-                    if (noChoiceText) {
-                        choices = tslib.__spreadArray([noChoiceText], tslib.__read(choices));
-                    }
-                    return [4 /*yield*/, prompt({
-                            type: 'autocomplete',
-                            name: 'result',
-                            message: message,
-                            source: function (_, input) {
-                                if (!input) {
-                                    return Promise.resolve(choices);
-                                }
-                                return Promise.resolve(choices.filter(function (choice) {
-                                    if (typeof choice === 'string') {
-                                        return choice.includes(input);
-                                    }
-                                    return choice.name.includes(input);
-                                }));
-                            }
-                        })];
-                case 1:
-                    result = (_a.sent()).result;
-                    if (result === noChoiceText) {
-                        return [2 /*return*/, false];
-                    }
-                    return [2 /*return*/, result];
-            }
-        });
-    });
-}
-/** Prompts the user for one line of input. */
-function promptInput(message) {
-    return tslib.__awaiter(this, void 0, void 0, function () {
-        return tslib.__generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, inquirer.prompt({ type: 'input', name: 'result', message: message })];
-                case 1: return [2 /*return*/, (_a.sent()).result];
             }
         });
     });
@@ -1731,56 +1684,84 @@ const COMMIT_TYPES = {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+/** Markers used to denote the start of a note section in a commit. */
+var NoteSections;
+(function (NoteSections) {
+    NoteSections["BREAKING_CHANGE"] = "BREAKING CHANGE";
+    NoteSections["DEPRECATED"] = "DEPRECATED";
+})(NoteSections || (NoteSections = {}));
 /** Regex determining if a commit is a fixup. */
 const FIXUP_PREFIX_RE = /^fixup! /i;
-/** Regex finding all github keyword links. */
-const GITHUB_LINKING_RE = /((closed?s?)|(fix(es)?(ed)?)|(resolved?s?))\s\#(\d+)/ig;
 /** Regex determining if a commit is a squash. */
 const SQUASH_PREFIX_RE = /^squash! /i;
 /** Regex determining if a commit is a revert. */
 const REVERT_PREFIX_RE = /^revert:? /i;
-/** Regex determining the scope of a commit if provided. */
-const TYPE_SCOPE_RE = /^(\w+)(?:\(([^)]+)\))?\:\s(.+)$/;
-/** Regex determining the entire header line of the commit. */
-const COMMIT_HEADER_RE = /^(.*)/i;
-/** Regex determining the body of the commit. */
-const COMMIT_BODY_RE = /^.*\n\n([\s\S]*)$/;
+/**
+ * Regex pattern for parsing the header line of a commit.
+ *
+ * Several groups are being matched to be used in the parsed commit object, being mapped to the
+ * `headerCorrespondence` object.
+ *
+ * The pattern can be broken down into component parts:
+ * - `(\w+)` - a capturing group discovering the type of the commit.
+ * - `(?:\((?:([^/]+)\/)?([^)]+)\))?` - a pair of capturing groups to capture the scope and,
+ * optionally the npmScope of the commit.
+ * - `(.*)` - a capturing group discovering the subject of the commit.
+ */
+const headerPattern = /^(\w+)(?:\((?:([^/]+)\/)?([^)]+)\))?: (.*)$/;
+/**
+ * The property names used for the values extracted from the header via the `headerPattern` regex.
+ */
+const headerCorrespondence = ['type', 'npmScope', 'scope', 'subject'];
+/**
+ * Configuration options for the commit parser.
+ *
+ * NOTE: An extended type from `Options` must be used because the current
+ * @types/conventional-commits-parser version does not include the `notesPattern` field.
+ */
+const parseOptions = {
+    commentChar: '#',
+    headerPattern,
+    headerCorrespondence,
+    noteKeywords: [NoteSections.BREAKING_CHANGE, NoteSections.DEPRECATED],
+    notesPattern: (keywords) => new RegExp(`(${keywords})(?:: ?)(.*)`),
+};
 /** Parse a full commit message into its composite parts. */
-function parseCommitMessage(commitMsg) {
-    // Ignore comments (i.e. lines starting with `#`). Comments are automatically removed by git and
-    // should not be considered part of the final commit message.
-    commitMsg = commitMsg.split('\n').filter(line => !line.startsWith('#')).join('\n');
-    let header = '';
-    let body = '';
-    let bodyWithoutLinking = '';
-    let type = '';
-    let scope = '';
-    let subject = '';
-    if (COMMIT_HEADER_RE.test(commitMsg)) {
-        header = COMMIT_HEADER_RE.exec(commitMsg)[1]
-            .replace(FIXUP_PREFIX_RE, '')
-            .replace(SQUASH_PREFIX_RE, '');
-    }
-    if (COMMIT_BODY_RE.test(commitMsg)) {
-        body = COMMIT_BODY_RE.exec(commitMsg)[1];
-        bodyWithoutLinking = body.replace(GITHUB_LINKING_RE, '');
-    }
-    if (TYPE_SCOPE_RE.test(header)) {
-        const parsedCommitHeader = TYPE_SCOPE_RE.exec(header);
-        type = parsedCommitHeader[1];
-        scope = parsedCommitHeader[2];
-        subject = parsedCommitHeader[3];
-    }
+function parseCommitMessage(fullText) {
+    /** The commit message text with the fixup and squash markers stripped out. */
+    const strippedCommitMsg = fullText.replace(FIXUP_PREFIX_RE, '')
+        .replace(SQUASH_PREFIX_RE, '')
+        .replace(REVERT_PREFIX_RE, '');
+    /** The initially parsed commit. */
+    const commit = conventionalCommitsParser.sync(strippedCommitMsg, parseOptions);
+    /** A list of breaking change notes from the commit. */
+    const breakingChanges = [];
+    /** A list of deprecation notes from the commit. */
+    const deprecations = [];
+    // Extract the commit message notes by marked types into their respective lists.
+    commit.notes.forEach((note) => {
+        if (note.title === NoteSections.BREAKING_CHANGE) {
+            return breakingChanges.push(note);
+        }
+        if (note.title === NoteSections.DEPRECATED) {
+            return deprecations.push(note);
+        }
+    });
     return {
-        header,
-        body,
-        bodyWithoutLinking,
-        type,
-        scope,
-        subject,
-        isFixup: FIXUP_PREFIX_RE.test(commitMsg),
-        isSquash: SQUASH_PREFIX_RE.test(commitMsg),
-        isRevert: REVERT_PREFIX_RE.test(commitMsg),
+        fullText,
+        breakingChanges,
+        deprecations,
+        body: commit.body || '',
+        footer: commit.footer || '',
+        header: commit.header || '',
+        references: commit.references,
+        scope: commit.scope || '',
+        subject: commit.subject || '',
+        type: commit.type || '',
+        npmScope: commit.npmScope || '',
+        isFixup: FIXUP_PREFIX_RE.test(fullText),
+        isSquash: SQUASH_PREFIX_RE.test(fullText),
+        isRevert: REVERT_PREFIX_RE.test(fullText),
     };
 }
 /** Retrieve and parse each commit message in a provide range. */
@@ -1817,6 +1798,16 @@ function parseCommitMessagesForRange(range) {
  */
 /** Regex matching a URL for an entire commit body line. */
 const COMMIT_BODY_URL_LINE_RE = /^https?:\/\/.*$/;
+/**
+ * Regex matching a breaking change.
+ *
+ * - Starts with BREAKING CHANGE
+ * - Followed by a colon
+ * - Followed by a single space or two consecutive new lines
+ *
+ * NB: Anything after `BREAKING CHANGE` is optional to facilitate the validation.
+ */
+const COMMIT_BODY_BREAKING_CHANGE_RE = /^BREAKING CHANGE(:( |\n{2}))?/m;
 /** Validate a commit message against using the local repo's config. */
 function validateCommitMessage(commitMsg, options = {}) {
     const config = getCommitMessageConfig().commitMessage;
@@ -1824,11 +1815,10 @@ function validateCommitMessage(commitMsg, options = {}) {
     const errors = [];
     /** Perform the validation checks against the parsed commit. */
     function validateCommitAndCollectErrors() {
-        // TODO(josephperrott): Remove early return calls when commit message errors are found
-        var _a;
         ////////////////////////////////////
         // Checking revert, squash, fixup //
         ////////////////////////////////////
+        var _a;
         // All revert commits are considered valid.
         if (commit.isRevert) {
             return true;
@@ -1892,19 +1882,31 @@ function validateCommitMessage(commitMsg, options = {}) {
         // Checking commit body //
         //////////////////////////
         if (!((_a = config.minBodyLengthTypeExcludes) === null || _a === void 0 ? void 0 : _a.includes(commit.type)) &&
-            commit.bodyWithoutLinking.trim().length < config.minBodyLength) {
+            commit.body.trim().length < config.minBodyLength) {
             errors.push(`The commit message body does not meet the minimum length of ${config.minBodyLength} characters`);
             return false;
         }
         const bodyByLine = commit.body.split('\n');
-        const lineExceedsMaxLength = bodyByLine.some(line => {
+        const lineExceedsMaxLength = bodyByLine.some((line) => {
             // Check if any line exceeds the max line length limit. The limit is ignored for
             // lines that just contain an URL (as these usually cannot be wrapped or shortened).
             return line.length > config.maxLineLength && !COMMIT_BODY_URL_LINE_RE.test(line);
         });
         if (lineExceedsMaxLength) {
-            errors.push(`The commit message body contains lines greater than ${config.maxLineLength} characters`);
+            errors.push(`The commit message body contains lines greater than ${config.maxLineLength} characters.`);
             return false;
+        }
+        // Breaking change
+        // Check if the commit message contains a valid break change description.
+        // https://github.com/angular/angular/blob/88fbc066775ab1a2f6a8c75f933375b46d8fa9a4/CONTRIBUTING.md#commit-message-footer
+        const hasBreakingChange = COMMIT_BODY_BREAKING_CHANGE_RE.exec(commit.fullText);
+        if (hasBreakingChange !== null) {
+            const [, breakingChangeDescription] = hasBreakingChange;
+            if (!breakingChangeDescription) {
+                // Not followed by :, space or two consecutive new lines,
+                errors.push(`The commit message body contains an invalid breaking change description.`);
+                return false;
+            }
         }
         return true;
     }
@@ -1920,6 +1922,11 @@ function printValidationErrors(errors, print = error) {
     print('<type>(<scope>): <summary>');
     print();
     print('<body>');
+    print();
+    print(`BREAKING CHANGE: <breaking change summary>`);
+    print();
+    print(`<breaking change description>`);
+    print();
     print();
 }
 
@@ -2098,135 +2105,11 @@ const ValidateRangeModule = {
     describe: 'Validate a range of commit messages',
 };
 
-/** Validate commit message at the provided file path. */
-function buildCommitMessage() {
-    return tslib.__awaiter(this, void 0, void 0, function* () {
-        // TODO(josephperrott): Add support for skipping wizard with local untracked config file
-        // TODO(josephperrott): Add default commit message information/commenting into generated messages
-        info('Just a few questions to start building the commit message!');
-        /** The commit message type. */
-        const type = yield promptForCommitMessageType();
-        /** The commit message scope. */
-        const scope = yield promptForCommitMessageScopeForType(type);
-        /** The commit message summary. */
-        const summary = yield promptForCommitMessageSummary();
-        return `${type.name}${scope ? '(' + scope + ')' : ''}: ${summary}\n\n`;
-    });
-}
-/** Prompts in the terminal for the commit message's type. */
-function promptForCommitMessageType() {
-    return tslib.__awaiter(this, void 0, void 0, function* () {
-        info('The type of change in the commit. Allows a reader to know the effect of the change,');
-        info('whether it brings a new feature, adds additional testing, documents the `project, etc.');
-        /** List of commit type options for the autocomplete prompt. */
-        const typeOptions = Object.values(COMMIT_TYPES).map(({ description, name }) => {
-            return {
-                name: `${name} - ${description}`,
-                value: name,
-                short: name,
-            };
-        });
-        /** The key of a commit message type, selected by the user via prompt. */
-        const typeName = yield promptAutocomplete('Select a type for the commit:', typeOptions);
-        return COMMIT_TYPES[typeName];
-    });
-}
-/** Prompts in the terminal for the commit message's scope. */
-function promptForCommitMessageScopeForType(type) {
-    return tslib.__awaiter(this, void 0, void 0, function* () {
-        // If the commit type's scope requirement is forbidden, return early.
-        if (type.scope === ScopeRequirement.Forbidden) {
-            info(`Skipping scope selection as the '${type.name}' type does not allow scopes`);
-            return false;
-        }
-        /** Commit message configuration */
-        const config = getCommitMessageConfig();
-        info('The area of the repository the changes in this commit most affects.');
-        return yield promptAutocomplete('Select a scope for the commit:', config.commitMessage.scopes, type.scope === ScopeRequirement.Optional ? '<no scope>' : '');
-    });
-}
-/** Prompts in the terminal for the commit message's summary. */
-function promptForCommitMessageSummary() {
-    return tslib.__awaiter(this, void 0, void 0, function* () {
-        info('Provide a short summary of what the changes in the commit do');
-        return yield promptInput('Provide a short summary of the commit');
-    });
-}
-
-/** The default commit message used if the wizard does not procude a commit message. */
-const defaultCommitMessage = `<type>(<scope>): <summary>
-
-# <Describe the motivation behind this change - explain WHY you are making this change. Wrap all
-#  lines at 100 characters.>\n\n`;
-function runWizard(args) {
-    var _a;
-    return tslib.__awaiter(this, void 0, void 0, function* () {
-        if ((_a = getUserConfig().commitMessage) === null || _a === void 0 ? void 0 : _a.disableWizard) {
-            debug('Skipping commit message wizard due to enabled `commitMessage.disableWizard` option in');
-            debug('user config.');
-            process.exitCode = 0;
-            return;
-        }
-        if (args.source !== undefined) {
-            info(`Skipping commit message wizard because the commit was created via '${args.source}' source`);
-            process.exitCode = 0;
-            return;
-        }
-        // Set the default commit message to be updated if the user cancels out of the wizard in progress
-        fs.writeFileSync(args.filePath, defaultCommitMessage);
-        /** The generated commit message. */
-        const commitMessage = yield buildCommitMessage();
-        fs.writeFileSync(args.filePath, commitMessage);
-    });
-}
-
-/**
- * @license
- * Copyright Google LLC All Rights Reserved.
- *
- * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
- */
-/** Builds the command. */
-function builder$4(yargs) {
-    return yargs
-        .positional('filePath', {
-        description: 'The file path to write the generated commit message into',
-        type: 'string',
-        demandOption: true,
-    })
-        .positional('source', {
-        choices: ['message', 'template', 'merge', 'squash', 'commit'],
-        description: 'The source of the commit message as described here: ' +
-            'https://git-scm.com/docs/githooks#_prepare_commit_msg'
-    })
-        .positional('commitSha', {
-        description: 'The commit sha if source is set to `commit`',
-        type: 'string',
-    });
-}
-/** Handles the command. */
-function handler$4(args) {
-    return tslib.__awaiter(this, void 0, void 0, function* () {
-        yield runWizard(args);
-    });
-}
-/** yargs command module describing the command.  */
-const WizardModule = {
-    handler: handler$4,
-    builder: builder$4,
-    command: 'wizard <filePath> [source] [commitSha]',
-    // Description: Run the wizard to build a base commit message before opening to complete.
-    // No describe is defiend to hide the command from the --help.
-    describe: false,
-};
-
 /** Build the parser for the commit-message commands. */
 function buildCommitMessageParser(localYargs) {
     return localYargs.help()
         .strict()
         .command(RestoreCommitMessageModule)
-        .command(WizardModule)
         .command(ValidateFileModule)
         .command(ValidateRangeModule);
 }
@@ -2908,7 +2791,7 @@ function printTargetBranchesForPr(prNumber) {
  * found in the LICENSE file at https://angular.io/license
  */
 /** Builds the command. */
-function builder$5(yargs) {
+function builder$4(yargs) {
     return yargs.positional('pr', {
         description: 'The pull request number',
         type: 'number',
@@ -2916,15 +2799,15 @@ function builder$5(yargs) {
     });
 }
 /** Handles the command. */
-function handler$5({ pr }) {
+function handler$4({ pr }) {
     return tslib.__awaiter(this, void 0, void 0, function* () {
         yield printTargetBranchesForPr(pr);
     });
 }
 /** yargs command module describing the command.  */
 const CheckTargetBranchesModule = {
-    handler: handler$5,
-    builder: builder$5,
+    handler: handler$4,
+    builder: builder$4,
     command: 'check-target-branches <pr>',
     describe: 'Check a PR to determine what branches it is currently targeting',
 };
@@ -3129,11 +3012,11 @@ function checkOutPullRequestLocally(prNumber, githubToken, opts = {}) {
  * found in the LICENSE file at https://angular.io/license
  */
 /** Builds the checkout pull request command. */
-function builder$6(yargs) {
+function builder$5(yargs) {
     return addGithubTokenOption(yargs).positional('prNumber', { type: 'number', demandOption: true });
 }
 /** Handles the checkout pull request command. */
-function handler$6({ prNumber, githubToken }) {
+function handler$5({ prNumber, githubToken }) {
     return tslib.__awaiter(this, void 0, void 0, function* () {
         const prCheckoutOptions = { allowIfMaintainerCannotModify: true, branchName: `pr-${prNumber}` };
         yield checkOutPullRequestLocally(prNumber, githubToken, prCheckoutOptions);
@@ -3141,8 +3024,8 @@ function handler$6({ prNumber, githubToken }) {
 }
 /** yargs command module for checking out a PR  */
 const CheckoutCommandModule = {
-    handler: handler$6,
-    builder: builder$6,
+    handler: handler$5,
+    builder: builder$5,
     command: 'checkout <pr-number>',
     describe: 'Checkout a PR from the upstream repo',
 };
@@ -4293,7 +4176,7 @@ function createPullRequestMergeTask(githubToken, flags) {
  * found in the LICENSE file at https://angular.io/license
  */
 /** Builds the command. */
-function builder$7(yargs) {
+function builder$6(yargs) {
     return addGithubTokenOption(yargs)
         .help()
         .strict()
@@ -4309,7 +4192,7 @@ function builder$7(yargs) {
     });
 }
 /** Handles the command. */
-function handler$7(_a) {
+function handler$6(_a) {
     var pr = _a.pr, githubToken = _a.githubToken, branchPrompt = _a.branchPrompt;
     return tslib.__awaiter(this, void 0, void 0, function () {
         return tslib.__generator(this, function (_b) {
@@ -4324,8 +4207,8 @@ function handler$7(_a) {
 }
 /** yargs command module describing the command.  */
 var MergeCommandModule = {
-    handler: handler$7,
-    builder: builder$7,
+    handler: handler$6,
+    builder: builder$6,
     command: 'merge <pr>',
     describe: 'Merge a PR into its targeted branches.',
 };
@@ -4959,7 +4842,7 @@ function buildReleaseOutput() {
  * found in the LICENSE file at https://angular.io/license
  */
 /** Yargs command builder for configuring the `ng-dev release build` command. */
-function builder$8(argv) {
+function builder$7(argv) {
     return argv.option('json', {
         type: 'boolean',
         description: 'Whether the built packages should be printed to stdout as JSON.',
@@ -4967,7 +4850,7 @@ function builder$8(argv) {
     });
 }
 /** Yargs command handler for building a release. */
-function handler$8(args) {
+function handler$7(args) {
     return tslib.__awaiter(this, void 0, void 0, function* () {
         const { npmPackages } = getReleaseConfig();
         let builtPackages = yield buildReleaseOutput();
@@ -5002,8 +4885,8 @@ function handler$8(args) {
 }
 /** CLI command module for building release output. */
 const ReleaseBuildCommandModule = {
-    builder: builder$8,
-    handler: handler$8,
+    builder: builder$7,
+    handler: handler$7,
     command: 'build',
     describe: 'Builds the release output for the current branch.',
 };
@@ -6602,11 +6485,11 @@ class ReleaseTool {
  * found in the LICENSE file at https://angular.io/license
  */
 /** Yargs command builder for configuring the `ng-dev release publish` command. */
-function builder$9(argv) {
+function builder$8(argv) {
     return addGithubTokenOption(argv);
 }
 /** Yargs command handler for staging a release. */
-function handler$9(args) {
+function handler$8(args) {
     return tslib.__awaiter(this, void 0, void 0, function* () {
         const config = getConfig();
         const releaseConfig = getReleaseConfig(config);
@@ -6630,8 +6513,8 @@ function handler$9(args) {
 }
 /** CLI command module for publishing a release. */
 const ReleasePublishCommandModule = {
-    builder: builder$9,
-    handler: handler$9,
+    builder: builder$8,
+    handler: handler$8,
     command: 'publish',
     describe: 'Publish new releases and configure version branches.',
 };
@@ -6643,7 +6526,7 @@ const ReleasePublishCommandModule = {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-function builder$a(args) {
+function builder$9(args) {
     return args
         .positional('tagName', {
         type: 'string',
@@ -6657,7 +6540,7 @@ function builder$a(args) {
     });
 }
 /** Yargs command handler for building a release. */
-function handler$a(args) {
+function handler$9(args) {
     return tslib.__awaiter(this, void 0, void 0, function* () {
         const { targetVersion: rawVersion, tagName } = args;
         const { npmPackages, publishRegistry } = getReleaseConfig();
@@ -6689,8 +6572,8 @@ function handler$a(args) {
 }
 /** CLI command module for setting an NPM dist tag. */
 const ReleaseSetDistTagCommand = {
-    builder: builder$a,
-    handler: handler$a,
+    builder: builder$9,
+    handler: handler$9,
     command: 'set-dist-tag <tag-name> <target-version>',
     describe: 'Sets a given NPM dist tag for all release packages.',
 };
@@ -6769,22 +6652,22 @@ function getCurrentGitUser() {
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-function builder$b(args) {
+function builder$a(args) {
     return args.option('mode', {
         demandOption: true,
         description: 'Whether the env-stamp should be built for a snapshot or release',
         choices: ['snapshot', 'release']
     });
 }
-function handler$b({ mode }) {
+function handler$a({ mode }) {
     return tslib.__awaiter(this, void 0, void 0, function* () {
         buildEnvStamp(mode);
     });
 }
 /** CLI command module for building the environment stamp. */
 const BuildEnvStampCommand = {
-    builder: builder$b,
-    handler: handler$b,
+    builder: builder$a,
+    handler: handler$a,
     command: 'build-env-stamp',
     describe: 'Build the environment stamping information',
 };

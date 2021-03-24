@@ -40,13 +40,13 @@ export declare class MyComponent {
     originalComponentInput: any;
     componentOutput: any;
     originalComponentOutput: any;
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, { "componentInput": "componentInput"; "originalComponentInput": "renamedComponentInput"; }, { "componentOutput": "componentOutput"; "originalComponentOutput": "renamedComponentOutput"; }, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, { "componentInput": "componentInput"; "originalComponentInput": "renamedComponentInput"; }, { "componentOutput": "componentOutput"; "originalComponentOutput": "renamedComponentOutput"; }, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -91,12 +91,12 @@ export declare class MyDirective {
     originalDirectiveInput: any;
     directiveOutput: any;
     originalDirectiveOutput: any;
-    static ɵfac: i0.ɵɵFactoryDef<MyDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<MyDirective, "[my-directive]", never, { "directiveInput": "directiveInput"; "originalDirectiveInput": "renamedDirectiveInput"; }, { "directiveOutput": "directiveOutput"; "originalDirectiveOutput": "renamedDirectiveOutput"; }, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<MyDirective, "[my-directive]", never, { "directiveInput": "directiveInput"; "originalDirectiveInput": "renamedDirectiveInput"; }, { "directiveOutput": "directiveOutput"; "originalDirectiveOutput": "renamedDirectiveOutput"; }, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyDirective], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyDirective], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 

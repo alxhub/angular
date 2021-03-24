@@ -57,9 +57,6 @@ export {
   SWITCH_COMPILE_PIPE__POST_R3__ as ɵSWITCH_COMPILE_PIPE__POST_R3__,
 } from './metadata/directives';
 export {
-  ɵɵNgModuleDefWithMeta,
-} from './metadata/ng_module';
-export {
   SWITCH_COMPILE_NGMODULE__POST_R3__ as ɵSWITCH_COMPILE_NGMODULE__POST_R3__,
 } from './metadata/ng_module';
 export {
@@ -126,14 +123,14 @@ export {
   ɵɵclassMapInterpolate8,
   ɵɵclassMapInterpolateV,
   ɵɵclassProp,
-  ɵɵComponentDefWithMeta,
+  ɵɵComponentDeclaration,
   ɵɵcontentQuery,
   ɵɵCopyDefinitionFeature,
   ɵɵdefineComponent,
   ɵɵdefineDirective,
   ɵɵdefineNgModule,
   ɵɵdefinePipe,
-  ɵɵDirectiveDefWithMeta,
+  ɵɵDirectiveDeclaration,
   ɵɵdirectiveInject,
   ɵɵdisableBindings,
   ɵɵelement,
@@ -143,7 +140,7 @@ export {
   ɵɵelementEnd,
   ɵɵelementStart,
   ɵɵenableBindings,
-  ɵɵFactoryDef,
+  ɵɵFactoryDeclaration,
   ɵɵgetCurrentView,
   ɵɵgetInheritedFactory,
   ɵɵhostProperty,
@@ -156,6 +153,7 @@ export {
   ɵɵi18nStart,
   ɵɵInheritDefinitionFeature,
   ɵɵinjectAttribute,
+  ɵɵInjectorDeclaration,
   ɵɵinjectPipeChangeDetectorRef,
   ɵɵinvalidFactory,
   ɵɵlistener,
@@ -164,6 +162,7 @@ export {
   ɵɵnamespaceMathML,
   ɵɵnamespaceSVG,
   ɵɵnextContext,
+  ɵɵNgModuleDeclaration,
   ɵɵNgOnChangesFeature,
   ɵɵpipe,
   ɵɵpipeBind1,
@@ -171,7 +170,7 @@ export {
   ɵɵpipeBind3,
   ɵɵpipeBind4,
   ɵɵpipeBindV,
-  ɵɵPipeDefWithMeta,
+  ɵɵPipeDeclaration,
   ɵɵprojection,
   ɵɵprojectionDef,
   ɵɵproperty,

@@ -34,17 +34,17 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class I18nDirective {
-    static ɵfac: i0.ɵɵFactoryDef<I18nDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<I18nDirective, "[i18n]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<I18nDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<I18nDirective, "[i18n]", never, {}, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof I18nDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof I18nDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -99,25 +99,25 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class I18nDirective {
-    static ɵfac: i0.ɵɵFactoryDef<I18nDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<I18nDirective, "[i18n]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<I18nDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<I18nDirective, "[i18n]", never, {}, {}, never>;
 }
 export declare class I18nFooDirective {
-    static ɵfac: i0.ɵɵFactoryDef<I18nFooDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<I18nFooDirective, "[i18n-foo]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<I18nFooDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<I18nFooDirective, "[i18n-foo]", never, {}, {}, never>;
 }
 export declare class FooDirective {
-    static ɵfac: i0.ɵɵFactoryDef<FooDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<FooDirective, "[foo]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<FooDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<FooDirective, "[foo]", never, {}, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof I18nDirective, typeof I18nFooDirective, typeof FooDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof I18nDirective, typeof I18nFooDirective, typeof FooDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -159,17 +159,17 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
 import * as i0 from "@angular/core";
 export declare class SomeDirective {
     someDirective: any;
-    static ɵfac: i0.ɵɵFactoryDef<SomeDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<SomeDirective, "[someDirective]", never, { "someDirective": "someDirective"; }, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<SomeDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<SomeDirective, "[someDirective]", never, { "someDirective": "someDirective"; }, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -215,17 +215,17 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class DirectiveA {
-    static ɵfac: i0.ɵɵFactoryDef<DirectiveA, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<DirectiveA, "ng-template[directiveA]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<DirectiveA, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<DirectiveA, "ng-template[directiveA]", never, {}, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof DirectiveA, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof DirectiveA, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -271,17 +271,17 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class DirectiveA {
-    static ɵfac: i0.ɵɵFactoryDef<DirectiveA, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<DirectiveA, "ng-container[directiveA]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<DirectiveA, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<DirectiveA, "ng-container[directiveA]", never, {}, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof DirectiveA, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof DirectiveA, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -326,17 +326,17 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
 import * as i0 from "@angular/core";
 export declare class SomeDirective {
     someDirective: any;
-    static ɵfac: i0.ɵɵFactoryDef<SomeDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<SomeDirective, "[someDirective]", never, { "someDirective": "someDirective"; }, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<SomeDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<SomeDirective, "[someDirective]", never, { "someDirective": "someDirective"; }, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -378,17 +378,17 @@ MyModule.ɵinj = i0.ɵɵngDeclareInjector({ version: "0.0.0-PLACEHOLDER", ngImpo
 import * as i0 from "@angular/core";
 export declare class SomeDirective {
     someDirective: any;
-    static ɵfac: i0.ɵɵFactoryDef<SomeDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<SomeDirective, "[someDirective]", never, { "someDirective": "someDirective"; }, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<SomeDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<SomeDirective, "[someDirective]", never, { "someDirective": "someDirective"; }, {}, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -435,17 +435,17 @@ import { EventEmitter } from '@angular/core';
 import * as i0 from "@angular/core";
 export declare class SomeDirective {
     someDirective: EventEmitter<unknown>;
-    static ɵfac: i0.ɵɵFactoryDef<SomeDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<SomeDirective, "[someDirective]", never, {}, { "someDirective": "someDirective"; }, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<SomeDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<SomeDirective, "[someDirective]", never, {}, { "someDirective": "someDirective"; }, never>;
 }
 export declare class MyComponent {
     noop(): void;
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never>;
 }
 export declare class MyModule {
-    static ɵfac: i0.ɵɵFactoryDef<MyModule, never>;
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof SomeDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
