@@ -3,7 +3,7 @@ import {removeListItem} from '../directives/shared';
 import {AsyncValidatorFn, ValidatorFn} from '../directives/validators';
 
 import {AbstractControl} from './abstract_control';
-import {FormArray as IFormArray, FormControl as IFormControl, FormControlOptions, FormGroup as IFormGroup} from './api';
+import {FormArray as IFormArray, FormControl as IFormControl, FormControlOptions, FormGroup as IFormGroup, FormState} from './api';
 import {isOptionsObj, pickAsyncValidators, pickValidators} from './util';
 
 const FormControlImpl = class FormControl extends AbstractControl implements IFormControl {
@@ -125,13 +125,15 @@ const FormControlImpl = class FormControl extends AbstractControl implements IFo
 }
 
 export interface FormControlCtor {
-  new(formState?: any, validatorOrOpts?: ValidatorFn|ValidatorFn[]|FormControlOptions|null,
-      asyncValidator?: AsyncValidatorFn|AsyncValidatorFn[]|null): IFormControl;
+  new<T = any>(value: FormState<T>|T, opts: FormControlOptions&{initialValueIsDefault: true}):
+      IFormControl<T>;
+  new<T = any>(
+      value: FormState<T>|T, validatorOrOpts?: ValidatorFn|ValidatorFn[]|FormControlOptions|null,
+      asyncValidator?: AsyncValidatorFn|AsyncValidatorFn[]|null): IFormControl<T|null>;
 }
 
 export const FormControl: FormControlCtor = FormControlImpl as FormControlCtor;
-export type FormControl = IFormControl;
-
+export type FormControl<ValueT = any> = IFormControl<ValueT>;
 
 export function getRawValue(control: AbstractControl): any {
   return control instanceof FormControlImpl ? control.value :

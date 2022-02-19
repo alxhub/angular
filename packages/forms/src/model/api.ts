@@ -9,6 +9,7 @@
 import {Observable} from 'rxjs';
 
 import {AsyncValidatorFn, ValidationErrors, ValidatorFn} from '../directives/validators';
+import { KeyIsRemovable } from './types';
 
 /**
  * Reports that a FormControl is valid, meaning that no errors exist in the input value.
@@ -117,7 +118,7 @@ export type FormHooks = 'change'|'blur'|'submit';
  *
  * @publicApi
  */
-export interface AbstractControl {
+export interface AbstractControl<ValueT = any, RawValueT extends ValueT = ValueT> {
   /**
    * The current value of the control.
    *
@@ -129,7 +130,7 @@ export interface AbstractControl {
    * * For a `FormArray`, the values of enabled controls as an array.
    *
    */
-  readonly value: any;
+  readonly value: ValueT;
 
   /**
    * Returns the function that is used to determine the validity of this control synchronously.
@@ -259,7 +260,7 @@ export interface AbstractControl {
    * the UI or programmatically. It also emits an event each time you call enable() or disable()
    * without passing along {emitEvent: false} as a function argument.
    */
-  readonly valueChanges: Observable<any>;
+  readonly valueChanges: Observable<ValueT>;
 
   /**
    * A multicasting observable that emits an event every time the validation `status` of the control
@@ -529,17 +530,17 @@ export interface AbstractControl {
   /**
    * Sets the value of the control. Abstract method (implemented in sub-classes).
    */
-  setValue(value: any, options?: Object): void;
+  setValue(value: RawValueT, options?: Object): void;
 
   /**
    * Patches the value of the control. Abstract method (implemented in sub-classes).
    */
-  patchValue(value: any, options?: Object): void;
+  patchValue(value: ValueT, options?: Object): void;
 
   /**
    * Resets the control. Abstract method (implemented in sub-classes).
    */
-  reset(value?: any, options?: Object): void;
+  reset(value?: ValueT, options?: Object): void;
 
   /**
    * Recalculates the value and validation status of the control.
@@ -753,6 +754,33 @@ export interface AbstractControl {
 }
 
 /**
+ * Value gives the type of `.value` in an `AbstractControl`.
+ *
+ * @publicApi
+ */
+ export type ControlValue<T extends AbstractControl|undefined> =
+ T extends AbstractControl<any, any>? T['value'] : never;
+
+/**
+* Value gives the type of `.getRawValue()` in an `AbstractControl`.
+*
+* @publicApi
+*/
+export type ControlRawValue<T extends AbstractControl|undefined> = T extends AbstractControl<any, any>?
+ (T['setValue'] extends((v: infer R) => void) ? R : never) :
+ never;
+
+ export type FormTypeSwitch<ValueT, TypedT, UntypedT> = never extends ValueT ? UntypedT : TypedT;
+
+/**
+ * FormState is a boxed form value. It is an object with a `value` key and a `disabled` key.
+ */
+ export interface FormState<T> {
+  value: T;
+  disabled: boolean;
+}
+
+/**
  * Tracks the value and validation status of an individual form control.
  *
  * This is one of the three fundamental building blocks of Angular forms, along with
@@ -851,13 +879,13 @@ export interface AbstractControl {
  * console.log(control.status); // 'DISABLED'
  * ```
  */
-export interface FormControl extends AbstractControl {
+export interface FormControl<ValueT = any> extends AbstractControl<ValueT> {
   /**
    * The default value of this FormControl, used whenever the control is reset without an explicit
    * value. See {@link FormControlOptions#initialValueIsDefault} for more information on configuring
    * a default value.
    */
-  readonly defaultValue: any;
+  readonly defaultValue: ValueT;
 
   /**
    * Sets a new value for the form control.
@@ -882,7 +910,7 @@ export interface FormControl extends AbstractControl {
    * event to update the model.
    *
    */
-  setValue(value: any, options?: {
+  setValue(value: ValueT, options?: {
     onlySelf?: boolean,
     emitEvent?: boolean,
     emitModelToViewChange?: boolean,
@@ -898,7 +926,7 @@ export interface FormControl extends AbstractControl {
    *
    * @see `setValue` for options
    */
-  patchValue(value: any, options?: {
+  patchValue(value: ValueT, options?: {
     onlySelf?: boolean,
     emitEvent?: boolean,
     emitModelToViewChange?: boolean,
@@ -938,7 +966,7 @@ export interface FormControl extends AbstractControl {
    * When false, no events are emitted.
    *
    */
-  reset(formState?: any, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
+  reset(formState?: ValueT|FormState<ValueT>, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
 
   /** @internal */
   _onChange: Function[];
@@ -948,7 +976,7 @@ export interface FormControl extends AbstractControl {
    * It is `any` because the value is untyped.
    * @internal
    */
-  _pendingValue: any;
+  _pendingValue: ValueT;
 
   /** @internal */
   _pendingChange: boolean;
@@ -1003,6 +1031,19 @@ export interface FormControl extends AbstractControl {
   /** @internal */
   _syncPendingControls(): boolean;
 }
+
+export type UntypedControls = {
+  [key: string]: AbstractControl<any>;
+};
+
+export type FormGroupTypeSwitch<ControlsT, TypedT, UntypedT> = UntypedControls extends ControlsT ? UntypedT : TypedT;
+
+export type FormGroupValue<ControlsT extends {[K in keyof ControlsT]: AbstractControl<ControlValue<ControlsT[K]>>}> = 
+  Partial<{[K in keyof ControlsT]: ControlValue<ControlsT[K]>}>;
+
+
+export type FormGroupRawValue<ControlsT extends {[K in keyof ControlsT]: AbstractControl<ControlValue<ControlsT[K]>>}> =
+  {[K in keyof ControlsT]: ControlRawValue<ControlsT[K]>};
 
 /**
  * Tracks the value and validity state of a group of `FormControl` instances.
@@ -1076,8 +1117,14 @@ export interface FormControl extends AbstractControl {
  *
  * @publicApi
  */
-export interface FormGroup extends AbstractControl {
-  readonly controls: {[key: string]: AbstractControl};
+export interface FormGroup<
+    ControlsT extends {[K in keyof ControlsT]: AbstractControl<ControlValue<ControlsT[K]>>} = UntypedControls>
+  extends AbstractControl<
+    FormGroupTypeSwitch<ControlsT, FormGroupValue<ControlsT>, any>,
+    FormGroupTypeSwitch<ControlsT, FormGroupRawValue<ControlsT>, any>
+  > {
+
+  readonly controls: ControlsT;
 
   /**
    * Registers a control with the group's list of controls.
@@ -1088,7 +1135,7 @@ export interface FormGroup extends AbstractControl {
    * @param name The control name to register in the collection
    * @param control Provides the control for the given name
    */
-  registerControl(name: string, control: AbstractControl): AbstractControl;
+  registerControl<K extends keyof ControlsT>(name: K, control: ControlsT[K]): AbstractControl;
 
   /**
    * Add a control to this group.
@@ -1105,7 +1152,7 @@ export interface FormGroup extends AbstractControl {
    * `valueChanges` observables emit events with the latest status and value when the control is
    * added. When false, no events are emitted.
    */
-  addControl(name: string, control: AbstractControl, options?: {emitEvent?: boolean}): void;
+  addControl<K extends keyof ControlsT>(name: K, control: Required<ControlsT>[K], options?: {emitEvent?: boolean}): void;
 
   /**
    * Remove a control from this group.
@@ -1119,7 +1166,7 @@ export interface FormGroup extends AbstractControl {
    * `valueChanges` observables emit events with the latest status and value when the control is
    * removed. When false, no events are emitted.
    */
-  removeControl(name: string, options?: {emitEvent?: boolean}): void;
+  removeControl<K extends string>(name: KeyIsRemovable<ControlsT, K>, options?: {emitEvent?: boolean}): void;
 
   /**
    * Replace an existing control.
@@ -1134,8 +1181,10 @@ export interface FormGroup extends AbstractControl {
    * `valueChanges` observables emit events with the latest status and value when the control is
    * replaced with a new one. When false, no events are emitted.
    */
-  setControl(name: string, control: AbstractControl, options?: {emitEvent?: boolean}): void;
+  setControl<K extends keyof ControlsT>(name: string, control: ControlsT[K], options?: {emitEvent?: boolean}): void;
 
+
+  // TODO(alxhub): note, I converted this back to a string - seems like we should be able to check for any key.
   /**
    * Check whether there is an enabled control with the given name in the group.
    *
@@ -1183,7 +1232,7 @@ export interface FormGroup extends AbstractControl {
    * observables emit events with the latest status and value when the control value is updated.
    * When false, no events are emitted.
    */
-  setValue(value: {[key: string]: any}, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
+  setValue(value: FormGroupTypeSwitch<ControlsT, FormGroupRawValue<ControlsT>, {[key: string]: any}>, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
 
   /**
    * Patches the value of the `FormGroup`. It accepts an object with control
@@ -1216,7 +1265,7 @@ export interface FormGroup extends AbstractControl {
    * is updated. When false, no events are emitted. The configuration options are passed to
    * the {@link AbstractControl#updateValueAndValidity updateValueAndValidity} method.
    */
-  patchValue(value: {[key: string]: any}, options?: {onlySelf?: boolean, emitEvent?: boolean}):
+  patchValue(value: FormGroupTypeSwitch<ControlsT, FormGroupValue<ControlsT>, {[key: string]: any}>, options?: {onlySelf?: boolean, emitEvent?: boolean}):
       void;
 
   /**
@@ -1276,7 +1325,7 @@ export interface FormGroup extends AbstractControl {
    * console.log(form.get('first').status);  // 'DISABLED'
    * ```
    */
-  reset(value?: any, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
+  reset(value?: FormGroupTypeSwitch<ControlsT, FormGroupValue<ControlsT>, any>, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
 
   /**
    * The aggregate value of the `FormGroup`, including any disabled controls.
@@ -1285,7 +1334,7 @@ export interface FormGroup extends AbstractControl {
    * The `value` property is the best way to get the value of the group, because
    * it excludes disabled controls in the `FormGroup`.
    */
-  getRawValue(): any;
+  getRawValue(): FormGroupTypeSwitch<ControlsT, FormGroupRawValue<ControlsT>, any>;
 
   /** @internal */
   _syncPendingControls(): boolean;
@@ -1311,7 +1360,6 @@ export interface FormGroup extends AbstractControl {
   /** @internal */
   _allControlsDisabled(): boolean;
 }
-
 
 /**
  * Tracks the value and validity state of an array of `FormControl`,
@@ -1377,8 +1425,8 @@ export interface FormGroup extends AbstractControl {
  *
  * @publicApi
  */
-export interface FormArray extends AbstractControl {
-  readonly controls: AbstractControl[];
+export interface FormArray<ControlT extends AbstractControl<any> = AbstractControl<any>> extends AbstractControl<ControlValue<ControlT>[]> {
+  readonly controls: ControlT[];
   /**
    * Length of the control array.
    */
@@ -1391,7 +1439,7 @@ export interface FormArray extends AbstractControl {
    *     around from the back, and if index is greatly negative (less than `-length`), the result is
    * undefined. This behavior is the same as `Array.at(index)`.
    */
-  at(index: number): AbstractControl;
+  at(index: number): ControlT;
 
   /**
    * Insert a new `AbstractControl` at the end of the array.
@@ -1403,7 +1451,7 @@ export interface FormArray extends AbstractControl {
    * `valueChanges` observables emit events with the latest status and value when the control is
    * inserted. When false, no events are emitted.
    */
-  push(control: AbstractControl, options?: {emitEvent?: boolean}): void;
+  push(control: ControlT, options?: {emitEvent?: boolean}): void;
 
   /**
    * Insert a new `AbstractControl` at the given `index` in the array.
@@ -1418,7 +1466,7 @@ export interface FormArray extends AbstractControl {
    * `valueChanges` observables emit events with the latest status and value when the control is
    * inserted. When false, no events are emitted.
    */
-  insert(index: number, control: AbstractControl, options?: {emitEvent?: boolean}): void;
+  insert(index: number, control: ControlT, options?: {emitEvent?: boolean}): void;
 
   /**
    * Remove the control at the given `index` in the array.
@@ -1447,7 +1495,7 @@ export interface FormArray extends AbstractControl {
    * `valueChanges` observables emit events with the latest status and value when the control is
    * replaced with a new one. When false, no events are emitted.
    */
-  setControl(index: number, control: AbstractControl, options?: {emitEvent?: boolean}): void;
+  setControl(index: number, control: ControlT, options?: {emitEvent?: boolean}): void;
 
   /**
    * Sets the value of the `FormArray`. It accepts an array that matches
@@ -1484,7 +1532,7 @@ export interface FormArray extends AbstractControl {
    * The configuration options are passed to the {@link AbstractControl#updateValueAndValidity
    * updateValueAndValidity} method.
    */
-  setValue(value: any[], options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
+  setValue(value: ControlRawValue<ControlT>[], options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
 
   /**
    * Patches the value of the `FormArray`. It accepts an array that matches the
@@ -1518,7 +1566,7 @@ export interface FormArray extends AbstractControl {
    * is updated. When false, no events are emitted. The configuration options are passed to
    * the {@link AbstractControl#updateValueAndValidity updateValueAndValidity} method.
    */
-  patchValue(value: any[], options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
+  patchValue(value: ControlValue<ControlT>[], options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
 
   /**
    * Resets the `FormArray` and all descendants are marked `pristine` and `untouched`, and the
@@ -1566,7 +1614,7 @@ export interface FormArray extends AbstractControl {
    * The configuration options are passed to the {@link AbstractControl#updateValueAndValidity
    * updateValueAndValidity} method.
    */
-  reset(value?: any, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
+  reset(value?: FormTypeSwitch<ControlValue<ControlT>, ControlValue<ControlT>[], any>, options?: {onlySelf?: boolean, emitEvent?: boolean}): void;
 
   /**
    * The aggregate value of the array, including any disabled controls.
@@ -1574,7 +1622,7 @@ export interface FormArray extends AbstractControl {
    * Reports all values regardless of disabled status.
    * For enabled controls only, the `value` property is the best way to get the value of the array.
    */
-  getRawValue(): any[];
+  getRawValue(): ControlRawValue<ControlT>[];
 
   /**
    * Remove all controls in the `FormArray`.

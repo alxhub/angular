@@ -460,4 +460,4 @@ type AbstractControlCtor = abstract new (
     asyncValidators: AsyncValidatorFn|AsyncValidatorFn[]|null) => IAbstractControl;
 
 export const AbstractControl: AbstractControlCtor = AbstractControlImpl as AbstractControlCtor;
-export type AbstractControl = IAbstractControl;
+export type AbstractControl<ValueT = any, RawValueT extends ValueT = any> = IAbstractControl<ValueT, RawValueT>;

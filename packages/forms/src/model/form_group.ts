@@ -5,11 +5,11 @@ import {AsyncValidatorFn, ValidatorFn} from '../directives/validators';
 import {RuntimeErrorCode} from '../errors';
 
 import {AbstractControl} from './abstract_control';
-import {AbstractControlOptions, FormArray as IFormArray, FormGroup as IFormGroup} from './api';
+import {AbstractControlOptions, ControlValue, FormArray as IFormArray, FormGroup as IFormGroup, UntypedControls} from './api';
 import {getRawValue} from './form_control';
 import {pickAsyncValidators, pickValidators} from './util';
 
-const FormGroupImpl = class FormGroup extends AbstractControl implements IFormGroup {
+const FormGroupImpl = class FormGroup extends AbstractControl implements IFormGroup<UntypedControls> {
   constructor(
       public controls: {[key: string]: AbstractControl},
       validatorOrOpts?: ValidatorFn|ValidatorFn[]|AbstractControlOptions|null,
@@ -27,7 +27,7 @@ const FormGroupImpl = class FormGroup extends AbstractControl implements IFormGr
     });
   }
 
-  registerControl(name: string, control: AbstractControl): AbstractControl {
+  registerControl<K extends string|number>(name: K, control: UntypedControls[K]): AbstractControl {
     if (this.controls[name]) return this.controls[name];
     this.controls[name] = control;
     control.setParent(this);
@@ -35,7 +35,7 @@ const FormGroupImpl = class FormGroup extends AbstractControl implements IFormGr
     return control;
   }
 
-  addControl(name: string, control: AbstractControl, options: {emitEvent?: boolean} = {}): void {
+  addControl<K extends string|number>(name: K, control: AbstractControl, options: {emitEvent?: boolean} = {}): void {
     this.registerControl(name, control);
     this.updateValueAndValidity({emitEvent: options.emitEvent});
     this._onCollectionChange();
@@ -175,13 +175,13 @@ const FormGroupImpl = class FormGroup extends AbstractControl implements IFormGr
 }
 
 export interface FormGroupCtor {
-  new(controls: {[key: string]: AbstractControl},
+  new<ControlsT extends {[K in keyof ControlsT]: AbstractControl<ControlValue<ControlsT[K]>>} = UntypedControls>(controls: ControlsT,
       validatorOrOpts?: ValidatorFn|ValidatorFn[]|AbstractControlOptions|null,
-      asyncValidator?: AsyncValidatorFn|AsyncValidatorFn[]|null): IFormGroup;
+      asyncValidator?: AsyncValidatorFn|AsyncValidatorFn[]|null): IFormGroup<ControlsT>;
 }
 
-export const FormGroup: FormGroupCtor = FormGroupImpl;
-export type FormGroup = IFormGroup;
+export const FormGroup: FormGroupCtor = FormGroupImpl as any;
+export type FormGroup<ControlsT extends {[K in keyof ControlsT]: AbstractControl<ControlValue<ControlsT[K]>>} = UntypedControls> = IFormGroup<ControlsT>;
 
 const NG_DEV_MODE = typeof ngDevMode === 'undefined' || !!ngDevMode;
 

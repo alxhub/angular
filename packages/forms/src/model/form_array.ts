@@ -174,10 +174,10 @@ const FormArrayImpl = class FormArray extends AbstractControl implements IFormAr
 };
 
 export interface FormArrayCtor {
-  new(controls: AbstractControl[],
+  new<ControlT extends AbstractControl<any>>(controls: ControlT[],
       validatorOrOpts?: ValidatorFn|ValidatorFn[]|AbstractControlOptions|null,
-      asyncValidator?: AsyncValidatorFn|AsyncValidatorFn[]|null): IFormArray;
+      asyncValidator?: AsyncValidatorFn|AsyncValidatorFn[]|null): IFormArray<ControlT>;
 }
 
-export const FormArray: FormArrayCtor = FormArrayImpl;
-export type FormArray = IFormArray;
+export const FormArray: FormArrayCtor = FormArrayImpl as any;
+export type FormArray<ControlT extends AbstractControl<any> = AbstractControl<any>> = IFormArray<ControlT>;
