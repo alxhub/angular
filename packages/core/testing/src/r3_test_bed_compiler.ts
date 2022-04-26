@@ -7,7 +7,7 @@
  */
 
 import {ResourceLoader} from '@angular/compiler';
-import {ApplicationInitStatus, Compiler, COMPILER_OPTIONS, Component, Directive, Injector, InjectorType, LOCALE_ID, ModuleWithComponentFactories, ModuleWithProviders, NgModule, NgModuleFactory, NgZone, Pipe, PlatformRef, Provider, resolveForwardRef, Type, ɵcompileComponent as compileComponent, ɵcompileDirective as compileDirective, ɵcompileNgModuleDefs as compileNgModuleDefs, ɵcompilePipe as compilePipe, ɵDEFAULT_LOCALE_ID as DEFAULT_LOCALE_ID, ɵDirectiveDef as DirectiveDef, ɵgetInjectableDef as getInjectableDef, ɵNG_COMP_DEF as NG_COMP_DEF, ɵNG_DIR_DEF as NG_DIR_DEF, ɵNG_INJ_DEF as NG_INJ_DEF, ɵNG_MOD_DEF as NG_MOD_DEF, ɵNG_PIPE_DEF as NG_PIPE_DEF, ɵNgModuleFactory as R3NgModuleFactory, ɵNgModuleTransitiveScopes as NgModuleTransitiveScopes, ɵNgModuleType as NgModuleType, ɵpatchComponentDefWithScope as patchComponentDefWithScope, ɵRender3ComponentFactory as ComponentFactory, ɵRender3NgModuleRef as NgModuleRef, ɵsetLocaleId as setLocaleId, ɵtransitiveScopesFor as transitiveScopesFor, ɵɵInjectableDeclaration as InjectableDeclaration} from '@angular/core';
+import {ApplicationInitStatus, Compiler, COMPILER_OPTIONS, Component, Directive, Injector, InjectorType, LOCALE_ID, ModuleWithComponentFactories, ModuleWithProviders, NgModule, NgModuleFactory, NgZone, Pipe, PlatformRef, Provider, resolveForwardRef, Type, ɵcompileComponent as compileComponent, ɵcompileDirective as compileDirective, ɵcompileNgModuleDefs as compileNgModuleDefs, ɵcompilePipe as compilePipe, ɵComponentDef as ComponentDef, ɵComponentType as ComponentType, ɵDEFAULT_LOCALE_ID as DEFAULT_LOCALE_ID, ɵDirectiveDef as DirectiveDef, ɵgetInjectableDef as getInjectableDef, ɵisStandalone as isStandalone, ɵNG_COMP_DEF as NG_COMP_DEF, ɵNG_DIR_DEF as NG_DIR_DEF, ɵNG_INJ_DEF as NG_INJ_DEF, ɵNG_MOD_DEF as NG_MOD_DEF, ɵNG_PIPE_DEF as NG_PIPE_DEF, ɵNgModuleFactory as R3NgModuleFactory, ɵNgModuleTransitiveScopes as NgModuleTransitiveScopes, ɵNgModuleType as NgModuleType, ɵpatchComponentDefWithScope as patchComponentDefWithScope, ɵRender3ComponentFactory as ComponentFactory, ɵRender3NgModuleRef as NgModuleRef, ɵsetLocaleId as setLocaleId, ɵtransitiveScopesFor as transitiveScopesFor, ɵɵInjectableDeclaration as InjectableDeclaration} from '@angular/core';
 
 import {clearResolutionOfComponentResourcesQueue, isComponentDefPendingResolution, resolveComponentResources, restoreComponentResolutionQueue} from '../../src/metadata/resource_loading';
 
@@ -469,7 +469,7 @@ export class R3TestBedCompiler {
     compileNgModuleDefs(ngModule as NgModuleType<any>, metadata);
   }
 
-  private queueType(type: Type<any>, moduleType: Type<any>|TestingModuleOverride): void {
+  private queueType(type: Type<any>, moduleType: Type<any>|TestingModuleOverride|null): void {
     const component = this.resolvers.component.resolve(type);
     if (component) {
       // Check whether a give Type has respective NG def (ɵcmp) and compile if def is
@@ -495,8 +495,9 @@ export class R3TestBedCompiler {
       // real module, which was imported. This pattern is understood to mean that the component
       // should use its original scope, but that the testing module should also contain the
       // component in its scope.
-      if (!this.componentToModuleScope.has(type) ||
-          this.componentToModuleScope.get(type) === TestingModuleOverride.DECLARATION) {
+      if (moduleType !== null &&
+          (!this.componentToModuleScope.has(type) ||
+           this.componentToModuleScope.get(type) === TestingModuleOverride.DECLARATION)) {
         this.componentToModuleScope.set(type, moduleType);
       }
       return;
@@ -540,6 +541,10 @@ export class R3TestBedCompiler {
           queueTypesFromModulesArrayRecur(maybeUnwrapFn(def.exports));
         } else if (isModuleWithProviders(value)) {
           queueTypesFromModulesArrayRecur([value.ngModule]);
+        } else if (isStandaloneComponent(value)) {
+          this.queueType(value, null);
+          const def = getComponentDef(value);
+          queueTypesFromModulesArrayRecur(maybeUnwrapFn(def.dependencies ?? []));
         }
       }
     };
@@ -779,6 +784,16 @@ function initResolvers(): Resolvers {
 
 function hasNgModuleDef<T>(value: Type<T>): value is NgModuleType<T> {
   return value.hasOwnProperty('ɵmod');
+}
+
+function isStandaloneComponent<T>(value: Type<T>): value is ComponentType<T> {
+  return value.hasOwnProperty('ɵcmp');
+}
+
+function getComponentDef(value: ComponentType<unknown>): ComponentDef<unknown>;
+function getComponentDef(value: Type<unknown>): ComponentDef<unknown>|null;
+function getComponentDef(value: Type<unknown>): ComponentDef<unknown>|null {
+  return (value as any).ɵcmp ?? null;
 }
 
 function maybeUnwrapFn<T>(maybeFn: (() => T)|T): T {
