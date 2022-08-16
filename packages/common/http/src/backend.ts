@@ -6,9 +6,12 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {Injectable} from '@angular/core';
 import {Observable} from 'rxjs';
+
 import {HttpRequest} from './request';
 import {HttpEvent} from './response';
+import {HttpXhrBackend} from './xhr';
 
 /**
  * Transforms an `HttpRequest` into a stream of `HttpEvent`s, one of which will likely be a
@@ -36,6 +39,10 @@ export abstract class HttpHandler {
  *
  * @publicApi
  */
+@Injectable({
+  providedIn: 'root',
+  useExisting: HttpXhrBackend,
+})
 export abstract class HttpBackend implements HttpHandler {
   abstract handle(req: HttpRequest<any>): Observable<HttpEvent<any>>;
 }
