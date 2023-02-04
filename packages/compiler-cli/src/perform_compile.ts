@@ -247,17 +247,20 @@ export function performCompilation<CbEmitRes extends ts.EmitResult = ts.EmitResu
     program = ng.createProgram({rootNames, host, options, oldProgram});
 
     const beforeDiags = Date.now();
-    allDiagnostics.push(...gatherDiagnostics(program!));
-    if (options.diagnostics) {
-      const afterDiags = Date.now();
-      allDiagnostics.push(
-          createMessageDiagnostic(`Time for diagnostics: ${afterDiags - beforeDiags}ms.`));
+    if (!options.singleFile) {
+      allDiagnostics.push(...gatherDiagnostics(program!));
+      if (options.diagnostics) {
+        const afterDiags = Date.now();
+        allDiagnostics.push(
+            createMessageDiagnostic(`Time for diagnostics: ${afterDiags - beforeDiags}ms.`));
+      }
     }
-
-    if (!hasErrors(allDiagnostics)) {
+    if (options.singleFile || !hasErrors(allDiagnostics)) {
       emitResult = program!.emit(
           {emitCallback, mergeEmitResultsCallback, customTransformers, emitFlags, forceEmit});
-      allDiagnostics.push(...emitResult.diagnostics);
+      if (!options.singleFile) {
+        allDiagnostics.push(...emitResult.diagnostics);
+      }
       return {diagnostics: allDiagnostics, program, emitResult};
     }
     return {diagnostics: allDiagnostics, program};

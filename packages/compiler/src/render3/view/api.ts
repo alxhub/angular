@@ -171,6 +171,8 @@ export const enum DeclarationListEmitMode {
    * ```
    */
   ClosureResolved,
+
+  RuntimeResolved,
 }
 
 /**
@@ -194,7 +196,7 @@ export interface R3ComponentMetadata<DeclarationT extends R3TemplateDependency> 
     ngContentSelectors: string[];
   };
 
-  declarations: DeclarationT[];
+  declarations: DeclarationT[]|o.Expression;
 
   /**
    * Specifies how the 'directives' and/or `pipes` array, if generated, need to be emitted.

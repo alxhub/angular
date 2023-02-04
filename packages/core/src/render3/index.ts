@@ -15,6 +15,7 @@ import {ɵɵProvidersFeature} from './features/providers_feature';
 import {ɵɵStandaloneFeature} from './features/standalone_feature';
 import {ComponentDef, ComponentTemplate, ComponentType, DirectiveDef, DirectiveType, PipeDef} from './interfaces/definition';
 import {ɵɵComponentDeclaration, ɵɵDirectiveDeclaration, ɵɵFactoryDeclaration, ɵɵInjectorDeclaration, ɵɵNgModuleDeclaration, ɵɵPipeDeclaration} from './interfaces/public_definitions';
+import {ɵɵmakeRuntimeResolverFn, ɵɵpropagateNgModuleToDeclarations} from './runtime_deps';
 import {ComponentDebugMetadata, DirectiveDebugMetadata, getComponent, getDirectiveMetadata, getDirectives, getHostElement, getRenderedText} from './util/discovery_utils';
 
 export {NgModuleType} from '../metadata/ng_module_def';
@@ -206,9 +207,11 @@ export {
   ɵɵHostDirectivesFeature,
   ɵɵInheritDefinitionFeature,
   ɵɵInjectorDeclaration,
+  ɵɵmakeRuntimeResolverFn,
   ɵɵNgModuleDeclaration,
   ɵɵNgOnChangesFeature,
   ɵɵPipeDeclaration,
+  ɵɵpropagateNgModuleToDeclarations,
   ɵɵProvidersFeature,
   ɵɵsetComponentScope,
   ɵɵsetNgModuleScope,

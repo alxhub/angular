@@ -131,8 +131,9 @@ export class NgModuleDecoratorHandler implements
       private metaReader: MetadataReader, private metaRegistry: MetadataRegistry,
       private scopeRegistry: LocalModuleScopeRegistry,
       private referencesRegistry: ReferencesRegistry, private isCore: boolean,
-      private refEmitter: ReferenceEmitter, private factoryTracker: FactoryTracker|null,
-      private annotateForClosureCompiler: boolean, private onlyPublishPublicTypings: boolean,
+      private singleFileMode: boolean, private refEmitter: ReferenceEmitter,
+      private factoryTracker: FactoryTracker|null, private annotateForClosureCompiler: boolean,
+      private onlyPublishPublicTypings: boolean,
       private injectableRegistry: InjectableClassRegistry, private perf: PerfRecorder) {}
 
   readonly precedence = HandlerPrecedence.PRIMARY;
@@ -194,23 +195,26 @@ export class NgModuleDecoratorHandler implements
     let rawDeclarations: ts.Expression|null = null;
     if (ngModule.has('declarations')) {
       rawDeclarations = ngModule.get('declarations')!;
-      const declarationMeta = this.evaluator.evaluate(rawDeclarations, forwardRefResolver);
-      declarationRefs =
-          this.resolveTypeList(rawDeclarations, declarationMeta, name, 'declarations', 0)
-              .references;
 
-      // Look through the declarations to make sure they're all a part of the current compilation.
-      for (const ref of declarationRefs) {
-        if (ref.node.getSourceFile().isDeclarationFile) {
-          const errorNode = ref.getOriginForDiagnostics(rawDeclarations);
+      if (!this.singleFileMode) {
+        const declarationMeta = this.evaluator.evaluate(rawDeclarations, forwardRefResolver);
+        declarationRefs =
+            this.resolveTypeList(rawDeclarations, declarationMeta, name, 'declarations', 0)
+                .references;
 
-          diagnostics.push(makeDiagnostic(
-              ErrorCode.NGMODULE_INVALID_DECLARATION, errorNode,
-              `Cannot declare '${
-                  ref.node.name
-                      .text}' in an NgModule as it's not a part of the current compilation.`,
-              [makeRelatedInformation(
-                  ref.node.name, `'${ref.node.name.text}' is declared here.`)]));
+        // Look through the declarations to make sure they're all a part of the current compilation.
+        for (const ref of declarationRefs) {
+          if (ref.node.getSourceFile().isDeclarationFile) {
+            const errorNode = ref.getOriginForDiagnostics(rawDeclarations);
+
+            diagnostics.push(makeDiagnostic(
+                ErrorCode.NGMODULE_INVALID_DECLARATION, errorNode,
+                `Cannot declare '${
+                    ref.node.name
+                        .text}' in an NgModule as it's not a part of the current compilation.`,
+                [makeRelatedInformation(
+                    ref.node.name, `'${ref.node.name.text}' is declared here.`)]));
+          }
         }
       }
     }
@@ -223,19 +227,23 @@ export class NgModuleDecoratorHandler implements
     let rawImports: ts.Expression|null = null;
     if (ngModule.has('imports')) {
       rawImports = ngModule.get('imports')!;
-      const importsMeta = this.evaluator.evaluate(rawImports, moduleResolvers);
-      importRefs = this.resolveTypeList(rawImports, importsMeta, name, 'imports', 0).references;
+      if (!this.singleFileMode) {
+        const importsMeta = this.evaluator.evaluate(rawImports, moduleResolvers);
+        importRefs = this.resolveTypeList(rawImports, importsMeta, name, 'imports', 0).references;
+      }
     }
     let exportRefs: Reference<ClassDeclaration>[] = [];
     let rawExports: ts.Expression|null = null;
     if (ngModule.has('exports')) {
       rawExports = ngModule.get('exports')!;
-      const exportsMeta = this.evaluator.evaluate(rawExports, moduleResolvers);
-      exportRefs = this.resolveTypeList(rawExports, exportsMeta, name, 'exports', 0).references;
-      this.referencesRegistry.add(node, ...exportRefs);
+      if (!this.singleFileMode) {
+        const exportsMeta = this.evaluator.evaluate(rawExports, moduleResolvers);
+        exportRefs = this.resolveTypeList(rawExports, exportsMeta, name, 'exports', 0).references;
+        this.referencesRegistry.add(node, ...exportRefs);
+      }
     }
     let bootstrapRefs: Reference<ClassDeclaration>[] = [];
-    if (ngModule.has('bootstrap')) {
+    if (ngModule.has('bootstrap') && !this.singleFileMode) {
       const expr = ngModule.get('bootstrap')!;
       const bootstrapMeta = this.evaluator.evaluate(expr, forwardRefResolver);
       bootstrapRefs = this.resolveTypeList(expr, bootstrapMeta, name, 'bootstrap', 0).references;
@@ -249,7 +257,7 @@ export class NgModuleDecoratorHandler implements
       }
     }
 
-    const schemas = ngModule.has('schemas') ?
+    const schemas = !this.singleFileMode && ngModule.has('schemas') ?
         extractSchemas(ngModule.get('schemas')!, this.evaluator, 'NgModule') :
         [];
 
@@ -317,9 +325,12 @@ export class NgModuleDecoratorHandler implements
       adjacentType,
       bootstrap,
       declarations,
+      rawDeclarations: rawDeclarations !== null ? new WrappedNodeExpr(rawDeclarations) : null,
       publicDeclarationTypes: this.onlyPublishPublicTypings ? exportedDeclarations : null,
       exports,
+      rawExports: rawExports !== null ? new WrappedNodeExpr(rawExports) : null,
       imports,
+      rawImports: rawImports !== null ? new WrappedNodeExpr(rawImports) : null,
       // Imported types are generally private, so include them unless restricting the .d.ts emit to
       // only public types.
       includeImportTypes: !this.onlyPublishPublicTypings,
@@ -345,7 +356,7 @@ export class NgModuleDecoratorHandler implements
     }
 
     const topLevelImports: TopLevelImportedExpression[] = [];
-    if (ngModule.has('imports')) {
+    if (ngModule.has('imports') && !this.singleFileMode) {
       const rawImports = unwrapExpression(ngModule.get('imports')!);
 
       let topLevelExpressions: ts.Expression[] = [];
@@ -482,6 +493,13 @@ export class NgModuleDecoratorHandler implements
 
   resolve(node: ClassDeclaration, analysis: Readonly<NgModuleAnalysis>):
       ResolveResult<NgModuleResolution> {
+    const data: NgModuleResolution = {
+      injectorImports: [],
+    };
+    if (this.singleFileMode) {
+      return {data};
+    }
+
     const scope = this.scopeRegistry.getScopeOfModule(node);
     const diagnostics: ts.Diagnostic[] = [];
 
@@ -495,10 +513,6 @@ export class NgModuleDecoratorHandler implements
           analysis.providersRequiringFactory, analysis.providers!, this.injectableRegistry);
       diagnostics.push(...providerDiagnostics);
     }
-
-    const data: NgModuleResolution = {
-      injectorImports: [],
-    };
 
     // Add all top-level imports from the `imports` field to the injector imports.
     for (const topLevelImport of analysis.imports) {
@@ -600,6 +614,13 @@ export class NgModuleDecoratorHandler implements
     this.insertMetadataStatement(statements, metadata);
     this.appendRemoteScopingStatements(
         statements, node, declarations, remoteScopesMayRequireCycleProtection);
+
+    if (this.singleFileMode) {
+      statements.push(
+          new InvokeFunctionExpr(new ExternalExpr(R3Identifiers.propagateNgModuleToDeclarations), [
+            new WrappedNodeExpr(node.name)
+          ]).toStmt());
+    }
 
     return this.compileNgModule(factoryFn, ngInjectorDef, ngModuleDef);
   }

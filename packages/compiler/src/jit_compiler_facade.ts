@@ -135,6 +135,9 @@ export class CompilerFacadeImpl implements CompilerFacade {
       declarations: facade.declarations.map(wrapReference),
       publicDeclarationTypes: null,  // only needed for types in AOT
       imports: facade.imports.map(wrapReference),
+      rawDeclarations: null,
+      rawImports: null,
+      rawExports: null,
       includeImportTypes: true,
       exports: facade.exports.map(wrapReference),
       selectorScopeMode: R3SelectorScopeMode.Inline,

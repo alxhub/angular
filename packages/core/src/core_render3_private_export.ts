@@ -123,6 +123,7 @@ export {
   ɵɵinvalidFactory,
   ɵɵlistener,
   ɵɵloadQuery,
+  ɵɵmakeRuntimeResolverFn,
   ɵɵnamespaceHTML,
   ɵɵnamespaceMathML,
   ɵɵnamespaceSVG,
@@ -168,7 +169,7 @@ export {
   ɵɵresolveDocument,
   ɵɵresolveWindow,
   ɵɵrestoreView,
-
+  ɵɵpropagateNgModuleToDeclarations,
   ɵɵsetComponentScope,
   ɵɵsetNgModuleScope,
   ɵɵStandaloneFeature,

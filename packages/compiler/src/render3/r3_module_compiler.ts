@@ -81,6 +81,8 @@ export interface R3NgModuleMetadata {
    */
   declarations: R3Reference[];
 
+  rawDeclarations: o.Expression|null;
+
   /**
    * Those declarations which should be visible to downstream consumers. If not specified, all
    * declarations are made visible to downstream consumers.
@@ -92,6 +94,8 @@ export interface R3NgModuleMetadata {
    */
   imports: R3Reference[];
 
+  rawImports: o.Expression|null;
+
   /**
    * Whether or not to include `imports` in generated type declarations.
    */
@@ -101,6 +105,8 @@ export interface R3NgModuleMetadata {
    * An array of expressions representing the exports of the module.
    */
   exports: R3Reference[];
+
+  rawExports: o.Expression|null;
 
   /**
    * How to emit the selector scope values (declarations, imports, exports).
@@ -277,21 +283,22 @@ export function createNgModuleType(
  * symbols to become tree-shakeable.
  */
 function generateSetNgModuleScopeCall(meta: R3NgModuleMetadata): o.Statement|null {
-  const {adjacentType: moduleType, declarations, imports, exports, containsForwardDecls} = meta;
+  const {adjacentType: moduleType, rawDeclarations, rawImports, rawExports, containsForwardDecls} =
+      meta;
 
   const scopeMap = new DefinitionMap<
       {declarations: o.Expression, imports: o.Expression, exports: o.Expression}>();
 
-  if (declarations.length > 0) {
-    scopeMap.set('declarations', refsToArray(declarations, containsForwardDecls));
+  if (rawDeclarations !== null) {
+    scopeMap.set('declarations', rawDeclarations);
   }
 
-  if (imports.length > 0) {
-    scopeMap.set('imports', refsToArray(imports, containsForwardDecls));
+  if (rawImports !== null) {
+    scopeMap.set('imports', rawImports);
   }
 
-  if (exports.length > 0) {
-    scopeMap.set('exports', refsToArray(exports, containsForwardDecls));
+  if (rawExports !== null) {
+    scopeMap.set('exports', rawExports);
   }
 
   if (Object.keys(scopeMap.values).length === 0) {

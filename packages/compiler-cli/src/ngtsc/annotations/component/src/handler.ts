@@ -55,9 +55,9 @@ export class ComponentDecoratorHandler implements
       private rootDirs: ReadonlyArray<string>, private defaultPreserveWhitespaces: boolean,
       private i18nUseExternalIds: boolean, private enableI18nLegacyMessageIdFormat: boolean,
       private usePoisonedData: boolean, private i18nNormalizeLineEndingsInICUs: boolean,
-      private moduleResolver: ModuleResolver, private cycleAnalyzer: CycleAnalyzer,
-      private cycleHandlingStrategy: CycleHandlingStrategy, private refEmitter: ReferenceEmitter,
-      private depTracker: DependencyTracker|null,
+      private singleFileMode: boolean, private moduleResolver: ModuleResolver,
+      private cycleAnalyzer: CycleAnalyzer, private cycleHandlingStrategy: CycleHandlingStrategy,
+      private refEmitter: ReferenceEmitter, private depTracker: DependencyTracker|null,
       private injectableRegistry: InjectableClassRegistry,
       private semanticDepGraphUpdater: SemanticDepGraphUpdater|null,
       private annotateForClosureCompiler: boolean, private perf: PerfRecorder,
@@ -270,23 +270,28 @@ export class ComponentDecoratorHandler implements
       isPoisoned = true;
     } else if (component.has('imports')) {
       const expr = component.get('imports')!;
-      const importResolvers = combineResolvers([
-        createModuleWithProvidersResolver(this.reflector, this.isCore),
-        forwardRefResolver,
-      ]);
-      const imported = this.evaluator.evaluate(expr, importResolvers);
-      const {imports: flattened, diagnostics: importDiagnostics} =
-          validateAndFlattenComponentImports(imported, expr);
-
-      resolvedImports = flattened;
       rawImports = expr;
 
-      if (importDiagnostics.length > 0) {
-        isPoisoned = true;
-        if (diagnostics === undefined) {
-          diagnostics = [];
+      if (!this.singleFileMode) {
+        const importResolvers = combineResolvers([
+          createModuleWithProvidersResolver(this.reflector, this.isCore),
+          forwardRefResolver,
+        ]);
+        const imported = this.evaluator.evaluate(expr, importResolvers);
+        const {imports: flattened, diagnostics: importDiagnostics} =
+            validateAndFlattenComponentImports(imported, expr);
+
+        resolvedImports = flattened;
+
+        if (importDiagnostics.length > 0) {
+          isPoisoned = true;
+          if (diagnostics === undefined) {
+            diagnostics = [];
+          }
+          diagnostics.push(...importDiagnostics);
         }
-        diagnostics.push(...importDiagnostics);
+      } else {
+        resolvedImports = null;
       }
     }
 
@@ -579,6 +584,24 @@ export class ComponentDecoratorHandler implements
       return {};
     }
 
+    if (this.singleFileMode) {
+      if (analysis.rawImports !== null) {
+        return {
+          data: {
+            declarations: new WrappedNodeExpr(analysis.rawImports),
+            declarationListEmitMode: DeclarationListEmitMode.RuntimeResolved,
+          },
+        };
+      } else {
+        return {
+          data: {
+            declarations: EMPTY_ARRAY,
+            declarationListEmitMode: DeclarationListEmitMode.Direct,
+          },
+        };
+      }
+    }
+
     const context = getSourceFile(node);
     const metadata = analysis.meta as Readonly<R3ComponentMetadata<R3TemplateDependencyMetadata>>;
 
@@ -589,7 +612,7 @@ export class ComponentDecoratorHandler implements
     };
     const diagnostics: ts.Diagnostic[] = [];
 
-    const scope = this.scopeReader.getScopeForComponent(node);
+    const scope = !this.singleFileMode ? this.scopeReader.getScopeForComponent(node) : null;
     if (scope !== null) {
       // Replace the empty components and directives from the analyze() step with a fully expanded
       // scope. This is possible now because during resolve() the whole compilation unit has been

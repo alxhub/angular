@@ -286,6 +286,8 @@ export interface DiagnosticOptions {
      */
     checks?: {[Name in ExtendedTemplateDiagnosticName]?: DiagnosticCategoryLabel};
   };
+
+  singleFile?: boolean;
 }
 
 /**

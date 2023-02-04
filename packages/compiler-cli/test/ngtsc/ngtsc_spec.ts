@@ -40,7 +40,7 @@ function getDiagnosticSourceCode(diag: ts.Diagnostic): string {
   return diag.file!.text.slice(diag.start!, diag.start! + diag.length!);
 }
 
-runInEachFileSystem(allTests);
+runInEachFileSystem.native(allTests);
 
 // Wrap all tests into a function to work around clang-format going crazy and (poorly)
 // reformatting the entire file.
@@ -51,6 +51,36 @@ function allTests(os: string) {
     beforeEach(() => {
       env = NgtscTestEnvironment.setup(testFiles);
       env.tsconfig();
+    });
+
+    fit('should compile in single-file mode', () => {
+      env.tsconfig({singleFile: true});
+      env.write('app.ts', `
+        import {Component, NgModule} from '@angular/core';
+        import {CommonModule} from '@angular/common';
+
+        import {DeclaredA, DeclaredB} from './other-file';
+
+        @Component({
+          selector: 'test-cmp',
+          standalone: true,
+          template: '<h1 *ngIf="showMe">Hello World</h1>',
+          imports: [CommonModule],
+        })
+        export class AppCmp {
+          showMe = true;
+        }
+
+        @NgModule({
+          declarations: [DeclaredA, DeclaredB],
+          imports: [AppCmp, CommonModule],
+          exports: [DeclaredA],
+        })
+        export class AppModule {}
+      `);
+      env.enableSingleFile();
+      env.driveMain();
+      fail(env.getContents('app.js'));
     });
 
     it('should accept relative file paths as command line argument', () => {

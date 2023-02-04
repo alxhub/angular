@@ -236,6 +236,10 @@ export class Identifiers {
   static InjectableDeclaration:
       o.ExternalReference = {name: 'ɵɵInjectableDeclaration', moduleName: CORE};
 
+  static makeRuntimeResolverFn:
+      o.ExternalReference = {name: 'ɵɵmakeRuntimeResolverFn', moduleName: CORE};
+  static propagateNgModuleToDeclarations:
+      o.ExternalReference = {name: 'ɵɵpropagateNgModuleToDeclarations', moduleName: CORE};
   static resolveWindow: o.ExternalReference = {name: 'ɵɵresolveWindow', moduleName: CORE};
   static resolveDocument: o.ExternalReference = {name: 'ɵɵresolveDocument', moduleName: CORE};
   static resolveBody: o.ExternalReference = {name: 'ɵɵresolveBody', moduleName: CORE};

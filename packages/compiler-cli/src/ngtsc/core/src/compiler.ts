@@ -1028,8 +1028,8 @@ export class NgCompiler {
           this.resourceManager, this.adapter.rootDirs, this.options.preserveWhitespaces || false,
           this.options.i18nUseExternalIds !== false,
           this.options.enableI18nLegacyMessageIdFormat !== false, this.usePoisonedData,
-          this.options.i18nNormalizeLineEndingsInICUs === true, this.moduleResolver,
-          this.cycleAnalyzer, cycleHandlingStrategy, refEmitter,
+          this.options.i18nNormalizeLineEndingsInICUs === true, !!this.options.singleFile,
+          this.moduleResolver, this.cycleAnalyzer, cycleHandlingStrategy, refEmitter,
           this.incrementalCompilation.depGraph, injectableRegistry, semanticDepGraphUpdater,
           this.closureCompilerEnabled, this.delegatingPerfRecorder, hostDirectivesResolver),
 
@@ -1053,9 +1053,9 @@ export class NgCompiler {
           this.delegatingPerfRecorder),
       new NgModuleDecoratorHandler(
           reflector, evaluator, metaReader, metaRegistry, ngModuleScopeRegistry, referencesRegistry,
-          isCore, refEmitter, this.adapter.factoryTracker, this.closureCompilerEnabled,
-          this.options.onlyPublishPublicTypingsForNgModules ?? false, injectableRegistry,
-          this.delegatingPerfRecorder),
+          isCore, !!this.options.singleFile, refEmitter, this.adapter.factoryTracker,
+          this.closureCompilerEnabled, this.options.onlyPublishPublicTypingsForNgModules ?? false,
+          injectableRegistry, this.delegatingPerfRecorder),
     ];
 
     const traitCompiler = new TraitCompiler(

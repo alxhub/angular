@@ -110,6 +110,35 @@ export class NgtscTestEnvironment {
     setWrapHostForTest(makeWrapHost(this.multiCompileHostExt));
   }
 
+  enableSingleFile(): void {
+    setWrapHostForTest(makeWrapHost(new SingleFileHostExt(this.fs)));
+
+    this.write(absoluteFrom('/tsconfig-base.json'), `{
+      "compilerOptions": {
+        "emitDecoratorMetadata": false,
+        "experimentalDecorators": true,
+        "skipLibCheck": true,
+        "noImplicitAny": true,
+        "noEmitOnError": false,
+        "strictNullChecks": true,
+        "outDir": "built",
+        "rootDir": ".",
+        "baseUrl": ".",
+        "allowJs": true,
+        "declaration": true,
+        "target": "es2015",
+        "newLine": "lf",
+        "module": "es2015",
+        "moduleResolution": "node",
+        "lib": [],
+        "typeRoots": ["node_modules/@types"]
+      },
+      "exclude": [
+        "built"
+      ]
+    }`);
+  }
+
   /**
    * Installs a compiler host that allows for asynchronous reading of resources by implementing the
    * `CompilerHost.readResource` method. Note that only asynchronous compilations are affected, as
@@ -332,6 +361,32 @@ class FileNameToModuleNameHost extends AugmentedCompilerHost {
               moduleName, containingFile, options, this, /* cache */ undefined, redirectedReference)
           .resolvedModule;
     });
+  }
+}
+
+class SingleFileHostExt extends AugmentedCompilerHost implements Partial<ts.CompilerHost> {
+  override getSourceFile(fileName: string, languageVersion: ts.ScriptTarget): ts.SourceFile
+      |undefined {
+    if (fileName.endsWith('.d.ts')) {
+      return undefined;
+    }
+
+    return super.getSourceFile(fileName, languageVersion);
+  }
+
+  override fileExists(fileName: string): boolean {
+    if (fileName.endsWith('.d.ts')) {
+      return false;
+    }
+
+    return super.fileExists(fileName);
+  }
+
+  override readFile(fileName: string): string|undefined {
+    if (fileName.endsWith('.d.ts')) {
+      return undefined;
+    }
+    return super.readFile(fileName);
   }
 }
 

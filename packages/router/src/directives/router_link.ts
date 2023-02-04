@@ -7,7 +7,7 @@
  */
 
 import {LocationStrategy} from '@angular/common';
-import {Attribute, Directive, ElementRef, HostBinding, HostListener, Input, OnChanges, OnDestroy, Renderer2, SimpleChanges, ɵcoerceToBoolean as coerceToBoolean, ɵɵsanitizeUrlOrResourceUrl} from '@angular/core';
+import {Attribute, Directive, ElementRef, HostBinding, HostListener, OnChanges, OnDestroy, Renderer2, SimpleChanges, ɵcoerceToBoolean as coerceToBoolean, ɵɵsanitizeUrlOrResourceUrl} from '@angular/core';
 import {Subject, Subscription} from 'rxjs';
 
 import {Event, NavigationEnd} from '../events';
@@ -134,7 +134,7 @@ export class RouterLink implements OnChanges, OnDestroy {
    * Represents the `target` attribute on a host element.
    * This is only used when the host element is an `<a>` tag.
    */
-  @HostBinding('attr.target') @Input() target?: string;
+  @HostBinding('attr.target') target?: string;
 
   /**
    * Passed to {@link Router#createUrlTree Router#createUrlTree} as part of the
@@ -142,28 +142,28 @@ export class RouterLink implements OnChanges, OnDestroy {
    * @see {@link UrlCreationOptions#queryParams UrlCreationOptions#queryParams}
    * @see {@link Router#createUrlTree Router#createUrlTree}
    */
-  @Input() queryParams?: Params|null;
+  queryParams?: Params|null;
   /**
    * Passed to {@link Router#createUrlTree Router#createUrlTree} as part of the
    * `UrlCreationOptions`.
    * @see {@link UrlCreationOptions#fragment UrlCreationOptions#fragment}
    * @see {@link Router#createUrlTree Router#createUrlTree}
    */
-  @Input() fragment?: string;
+  fragment?: string;
   /**
    * Passed to {@link Router#createUrlTree Router#createUrlTree} as part of the
    * `UrlCreationOptions`.
    * @see {@link UrlCreationOptions#queryParamsHandling UrlCreationOptions#queryParamsHandling}
    * @see {@link Router#createUrlTree Router#createUrlTree}
    */
-  @Input() queryParamsHandling?: QueryParamsHandling|null;
+  queryParamsHandling?: QueryParamsHandling|null;
   /**
    * Passed to {@link Router#navigateByUrl Router#navigateByUrl} as part of the
    * `NavigationBehaviorOptions`.
    * @see {@link NavigationBehaviorOptions#state NavigationBehaviorOptions#state}
    * @see {@link Router#navigateByUrl Router#navigateByUrl}
    */
-  @Input() state?: {[k: string]: any};
+  state?: {[k: string]: any};
   /**
    * Passed to {@link Router#createUrlTree Router#createUrlTree} as part of the
    * `UrlCreationOptions`.
@@ -173,7 +173,7 @@ export class RouterLink implements OnChanges, OnDestroy {
    * @see {@link UrlCreationOptions#relativeTo UrlCreationOptions#relativeTo}
    * @see {@link Router#createUrlTree Router#createUrlTree}
    */
-  @Input() relativeTo?: ActivatedRoute|null;
+  relativeTo?: ActivatedRoute|null;
 
   private commands: any[]|null = null;
 
@@ -204,30 +204,9 @@ export class RouterLink implements OnChanges, OnDestroy {
     }
   }
 
-  /**
-   * Passed to {@link Router#createUrlTree Router#createUrlTree} as part of the
-   * `UrlCreationOptions`.
-   * @see {@link UrlCreationOptions#preserveFragment UrlCreationOptions#preserveFragment}
-   * @see {@link Router#createUrlTree Router#createUrlTree}
-   */
-  @Input()
-  set preserveFragment(preserveFragment: boolean|string|null|undefined) {
-    this._preserveFragment = coerceToBoolean(preserveFragment);
-  }
 
   get preserveFragment(): boolean {
     return this._preserveFragment;
-  }
-
-  /**
-   * Passed to {@link Router#navigateByUrl Router#navigateByUrl} as part of the
-   * `NavigationBehaviorOptions`.
-   * @see {@link NavigationBehaviorOptions#skipLocationChange NavigationBehaviorOptions#skipLocationChange}
-   * @see {@link Router#navigateByUrl Router#navigateByUrl}
-   */
-  @Input()
-  set skipLocationChange(skipLocationChange: boolean|string|null|undefined) {
-    this._skipLocationChange = coerceToBoolean(skipLocationChange);
   }
 
   get skipLocationChange(): boolean {
