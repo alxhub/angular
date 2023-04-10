@@ -98,6 +98,17 @@ describe('signals', () => {
     expect(derived()).toEqual('object:5');
   });
 
+  it('should expose a readonly variant which does not allow mutation even via a cast', () => {
+    const counter = signal(0);
+    const readonlyCounter = counter.asReadonly();
+    expect(readonlyCounter).not.toBe(counter);
+    expect((readonlyCounter as typeof counter).set).toBeUndefined();
+
+    expect(readonlyCounter()).toBe(0);
+    counter.set(1);
+    expect(readonlyCounter()).toBe(1);
+  });
+
   describe('post-signal-set functions', () => {
     let prevPostSignalSetFn: (() => void)|null = null;
     let log: number;

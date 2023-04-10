@@ -40,6 +40,12 @@ export interface WritableSignal<T> extends Signal<T> {
    * notify any dependents.
    */
   mutate(mutatorFn: (value: T) => void): void;
+
+  /**
+   * Return a non-writable `Signal` which accesses this `WritableSignal` but does not allow
+   * mutation.
+   */
+  asReadonly(): Signal<T>;
 }
 
 class WritableSignalImpl<T> extends ReactiveNode {
@@ -133,11 +139,13 @@ export function signal<T>(initialValue: T, options?: CreateSignalOptions<T>): Wr
 
   // Casting here is required for g3, as TS inference behavior is slightly different between our
   // version/options and g3's.
-  const signalFn = createSignalFromFunction(signalNode, signalNode.signal.bind(signalNode), {
-                     set: signalNode.set.bind(signalNode),
-                     update: signalNode.update.bind(signalNode),
-                     mutate: signalNode.mutate.bind(signalNode),
-                   }) as unknown as WritableSignal<T>;
+  const signalFn =
+      createSignalFromFunction(signalNode, signalNode.signal.bind(signalNode), {
+        set: signalNode.set.bind(signalNode),
+        update: signalNode.update.bind(signalNode),
+        mutate: signalNode.mutate.bind(signalNode),
+        asReadonly: () => createSignalFromFunction(signalNode, signalNode.signal.bind(signalNode)),
+      }) as unknown as WritableSignal<T>;
   return signalFn;
 }
 
