@@ -38,13 +38,20 @@ function MyComponent_ng_template_2_Template(rf, ctx) {
 }
 …
 decls: 3,
-vars: 0,
-consts: function() {
-  __i18nMsgWithPostprocess__('{$startTagNgTemplate} Template A: {$interpolation} {$startTagNgTemplate} Template B: {$interpolation_1} {$startTagNgTemplate} Template C: {$interpolation_2} {$closeTagNgTemplate}{$closeTagNgTemplate}{$closeTagNgTemplate}', [['startTagNgTemplate', String.raw`[\uFFFD*2:1\uFFFD|\uFFFD*2:2\uFFFD|\uFFFD*1:3\uFFFD]`], ['closeTagNgTemplate', String.raw`[\uFFFD/*1:3\uFFFD|\uFFFD/*2:2\uFFFD|\uFFFD/*2:1\uFFFD]`], ['interpolation', String.raw`\uFFFD0:1\uFFFD`], ['interpolation_1', String.raw`\uFFFD0:2\uFFFD`], ['interpolation_2', String.raw`\uFFFD0:3\uFFFD`]], {original_code: {'startTagNgTemplate': '<ng-template>', 'closeTagNgTemplate': '</ng-template>', 'interpolation': '{{ valueA | uppercase }}', 'interpolation_1': '{{ valueB }}', 'interpolation_2': '{{ valueC }}'}}, {}, [])
-  return [
-    $i18n_0$
-  ];
-},
+  vars: 0,
+    consts: function() {
+      let i18n_0; if (typeof ngI18nClosureMode !== "undefined" && ngI18nClosureMode) {
+        /**
+         * @suppress {msgDescriptions}
+         */
+        const MSG_EXTERNAL_4054819503343192023$$NESTED_TEMPLATES_TS__1 = goog.getMsg("{$startTagNgTemplate} Template A: {$interpolation} {$startTagNgTemplate} Template B: {$interpolation_1} {$startTagNgTemplate} Template C: {$interpolation_2} {$closeTagNgTemplate}{$closeTagNgTemplate}{$closeTagNgTemplate}", { "startTagNgTemplate": "[\uFFFD*2:1\uFFFD|\uFFFD*2:2\uFFFD|\uFFFD*1:3\uFFFD]", "closeTagNgTemplate": "[\uFFFD/*1:3\uFFFD|\uFFFD/*2:2\uFFFD|\uFFFD/*2:1\uFFFD]", "interpolation": "\uFFFD0:1\uFFFD", "interpolation_1": "\uFFFD0:2\uFFFD", "interpolation_2": "\uFFFD0:3\uFFFD" }, { original_code: { "startTagNgTemplate": "<ng-template>", "closeTagNgTemplate": "</ng-template>", "interpolation": "{{ valueA | uppercase }}", "interpolation_1": "{{ valueB }}", "interpolation_2": "{{ valueC }}" } });
+        i18n_0 = MSG_EXTERNAL_4054819503343192023$$NESTED_TEMPLATES_TS__1;
+      }
+      else {
+        i18n_0 = $localize`${"[\uFFFD*2:1\uFFFD|\uFFFD*2:2\uFFFD|\uFFFD*1:3\uFFFD]"}:START_TAG_NG_TEMPLATE: Template A: ${"\uFFFD0:1\uFFFD"}:INTERPOLATION: ${"[\uFFFD*2:1\uFFFD|\uFFFD*2:2\uFFFD|\uFFFD*1:3\uFFFD]"}:START_TAG_NG_TEMPLATE: Template B: ${"\uFFFD0:2\uFFFD"}:INTERPOLATION_1: ${"[\uFFFD*2:1\uFFFD|\uFFFD*2:2\uFFFD|\uFFFD*1:3\uFFFD]"}:START_TAG_NG_TEMPLATE: Template C: ${"\uFFFD0:3\uFFFD"}:INTERPOLATION_2: ${"[\uFFFD/*1:3\uFFFD|\uFFFD/*2:2\uFFFD|\uFFFD/*2:1\uFFFD]"}:CLOSE_TAG_NG_TEMPLATE:${"[\uFFFD/*1:3\uFFFD|\uFFFD/*2:2\uFFFD|\uFFFD/*2:1\uFFFD]"}:CLOSE_TAG_NG_TEMPLATE:${"[\uFFFD/*1:3\uFFFD|\uFFFD/*2:2\uFFFD|\uFFFD/*2:1\uFFFD]"}:CLOSE_TAG_NG_TEMPLATE:`;
+      } i18n_0 = i0.ɵɵi18nPostprocess(i18n_0);
+      return [i18n_0];
+    },
 template: function MyComponent_Template(rf, ctx) {
   if (rf & 1) {
     $r3$.ɵɵelementStart(0, "div");

@@ -74,7 +74,8 @@
           ]
         }
       ],
-      "skipForTemplatePipeline": true
+      "skipForTemplatePipeline": false,
+      "focusTest": true
     },
     {
       "description": "should work with ICUs",
@@ -161,7 +162,8 @@
           ]
         }
       ],
-      "skipForTemplatePipeline": true
+      "skipForTemplatePipeline": false,
+      "focusTest": false
     },
     {
       "description": "should handle structural directives",

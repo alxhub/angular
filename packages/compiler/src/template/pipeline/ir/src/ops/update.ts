@@ -442,3 +442,14 @@ export function createAdvanceOp(delta: number, sourceSpan: ParseSourceSpan): Adv
     ...NEW_OP,
   };
 }
+
+export interface I18nApplyOp extends Op<UpdateOp> {
+  kind: OpKind.I18nApply;
+}
+
+export function createI18nApplyOp(): I18nApplyOp {
+  return {
+    kind: OpKind.I18nApply,
+    ...NEW_OP,
+  };
+}

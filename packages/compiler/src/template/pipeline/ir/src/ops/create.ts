@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import * as i18n from '../../../../../i18n/i18n_ast';
 import {ParseSourceSpan} from '../../../../../parse_util';
 import {ElementAttributes} from '../element';
 import {OpKind} from '../enums';
@@ -19,9 +20,10 @@ import type {UpdateOp} from './update';
 /**
  * An operation usable on the creation side of the IR.
  */
-export type CreateOp = ListEndOp<CreateOp>|StatementOp<CreateOp>|ElementOp|ElementStartOp|
-    ElementEndOp|ContainerOp|ContainerStartOp|ContainerEndOp|TemplateOp|EnableBindingsOp|
-    DisableBindingsOp|TextOp|ListenerOp|PipeOp|VariableOp<CreateOp>|NamespaceOp;
+export type CreateOp =
+    ListEndOp<CreateOp>|StatementOp<CreateOp>|ElementOp|ElementStartOp|ElementEndOp|ContainerOp|
+    ContainerStartOp|ContainerEndOp|TemplateOp|EnableBindingsOp|DisableBindingsOp|TextOp|ListenerOp|
+    PipeOp|VariableOp<CreateOp>|NamespaceOp|I18nOp|I18nStartOp|I18nEndOp;
 
 /**
  * An operation representing the creation of an element or container.
@@ -440,6 +442,46 @@ export function createNamespaceOp(namespace: Namespace): NamespaceOp {
   return {
     kind: OpKind.Namespace,
     active: namespace,
+    ...NEW_OP,
+  };
+}
+
+export interface I18nStartOp extends Op<CreateOp>, ConsumesSlotOpTrait {
+  kind: OpKind.I18nStart;
+
+  xref: XrefId;
+
+  i18n: i18n.I18nMeta;
+}
+
+export function createI18nStartOp(xref: XrefId, i18n: i18n.I18nMeta): I18nStartOp {
+  return {
+    kind: OpKind.I18nStart,
+    xref,
+    i18n,
+    ...NEW_OP,
+    ...TRAIT_CONSUMES_SLOT,
+  };
+}
+
+export interface I18nOp extends Op<CreateOp>, ConsumesSlotOpTrait {
+  kind: OpKind.I18n;
+
+  xref: XrefId;
+
+  i18n: i18n.I18nMeta;
+}
+
+export interface I18nEndOp extends Op<CreateOp> {
+  kind: OpKind.I18nEnd;
+
+  xref: XrefId;
+}
+
+export function createI18nEndOp(xref: XrefId): I18nEndOp {
+  return {
+    kind: OpKind.I18nEnd,
+    xref,
     ...NEW_OP,
   };
 }

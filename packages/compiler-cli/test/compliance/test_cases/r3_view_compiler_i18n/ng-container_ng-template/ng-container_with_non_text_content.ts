@@ -4,11 +4,12 @@ import {Component, NgModule} from '@angular/core';
   selector: 'my-component',
   template: `
   <div i18n>
-    Hello <ng-container>there <strong>!</strong></ng-container>
+    Hello <ng-container>there <strong>{{ name }} {{name }}</strong></ng-container>
   </div>
 `,
 })
 export class MyComponent {
+  name = 'Alex';
 }
 
 @NgModule({declarations: [MyComponent]})
