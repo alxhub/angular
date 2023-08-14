@@ -61,10 +61,14 @@ export interface RNode {
  * listeners on Element.
  */
 export interface RElement extends RNode {
+  firstChild: RNode|null;
   style: RCssStyleDeclaration;
   classList: RDomTokenList;
   className: string;
+  tagName: string;
   textContent: string|null;
+  hasAttribute(name: string): boolean;
+  getAttribute(name: string): string|null;
   setAttribute(name: string, value: string|TrustedHTML|TrustedScript|TrustedScriptURL): void;
   removeAttribute(name: string): void;
   setAttributeNS(
@@ -92,6 +96,11 @@ export interface RText extends RNode {
 
 export interface RComment extends RNode {
   textContent: string|null;
+}
+
+export interface RTemplate extends RElement {
+  tagName: 'TEMPLATE';
+  content: RNode;
 }
 
 // Note: This hack is necessary so we don't erroneously get a circular dependency

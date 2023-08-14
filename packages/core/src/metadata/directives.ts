@@ -9,11 +9,11 @@
 import {ChangeDetectionStrategy} from '../change_detection/constants';
 import {Provider} from '../di/interface/provider';
 import {Type} from '../interface/type';
-import {compileComponent as render3CompileComponent, compileDirective as render3CompileDirective} from '../render3/jit/directive';
-import {compilePipe as render3CompilePipe} from '../render3/jit/pipe';
+import {compileComponent, compileDirective} from '../render3/jit/directive';
+import {compilePipe} from '../render3/jit/pipe';
 import {makeDecorator, makePropDecorator, TypeDecorator} from '../util/decorators';
-import {noop} from '../util/noop';
 
+import {SchemaMetadata} from './schema';
 import {ViewEncapsulation} from './view';
 
 
@@ -51,20 +51,52 @@ export interface DirectiveDecorator {
    *
    * ### Declaring directives
    *
-   * Directives are [declarables](guide/glossary#declarable).
-   * They must be declared by an NgModule
-   * in order to be usable in an app.
+   * In order to make a directive available to other components in your application, you should do
+   * one of the following:
+   *  - either mark the directive as [standalone](guide/standalone-components),
+   *  - or declare it in an NgModule by adding it to the `declarations` and `exports` fields.
    *
-   * A directive must belong to exactly one NgModule. Do not re-declare
-   * a directive imported from another module.
-   * List the directive class in the `declarations` field of an NgModule.
+   * ** Marking a directive as standalone **
+   *
+   * You can add the `standalone: true` flag to the Directive decorator metadata to declare it as
+   * [standalone](guide/standalone-components):
    *
    * ```ts
-   * declarations: [
-   *  AppComponent,
-   *  MyDirective
-   * ],
+   * @Directive({
+   *   standalone: true,
+   *   selector: 'my-directive',
+   * })
+   * class MyDirective {}
    * ```
+   *
+   * When marking a directive as standalone, please make sure that the directive is not already
+   * declared in an NgModule.
+   *
+   *
+   * ** Declaring a directive in an NgModule **
+   *
+   * Another approach is to declare a directive in an NgModule:
+   *
+   * ```ts
+   * @Directive({
+   *   selector: 'my-directive',
+   * })
+   * class MyDirective {}
+   *
+   * @NgModule({
+   *   declarations: [MyDirective, SomeComponent],
+   *   exports: [MyDirective], // making it available outside of this module
+   * })
+   * class SomeNgModule {}
+   * ```
+   *
+   * When declaring a directive in an NgModule, please make sure that:
+   *  - the directive is declared in exactly one NgModule.
+   *  - the directive is not standalone.
+   *  - you do not re-declare a directive imported from another module.
+   *  - the directive is included into the `exports` field as well if you want this directive to be
+   *    accessible for components outside of the NgModule.
+   *
    *
    * @Annotation
    */
@@ -116,13 +148,19 @@ export interface Directive {
    * Enumerates the set of data-bound input properties for a directive
    *
    * Angular automatically updates input properties during change detection.
-   * The `inputs` property defines a set of `directiveProperty` to `bindingProperty`
-   * configuration:
+   * The `inputs` property accepts either strings or object literals that configure the directive
+   * properties that should be exposed as inputs.
    *
-   * - `directiveProperty` specifies the component property where the value is written.
-   * - `bindingProperty` specifies the DOM property where the value is read from.
+   * When an object literal is passed in, the `name` property indicates which property on the
+   * class the input should write to, while the `alias` determines the name under
+   * which the input will be available in template bindings. The `required` property indicates that
+   * the input is required which will trigger a compile-time error if it isn't passed in when the
+   * directive is used.
    *
-   * When `bindingProperty` is not provided, it is assumed to be equal to `directiveProperty`.
+   * When a string is passed into the `inputs` array, it can have a format of `'name'` or
+   * `'name: alias'` where `name` is the property on the class that the directive should write
+   * to, while the `alias` determines the name under which the input will be available in
+   * template bindings. String-based input definitions are assumed to be optional.
    *
    * @usageNotes
    *
@@ -131,7 +169,7 @@ export interface Directive {
    * ```typescript
    * @Component({
    *   selector: 'bank-account',
-   *   inputs: ['bankName', 'id: account-id'],
+   *   inputs: ['bankName', {name: 'id', alias: 'account-id'}],
    *   template: `
    *     Bank Name: {{bankName}}
    *     Account Id: {{id}}
@@ -144,7 +182,12 @@ export interface Directive {
    * ```
    *
    */
-  inputs?: string[];
+  inputs?: ({
+    name: string,
+    alias?: string,
+    required?: boolean,
+    transform?: (value: any) => any,
+  }|string)[];
 
   /**
    * Enumerates the set of event-bound output properties.
@@ -152,18 +195,18 @@ export interface Directive {
    * When an output property emits an event, an event handler attached to that event
    * in the template is invoked.
    *
-   * The `outputs` property defines a set of `directiveProperty` to `bindingProperty`
+   * The `outputs` property defines a set of `directiveProperty` to `alias`
    * configuration:
    *
    * - `directiveProperty` specifies the component property that emits events.
-   * - `bindingProperty` specifies the DOM property the event handler is attached to.
+   * - `alias` specifies the DOM property the event handler is attached to.
    *
    * @usageNotes
    *
    * ```typescript
    * @Component({
    *   selector: 'child-dir',
-   *   outputs: [ 'bankNameChange' ]
+   *   outputs: [ 'bankNameChange' ],
    *   template: `<input (input)="bankNameChange.emit($event.target.value)" />`
    * })
    * class ChildDir {
@@ -288,6 +331,39 @@ export interface Directive {
    * To ensure the correct behavior, the app must import `@angular/compiler`.
    */
   jit?: true;
+
+  /**
+   * Angular directives marked as `standalone` do not need to be declared in an NgModule. Such
+   * directives don't depend on any "intermediate context" of an NgModule (ex. configured
+   * providers).
+   *
+   * More information about standalone components, directives, and pipes can be found in [this
+   * guide](guide/standalone-components).
+   */
+  standalone?: boolean;
+
+  /**
+   * // TODO(signals): Remove internal and add public documentation
+   *
+   * @internal
+   */
+  signals?: boolean;
+
+  /**
+   * Standalone directives that should be applied to the host whenever the directive is matched.
+   * By default, none of the inputs or outputs of the host directives will be available on the host,
+   * unless they are specified in the `inputs` or `outputs` properties.
+   *
+   * You can additionally alias inputs and outputs by putting a colon and the alias after the
+   * original input or output name. For example, if a directive applied via `hostDirectives`
+   * defines an input named `menuDisabled`, you can alias this to `disabled` by adding
+   * `'menuDisabled: disabled'` as an entry to `inputs`.
+   */
+  hostDirectives?: (Type<unknown>|{
+    directive: Type<unknown>,
+    inputs?: string[],
+    outputs?: string[],
+  })[];
 }
 
 /**
@@ -297,7 +373,7 @@ export interface Directive {
  */
 export const Directive: DirectiveDecorator = makeDecorator(
     'Directive', (dir: Directive = {}) => dir, undefined, undefined,
-    (type: Type<any>, meta: Directive) => SWITCH_COMPILE_DIRECTIVE(type, meta));
+    (type: Type<any>, meta: Directive) => compileDirective(type, meta));
 
 /**
  * Component decorator interface
@@ -479,6 +555,7 @@ export interface Component extends Directive {
    * SystemJS exposes the `__moduleName` variable within each module.
    * In CommonJS, this can  be set to `module.id`.
    *
+   * @deprecated This option does not have any effect. Will be removed in Angular v17.
    */
   moduleId?: string;
 
@@ -510,25 +587,26 @@ export interface Component extends Directive {
 
   /**
    * One or more animation `trigger()` calls, containing
-   * `state()` and `transition()` definitions.
+   * [`state()`](api/animations/state) and `transition()` definitions.
    * See the [Animations guide](/guide/animations) and animations API documentation.
    *
    */
   animations?: any[];
 
   /**
-   * An encapsulation policy for the template and CSS styles. One of:
-   * - `ViewEncapsulation.Emulated`: Use shimmed CSS that
-   * emulates the native behavior.
-   * - `ViewEncapsulation.None`: Use global CSS without any
-   * encapsulation.
-   * - `ViewEncapsulation.ShadowDom`: Use Shadow DOM v1 to encapsulate styles.
+   * An encapsulation policy for the component's styling.
+   * Possible values:
+   * - `ViewEncapsulation.Emulated`: Apply modified component styles in order to emulate
+   *                                 a native Shadow DOM CSS encapsulation behavior.
+   * - `ViewEncapsulation.None`: Apply component styles globally without any sort of encapsulation.
+   * - `ViewEncapsulation.ShadowDom`: Use the browser's native Shadow DOM API to encapsulate styles.
    *
-   * If not supplied, the value is taken from `CompilerOptions`. The default compiler option is
-   * `ViewEncapsulation.Emulated`.
+   * If not supplied, the value is taken from the `CompilerOptions`
+   * which defaults to `ViewEncapsulation.Emulated`.
    *
-   * If the policy is set to `ViewEncapsulation.Emulated` and the component has no `styles`
-   * or `styleUrls` specified, the policy is automatically switched to `ViewEncapsulation.None`.
+   * If the policy is `ViewEncapsulation.Emulated` and the component has no
+   * {@link Component#styles styles} nor {@link Component#styleUrls styleUrls},
+   * the policy is automatically switched to `ViewEncapsulation.None`.
    */
   encapsulation?: ViewEncapsulation;
 
@@ -538,21 +616,53 @@ export interface Component extends Directive {
   interpolation?: [string, string];
 
   /**
-   * A set of components that should be compiled along with
-   * this component. For each component listed here,
-   * Angular creates a {@link ComponentFactory} and stores it in the
-   * {@link ComponentFactoryResolver}.
-   * @deprecated Since 9.0.0. With Ivy, this property is no longer necessary.
-   */
-  entryComponents?: Array<Type<any>|any[]>;
-
-  /**
    * True to preserve or false to remove potentially superfluous whitespace characters
    * from the compiled template. Whitespace characters are those matching the `\s`
    * character class in JavaScript regular expressions. Default is false, unless
    * overridden in compiler options.
    */
   preserveWhitespaces?: boolean;
+
+  /**
+   * Angular components marked as `standalone` do not need to be declared in an NgModule. Such
+   * components directly manage their own template dependencies (components, directives, and pipes
+   * used in a template) via the imports property.
+   *
+   * More information about standalone components, directives, and pipes can be found in [this
+   * guide](guide/standalone-components).
+   */
+  standalone?: boolean;
+
+  /**
+   * // TODO(signals): Remove internal and add public documentation.
+   * @internal
+   */
+  signals?: boolean;
+
+  /**
+   * The imports property specifies the standalone component's template dependencies — those
+   * directives, components, and pipes that can be used within its template. Standalone components
+   * can import other standalone components, directives, and pipes as well as existing NgModules.
+   *
+   * This property is only available for standalone components - specifying it for components
+   * declared in an NgModule generates a compilation error.
+   *
+   * More information about standalone components, directives, and pipes can be found in [this
+   * guide](guide/standalone-components).
+   */
+  imports?: (Type<any>|ReadonlyArray<any>)[];
+
+  /**
+   * The set of schemas that declare elements to be allowed in a standalone component. Elements and
+   * properties that are neither Angular components nor directives must be declared in a schema.
+   *
+   * This property is only available for standalone components - specifying it for components
+   * declared in an NgModule generates a compilation error.
+   *
+   * More information about standalone components, directives, and pipes can be found in [this
+   * guide](guide/standalone-components).
+   */
+  schemas?: SchemaMetadata[];
 }
 
 /**
@@ -563,8 +673,7 @@ export interface Component extends Directive {
  */
 export const Component: ComponentDecorator = makeDecorator(
     'Component', (c: Component = {}) => ({changeDetection: ChangeDetectionStrategy.Default, ...c}),
-    Directive, undefined,
-    (type: Type<any>, meta: Component) => SWITCH_COMPILE_COMPONENT(type, meta));
+    Directive, undefined, (type: Type<any>, meta: Component) => compileComponent(type, meta));
 
 /**
  * Type of the Pipe decorator / constructor function.
@@ -625,6 +734,15 @@ export interface Pipe {
    * even if the arguments have not changed.
    */
   pure?: boolean;
+
+  /**
+   * Angular pipes marked as `standalone` do not need to be declared in an NgModule. Such
+   * pipes don't depend on any "intermediate context" of an NgModule (ex. configured providers).
+   *
+   * More information about standalone components, directives, and pipes can be found in [this
+   * guide](guide/standalone-components).
+   */
+  standalone?: boolean;
 }
 
 /**
@@ -633,7 +751,7 @@ export interface Pipe {
  */
 export const Pipe: PipeDecorator = makeDecorator(
     'Pipe', (p: Pipe) => ({pure: true, ...p}), undefined, undefined,
-    (type: Type<any>, meta: Pipe) => SWITCH_COMPILE_PIPE(type, meta));
+    (type: Type<any>, meta: Pipe) => compilePipe(type, meta));
 
 
 /**
@@ -656,20 +774,26 @@ export interface InputDecorator {
    * one of which is given a special binding name.
    *
    * ```typescript
+   * import { Component, Input, numberAttribute, booleanAttribute } from '@angular/core';
    * @Component({
    *   selector: 'bank-account',
    *   template: `
    *     Bank Name: {{bankName}}
    *     Account Id: {{id}}
+   *     Account Status: {{status ? 'Active' : 'InActive'}}
    *   `
    * })
    * class BankAccount {
    *   // This property is bound using its original name.
-   *   @Input() bankName: string;
-   *   // this property value is bound to a different property name
+   *   // Defining argument required as true inside the Input Decorator
+   *   // makes this property deceleration as mandatory
+   *   @Input({ required: true }) bankName!: string;
+   *   // Argument alias makes this property value is bound to a different property name
    *   // when this component is instantiated in a template.
-   *   @Input('account-id') id: string;
-   *
+   *   // Argument transform convert the input value from string to number
+   *   @Input({ alias:'account-id', transform: numberAttribute }) id: number;
+   *   // Argument transform the input value from string to boolean
+   *   @Input({ transform: booleanAttribute }) status: boolean;
    *   // this property is not bound, and is not automatically updated by Angular
    *   normalizedBankName: string;
    * }
@@ -677,7 +801,7 @@ export interface InputDecorator {
    * @Component({
    *   selector: 'app',
    *   template: `
-   *     <bank-account bankName="RBC" account-id="4747"></bank-account>
+   *     <bank-account bankName="RBC" account-id="4747" status="true"></bank-account>
    *   `
    * })
    * class App {}
@@ -685,8 +809,8 @@ export interface InputDecorator {
    *
    * @see [Input and Output properties](guide/inputs-outputs)
    */
-  (bindingPropertyName?: string): any;
-  new(bindingPropertyName?: string): any;
+  (arg?: string|Input): any;
+  new(arg?: string|Input): any;
 }
 
 /**
@@ -698,7 +822,17 @@ export interface Input {
   /**
    * The name of the DOM property to which the input property is bound.
    */
-  bindingPropertyName?: string;
+  alias?: string;
+
+  /**
+   * Whether the input is required for the directive to function.
+   */
+  required?: boolean;
+
+  /**
+   * Function with which to transform the input value before assigning it to the directive instance.
+   */
+  transform?: (value: any) => any;
 }
 
 /**
@@ -706,7 +840,12 @@ export interface Input {
  * @publicApi
  */
 export const Input: InputDecorator =
-    makePropDecorator('Input', (bindingPropertyName?: string) => ({bindingPropertyName}));
+    makePropDecorator('Input', (arg?: string|{alias?: string, required?: boolean}) => {
+      if (!arg) {
+        return {};
+      }
+      return typeof arg === 'string' ? {alias: arg} : arg;
+    });
 
 /**
  * Type of the Output decorator / constructor function.
@@ -730,8 +869,8 @@ export interface OutputDecorator {
    * @see [Input and Output properties](guide/inputs-outputs)
    *
    */
-  (bindingPropertyName?: string): any;
-  new(bindingPropertyName?: string): any;
+  (alias?: string): any;
+  new(alias?: string): any;
 }
 
 /**
@@ -743,15 +882,14 @@ export interface Output {
   /**
    * The name of the DOM property to which the output property is bound.
    */
-  bindingPropertyName?: string;
+  alias?: string;
 }
 
 /**
  * @Annotation
  * @publicApi
  */
-export const Output: OutputDecorator =
-    makePropDecorator('Output', (bindingPropertyName?: string) => ({bindingPropertyName}));
+export const Output: OutputDecorator = makePropDecorator('Output', (alias?: string) => ({alias}));
 
 
 
@@ -869,7 +1007,7 @@ export interface HostListener {
  *   @HostListener('click', ['$event.target'])
  *   onClick(btn) {
  *     console.log('button', btn, 'number of clicks:', this.numberOfClicks++);
- *  }
+ *   }
  * }
  *
  * @Component({
@@ -880,19 +1018,20 @@ export interface HostListener {
  *
  * ```
  *
- * The following example registers another DOM event handler that listens for key-press events.
+ * The following example registers another DOM event handler that listens for `Enter` key-press
+ * events on the global `window`.
  * ``` ts
  * import { HostListener, Component } from "@angular/core";
  *
  * @Component({
  *   selector: 'app',
- *   template: `<h1>Hello, you have pressed keys {{counter}} number of times!</h1> Press any key to
- * increment the counter.
+ *   template: `<h1>Hello, you have pressed enter {{counter}} number of times!</h1> Press enter key
+ * to increment the counter.
  *   <button (click)="resetCounter()">Reset Counter</button>`
  * })
  * class AppComponent {
  *   counter = 0;
- *   @HostListener('window:keydown', ['$event'])
+ *   @HostListener('window:keydown.enter', ['$event'])
  *   handleKeyDown(event: KeyboardEvent) {
  *     this.counter++;
  *   }
@@ -901,23 +1040,17 @@ export interface HostListener {
  *   }
  * }
  * ```
+ * The list of valid key names for `keydown` and `keyup` events
+ * can be found here:
+ * https://www.w3.org/TR/DOM-Level-3-Events-key/#named-key-attribute-values
+ *
+ * Note that keys can also be combined, e.g. `@HostListener('keydown.shift.a')`.
+ *
+ * The global target names that can be used to prefix an event name are
+ * `document:`, `window:` and `body:`.
  *
  * @Annotation
  * @publicApi
  */
 export const HostListener: HostListenerDecorator =
     makePropDecorator('HostListener', (eventName?: string, args?: string[]) => ({eventName, args}));
-
-
-
-export const SWITCH_COMPILE_COMPONENT__POST_R3__ = render3CompileComponent;
-export const SWITCH_COMPILE_DIRECTIVE__POST_R3__ = render3CompileDirective;
-export const SWITCH_COMPILE_PIPE__POST_R3__ = render3CompilePipe;
-
-const SWITCH_COMPILE_COMPONENT__PRE_R3__ = noop;
-const SWITCH_COMPILE_DIRECTIVE__PRE_R3__ = noop;
-const SWITCH_COMPILE_PIPE__PRE_R3__ = noop;
-
-const SWITCH_COMPILE_COMPONENT: typeof render3CompileComponent = SWITCH_COMPILE_COMPONENT__PRE_R3__;
-const SWITCH_COMPILE_DIRECTIVE: typeof render3CompileDirective = SWITCH_COMPILE_DIRECTIVE__PRE_R3__;
-const SWITCH_COMPILE_PIPE: typeof render3CompilePipe = SWITCH_COMPILE_PIPE__PRE_R3__;

@@ -5,9 +5,8 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {NgZone} from '@angular/core';
-import {fakeAsync, inject, tick} from '@angular/core/testing';
-import {afterEach, beforeEach, describe, expect, it,} from '@angular/core/testing/src/testing_internal';
+import {ApplicationRef, NgZone} from '@angular/core';
+import {fakeAsync, inject, TestBed, tick} from '@angular/core/testing';
 import {EventManager} from '@angular/platform-browser';
 import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-browser/src/dom/events/hammer_gestures';
 
@@ -15,7 +14,12 @@ import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-brow
   describe('HammerGesturesPlugin', () => {
     let plugin: HammerGesturesPlugin;
     let fakeConsole: any;
-    if (isNode) return;
+
+    if (isNode) {
+      // Jasmine will throw if there are no tests.
+      it('should pass', () => {});
+      return;
+    }
 
     beforeEach(() => {
       fakeConsole = {warn: jasmine.createSpy('console.warn')};
@@ -24,14 +28,6 @@ import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-brow
     describe('with no custom loader', () => {
       beforeEach(() => {
         plugin = new HammerGesturesPlugin(document, new HammerGestureConfig(), fakeConsole);
-      });
-
-      it('should implement addGlobalEventListener', () => {
-        spyOn(plugin, 'addEventListener').and.callFake(() => () => {});
-
-        expect(() => {
-          plugin.addGlobalEventListener('document', 'swipe', () => {});
-        }).not.toThrowError();
       });
 
       it('should warn user and do nothing when Hammer.js not loaded', () => {
@@ -58,7 +54,7 @@ import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-brow
       let originalHammerGlobal: any;
 
       // Fake Hammer instance ("mc") used to test the underlying event registration.
-      let fakeHammerInstance: {on: () => void, off: () => void};
+      let fakeHammerInstance: {on: jasmine.Spy, off: jasmine.Spy};
 
       // Inject the NgZone so that we can make it available to the plugin through a fake
       // EventManager.
@@ -68,6 +64,7 @@ import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-brow
       }));
 
       let loaderCalled = 0;
+      let loaderIsCalledInAngularZone: boolean|null = null;
 
       beforeEach(() => {
         originalHammerGlobal = (window as any).Hammer;
@@ -80,6 +77,7 @@ import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-brow
 
         loader = () => {
           loaderCalled++;
+          loaderIsCalledInAngularZone = NgZone.isInAngularZone();
           return new Promise((resolve, reject) => {
             resolveLoader = resolve;
             failLoader = reject;
@@ -169,6 +167,23 @@ import {HammerGestureConfig, HammerGesturesPlugin,} from '@angular/platform-brow
            expect(fakeConsole.warn)
                .toHaveBeenCalledWith(
                    `The custom HAMMER_LOADER completed, but Hammer.JS is not present.`);
+         }));
+
+      it('should call the loader outside of the Angular zone', fakeAsync(() => {
+           const ngZone = TestBed.inject(NgZone);
+           // Unit tests are being run in a ProxyZone, thus `addEventListener` is called within the
+           // ProxyZone. In real apps, `addEventListener` is called within the Angular zone; we
+           // mimic that behaviour by entering the Angular zone.
+           ngZone.run(() => plugin.addEventListener(someElement, 'swipe', () => {}));
+
+           const appRef = TestBed.inject(ApplicationRef);
+           spyOn(appRef, 'tick');
+
+           resolveLoader();
+           tick();
+
+           expect(appRef.tick).not.toHaveBeenCalled();
+           expect(loaderIsCalledInAngularZone).toEqual(false);
          }));
     });
   });

@@ -21,6 +21,8 @@ export enum HttpEventType {
 
   /**
    * An upload progress event was received.
+   *
+   * Note: The `FetchBackend` doesn't support progress report on uploads.
    */
   UploadProgress,
 
@@ -86,6 +88,8 @@ export interface HttpDownloadProgressEvent extends HttpProgressEvent {
 
 /**
  * An upload progress event.
+ *
+ * Note: The `FetchBackend` doesn't support progress report on uploads.
  *
  * @publicApi
  */
@@ -226,7 +230,7 @@ export class HttpHeaderResponse extends HttpResponseBase {
     super(init);
   }
 
-  readonly type: HttpEventType.ResponseHeader = HttpEventType.ResponseHeader;
+  override readonly type: HttpEventType.ResponseHeader = HttpEventType.ResponseHeader;
 
   /**
    * Copy this `HttpHeaderResponse`, overriding its contents with the
@@ -274,7 +278,7 @@ export class HttpResponse<T> extends HttpResponseBase {
     this.body = init.body !== undefined ? init.body : null;
   }
 
-  readonly type: HttpEventType.Response = HttpEventType.Response;
+  override readonly type: HttpEventType.Response = HttpEventType.Response;
 
   clone(): HttpResponse<T>;
   clone(update: {headers?: HttpHeaders; status?: number; statusText?: string; url?: string;}):
@@ -324,7 +328,7 @@ export class HttpErrorResponse extends HttpResponseBase implements Error {
   /**
    * Errors are never okay, even when the status code is in the 2xx success range.
    */
-  readonly ok = false;
+  override readonly ok = false;
 
   constructor(init: {
     error?: any;

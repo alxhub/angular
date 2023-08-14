@@ -1,18 +1,18 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
-import { RouterTestingModule } from '@angular/router/testing';
-import { of } from 'rxjs';
+import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
+import {RouterModule} from '@angular/router';
+import {of} from 'rxjs';
 
-import { HeroSearchComponent } from '../hero-search/hero-search.component';
-import { HeroService } from '../hero.service';
-import { HEROES } from '../mock-heroes';
+import {HeroSearchComponent} from '../hero-search/hero-search.component';
+import {HeroService} from '../hero.service';
+import {HEROES} from '../mock-heroes';
 
-import { DashboardComponent } from './dashboard.component';
+import {DashboardComponent} from './dashboard.component';
 
 describe('DashboardComponent', () => {
   let component: DashboardComponent;
   let fixture: ComponentFixture<DashboardComponent>;
   let heroService;
-  let getHeroesSpy;
+  let getHeroesSpy: jasmine.Spy;
 
   beforeEach(waitForAsync(() => {
     heroService = jasmine.createSpyObj('HeroService', ['getHeroes']);
@@ -20,17 +20,17 @@ describe('DashboardComponent', () => {
     TestBed
         .configureTestingModule({
           declarations: [DashboardComponent, HeroSearchComponent],
-          imports: [RouterTestingModule.withRoutes([])],
-          providers: [{provide: HeroService, useValue: heroService}]
+          imports: [RouterModule.forRoot([])],
+          providers: [
+            {provide: HeroService, useValue: heroService},
+          ]
         })
         .compileComponents();
-  }));
 
-  beforeEach(() => {
     fixture = TestBed.createComponent(DashboardComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
-  });
+  }));
 
   it('should be created', () => {
     expect(component).toBeTruthy();

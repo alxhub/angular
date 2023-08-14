@@ -12,11 +12,10 @@ import {MockAnimationDriver, MockAnimationPlayer} from '@angular/animations/brow
 import {Component, HostBinding} from '@angular/core';
 import {fakeAsync, flushMicrotasks, TestBed, tick} from '@angular/core/testing';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {ActivatedRoute, Router, RouterOutlet} from '@angular/router';
-import {RouterTestingModule} from '@angular/router/testing';
+import {ActivatedRoute, Router, RouterModule, RouterOutlet} from '@angular/router';
 
 (function() {
-// these tests are only mean't to be run within the DOM (for now)
+// these tests are only meant to be run within the DOM (for now)
 if (isNode) return;
 
 describe('Animation Router Tests', function() {
@@ -31,7 +30,7 @@ describe('Animation Router Tests', function() {
   beforeEach(() => {
     resetLog();
     TestBed.configureTestingModule({
-      imports: [RouterTestingModule, BrowserAnimationsModule],
+      imports: [RouterModule.forRoot([]), BrowserAnimationsModule],
       providers: [{provide: AnimationDriver, useClass: MockAnimationDriver}]
     });
   });
@@ -108,7 +107,7 @@ describe('Animation Router Tests', function() {
 
        TestBed.configureTestingModule({
          declarations: [Page1Cmp, Page2Cmp, ContainerCmp],
-         imports: [RouterTestingModule.withRoutes([
+         imports: [RouterModule.forRoot([
            {path: 'page1', component: Page1Cmp, data: makeAnimationData('page1')},
            {path: 'page2', component: Page2Cmp, data: makeAnimationData('page2')}
          ])]
@@ -142,15 +141,15 @@ describe('Animation Router Tests', function() {
 
        expect(p1.duration).toEqual(1000);
        expect(p1.keyframes).toEqual([
-         {offset: 0, width: '200px'},
-         {offset: 1, width: '0px'},
+         new Map<string, string|number>([['offset', 0], ['width', '200px']]),
+         new Map<string, string|number>([['offset', 1], ['width', '0px']]),
        ]);
 
        expect(p2.duration).toEqual(2000);
        expect(p2.keyframes).toEqual([
-         {offset: 0, opacity: '0'},
-         {offset: .5, opacity: '0'},
-         {offset: 1, opacity: '1'},
+         new Map<string, string|number>([['offset', 0], ['opacity', '0']]),
+         new Map<string, string|number>([['offset', .5], ['opacity', '0']]),
+         new Map<string, string|number>([['offset', 1], ['opacity', '1']]),
        ]);
      }));
 
@@ -215,7 +214,7 @@ describe('Animation Router Tests', function() {
 
        TestBed.configureTestingModule({
          declarations: [Page1Cmp, Page2Cmp, ContainerCmp],
-         imports: [RouterTestingModule.withRoutes([
+         imports: [RouterModule.forRoot([
            {path: 'page1', component: Page1Cmp, data: makeAnimationData('page1')},
            {path: 'page2', component: Page2Cmp, data: makeAnimationData('page2')}
          ])]
@@ -248,14 +247,14 @@ describe('Animation Router Tests', function() {
        const [p1, p2] = players;
 
        expect(p1.keyframes).toEqual([
-         {offset: 0, opacity: '0'},
-         {offset: 1, opacity: '1'},
+         new Map<string, string|number>([['offset', 0], ['opacity', '0']]),
+         new Map<string, string|number>([['offset', 1], ['opacity', '1']]),
        ]);
 
        expect(p2.keyframes).toEqual([
-         {offset: 0, opacity: '0'},
-         {offset: .5, opacity: '0'},
-         {offset: 1, opacity: '1'},
+         new Map<string, string|number>([['offset', 0], ['opacity', '0']]),
+         new Map<string, string|number>([['offset', .5], ['opacity', '0']]),
+         new Map<string, string|number>([['offset', 1], ['opacity', '1']]),
        ]);
      }));
 
@@ -320,7 +319,7 @@ describe('Animation Router Tests', function() {
 
        TestBed.configureTestingModule({
          declarations: [Page1Cmp, Page2Cmp, ContainerCmp],
-         imports: [RouterTestingModule.withRoutes([
+         imports: [RouterModule.forRoot([
            {path: 'page1', component: Page1Cmp, data: makeAnimationData('page1')},
            {path: 'page2', component: Page2Cmp, data: makeAnimationData('page2')}
          ])]
@@ -353,14 +352,14 @@ describe('Animation Router Tests', function() {
        const [p1, p2] = players;
 
        expect(p1.keyframes).toEqual([
-         {offset: 0, opacity: '1'},
-         {offset: 1, opacity: '0'},
+         new Map<string, string|number>([['offset', 0], ['opacity', '1']]),
+         new Map<string, string|number>([['offset', 1], ['opacity', '0']]),
        ]);
 
        expect(p2.keyframes).toEqual([
-         {offset: 0, opacity: '1'},
-         {offset: .5, opacity: '1'},
-         {offset: 1, opacity: '0'},
+         new Map<string, string|number>([['offset', 0], ['opacity', '1']]),
+         new Map<string, string|number>([['offset', .5], ['opacity', '1']]),
+         new Map<string, string|number>([['offset', 1], ['opacity', '0']]),
        ]);
      }));
 
@@ -414,7 +413,7 @@ describe('Animation Router Tests', function() {
 
        TestBed.configureTestingModule({
          declarations: [Page1Cmp, Page2Cmp, ContainerCmp],
-         imports: [RouterTestingModule.withRoutes([
+         imports: [RouterModule.forRoot([
            {path: 'page1', component: Page1Cmp, data: makeAnimationData('page1')},
            {path: 'page2', component: Page2Cmp, data: makeAnimationData('page2')}
          ])]
@@ -498,7 +497,7 @@ describe('Animation Router Tests', function() {
 
        TestBed.configureTestingModule({
          declarations: [ContainerCmp, RecurPageCmp],
-         imports: [RouterTestingModule.withRoutes([{
+         imports: [RouterModule.forRoot([{
            path: 'recur',
            component: RecurPageCmp,
            outlet: 'recur',

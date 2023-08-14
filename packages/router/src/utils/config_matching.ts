@@ -6,17 +6,21 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Route} from '../config';
-import {defaultUrlMatcher, PRIMARY_OUTLET} from '../shared';
-import {UrlSegment, UrlSegmentGroup} from '../url_tree';
+import {EnvironmentInjector} from '@angular/core';
+import {Observable, of} from 'rxjs';
+import {map} from 'rxjs/operators';
 
-import {forEach} from './collection';
-import {getOutlet} from './config';
+import {Route} from '../models';
+import {runCanMatchGuards} from '../operators/check_guards';
+import {defaultUrlMatcher, PRIMARY_OUTLET} from '../shared';
+import {UrlSegment, UrlSegmentGroup, UrlSerializer} from '../url_tree';
+
+import {getOrCreateRouteInjectorIfNeeded, getOutlet} from './config';
 
 export interface MatchResult {
   matched: boolean;
   consumedSegments: UrlSegment[];
-  lastChild: number;
+  remainingSegments: UrlSegment[];
   parameters: {[k: string]: string};
   positionalParamSegments: {[k: string]: UrlSegment};
 }
@@ -24,10 +28,27 @@ export interface MatchResult {
 const noMatch: MatchResult = {
   matched: false,
   consumedSegments: [],
-  lastChild: 0,
+  remainingSegments: [],
   parameters: {},
   positionalParamSegments: {}
 };
+
+export function matchWithChecks(
+    segmentGroup: UrlSegmentGroup, route: Route, segments: UrlSegment[],
+    injector: EnvironmentInjector, urlSerializer: UrlSerializer): Observable<MatchResult> {
+  const result = match(segmentGroup, route, segments);
+  if (!result.matched) {
+    return of(result);
+  }
+
+  // Only create the Route's `EnvironmentInjector` if it matches the attempted
+  // navigation
+  injector = getOrCreateRouteInjectorIfNeeded(route, injector);
+  return runCanMatchGuards(injector, route, segments, urlSerializer)
+      .pipe(
+          map((v) => v === true ? result : {...noMatch}),
+      );
+}
 
 export function match(
     segmentGroup: UrlSegmentGroup, route: Route, segments: UrlSegment[]): MatchResult {
@@ -39,7 +60,7 @@ export function match(
     return {
       matched: true,
       consumedSegments: [],
-      lastChild: 0,
+      remainingSegments: segments,
       parameters: {},
       positionalParamSegments: {}
     };
@@ -50,7 +71,7 @@ export function match(
   if (!res) return {...noMatch};
 
   const posParams: {[n: string]: string} = {};
-  forEach(res.posParams!, (v: UrlSegment, k: string) => {
+  Object.entries(res.posParams ?? {}).forEach(([k, v]) => {
     posParams[k] = v.path;
   });
   const parameters = res.consumed.length > 0 ?
@@ -60,7 +81,7 @@ export function match(
   return {
     matched: true,
     consumedSegments: res.consumed,
-    lastChild: res.consumed.length,
+    remainingSegments: segments.slice(res.consumed.length),
     // TODO(atscott): investigate combining parameters and positionalParamSegments
     parameters,
     positionalParamSegments: res.posParams ?? {}
@@ -69,16 +90,13 @@ export function match(
 
 export function split(
     segmentGroup: UrlSegmentGroup, consumedSegments: UrlSegment[], slicedSegments: UrlSegment[],
-    config: Route[], relativeLinkResolution: 'legacy'|'corrected' = 'corrected') {
+    config: Route[]) {
   if (slicedSegments.length > 0 &&
       containsEmptyPathMatchesWithNamedOutlets(segmentGroup, slicedSegments, config)) {
     const s = new UrlSegmentGroup(
         consumedSegments,
         createChildrenForEmptyPaths(
-            segmentGroup, consumedSegments, config,
-            new UrlSegmentGroup(slicedSegments, segmentGroup.children)));
-    s._sourceSegment = segmentGroup;
-    s._segmentIndexShift = consumedSegments.length;
+            config, new UrlSegmentGroup(slicedSegments, segmentGroup.children)));
     return {segmentGroup: s, slicedSegments: []};
   }
 
@@ -87,33 +105,22 @@ export function split(
     const s = new UrlSegmentGroup(
         segmentGroup.segments,
         addEmptyPathsToChildrenIfNeeded(
-            segmentGroup, consumedSegments, slicedSegments, config, segmentGroup.children,
-            relativeLinkResolution));
-    s._sourceSegment = segmentGroup;
-    s._segmentIndexShift = consumedSegments.length;
+            segmentGroup, consumedSegments, slicedSegments, config, segmentGroup.children));
     return {segmentGroup: s, slicedSegments};
   }
 
   const s = new UrlSegmentGroup(segmentGroup.segments, segmentGroup.children);
-  s._sourceSegment = segmentGroup;
-  s._segmentIndexShift = consumedSegments.length;
   return {segmentGroup: s, slicedSegments};
 }
 
 function addEmptyPathsToChildrenIfNeeded(
     segmentGroup: UrlSegmentGroup, consumedSegments: UrlSegment[], slicedSegments: UrlSegment[],
-    routes: Route[], children: {[name: string]: UrlSegmentGroup},
-    relativeLinkResolution: 'legacy'|'corrected'): {[name: string]: UrlSegmentGroup} {
+    routes: Route[],
+    children: {[name: string]: UrlSegmentGroup}): {[name: string]: UrlSegmentGroup} {
   const res: {[name: string]: UrlSegmentGroup} = {};
   for (const r of routes) {
     if (emptyPathMatch(segmentGroup, slicedSegments, r) && !children[getOutlet(r)]) {
       const s = new UrlSegmentGroup([], {});
-      s._sourceSegment = segmentGroup;
-      if (relativeLinkResolution === 'legacy') {
-        s._segmentIndexShift = segmentGroup.segments.length;
-      } else {
-        s._segmentIndexShift = consumedSegments.length;
-      }
       res[getOutlet(r)] = s;
     }
   }
@@ -121,18 +128,13 @@ function addEmptyPathsToChildrenIfNeeded(
 }
 
 function createChildrenForEmptyPaths(
-    segmentGroup: UrlSegmentGroup, consumedSegments: UrlSegment[], routes: Route[],
-    primarySegment: UrlSegmentGroup): {[name: string]: UrlSegmentGroup} {
+    routes: Route[], primarySegment: UrlSegmentGroup): {[name: string]: UrlSegmentGroup} {
   const res: {[name: string]: UrlSegmentGroup} = {};
   res[PRIMARY_OUTLET] = primarySegment;
-  primarySegment._sourceSegment = segmentGroup;
-  primarySegment._segmentIndexShift = consumedSegments.length;
 
   for (const r of routes) {
     if (r.path === '' && getOutlet(r) !== PRIMARY_OUTLET) {
       const s = new UrlSegmentGroup([], {});
-      s._sourceSegment = segmentGroup;
-      s._segmentIndexShift = consumedSegments.length;
       res[getOutlet(r)] = s;
     }
   }

@@ -7,18 +7,18 @@
  */
 
 import {DirectiveMeta as T2DirectiveMeta, SchemaMetadata} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {Reference} from '../../imports';
 import {ClassDeclaration} from '../../reflection';
 
-import {ClassPropertyMapping, ClassPropertyName} from './property_mapping';
-
+import {ClassPropertyMapping, ClassPropertyName, InputOrOutput} from './property_mapping';
 
 /**
  * Metadata collected for an `NgModule`.
  */
 export interface NgModuleMeta {
+  kind: MetaKind.NgModule;
   ref: Reference<ClassDeclaration>;
   declarations: Reference<ClassDeclaration>[];
   imports: Reference<ClassDeclaration>[];
@@ -32,6 +32,37 @@ export interface NgModuleMeta {
    * because the module came from a .d.ts file).
    */
   rawDeclarations: ts.Expression|null;
+
+  /**
+   * The raw `ts.Expression` which gave rise to `imports`, if one exists.
+   *
+   * If this is `null`, then either no imports exist, or no expression was available (likely
+   * because the module came from a .d.ts file).
+   */
+  rawImports: ts.Expression|null;
+
+  /**
+   * The raw `ts.Expression` which gave rise to `exports`, if one exists.
+   *
+   * If this is `null`, then either no exports exist, or no expression was available (likely
+   * because the module came from a .d.ts file).
+   */
+  rawExports: ts.Expression|null;
+
+  /**
+   * The primary decorator associated with this `ngModule`.
+   *
+   * If this is `null`, no decorator exists, meaning it's probably from a .d.ts file.
+   */
+  decorator: ts.Decorator|null;
+
+  /**
+   * Whether this NgModule may declare providers.
+   *
+   * If the compiler does not know if the NgModule may declare providers, this will be `true` (for
+   * example, NgModules declared outside the current compilation are assumed to declare providers).
+   */
+  mayDeclareProviders: boolean;
 }
 
 /**
@@ -81,9 +112,46 @@ export interface DirectiveTypeCheckMeta {
 }
 
 /**
+ * Disambiguates different kinds of compiler metadata objects.
+ */
+export enum MetaKind {
+  Directive,
+  Pipe,
+  NgModule,
+}
+
+/**
+ * Possible ways that a directive can be matched.
+ */
+export enum MatchSource {
+  /** The directive was matched by its selector. */
+  Selector,
+
+  /** The directive was applied as a host directive. */
+  HostDirective,
+}
+
+/** Metadata for a single input mapping. */
+export type InputMapping = InputOrOutput&{
+  required: boolean;
+  transform: InputTransform|null
+};
+
+/** Metadata for an input's transform function. */
+export interface InputTransform {
+  node: ts.Node;
+  type: ts.TypeNode;
+}
+
+/**
  * Metadata collected for a directive within an NgModule's scope.
  */
 export interface DirectiveMeta extends T2DirectiveMeta, DirectiveTypeCheckMeta {
+  kind: MetaKind.Directive;
+
+  /** Way in which the directive was matched. */
+  matchSource: MatchSource;
+
   ref: Reference<ClassDeclaration>;
   /**
    * Unparsed selector of the directive, or null if the directive does not have a selector.
@@ -94,7 +162,7 @@ export interface DirectiveMeta extends T2DirectiveMeta, DirectiveTypeCheckMeta {
   /**
    * A mapping of input field names to the property names.
    */
-  inputs: ClassPropertyMapping;
+  inputs: ClassPropertyMapping<InputMapping>;
 
   /**
    * A mapping of output field names to the property names.
@@ -119,6 +187,56 @@ export interface DirectiveMeta extends T2DirectiveMeta, DirectiveTypeCheckMeta {
    * Whether the directive is likely a structural directive (injects `TemplateRef`).
    */
   isStructural: boolean;
+
+  /**
+   * Whether the directive is a standalone entity.
+   */
+  isStandalone: boolean;
+
+  /**
+   * Whether the directive is a signal entity.
+   */
+  isSignal: boolean;
+
+  /**
+   * For standalone components, the list of imported types.
+   */
+  imports: Reference<ClassDeclaration>[]|null;
+
+  /**
+   * For standalone components, the list of schemas declared.
+   */
+  schemas: SchemaMetadata[]|null;
+
+  /**
+   * The primary decorator associated with this directive.
+   *
+   * If this is `null`, no decorator exists, meaning it's probably from a .d.ts file.
+   */
+  decorator: ts.Decorator|null;
+
+  /** Additional directives applied to the directive host. */
+  hostDirectives: HostDirectiveMeta[]|null;
+
+  /**
+   * Whether the directive should be assumed to export providers if imported as a standalone type.
+   */
+  assumedToExportProviders: boolean;
+}
+
+/** Metadata collected about an additional directive that is being applied to a directive host. */
+export interface HostDirectiveMeta {
+  /** Reference to the host directive class. */
+  directive: Reference<ClassDeclaration>;
+
+  /** Whether the reference to the host directive is a forward reference. */
+  isForwardReference: boolean;
+
+  /** Inputs from the host directive that have been exposed. */
+  inputs: {[publicName: string]: string}|null;
+
+  /** Outputs from the host directive that have been exposed. */
+  outputs: {[publicName: string]: string}|null;
 }
 
 /**
@@ -144,8 +262,12 @@ export interface TemplateGuardMeta {
  * Metadata for a pipe within an NgModule's scope.
  */
 export interface PipeMeta {
+  kind: MetaKind.Pipe;
   ref: Reference<ClassDeclaration>;
   name: string;
+  nameExpr: ts.Expression|null;
+  isStandalone: boolean;
+  decorator: ts.Decorator|null;
 }
 
 /**
@@ -156,6 +278,20 @@ export interface MetadataReader {
   getDirectiveMetadata(node: Reference<ClassDeclaration>): DirectiveMeta|null;
   getNgModuleMetadata(node: Reference<ClassDeclaration>): NgModuleMeta|null;
   getPipeMetadata(node: Reference<ClassDeclaration>): PipeMeta|null;
+}
+
+/**
+ * A MetadataReader which also allows access to the set of all known trait classes.
+ */
+export interface MetadataReaderWithIndex extends MetadataReader {
+  getKnown(kind: MetaKind): Array<ClassDeclaration>;
+}
+
+/**
+ * An NgModuleIndex allows access to information about traits exported by NgModules.
+ */
+export interface NgModuleIndex {
+  getNgModulesExporting(directiveOrPipe: ClassDeclaration): Array<Reference<ClassDeclaration>>;
 }
 
 /**

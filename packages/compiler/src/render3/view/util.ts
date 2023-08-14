@@ -7,11 +7,12 @@
  */
 
 import {ConstantPool} from '../../constant_pool';
-import {Interpolation} from '../../expression_parser/ast';
+import {BindingType, Interpolation} from '../../expression_parser/ast';
 import * as o from '../../output/output_ast';
 import {ParseSourceSpan} from '../../parse_util';
-import {splitAtColon} from '../../util';
 import * as t from '../r3_ast';
+import {Identifiers as R3} from '../r3_identifiers';
+import {ForwardRefHandling} from '../util';
 
 import {R3QueryMetadata} from './api';
 import {isI18nAttribute} from './i18n/util';
@@ -49,6 +50,90 @@ export const NON_BINDABLE_ATTR = 'ngNonBindable';
 export const RESTORED_VIEW_CONTEXT_NAME = 'restoredCtx';
 
 /**
+ * Maximum length of a single instruction chain. Because our output AST uses recursion, we're
+ * limited in how many expressions we can nest before we reach the call stack limit. This
+ * length is set very conservatively in order to reduce the chance of problems.
+ */
+const MAX_CHAIN_LENGTH = 500;
+
+/** Instructions that support chaining. */
+const CHAINABLE_INSTRUCTIONS = new Set([
+  R3.element,
+  R3.elementStart,
+  R3.elementEnd,
+  R3.elementContainer,
+  R3.elementContainerStart,
+  R3.elementContainerEnd,
+  R3.i18nExp,
+  R3.listener,
+  R3.classProp,
+  R3.syntheticHostListener,
+  R3.hostProperty,
+  R3.syntheticHostProperty,
+  R3.property,
+  R3.propertyInterpolate1,
+  R3.propertyInterpolate2,
+  R3.propertyInterpolate3,
+  R3.propertyInterpolate4,
+  R3.propertyInterpolate5,
+  R3.propertyInterpolate6,
+  R3.propertyInterpolate7,
+  R3.propertyInterpolate8,
+  R3.propertyInterpolateV,
+  R3.attribute,
+  R3.attributeInterpolate1,
+  R3.attributeInterpolate2,
+  R3.attributeInterpolate3,
+  R3.attributeInterpolate4,
+  R3.attributeInterpolate5,
+  R3.attributeInterpolate6,
+  R3.attributeInterpolate7,
+  R3.attributeInterpolate8,
+  R3.attributeInterpolateV,
+  R3.styleProp,
+  R3.stylePropInterpolate1,
+  R3.stylePropInterpolate2,
+  R3.stylePropInterpolate3,
+  R3.stylePropInterpolate4,
+  R3.stylePropInterpolate5,
+  R3.stylePropInterpolate6,
+  R3.stylePropInterpolate7,
+  R3.stylePropInterpolate8,
+  R3.stylePropInterpolateV,
+  R3.textInterpolate,
+  R3.textInterpolate1,
+  R3.textInterpolate2,
+  R3.textInterpolate3,
+  R3.textInterpolate4,
+  R3.textInterpolate5,
+  R3.textInterpolate6,
+  R3.textInterpolate7,
+  R3.textInterpolate8,
+  R3.textInterpolateV,
+]);
+
+/**
+ * Possible types that can be used to generate the parameters of an instruction call.
+ * If the parameters are a function, the function will be invoked at the time the instruction
+ * is generated.
+ */
+export type InstructionParams = (o.Expression|o.Expression[])|(() => (o.Expression|o.Expression[]));
+
+/** Necessary information to generate a call to an instruction function. */
+export interface Instruction {
+  span: ParseSourceSpan|null;
+  reference: o.ExternalReference;
+  paramsOrFn?: InstructionParams;
+}
+
+/** Generates a call to a single instruction. */
+export function invokeInstruction(
+    span: ParseSourceSpan|null, reference: o.ExternalReference,
+    params: o.Expression[]): o.Expression {
+  return o.importExpr(reference, null, span).callFn(params, span);
+}
+
+/**
  * Creates an allocator for a temporary variable.
  *
  * A variable declaration is added to the statements the first time the allocator is invoked.
@@ -65,13 +150,6 @@ export function temporaryAllocator(statements: o.Statement[], name: string): () 
 }
 
 
-export function unsupported(this: void|Function, feature: string): never {
-  if (this) {
-    throw new Error(`Builder ${this.constructor.name} doesn't support ${feature} yet`);
-  }
-  throw new Error(`Feature ${feature} is not supported yet`);
-}
-
 export function invalid<T>(this: t.Visitor, arg: o.Expression|o.Statement|t.Node): never {
   throw new Error(
       `Invalid state: Visitor ${this.constructor.name} doesn't handle ${arg.constructor.name}`);
@@ -84,43 +162,54 @@ export function asLiteral(value: any): o.Expression {
   return o.literal(value, o.INFERRED_TYPE);
 }
 
-export function conditionallyCreateMapObjectLiteral(
-    keys: {[key: string]: string|string[]}, keepDeclared?: boolean): o.Expression|null {
-  if (Object.getOwnPropertyNames(keys).length > 0) {
-    return mapToExpression(keys, keepDeclared);
-  }
-  return null;
-}
+export function conditionallyCreateDirectiveBindingLiteral(
+    map: Record<string, string|{
+      classPropertyName: string;
+      bindingPropertyName: string;
+      transformFunction: o.Expression|null;
+    }>, keepDeclared?: boolean): o.Expression|null {
+  const keys = Object.getOwnPropertyNames(map);
 
-function mapToExpression(
-    map: {[key: string]: string|string[]}, keepDeclared?: boolean): o.Expression {
-  return o.literalMap(Object.getOwnPropertyNames(map).map(key => {
-    // canonical syntax: `dirProp: publicProp`
-    // if there is no `:`, use dirProp = elProp
+  if (keys.length === 0) {
+    return null;
+  }
+
+  return o.literalMap(keys.map(key => {
     const value = map[key];
     let declaredName: string;
     let publicName: string;
     let minifiedName: string;
-    let needsDeclaredName: boolean;
-    if (Array.isArray(value)) {
-      [publicName, declaredName] = value;
+    let expressionValue: o.Expression;
+
+    if (typeof value === 'string') {
+      // canonical syntax: `dirProp: publicProp`
+      declaredName = key;
       minifiedName = key;
-      needsDeclaredName = publicName !== declaredName;
+      publicName = value;
+      expressionValue = asLiteral(publicName);
     } else {
-      [declaredName, publicName] = splitAtColon(key, [key, value]);
-      minifiedName = declaredName;
-      // Only include the declared name if extracted from the key, i.e. the key contains a colon.
-      // Otherwise the declared name should be omitted even if it is different from the public name,
-      // as it may have already been minified.
-      needsDeclaredName = publicName !== declaredName && key.includes(':');
+      minifiedName = key;
+      declaredName = value.classPropertyName;
+      publicName = value.bindingPropertyName;
+
+      if (keepDeclared && (publicName !== declaredName || value.transformFunction != null)) {
+        const expressionKeys = [asLiteral(publicName), asLiteral(declaredName)];
+
+        if (value.transformFunction != null) {
+          expressionKeys.push(value.transformFunction);
+        }
+
+        expressionValue = o.literalArr(expressionKeys);
+      } else {
+        expressionValue = asLiteral(publicName);
+      }
     }
+
     return {
       key: minifiedName,
       // put quotes around keys that contain potentially unsafe characters
       quoted: UNSAFE_OBJECT_KEY_NAME_REGEXP.test(minifiedName),
-      value: (keepDeclared && needsDeclaredName) ?
-          o.literalArr([asLiteral(publicName), asLiteral(declaredName)]) :
-          asLiteral(publicName)
+      value: expressionValue,
     };
   }));
 }
@@ -148,7 +237,14 @@ export function getQueryPredicate(
     });
     return constantPool.getConstLiteral(o.literalArr(predicate), true);
   } else {
-    return query.predicate;
+    // The original predicate may have been wrapped in a `forwardRef()` call.
+    switch (query.predicate.forwardRef) {
+      case ForwardRefHandling.None:
+      case ForwardRefHandling.Unwrapped:
+        return query.predicate.expression;
+      case ForwardRefHandling.Wrapped:
+        return o.importExpr(R3.resolveForwardRef).callFn([query.predicate.expression]);
+    }
   }
 }
 
@@ -195,7 +291,9 @@ export function getAttrsForDirectiveMatching(elOrTpl: t.Element|
     });
 
     elOrTpl.inputs.forEach(i => {
-      attributesMap[i.name] = '';
+      if (i.type === BindingType.Property) {
+        attributesMap[i.name] = '';
+      }
     });
     elOrTpl.outputs.forEach(o => {
       attributesMap[o.name] = '';
@@ -203,23 +301,6 @@ export function getAttrsForDirectiveMatching(elOrTpl: t.Element|
   }
 
   return attributesMap;
-}
-
-/** Returns a call expression to a chained instruction, e.g. `property(params[0])(params[1])`. */
-export function chainedInstruction(
-    reference: o.ExternalReference, calls: o.Expression[][], span?: ParseSourceSpan|null) {
-  let expression = o.importExpr(reference, null, span) as o.Expression;
-
-  if (calls.length > 0) {
-    for (let i = 0; i < calls.length; i++) {
-      expression = expression.callFn(calls[i], span);
-    }
-  } else {
-    // Add a blank invocation, in case the `calls` array is empty.
-    expression = expression.callFn([], span);
-  }
-
-  return expression;
 }
 
 /**
@@ -237,4 +318,46 @@ export function getInterpolationArgsLength(interpolation: Interpolation) {
   } else {
     return expressions.length + strings.length;
   }
+}
+
+/**
+ * Generates the final instruction call statements based on the passed in configuration.
+ * Will try to chain instructions as much as possible, if chaining is supported.
+ */
+export function getInstructionStatements(instructions: Instruction[]): o.Statement[] {
+  const statements: o.Statement[] = [];
+  let pendingExpression: o.Expression|null = null;
+  let pendingExpressionType: o.ExternalReference|null = null;
+  let chainLength = 0;
+
+  for (const current of instructions) {
+    const resolvedParams =
+        (typeof current.paramsOrFn === 'function' ? current.paramsOrFn() : current.paramsOrFn) ??
+        [];
+    const params = Array.isArray(resolvedParams) ? resolvedParams : [resolvedParams];
+
+    // If the current instruction is the same as the previous one
+    // and it can be chained, add another call to the chain.
+    if (chainLength < MAX_CHAIN_LENGTH && pendingExpressionType === current.reference &&
+        CHAINABLE_INSTRUCTIONS.has(pendingExpressionType)) {
+      // We'll always have a pending expression when there's a pending expression type.
+      pendingExpression = pendingExpression!.callFn(params, pendingExpression!.sourceSpan);
+      chainLength++;
+    } else {
+      if (pendingExpression !== null) {
+        statements.push(pendingExpression.toStmt());
+      }
+      pendingExpression = invokeInstruction(current.span, current.reference, params);
+      pendingExpressionType = current.reference;
+      chainLength = 0;
+    }
+  }
+
+  // Since the current instruction adds the previous one to the statements,
+  // we may be left with the final one at the end that is still pending.
+  if (pendingExpression !== null) {
+    statements.push(pendingExpression.toStmt());
+  }
+
+  return statements;
 }

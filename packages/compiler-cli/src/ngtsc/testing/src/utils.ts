@@ -8,10 +8,11 @@
 
 ///<reference types="jasmine"/>
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {AbsoluteFsPath, dirname, getFileSystem, getSourceFileOrError, NgtscCompilerHost} from '../../file_system';
 import {DeclarationNode} from '../../reflection';
+import {getTokenAtPosition} from '../../util/src/typescript';
 
 export function makeProgram(
     files: {name: AbsoluteFsPath, contents: string, isRoot?: boolean}[],
@@ -26,7 +27,7 @@ export function makeProgram(
   const compilerOptions = {
     noLib: true,
     experimentalDecorators: true,
-    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    moduleResolution: ts.ModuleResolutionKind.Node10,
     ...options
   };
   const compilerHost = new NgtscCompilerHost(fs, compilerOptions);
@@ -129,7 +130,8 @@ enum TsStructureIsReused {
 export function expectCompleteReuse(program: ts.Program): void {
   // Assert complete reuse using TypeScript's private API.
   expect((program as any).structureIsReused)
-      .toBe(TsStructureIsReused.Completely, COMPLETE_REUSE_FAILURE_MESSAGE);
+      .withContext(COMPLETE_REUSE_FAILURE_MESSAGE)
+      .toBe(TsStructureIsReused.Completely);
 }
 
 function bindingNameEquals(node: ts.BindingName, name: string): boolean {
@@ -137,4 +139,25 @@ function bindingNameEquals(node: ts.BindingName, name: string): boolean {
     return node.text === name;
   }
   return false;
+}
+
+export function getSourceCodeForDiagnostic(diag: ts.Diagnostic): string {
+  if (diag.file === undefined || diag.start === undefined || diag.length === undefined) {
+    throw new Error(
+        `Unable to get source code for diagnostic. Provided diagnostic instance doesn't contain "file", "start" and/or "length" properties.`);
+  }
+  const text = diag.file.text;
+  return text.slice(diag.start, diag.start + diag.length);
+}
+
+export function diagnosticToNode<T extends ts.Node>(
+    diagnostic: ts.Diagnostic|ts.DiagnosticRelatedInformation,
+    guard: (node: ts.Node) => node is T): T {
+  const diag = diagnostic as ts.Diagnostic | ts.DiagnosticRelatedInformation;
+  if (diag.file === undefined) {
+    throw new Error(`Expected ts.Diagnostic to have a file source`);
+  }
+  const node = getTokenAtPosition(diag.file, diag.start!);
+  expect(guard(node)).toBe(true);
+  return node as T;
 }

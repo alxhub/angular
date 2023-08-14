@@ -1,44 +1,15 @@
-// #docregion can-activate-child
-import { Injectable } from '@angular/core';
-import {
-  CanActivate, Router,
-  ActivatedRouteSnapshot,
-  RouterStateSnapshot,
-  CanActivateChild,
-  UrlTree
-} from '@angular/router';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
-@Injectable({
-  providedIn: 'root',
-})
-export class AuthGuard implements CanActivate, CanActivateChild {
-  constructor(private authService: AuthService, private router: Router) {}
+export const authGuard = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
 
-  canActivate(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot): true|UrlTree {
-    const url: string = state.url;
-
-    return this.checkLogin(url);
+  if (authService.isLoggedIn) {
+    return true;
   }
 
-  canActivateChild(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot): true|UrlTree {
-    return this.canActivate(route, state);
-  }
-
-// #enddocregion can-activate-child
-  checkLogin(url: string): true|UrlTree {
-    if (this.authService.isLoggedIn) { return true; }
-
-    // Store the attempted URL for redirecting
-    this.authService.redirectUrl = url;
-
-    // Redirect to the login page
-    return this.router.parseUrl('/login');
-  }
-// #docregion can-activate-child
-}
-// #enddocregion
+  // Redirect to the login page
+  return router.parseUrl('/login');
+};

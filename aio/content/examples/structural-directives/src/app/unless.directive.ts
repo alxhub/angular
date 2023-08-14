@@ -1,4 +1,3 @@
-// tslint:disable: jsdoc-format
 // #docplaster
 // #docregion
 // #docregion no-docs, skeleton
@@ -10,7 +9,7 @@ import { Directive, Input, TemplateRef, ViewContainerRef } from '@angular/core';
 // #enddocregion no-docs
  *
  * If the expression assigned to `appUnless` evaluates to a truthy value
- * then the templated elements are removed removed from the DOM,
+ * then the templated elements are removed from the DOM,
  * the templated elements are (re)inserted into the DOM.
  *
  * <div *appUnless="errorCount" class="success">

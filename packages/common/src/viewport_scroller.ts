@@ -120,30 +120,27 @@ export class BrowserViewportScroller implements ViewportScroller {
     if (!this.supportsScrolling()) {
       return;
     }
-    // TODO(atscott): The correct behavior for `getElementsByName` would be to also verify that the
-    // element is an anchor. However, this could be considered a breaking change and should be
-    // done in a major version.
-    const elSelected: HTMLElement|undefined =
-        this.document.getElementById(target) ?? this.document.getElementsByName(target)[0];
-    if (elSelected === undefined) {
-      return;
-    }
 
-    this.scrollToElement(elSelected);
-    // After scrolling to the element, the spec dictates that we follow the focus steps for the
-    // target. Rather than following the robust steps, simply attempt focus.
-    this.attemptFocus(elSelected);
+    const elSelected = findAnchorFromDocument(this.document, target);
+
+    if (elSelected) {
+      this.scrollToElement(elSelected);
+      // After scrolling to the element, the spec dictates that we follow the focus steps for the
+      // target. Rather than following the robust steps, simply attempt focus.
+      //
+      // @see https://html.spec.whatwg.org/#get-the-focusable-area
+      // @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLOrForeignElement/focus
+      // @see https://html.spec.whatwg.org/#focusable-area
+      elSelected.focus();
+    }
   }
 
   /**
    * Disables automatic scroll restoration provided by the browser.
    */
   setHistoryScrollRestoration(scrollRestoration: 'auto'|'manual'): void {
-    if (this.supportScrollRestoration()) {
-      const history = this.window.history;
-      if (history && history.scrollRestoration) {
-        history.scrollRestoration = scrollRestoration;
-      }
+    if (this.supportsScrolling()) {
+      this.window.history.scrollRestoration = scrollRestoration;
     }
   }
 
@@ -161,46 +158,6 @@ export class BrowserViewportScroller implements ViewportScroller {
     this.window.scrollTo(left - offset[0], top - offset[1]);
   }
 
-  /**
-   * Calls `focus` on the `focusTarget` and returns `true` if the element was focused successfully.
-   *
-   * If `false`, further steps may be necessary to determine a valid substitute to be focused
-   * instead.
-   *
-   * @see https://html.spec.whatwg.org/#get-the-focusable-area
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLOrForeignElement/focus
-   * @see https://html.spec.whatwg.org/#focusable-area
-   */
-  private attemptFocus(focusTarget: HTMLElement): boolean {
-    focusTarget.focus();
-    return this.document.activeElement === focusTarget;
-  }
-
-  /**
-   * We only support scroll restoration when we can get a hold of window.
-   * This means that we do not support this behavior when running in a web worker.
-   *
-   * Lifting this restriction right now would require more changes in the dom adapter.
-   * Since webworkers aren't widely used, we will lift it once RouterScroller is
-   * battle-tested.
-   */
-  private supportScrollRestoration(): boolean {
-    try {
-      if (!this.supportsScrolling()) {
-        return false;
-      }
-      // The `scrollRestoration` property could be on the `history` instance or its prototype.
-      const scrollRestorationDescriptor = getScrollRestorationProperty(this.window.history) ||
-          getScrollRestorationProperty(Object.getPrototypeOf(this.window.history));
-      // We can write to the `scrollRestoration` property if it is a writable data field or it has a
-      // setter function.
-      return !!scrollRestorationDescriptor &&
-          !!(scrollRestorationDescriptor.writable || scrollRestorationDescriptor.set);
-    } catch {
-      return false;
-    }
-  }
-
   private supportsScrolling(): boolean {
     try {
       return !!this.window && !!this.window.scrollTo && 'pageXOffset' in this.window;
@@ -210,8 +167,38 @@ export class BrowserViewportScroller implements ViewportScroller {
   }
 }
 
-function getScrollRestorationProperty(obj: any): PropertyDescriptor|undefined {
-  return Object.getOwnPropertyDescriptor(obj, 'scrollRestoration');
+function findAnchorFromDocument(document: Document, target: string): HTMLElement|null {
+  const documentResult = document.getElementById(target) || document.getElementsByName(target)[0];
+
+  if (documentResult) {
+    return documentResult;
+  }
+
+  // `getElementById` and `getElementsByName` won't pierce through the shadow DOM so we
+  // have to traverse the DOM manually and do the lookup through the shadow roots.
+  if (typeof document.createTreeWalker === 'function' && document.body &&
+      typeof document.body.attachShadow === 'function') {
+    const treeWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+    let currentNode = treeWalker.currentNode as HTMLElement | null;
+
+    while (currentNode) {
+      const shadowRoot = currentNode.shadowRoot;
+
+      if (shadowRoot) {
+        // Note that `ShadowRoot` doesn't support `getElementsByName`
+        // so we have to fall back to `querySelector`.
+        const result =
+            shadowRoot.getElementById(target) || shadowRoot.querySelector(`[name="${target}"]`);
+        if (result) {
+          return result;
+        }
+      }
+
+      currentNode = treeWalker.nextNode() as HTMLElement | null;
+    }
+  }
+
+  return null;
 }
 
 /**

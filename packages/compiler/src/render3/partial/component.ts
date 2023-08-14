@@ -10,45 +10,75 @@ import {DEFAULT_INTERPOLATION_CONFIG} from '../../ml_parser/interpolation_config
 import * as o from '../../output/output_ast';
 import {ParseLocation, ParseSourceFile, ParseSourceSpan} from '../../parse_util';
 import {Identifiers as R3} from '../r3_identifiers';
-import {DeclarationListEmitMode, R3ComponentDef, R3ComponentMetadata, R3UsedDirectiveMetadata} from '../view/api';
+import {generateForwardRef, R3CompiledExpression} from '../util';
+import {DeclarationListEmitMode, R3ComponentMetadata, R3TemplateDependencyKind, R3TemplateDependencyMetadata} from '../view/api';
 import {createComponentType} from '../view/compiler';
 import {ParsedTemplate} from '../view/template';
 import {DefinitionMap} from '../view/util';
 
-import {R3DeclareComponentMetadata} from './api';
+import {R3DeclareComponentMetadata, R3DeclareDirectiveDependencyMetadata, R3DeclareNgModuleDependencyMetadata, R3DeclarePipeDependencyMetadata} from './api';
 import {createDirectiveDefinitionMap} from './directive';
 import {toOptionalLiteralArray} from './util';
 
+export interface DeclareComponentTemplateInfo {
+  /**
+   * The string contents of the template.
+   *
+   * This is the "logical" template string, after expansion of any escaped characters (for inline
+   * templates). This may differ from the actual template bytes as they appear in the .ts file.
+   */
+  content: string;
+
+  /**
+   * A full path to the file which contains the template.
+   *
+   * This can be either the original .ts file if the template is inline, or the .html file if an
+   * external file was used.
+   */
+  sourceUrl: string;
+
+  /**
+   * Whether the template was inline (using `template`) or external (using `templateUrl`).
+   */
+  isInline: boolean;
+
+  /**
+   * If the template was defined inline by a direct string literal, then this is that literal
+   * expression. Otherwise `null`, if the template was not defined inline or was not a literal.
+   */
+  inlineTemplateLiteralExpression: o.Expression|null;
+}
 
 /**
  * Compile a component declaration defined by the `R3ComponentMetadata`.
  */
 export function compileDeclareComponentFromMetadata(
-    meta: R3ComponentMetadata, template: ParsedTemplate): R3ComponentDef {
-  const definitionMap = createComponentDefinitionMap(meta, template);
+    meta: R3ComponentMetadata<R3TemplateDependencyMetadata>, template: ParsedTemplate,
+    additionalTemplateInfo: DeclareComponentTemplateInfo): R3CompiledExpression {
+  const definitionMap = createComponentDefinitionMap(meta, template, additionalTemplateInfo);
 
   const expression = o.importExpr(R3.declareComponent).callFn([definitionMap.toLiteralMap()]);
   const type = createComponentType(meta);
 
-  return {expression, type};
+  return {expression, type, statements: []};
 }
 
 /**
  * Gathers the declaration fields for a component into a `DefinitionMap`.
  */
-export function createComponentDefinitionMap(meta: R3ComponentMetadata, template: ParsedTemplate):
-    DefinitionMap<R3DeclareComponentMetadata> {
+export function createComponentDefinitionMap(
+    meta: R3ComponentMetadata<R3TemplateDependencyMetadata>, template: ParsedTemplate,
+    templateInfo: DeclareComponentTemplateInfo): DefinitionMap<R3DeclareComponentMetadata> {
   const definitionMap: DefinitionMap<R3DeclareComponentMetadata> =
       createDirectiveDefinitionMap(meta);
 
-  definitionMap.set('template', getTemplateExpression(template));
-  if (template.isInline) {
+  definitionMap.set('template', getTemplateExpression(template, templateInfo));
+  if (templateInfo.isInline) {
     definitionMap.set('isInline', o.literal(true));
   }
 
   definitionMap.set('styles', toOptionalLiteralArray(meta.styles, o.literal));
-  definitionMap.set('directives', compileUsedDirectiveMetadata(meta));
-  definitionMap.set('pipes', compileUsedPipeMetadata(meta));
+  definitionMap.set('dependencies', compileUsedDependenciesMetadata(meta));
   definitionMap.set('viewProviders', meta.viewProviders);
   definitionMap.set('animations', meta.animations);
 
@@ -76,26 +106,32 @@ export function createComponentDefinitionMap(meta: R3ComponentMetadata, template
   return definitionMap;
 }
 
-function getTemplateExpression(template: ParsedTemplate): o.Expression {
-  if (typeof template.template === 'string') {
-    if (template.isInline) {
-      // The template is inline but not a simple literal string, so give up with trying to
-      // source-map it and just return a simple literal here.
-      return o.literal(template.template);
-    } else {
-      // The template is external so we must synthesize an expression node with the appropriate
-      // source-span.
-      const contents = template.template;
-      const file = new ParseSourceFile(contents, template.templateUrl);
-      const start = new ParseLocation(file, 0, 0, 0);
-      const end = computeEndLocation(file, contents);
-      const span = new ParseSourceSpan(start, end);
-      return o.literal(contents, null, span);
-    }
-  } else {
-    // The template is inline so we can just reuse the current expression node.
-    return template.template;
+function getTemplateExpression(
+    template: ParsedTemplate, templateInfo: DeclareComponentTemplateInfo): o.Expression {
+  // If the template has been defined using a direct literal, we use that expression directly
+  // without any modifications. This is ensures proper source mapping from the partially
+  // compiled code to the source file declaring the template. Note that this does not capture
+  // template literals referenced indirectly through an identifier.
+  if (templateInfo.inlineTemplateLiteralExpression !== null) {
+    return templateInfo.inlineTemplateLiteralExpression;
   }
+
+  // If the template is defined inline but not through a literal, the template has been resolved
+  // through static interpretation. We create a literal but cannot provide any source span. Note
+  // that we cannot use the expression defining the template because the linker expects the template
+  // to be defined as a literal in the declaration.
+  if (templateInfo.isInline) {
+    return o.literal(templateInfo.content, null, null);
+  }
+
+  // The template is external so we must synthesize an expression node with
+  // the appropriate source-span.
+  const contents = templateInfo.content;
+  const file = new ParseSourceFile(contents, templateInfo.sourceUrl);
+  const start = new ParseLocation(file, 0, 0, 0);
+  const end = computeEndLocation(file, contents);
+  const span = new ParseSourceSpan(start, end);
+  return o.literal(contents, null, span);
 }
 
 function computeEndLocation(file: ParseSourceFile, contents: string): ParseLocation {
@@ -114,47 +150,38 @@ function computeEndLocation(file: ParseSourceFile, contents: string): ParseLocat
   return new ParseLocation(file, length, line, length - lastLineStart);
 }
 
-/**
- * Compiles the directives as registered in the component metadata into an array literal of the
- * individual directives. If the component does not use any directives, then null is returned.
- */
-function compileUsedDirectiveMetadata(meta: R3ComponentMetadata): o.LiteralArrayExpr|null {
+function compileUsedDependenciesMetadata(meta: R3ComponentMetadata<R3TemplateDependencyMetadata>):
+    o.LiteralArrayExpr|null {
   const wrapType = meta.declarationListEmitMode !== DeclarationListEmitMode.Direct ?
       generateForwardRef :
       (expr: o.Expression) => expr;
 
-  return toOptionalLiteralArray(meta.directives, directive => {
-    const dirMeta = new DefinitionMap<R3UsedDirectiveMetadata>();
-    dirMeta.set('type', wrapType(directive.type));
-    dirMeta.set('selector', o.literal(directive.selector));
-    dirMeta.set('inputs', toOptionalLiteralArray(directive.inputs, o.literal));
-    dirMeta.set('outputs', toOptionalLiteralArray(directive.outputs, o.literal));
-    dirMeta.set('exportAs', toOptionalLiteralArray(directive.exportAs, o.literal));
-    return dirMeta.toLiteralMap();
+  if (meta.declarationListEmitMode === DeclarationListEmitMode.RuntimeResolved) {
+    throw new Error(`Unsupported emit mode`);
+  }
+
+  return toOptionalLiteralArray(meta.declarations, decl => {
+    switch (decl.kind) {
+      case R3TemplateDependencyKind.Directive:
+        const dirMeta = new DefinitionMap<R3DeclareDirectiveDependencyMetadata>();
+        dirMeta.set('kind', o.literal(decl.isComponent ? 'component' : 'directive'));
+        dirMeta.set('type', wrapType(decl.type));
+        dirMeta.set('selector', o.literal(decl.selector));
+        dirMeta.set('inputs', toOptionalLiteralArray(decl.inputs, o.literal));
+        dirMeta.set('outputs', toOptionalLiteralArray(decl.outputs, o.literal));
+        dirMeta.set('exportAs', toOptionalLiteralArray(decl.exportAs, o.literal));
+        return dirMeta.toLiteralMap();
+      case R3TemplateDependencyKind.Pipe:
+        const pipeMeta = new DefinitionMap<R3DeclarePipeDependencyMetadata>();
+        pipeMeta.set('kind', o.literal('pipe'));
+        pipeMeta.set('type', wrapType(decl.type));
+        pipeMeta.set('name', o.literal(decl.name));
+        return pipeMeta.toLiteralMap();
+      case R3TemplateDependencyKind.NgModule:
+        const ngModuleMeta = new DefinitionMap<R3DeclareNgModuleDependencyMetadata>();
+        ngModuleMeta.set('kind', o.literal('ngmodule'));
+        ngModuleMeta.set('type', wrapType(decl.type));
+        return ngModuleMeta.toLiteralMap();
+    }
   });
-}
-
-/**
- * Compiles the pipes as registered in the component metadata into an object literal, where the
- * pipe's name is used as key and a reference to its type as value. If the component does not use
- * any pipes, then null is returned.
- */
-function compileUsedPipeMetadata(meta: R3ComponentMetadata): o.LiteralMapExpr|null {
-  if (meta.pipes.size === 0) {
-    return null;
-  }
-
-  const wrapType = meta.declarationListEmitMode !== DeclarationListEmitMode.Direct ?
-      generateForwardRef :
-      (expr: o.Expression) => expr;
-
-  const entries = [];
-  for (const [name, pipe] of meta.pipes) {
-    entries.push({key: name, value: wrapType(pipe), quoted: true});
-  }
-  return o.literalMap(entries);
-}
-
-function generateForwardRef(expr: o.Expression): o.Expression {
-  return o.importExpr(R3.forwardRef).callFn([o.fn([], [new o.ReturnStatement(expr)])]);
 }

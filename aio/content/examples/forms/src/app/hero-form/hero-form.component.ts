@@ -14,7 +14,7 @@ export class HeroFormComponent {
   powers = ['Really Smart', 'Super Flexible',
             'Super Hot', 'Weather Changer'];
 
-  model = new Hero(18, 'Dr IQ', this.powers[0], 'Chuck Overstreet');
+  model = new Hero(18, 'Dr. IQ', this.powers[0], 'Chuck Overstreet');
 
   // #docregion submitted
   submitted = false;
@@ -23,8 +23,6 @@ export class HeroFormComponent {
   // #enddocregion submitted
 
   // #enddocregion final
-  // TODO: Remove this when we're done
-  get diagnostic() { return JSON.stringify(this.model); }
   // #enddocregion v1
 
   // #docregion final, new-hero

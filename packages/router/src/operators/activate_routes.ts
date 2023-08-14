@@ -9,29 +9,32 @@
 import {MonoTypeOperatorFunction} from 'rxjs';
 import {map} from 'rxjs/operators';
 
-import {LoadedRouterConfig} from '../config';
 import {ActivationEnd, ChildActivationEnd, Event} from '../events';
+import {NavigationTransition} from '../navigation_transition';
 import {DetachedRouteHandleInternal, RouteReuseStrategy} from '../route_reuse_strategy';
-import {NavigationTransition} from '../router';
 import {ChildrenOutletContexts} from '../router_outlet_context';
-import {ActivatedRoute, ActivatedRouteSnapshot, advanceActivatedRoute, RouterState} from '../router_state';
-import {forEach} from '../utils/collection';
+import {ActivatedRoute, advanceActivatedRoute, RouterState} from '../router_state';
+import {getClosestRouteInjector} from '../utils/config';
 import {nodeChildrenAsMap, TreeNode} from '../utils/tree';
+
+let warnedAboutUnsupportedInputBinding = false;
 
 export const activateRoutes =
     (rootContexts: ChildrenOutletContexts, routeReuseStrategy: RouteReuseStrategy,
-     forwardEvent: (evt: Event) => void): MonoTypeOperatorFunction<NavigationTransition> =>
-        map(t => {
-          new ActivateRoutes(
-              routeReuseStrategy, t.targetRouterState!, t.currentRouterState, forwardEvent)
-              .activate(rootContexts);
-          return t;
-        });
+     forwardEvent: (evt: Event) => void,
+     inputBindingEnabled: boolean): MonoTypeOperatorFunction<NavigationTransition> => map(t => {
+      new ActivateRoutes(
+          routeReuseStrategy, t.targetRouterState!, t.currentRouterState, forwardEvent,
+          inputBindingEnabled)
+          .activate(rootContexts);
+      return t;
+    });
 
 export class ActivateRoutes {
   constructor(
       private routeReuseStrategy: RouteReuseStrategy, private futureState: RouterState,
-      private currState: RouterState, private forwardEvent: (evt: Event) => void) {}
+      private currState: RouterState, private forwardEvent: (evt: Event) => void,
+      private inputBindingEnabled: boolean) {}
 
   activate(parentContexts: ChildrenOutletContexts): void {
     const futureRoot = this.futureState._root;
@@ -56,7 +59,7 @@ export class ActivateRoutes {
     });
 
     // De-activate the routes that will not be re-used
-    forEach(children, (v: TreeNode<ActivatedRoute>, childName: string) => {
+    Object.values(children).forEach((v: TreeNode<ActivatedRoute>) => {
       this.deactivateRouteAndItsChildren(v, contexts);
     });
   }
@@ -89,7 +92,9 @@ export class ActivateRoutes {
 
   private deactivateRouteAndItsChildren(
       route: TreeNode<ActivatedRoute>, parentContexts: ChildrenOutletContexts): void {
-    if (this.routeReuseStrategy.shouldDetach(route.value.snapshot)) {
+    // If there is no component, the Route is never attached to an outlet (because there is no
+    // component to attach).
+    if (route.value.component && this.routeReuseStrategy.shouldDetach(route.value.snapshot)) {
       this.detachAndStoreRouteSubtree(route, parentContexts);
     } else {
       this.deactivateRouteAndOutlet(route, parentContexts);
@@ -99,6 +104,13 @@ export class ActivateRoutes {
   private detachAndStoreRouteSubtree(
       route: TreeNode<ActivatedRoute>, parentContexts: ChildrenOutletContexts): void {
     const context = parentContexts.getContext(route.value.outlet);
+    const contexts = context && route.value.component ? context.children : parentContexts;
+    const children: {[outletName: string]: TreeNode<ActivatedRoute>} = nodeChildrenAsMap(route);
+
+    for (const childOutlet of Object.keys(children)) {
+      this.deactivateRouteAndItsChildren(children[childOutlet], contexts);
+    }
+
     if (context && context.outlet) {
       const componentRef = context.outlet.detach();
       const contexts = context.children.onOutletDeactivated();
@@ -118,11 +130,18 @@ export class ActivateRoutes {
       this.deactivateRouteAndItsChildren(children[childOutlet], contexts);
     }
 
-    if (context && context.outlet) {
-      // Destroy the component
-      context.outlet.deactivate();
-      // Destroy the contexts for all the outlets that were in the component
-      context.children.onOutletDeactivated();
+    if (context) {
+      if (context.outlet) {
+        // Destroy the component
+        context.outlet.deactivate();
+        // Destroy the contexts for all the outlets that were in the component
+        context.children.onOutletDeactivated();
+      }
+      // Clear the information about the attached component on the context but keep the reference to
+      // the outlet. Clear even if outlet was not yet activated to avoid activating later with old
+      // info
+      context.attachRef = null;
+      context.route = null;
     }
   }
 
@@ -174,18 +193,18 @@ export class ActivateRoutes {
             // Otherwise attach from `RouterOutlet.ngOnInit` when it is instantiated
             context.outlet.attach(stored.componentRef, stored.route.value);
           }
-          advanceActivatedRouteNodeAndItsChildren(stored.route);
-        } else {
-          const config = parentLoadedConfig(future.snapshot);
-          const cmpFactoryResolver = config ? config.module.componentFactoryResolver : null;
 
+          advanceActivatedRoute(stored.route.value);
+          this.activateChildRoutes(futureNode, null, context.children);
+        } else {
+          const injector = getClosestRouteInjector(future.snapshot);
           context.attachRef = null;
           context.route = future;
-          context.resolver = cmpFactoryResolver;
+          context.injector = injector;
           if (context.outlet) {
             // Activate the outlet when it has already been instantiated
             // Otherwise it will get activated from its `ngOnInit` when instantiated
-            context.outlet.activateWith(future, cmpFactoryResolver);
+            context.outlet.activateWith(future, context.injector);
           }
 
           this.activateChildRoutes(futureNode, null, context.children);
@@ -195,20 +214,16 @@ export class ActivateRoutes {
         this.activateChildRoutes(futureNode, null, parentContexts);
       }
     }
+    if ((typeof ngDevMode === 'undefined' || ngDevMode)) {
+      const context = parentContexts.getOrCreateContext(future.outlet);
+      const outlet = context.outlet;
+      if (outlet && this.inputBindingEnabled && !outlet.supportsBindingToComponentInputs &&
+          !warnedAboutUnsupportedInputBinding) {
+        console.warn(
+            `'withComponentInputBinding' feature is enabled but ` +
+            `this application is using an outlet that may not support binding to component inputs.`);
+        warnedAboutUnsupportedInputBinding = true;
+      }
+    }
   }
-}
-
-function advanceActivatedRouteNodeAndItsChildren(node: TreeNode<ActivatedRoute>): void {
-  advanceActivatedRoute(node.value);
-  node.children.forEach(advanceActivatedRouteNodeAndItsChildren);
-}
-
-function parentLoadedConfig(snapshot: ActivatedRouteSnapshot): LoadedRouterConfig|null {
-  for (let s = snapshot.parent; s; s = s.parent) {
-    const route = s.routeConfig;
-    if (route && route._loadedConfig) return route._loadedConfig;
-    if (route && route.component) return null;
-  }
-
-  return null;
 }

@@ -3,7 +3,7 @@ load("//tools/circular_dependency_test:index.bzl", "circular_dependency_test")
 
 circular_dependency_test(
     name = "circular_deps_test",
-    entry_point = "angular/packages/upgrade/static/index.js",
+    entry_point = "angular/packages/upgrade/static/index.mjs",
     deps = ["//packages/upgrade/static"],
 )
 
@@ -19,6 +19,7 @@ ts_library(
         "//packages/platform-browser",
         "//packages/platform-browser-dynamic",
         "//packages/platform-browser/testing",
+        "//packages/private/testing",
         "//packages/upgrade/src/common",
         "//packages/upgrade/src/common/test/helpers",
         "//packages/upgrade/static",

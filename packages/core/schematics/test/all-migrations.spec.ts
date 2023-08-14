@@ -10,7 +10,9 @@ import {getSystemPath, normalize, virtualFs} from '@angular-devkit/core';
 import {TempScopedNodeJsSyncHost} from '@angular-devkit/core/node/testing';
 import {HostTree} from '@angular-devkit/schematics';
 import {SchematicTestRunner, UnitTestTree} from '@angular-devkit/schematics/testing';
-import * as shx from 'shelljs';
+import {runfiles} from '@bazel/runfiles';
+import fs from 'fs';
+import shx from 'shelljs';
 
 describe('all migrations', () => {
   let runner: SchematicTestRunner;
@@ -19,8 +21,9 @@ describe('all migrations', () => {
   let tmpDirPath: string;
   let previousWorkingDir: string;
 
-  const migrationCollectionPath = require.resolve('../migrations.json');
-  const allMigrationSchematics = Object.keys(require(migrationCollectionPath).schematics);
+  const migrationCollectionPath = runfiles.resolvePackageRelative('../migrations.json');
+  const allMigrationSchematics =
+      Object.keys((JSON.parse(fs.readFileSync(migrationCollectionPath, 'utf8')) as any).schematics);
 
   beforeEach(() => {
     runner = new SchematicTestRunner('test', migrationCollectionPath);
@@ -29,7 +32,8 @@ describe('all migrations', () => {
 
     writeFile('/node_modules/@angular/core/index.d.ts', `export const MODULE: any;`);
     writeFile('/angular.json', JSON.stringify({
-      projects: {t: {architect: {build: {options: {tsConfig: './tsconfig.json'}}}}}
+      version: 1,
+      projects: {t: {root: '', architect: {build: {options: {tsConfig: './tsconfig.json'}}}}}
     }));
     writeFile('/tsconfig.json', `{}`);
 
@@ -52,7 +56,7 @@ describe('all migrations', () => {
   }
 
   async function runMigration(migrationName: string) {
-    await runner.runSchematicAsync(migrationName, undefined, tree).toPromise();
+    await runner.runSchematic(migrationName, undefined, tree);
   }
 
   if (!allMigrationSchematics.length) {

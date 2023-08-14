@@ -15,7 +15,7 @@ import {assertFirstUpdatePass} from '../assert';
 import {bindingUpdated} from '../bindings';
 import {DirectiveDef} from '../interfaces/definition';
 import {AttributeMarker, TAttributes, TNode, TNodeFlags, TNodeType} from '../interfaces/node';
-import {Renderer3} from '../interfaces/renderer';
+import {Renderer} from '../interfaces/renderer';
 import {RElement} from '../interfaces/renderer_dom';
 import {getTStylingRangeNext, getTStylingRangeNextDuplicate, getTStylingRangePrev, getTStylingRangePrevDuplicate, TStylingKey, TStylingRange} from '../interfaces/styling';
 import {LView, RENDERER, TData, TView} from '../interfaces/view';
@@ -25,6 +25,7 @@ import {insertTStylingBinding} from '../styling/style_binding_list';
 import {getLastParsedKey, getLastParsedValue, parseClassName, parseClassNameNext, parseStyle, parseStyleNext} from '../styling/styling_parser';
 import {NO_CHANGE} from '../tokens';
 import {getNativeByIndex} from '../util/view_utils';
+
 import {setDirectiveInputsWhichShadowsStyling} from './property';
 
 
@@ -135,7 +136,7 @@ export function styleStringParser(keyValueArray: KeyValueArray<any>, text: strin
  */
 export function ɵɵclassMap(classes: {[className: string]: boolean|undefined|null}|string|undefined|
                            null): void {
-  checkStylingMap(keyValueArraySet, classStringParser, classes, true);
+  checkStylingMap(classKeyValueArraySet, classStringParser, classes, true);
 }
 
 /**
@@ -616,6 +617,27 @@ export function styleKeyValueArraySet(keyValueArray: KeyValueArray<any>, key: st
 }
 
 /**
+ * Class-binding-specific function for setting the `value` for a `key`.
+ *
+ * See: `keyValueArraySet` for details
+ *
+ * @param keyValueArray KeyValueArray to add to.
+ * @param key Style key to add.
+ * @param value The value to set.
+ */
+export function classKeyValueArraySet(keyValueArray: KeyValueArray<any>, key: unknown, value: any) {
+  // We use `classList.add` to eventually add the CSS classes to the DOM node. Any value passed into
+  // `add` is stringified and added to the `class` attribute, e.g. even null, undefined or numbers
+  // will be added. Stringify the key here so that our internal data structure matches the value in
+  // the DOM. The only exceptions are empty strings and strings that contain spaces for which
+  // the browser throws an error. We ignore such values, because the error is somewhat cryptic.
+  const stringKey = String(key);
+  if (stringKey !== '' && !stringKey.includes(' ')) {
+    keyValueArraySet(keyValueArray, stringKey, value);
+  }
+}
+
+/**
  * Update map based styling.
  *
  * Map based styling could be anything which contains more than one binding. For example `string`,
@@ -634,7 +656,7 @@ export function styleKeyValueArraySet(keyValueArray: KeyValueArray<any>, key: st
  * @param bindingIndex Binding index of the binding.
  */
 function updateStylingMap(
-    tView: TView, tNode: TNode, lView: LView, renderer: Renderer3,
+    tView: TView, tNode: TNode, lView: LView, renderer: Renderer,
     oldKeyValueArray: KeyValueArray<any>, newKeyValueArray: KeyValueArray<any>,
     isClassBased: boolean, bindingIndex: number) {
   if (oldKeyValueArray as KeyValueArray<any>| NO_CHANGE === NO_CHANGE) {
@@ -704,7 +726,7 @@ function updateStylingMap(
  * @param bindingIndex Binding index of the binding.
  */
 function updateStyling(
-    tView: TView, tNode: TNode, lView: LView, renderer: Renderer3, prop: string,
+    tView: TView, tNode: TNode, lView: LView, renderer: Renderer, prop: string,
     value: string|undefined|null|boolean, isClassBased: boolean, bindingIndex: number) {
   if (!(tNode.type & TNodeType.AnyRNode)) {
     // It is possible to have styling on non-elements (such as ng-container).
@@ -786,7 +808,7 @@ function findStylingValue(
       valueAtLViewIndex = isStylingMap ? EMPTY_ARRAY : undefined;
     }
     let currentValue = isStylingMap ? keyValueArrayGet(valueAtLViewIndex, prop) :
-                                      key === prop ? valueAtLViewIndex : undefined;
+                                      (key === prop ? valueAtLViewIndex : undefined);
     if (containsStatics && !isStylingValuePresent(currentValue)) {
       currentValue = keyValueArrayGet(rawKey as KeyValueArray<any>, prop);
     }
@@ -832,8 +854,11 @@ function isStylingValuePresent(value: any): boolean {
  * @param suffix
  */
 function normalizeSuffix(value: any, suffix: string|undefined|null): string|null|undefined|boolean {
-  if (value == null /** || value === undefined */) {
+  if (value == null || value === '') {
     // do nothing
+    // Do not add the suffix if the value is going to be empty.
+    // As it produce invalid CSS, which the browsers will automatically omit but Domino will not.
+    // Example: `"left": "px;"` instead of `"left": ""`.
   } else if (typeof suffix === 'string') {
     value = value + suffix;
   } else if (typeof value === 'object') {

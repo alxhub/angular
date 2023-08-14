@@ -7,10 +7,34 @@
  */
 
 import {AbsoluteSourceSpan} from '@angular/compiler';
+
 import {humanizeExpressionSource} from './util/expression';
 import {parseR3 as parse} from './view/util';
 
 describe('expression AST absolute source spans', () => {
+  it('should handle comment in interpolation', () => {
+    expect(humanizeExpressionSource(parse('{{foo // comment}}', {preserveWhitespaces: true}).nodes))
+        .toContain(['foo', new AbsoluteSourceSpan(2, 5)]);
+  });
+
+  it('should handle whitespace in interpolation', () => {
+    expect(humanizeExpressionSource(parse('{{  foo  }}', {preserveWhitespaces: true}).nodes))
+        .toContain(['foo', new AbsoluteSourceSpan(4, 7)]);
+  });
+
+  it('should handle whitespace and comment in interpolation', () => {
+    expect(humanizeExpressionSource(
+               parse('{{  foo // comment  }}', {preserveWhitespaces: true}).nodes))
+        .toContain(['foo', new AbsoluteSourceSpan(4, 7)]);
+  });
+
+  it('should handle comment in an action binding', () => {
+    expect(humanizeExpressionSource(parse('<button (click)="foo = true // comment">Save</button>', {
+                                      preserveWhitespaces: true
+                                    }).nodes))
+        .toContain(['foo = true', new AbsoluteSourceSpan(17, 27)]);
+  });
+
   // TODO(ayazhafiz): duplicate this test without `preserveWhitespaces` once whitespace rewriting is
   // moved to post-R3AST generation.
   it('should provide absolute offsets with arbitrary whitespace', () => {
@@ -131,6 +155,45 @@ describe('expression AST absolute source spans', () => {
           .toEqual(jasmine.arrayContaining([
             ['1', new AbsoluteSourceSpan(7, 8)],
             ['2', new AbsoluteSourceSpan(11, 12)],
+          ]));
+    });
+
+    it('should handle HTML entity before interpolation', () => {
+      expect(humanizeExpressionSource(parse('&nbsp;{{abc}}').nodes))
+          .toEqual(jasmine.arrayContaining([
+            ['abc', new AbsoluteSourceSpan(8, 11)],
+          ]));
+    });
+
+    it('should handle many HTML entities and many interpolations', () => {
+      expect(humanizeExpressionSource(parse('&quot;{{abc}}&quot;{{def}}&nbsp;{{ghi}}').nodes))
+          .toEqual(jasmine.arrayContaining([
+            ['abc', new AbsoluteSourceSpan(8, 11)],
+            ['def', new AbsoluteSourceSpan(21, 24)],
+            ['ghi', new AbsoluteSourceSpan(34, 37)],
+          ]));
+    });
+
+    it('should handle interpolation in attribute', () => {
+      expect(humanizeExpressionSource(parse('<div class="{{abc}}"><div>').nodes))
+          .toEqual(jasmine.arrayContaining([
+            ['abc', new AbsoluteSourceSpan(14, 17)],
+          ]));
+    });
+
+    it('should handle interpolation preceded by HTML entity in attribute', () => {
+      expect(humanizeExpressionSource(parse('<div class="&nbsp;{{abc}}"><div>').nodes))
+          .toEqual(jasmine.arrayContaining([
+            ['abc', new AbsoluteSourceSpan(20, 23)],
+          ]));
+    });
+
+    it('should handle many interpolation with HTML entities in attribute', () => {
+      expect(humanizeExpressionSource(
+                 parse('<div class="&quot;{{abc}}&quot;&nbsp;{{def}}"><div>').nodes))
+          .toEqual(jasmine.arrayContaining([
+            ['abc', new AbsoluteSourceSpan(20, 23)],
+            ['def', new AbsoluteSourceSpan(39, 42)],
           ]));
     });
   });
@@ -320,12 +383,6 @@ describe('expression AST absolute source spans', () => {
     });
   });
 
-  it('should provide absolute offsets of a quote', () => {
-    expect(humanizeExpressionSource(parse('<div [prop]="a:b"></div>').nodes)).toContain([
-      'a:b', new AbsoluteSourceSpan(13, 16)
-    ]);
-  });
-
   describe('absolute offsets for template expressions', () => {
     it('should work for simple cases', () => {
       expect(
@@ -358,6 +415,17 @@ describe('expression AST absolute source spans', () => {
       expect(spans).toContain(['item.placeholder', new AbsoluteSourceSpan(40, 56)]);
       expect(spans).toContain(['nestedVar', new AbsoluteSourceSpan(60, 69)]);
       expect(spans).toContain(['nestedPlaceholder', new AbsoluteSourceSpan(89, 106)]);
+    });
+  });
+
+  describe('object literal', () => {
+    it('is correct for object literals with shorthand property declarations', () => {
+      const spans =
+          humanizeExpressionSource(parse('<div (click)="test({a: 1, b, c: 3, foo})"></div>').nodes);
+
+      expect(spans).toContain(['{a: 1, b: b, c: 3, foo: foo}', new AbsoluteSourceSpan(19, 39)]);
+      expect(spans).toContain(['b', new AbsoluteSourceSpan(26, 27)]);
+      expect(spans).toContain(['foo', new AbsoluteSourceSpan(35, 38)]);
     });
   });
 });

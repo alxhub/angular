@@ -8,7 +8,7 @@
 
 import {Observable} from 'rxjs';
 
-import {AbstractControl} from '../model';
+import {AbstractControl} from '../model/abstract_model';
 import {composeAsyncValidators, composeValidators} from '../validators';
 
 import {AsyncValidator, AsyncValidatorFn, ValidationErrors, Validator, ValidatorFn} from './validators';
@@ -60,7 +60,7 @@ export abstract class AbstractControlDirective {
 
   /**
    * @description
-   * Reports whether a control is pending, meaning that that async validation is occurring and
+   * Reports whether a control is pending, meaning that async validation is occurring and
    * errors are not yet available for the input value. If the control is not present, null is
    * returned.
    */

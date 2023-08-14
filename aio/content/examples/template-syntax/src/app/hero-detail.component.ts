@@ -1,29 +1,27 @@
-/* tslint:disable use-input-property-decorator use-output-property-decorator */
+/* eslint-disable @angular-eslint/no-inputs-metadata-property, @angular-eslint/no-outputs-metadata-property */
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { Hero } from './hero';
 
 @Component({
   selector: 'app-hero-detail',
-  // tslint:disable: no-inputs-metadata-property no-outputs-metadata-property
   inputs: ['hero'],
   outputs: ['deleteRequest'],
-  // tslint:enable: no-inputs-metadata-property no-outputs-metadata-property
   styles: ['button {margin-left: 8px} div {margin: 8px 0} img {height:24px}'],
   template: `
   <div>
-    <img src="{{heroImageUrl}}">
+    <img src="{{heroImageUrl}}" alt="{{hero.name}}">
     <span [style.text-decoration]="lineThrough">
-      {{prefix}} {{hero?.name}}
+      {{prefix}} {{hero.name}}
     </span>
-    <button (click)="delete()">Delete</button>
+    <button type="button" (click)="delete()">Delete</button>
   </div>`
 })
 export class HeroDetailComponent {
-  hero: Hero = new Hero(-1, '', 'Zzzzzzzz'); // default sleeping hero
-  // heroImageUrl = 'https://wpclipart.com/cartoon/people/hero/hero_silhoutte_T.png';
+  hero = new Hero(-1, '', 'Zzzzzzzz'); // default sleeping hero
+  // heroImageUrl = 'https://wpclipart.com/cartoon/people/hero/hero_silhoutte.png.html';
   // Public Domain terms of use: https://wpclipart.com/terms.html
-  heroImageUrl = 'assets/images/hero.png';
+  heroImageUrl = 'assets/images/hero.svg';
   lineThrough = '';
   @Input() prefix = '';
 
@@ -40,15 +38,15 @@ export class HeroDetailComponent {
   selector: 'app-big-hero-detail',
   template: `
   <div class="detail">
-    <img src="{{heroImageUrl}}">
-    <div><b>{{hero?.name}}</b></div>
-    <div>Name: {{hero?.name}}</div>
-    <div>Emotion: {{hero?.emotion}}</div>
-    <div>Birthdate: {{hero?.birthdate | date:'longDate'}}</div>
-    <div>Web: <a href="{{hero?.url}}" target="_blank">{{hero?.url}}</a></div>
-    <div>Rate/hr: {{hero?.rate | currency:'EUR'}}</div>
+    <img src="{{heroImageUrl}}" alt="{{hero.name}}">
+    <div><b>{{hero.name}}</b></div>
+    <div>Name: {{hero.name}}</div>
+    <div>Emotion: {{hero.emotion}}</div>
+    <div>Birthdate: {{hero.birthdate | date:'longDate'}}</div>
+    <div>Web: <a href="{{hero.url}}" target="_blank">{{hero.url}}</a></div>
+    <div>Rate/hr: {{hero.rate | currency:'EUR'}}</div>
     <br clear="all">
-    <button (click)="delete()">Delete</button>
+    <button type="button" (click)="delete()">Delete</button>
   </div>
   `,
   styles: [`
@@ -58,10 +56,10 @@ export class HeroDetailComponent {
 })
 export class BigHeroDetailComponent extends HeroDetailComponent {
 
-  @Input()  hero: Hero;
-  @Output() deleteRequest = new EventEmitter<Hero>();
+  @Input() override hero!: Hero;
+  @Output() override deleteRequest = new EventEmitter<Hero>();
 
-  delete() {
+  override delete() {
     this.deleteRequest.emit(this.hero);
   }
 }

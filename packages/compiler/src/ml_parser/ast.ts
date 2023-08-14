@@ -6,25 +6,31 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AstPath} from '../ast_path';
 import {I18nMeta} from '../i18n/i18n_ast';
 import {ParseSourceSpan} from '../parse_util';
 
-export interface Node {
+import {InterpolatedAttributeToken, InterpolatedTextToken} from './tokens';
+
+interface BaseNode {
   sourceSpan: ParseSourceSpan;
   visit(visitor: Visitor, context: any): any;
 }
 
-export abstract class NodeWithI18n implements Node {
+export type Node =
+    Attribute|Comment|Element|Expansion|ExpansionCase|Text|BlockGroup|Block|BlockParameter;
+
+export abstract class NodeWithI18n implements BaseNode {
   constructor(public sourceSpan: ParseSourceSpan, public i18n?: I18nMeta) {}
   abstract visit(visitor: Visitor, context: any): any;
 }
 
 export class Text extends NodeWithI18n {
-  constructor(public value: string, sourceSpan: ParseSourceSpan, i18n?: I18nMeta) {
+  constructor(
+      public value: string, sourceSpan: ParseSourceSpan, public tokens: InterpolatedTextToken[],
+      i18n?: I18nMeta) {
     super(sourceSpan, i18n);
   }
-  visit(visitor: Visitor, context: any): any {
+  override visit(visitor: Visitor, context: any): any {
     return visitor.visitText(this, context);
   }
 }
@@ -35,12 +41,12 @@ export class Expansion extends NodeWithI18n {
       sourceSpan: ParseSourceSpan, public switchValueSourceSpan: ParseSourceSpan, i18n?: I18nMeta) {
     super(sourceSpan, i18n);
   }
-  visit(visitor: Visitor, context: any): any {
+  override visit(visitor: Visitor, context: any): any {
     return visitor.visitExpansion(this, context);
   }
 }
 
-export class ExpansionCase implements Node {
+export class ExpansionCase implements BaseNode {
   constructor(
       public value: string, public expression: Node[], public sourceSpan: ParseSourceSpan,
       public valueSourceSpan: ParseSourceSpan, public expSourceSpan: ParseSourceSpan) {}
@@ -53,11 +59,11 @@ export class ExpansionCase implements Node {
 export class Attribute extends NodeWithI18n {
   constructor(
       public name: string, public value: string, sourceSpan: ParseSourceSpan,
-      readonly keySpan: ParseSourceSpan|undefined, public valueSpan?: ParseSourceSpan,
-      i18n?: I18nMeta) {
+      readonly keySpan: ParseSourceSpan|undefined, public valueSpan: ParseSourceSpan|undefined,
+      public valueTokens: InterpolatedAttributeToken[]|undefined, i18n: I18nMeta|undefined) {
     super(sourceSpan, i18n);
   }
-  visit(visitor: Visitor, context: any): any {
+  override visit(visitor: Visitor, context: any): any {
     return visitor.visitAttribute(this, context);
   }
 }
@@ -69,15 +75,44 @@ export class Element extends NodeWithI18n {
       public endSourceSpan: ParseSourceSpan|null = null, i18n?: I18nMeta) {
     super(sourceSpan, i18n);
   }
-  visit(visitor: Visitor, context: any): any {
+  override visit(visitor: Visitor, context: any): any {
     return visitor.visitElement(this, context);
   }
 }
 
-export class Comment implements Node {
+export class Comment implements BaseNode {
   constructor(public value: string|null, public sourceSpan: ParseSourceSpan) {}
   visit(visitor: Visitor, context: any): any {
     return visitor.visitComment(this, context);
+  }
+}
+
+export class BlockGroup implements BaseNode {
+  constructor(
+      public blocks: Block[], public sourceSpan: ParseSourceSpan,
+      public startSourceSpan: ParseSourceSpan, public endSourceSpan: ParseSourceSpan|null = null) {}
+
+  visit(visitor: Visitor, context: any) {
+    return visitor.visitBlockGroup(this, context);
+  }
+}
+
+export class Block implements BaseNode {
+  constructor(
+      public name: string, public parameters: BlockParameter[], public children: Node[],
+      public sourceSpan: ParseSourceSpan, public startSourceSpan: ParseSourceSpan,
+      public endSourceSpan: ParseSourceSpan|null = null) {}
+
+  visit(visitor: Visitor, context: any) {
+    return visitor.visitBlock(this, context);
+  }
+}
+
+export class BlockParameter implements BaseNode {
+  constructor(public expression: string, public sourceSpan: ParseSourceSpan) {}
+
+  visit(visitor: Visitor, context: any): any {
+    return visitor.visitBlockParameter(this, context);
   }
 }
 
@@ -92,6 +127,9 @@ export interface Visitor {
   visitComment(comment: Comment, context: any): any;
   visitExpansion(expansion: Expansion, context: any): any;
   visitExpansionCase(expansionCase: ExpansionCase, context: any): any;
+  visitBlockGroup(group: BlockGroup, context: any): any;
+  visitBlock(block: Block, context: any): any;
+  visitBlockParameter(parameter: BlockParameter, context: any): any;
 }
 
 export function visitAll(visitor: Visitor, nodes: Node[], context: any = null): any[] {
@@ -131,6 +169,21 @@ export class RecursiveVisitor implements Visitor {
 
   visitExpansionCase(ast: ExpansionCase, context: any): any {}
 
+  visitBlockGroup(ast: BlockGroup, context: any): any {
+    this.visitChildren(context, visit => {
+      visit(ast.blocks);
+    });
+  }
+
+  visitBlock(block: Block, context: any): any {
+    this.visitChildren(context, visit => {
+      visit(block.parameters);
+      visit(block.children);
+    });
+  }
+
+  visitBlockParameter(ast: BlockParameter, context: any): any {}
+
   private visitChildren<T extends Node>(
       context: any, cb: (visit: (<V extends Node>(children: V[]|undefined) => void)) => void) {
     let results: any[][] = [];
@@ -141,39 +194,4 @@ export class RecursiveVisitor implements Visitor {
     cb(visit);
     return Array.prototype.concat.apply([], results);
   }
-}
-
-export type HtmlAstPath = AstPath<Node>;
-
-function spanOf(ast: Node) {
-  const start = ast.sourceSpan.start.offset;
-  let end = ast.sourceSpan.end.offset;
-  if (ast instanceof Element) {
-    if (ast.endSourceSpan) {
-      end = ast.endSourceSpan.end.offset;
-    } else if (ast.children && ast.children.length) {
-      end = spanOf(ast.children[ast.children.length - 1]).end;
-    }
-  }
-  return {start, end};
-}
-
-export function findNode(nodes: Node[], position: number): HtmlAstPath {
-  const path: Node[] = [];
-
-  const visitor = new class extends RecursiveVisitor {
-    visit(ast: Node, context: any): any {
-      const span = spanOf(ast);
-      if (span.start <= position && position < span.end) {
-        path.push(ast);
-      } else {
-        // Returning a value here will result in the children being skipped.
-        return true;
-      }
-    }
-  };
-
-  visitAll(visitor, nodes);
-
-  return new AstPath<Node>(path, position);
 }

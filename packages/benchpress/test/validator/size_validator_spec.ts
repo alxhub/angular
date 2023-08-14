@@ -6,8 +6,6 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {describe, expect, it} from '@angular/core/testing/src/testing_internal';
-
 import {Injector, MeasureValues, SizeValidator} from '../../index';
 
 {
@@ -17,8 +15,10 @@ import {Injector, MeasureValues, SizeValidator} from '../../index';
     function createValidator(size: number) {
       validator =
           Injector
-              .create(
-                  [SizeValidator.PROVIDERS, {provide: SizeValidator.SAMPLE_SIZE, useValue: size}])
+              .create({
+                providers:
+                    [SizeValidator.PROVIDERS, {provide: SizeValidator.SAMPLE_SIZE, useValue: size}]
+              })
               .get(SizeValidator);
     }
 

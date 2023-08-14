@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {leadingComment} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {TypeScriptAstFactory} from '../src/typescript_ast_factory';
 
@@ -49,6 +49,15 @@ describe('TypeScriptAstFactory', () => {
       const {items: [left, right], generate} = setupExpressions(`17`, `42`);
       const assignment = factory.createBinaryExpression(left, '+', right);
       expect(generate(assignment)).toEqual('17 + 42');
+    });
+  });
+
+  describe('createDynamicImport()', () => {
+    it('should create a dynamic import expression', () => {
+      const {generate} = setupExpressions(``);
+      const url = './some/path';
+      const assignment = factory.createDynamicImport(url);
+      expect(generate(assignment)).toEqual(`import("${url}")`);
     });
   });
 

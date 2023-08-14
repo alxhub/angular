@@ -5,10 +5,15 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as t from '@babel/types';
-import template from '@babel/template';
-import {parse} from '@babel/parser';
+import {types as t} from '@babel/core';
+import parser from '@babel/parser';
+import _template from '@babel/template';
+
 import {BabelAstHost} from '../../src/ast/babel_ast_host';
+
+// Babel is a CJS package and misuses the `default` named binding:
+// https://github.com/babel/babel/issues/15269.
+const template = (_template as any)['default'] as typeof _template;
 
 describe('BabelAstHost', () => {
   let host: BabelAstHost;
@@ -96,6 +101,11 @@ describe('BabelAstHost', () => {
       expect(host.isBooleanLiteral(expr('false'))).toBe(true);
     });
 
+    it('should return true if the expression is a minified boolean literal', () => {
+      expect(host.isBooleanLiteral(expr('!0'))).toBe(true);
+      expect(host.isBooleanLiteral(expr('!1'))).toBe(true);
+    });
+
     it('should return false if the expression is not a boolean literal', () => {
       expect(host.isBooleanLiteral(expr('"moo"'))).toBe(false);
       expect(host.isBooleanLiteral(expr('\'moo\''))).toBe(false);
@@ -106,6 +116,8 @@ describe('BabelAstHost', () => {
       expect(host.isBooleanLiteral(expr('null'))).toBe(false);
       expect(host.isBooleanLiteral(expr('\'a\' + \'b\''))).toBe(false);
       expect(host.isBooleanLiteral(expr('\`moo\`'))).toBe(false);
+      expect(host.isBooleanLiteral(expr('!2'))).toBe(false);
+      expect(host.isBooleanLiteral(expr('~1'))).toBe(false);
     });
   });
 
@@ -113,6 +125,11 @@ describe('BabelAstHost', () => {
     it('should extract the boolean value', () => {
       expect(host.parseBooleanLiteral(expr('true'))).toEqual(true);
       expect(host.parseBooleanLiteral(expr('false'))).toEqual(false);
+    });
+
+    it('should extract a minified boolean value', () => {
+      expect(host.parseBooleanLiteral(expr('!0'))).toEqual(true);
+      expect(host.parseBooleanLiteral(expr('!1'))).toEqual(false);
     });
 
     it('should error if the value is not a boolean literal', () => {
@@ -314,8 +331,8 @@ describe('BabelAstHost', () => {
 
   describe('getRange()', () => {
     it('should extract the range from the expression', () => {
-      const file = parse('// preamble\nx = \'moo\';');
-      const stmt = file.program.body[0];
+      const file = parser.parse('// preamble\nx = \'moo\';');
+      const stmt = file.program.body[0] as t.Statement;
       assertExpressionStatement(stmt);
       assertAssignmentExpression(stmt.expression);
       expect(host.getRange(stmt.expression.right))

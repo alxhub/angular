@@ -16,7 +16,7 @@ import {NgModel} from './directives/ng_model';
 import {NgModelGroup} from './directives/ng_model_group';
 import {NgNoValidate} from './directives/ng_no_validate_directive';
 import {NumberValueAccessor} from './directives/number_value_accessor';
-import {RadioControlValueAccessor} from './directives/radio_control_value_accessor';
+import {RadioControlRegistryModule, RadioControlValueAccessor} from './directives/radio_control_value_accessor';
 import {RangeValueAccessor} from './directives/range_value_accessor';
 import {FormControlDirective} from './directives/reactive_directives/form_control_directive';
 import {FormControlName} from './directives/reactive_directives/form_control_name';
@@ -43,6 +43,7 @@ export {FormGroupDirective} from './directives/reactive_directives/form_group_di
 export {FormArrayName, FormGroupName} from './directives/reactive_directives/form_group_name';
 export {NgSelectOption, SelectControlValueAccessor} from './directives/select_control_value_accessor';
 export {NgSelectMultipleOption, SelectMultipleControlValueAccessor} from './directives/select_multiple_control_value_accessor';
+export {CALL_SET_DISABLED_STATE} from './directives/shared';
 
 export const SHARED_FORM_DIRECTIVES: Type<any>[] = [
   NgNoValidate,
@@ -77,6 +78,7 @@ export const REACTIVE_DRIVEN_DIRECTIVES: Type<any>[] =
  */
 @NgModule({
   declarations: SHARED_FORM_DIRECTIVES,
+  imports: [RadioControlRegistryModule],
   exports: SHARED_FORM_DIRECTIVES,
 })
 export class ɵInternalFormsSharedModule {

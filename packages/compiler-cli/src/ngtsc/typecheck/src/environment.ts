@@ -6,14 +6,15 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ExpressionType, ExternalExpr, Type, WrappedNodeExpr} from '@angular/compiler';
-import * as ts from 'typescript';
+import {ExpressionType, ExternalExpr, TransplantedType, Type, TypeModifier} from '@angular/compiler';
+import ts from 'typescript';
 
-import {ImportFlags, Reference, ReferenceEmitter} from '../../imports';
+import {assertSuccessfulReferenceEmit, ImportFlags, Reference, ReferenceEmitKind, ReferenceEmitter} from '../../imports';
 import {ClassDeclaration, ReflectionHost} from '../../reflection';
 import {ImportManager, translateExpression, translateType} from '../../translator';
 import {TypeCheckableDirectiveMeta, TypeCheckingConfig, TypeCtorMetadata} from '../api';
 
+import {ReferenceEmitEnvironment} from './tcb_util';
 import {tsDeclareVariable} from './ts_util';
 import {generateTypeCtorDeclarationFn, requiresInlineTypeCtor} from './type_constructor';
 import {TypeParameterEmitter} from './type_parameter_emitter';
@@ -29,7 +30,7 @@ import {TypeParameterEmitter} from './type_parameter_emitter';
  * `Environment` can be used in a standalone fashion, or can be extended to support more specialized
  * usage.
  */
-export class Environment {
+export class Environment implements ReferenceEmitEnvironment {
   private nextIds = {
     pipeInst: 1,
     typeCtor: 1,
@@ -43,7 +44,7 @@ export class Environment {
 
   constructor(
       readonly config: TypeCheckingConfig, protected importManager: ImportManager,
-      private refEmitter: ReferenceEmitter, private reflector: ReflectionHost,
+      private refEmitter: ReferenceEmitter, readonly reflector: ReflectionHost,
       protected contextFile: ts.SourceFile) {}
 
   /**
@@ -59,11 +60,11 @@ export class Environment {
       return this.typeCtors.get(node)!;
     }
 
-    if (requiresInlineTypeCtor(node, this.reflector)) {
+    if (requiresInlineTypeCtor(node, this.reflector, this)) {
       // The constructor has already been created inline, we just need to construct a reference to
       // it.
       const ref = this.reference(dirRef);
-      const typeCtorExpr = ts.createPropertyAccess(ref, 'ngTypeCtor');
+      const typeCtorExpr = ts.factory.createPropertyAccessExpression(ref, 'ngTypeCtor');
       this.typeCtors.set(node, typeCtorExpr);
       return typeCtorExpr;
     } else {
@@ -76,18 +77,16 @@ export class Environment {
         fnName,
         body: true,
         fields: {
-          inputs: dir.inputs.classPropertyNames,
-          outputs: dir.outputs.classPropertyNames,
+          inputs: dir.inputs,
           // TODO: support queries
           queries: dir.queries,
         },
         coercedInputFields: dir.coercedInputFields,
       };
       const typeParams = this.emitTypeParameters(node);
-      const typeCtor = generateTypeCtorDeclarationFn(
-          node, meta, nodeTypeRef.typeName, typeParams, this.reflector);
+      const typeCtor = generateTypeCtorDeclarationFn(node, meta, nodeTypeRef.typeName, typeParams);
       this.typeCtorStatements.push(typeCtor);
-      const fnId = ts.createIdentifier(fnName);
+      const fnId = ts.factory.createIdentifier(fnName);
       this.typeCtors.set(node, fnId);
       return fnId;
     }
@@ -102,7 +101,7 @@ export class Environment {
     }
 
     const pipeType = this.referenceType(ref);
-    const pipeInstId = ts.createIdentifier(`_pipe${this.nextIds.pipeInst++}`);
+    const pipeInstId = ts.factory.createIdentifier(`_pipe${this.nextIds.pipeInst++}`);
 
     this.pipeInstStatements.push(tsDeclareVariable(pipeInstId, pipeType));
     this.pipeInsts.set(ref.node, pipeInstId);
@@ -121,9 +120,18 @@ export class Environment {
     // in these cases as there is no strict dependency checking during the template type-checking
     // pass.
     const ngExpr = this.refEmitter.emit(ref, this.contextFile, ImportFlags.NoAliasing);
+    assertSuccessfulReferenceEmit(ngExpr, this.contextFile, 'class');
 
     // Use `translateExpression` to convert the `Expression` into a `ts.Expression`.
-    return translateExpression(ngExpr, this.importManager);
+    return translateExpression(ngExpr.expression, this.importManager);
+  }
+
+  canReferenceType(ref: Reference): boolean {
+    const result = this.refEmitter.emit(
+        ref, this.contextFile,
+        ImportFlags.NoAliasing | ImportFlags.AllowTypeImports |
+            ImportFlags.AllowRelativeDtsImports);
+    return result.kind === ReferenceEmitKind.Success;
   }
 
   /**
@@ -133,11 +141,16 @@ export class Environment {
    */
   referenceType(ref: Reference): ts.TypeNode {
     const ngExpr = this.refEmitter.emit(
-        ref, this.contextFile, ImportFlags.NoAliasing | ImportFlags.AllowTypeImports);
+        ref, this.contextFile,
+        ImportFlags.NoAliasing | ImportFlags.AllowTypeImports |
+            ImportFlags.AllowRelativeDtsImports);
+    assertSuccessfulReferenceEmit(ngExpr, this.contextFile, 'symbol');
 
     // Create an `ExpressionType` from the `Expression` and translate it via `translateType`.
     // TODO(alxhub): support references to types with generic arguments in a clean way.
-    return translateType(new ExpressionType(ngExpr), this.importManager);
+    return translateType(
+        new ExpressionType(ngExpr.expression), this.contextFile, this.reflector, this.refEmitter,
+        this.importManager);
   }
 
   private emitTypeParameters(declaration: ClassDeclaration<ts.ClassDeclaration>):
@@ -155,7 +168,18 @@ export class Environment {
   referenceExternalType(moduleName: string, name: string, typeParams?: Type[]): ts.TypeNode {
     const external = new ExternalExpr({moduleName, name});
     return translateType(
-        new ExpressionType(external, [/* modifiers */], typeParams), this.importManager);
+        new ExpressionType(external, TypeModifier.None, typeParams), this.contextFile,
+        this.reflector, this.refEmitter, this.importManager);
+  }
+
+  /**
+   * Generates a `ts.TypeNode` representing a type that is being referenced from a different place
+   * in the program. Any type references inside the transplanted type will be rewritten so that
+   * they can be imported in the context fiel.
+   */
+  referenceTransplantedType(type: TransplantedType<ts.TypeNode>): ts.TypeNode {
+    return translateType(
+        type, this.contextFile, this.reflector, this.refEmitter, this.importManager);
   }
 
   getPreludeStatements(): ts.Statement[] {

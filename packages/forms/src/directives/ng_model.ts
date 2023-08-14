@@ -6,9 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, EventEmitter, forwardRef, Host, Inject, Input, OnChanges, OnDestroy, Optional, Output, Self, SimpleChanges} from '@angular/core';
+import {booleanAttribute, ChangeDetectorRef, Directive, EventEmitter, forwardRef, Host, Inject, Input, OnChanges, OnDestroy, Optional, Output, Provider, Self, SimpleChanges} from '@angular/core';
 
-import {FormControl, FormHooks} from '../model';
+import {FormHooks} from '../model/abstract_model';
+import {FormControl} from '../model/form_control';
 import {NG_ASYNC_VALIDATORS, NG_VALIDATORS} from '../validators';
 
 import {AbstractFormGroupDirective} from './abstract_form_group_directive';
@@ -17,11 +18,11 @@ import {ControlValueAccessor, NG_VALUE_ACCESSOR} from './control_value_accessor'
 import {NgControl} from './ng_control';
 import {NgForm} from './ng_form';
 import {NgModelGroup} from './ng_model_group';
-import {controlPath, isPropertyUpdated, selectValueAccessor, setUpControl} from './shared';
-import {TemplateDrivenErrors} from './template_driven_errors';
+import {CALL_SET_DISABLED_STATE, controlPath, isPropertyUpdated, selectValueAccessor, SetDisabledStateOption, setUpControl} from './shared';
+import {formGroupNameException, missingNameException, modelParentException} from './template_driven_errors';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from './validators';
 
-export const formControlBinding: any = {
+const formControlBinding: Provider = {
   provide: NgControl,
   useExisting: forwardRef(() => NgModel)
 };
@@ -43,12 +44,12 @@ export const formControlBinding: any = {
  * - this is just one extra run no matter how many `ngModel`s have been changed.
  * - this is a general problem when using `exportAs` for directives!
  */
-const resolvedPromise = (() => Promise.resolve(null))();
+const resolvedPromise = (() => Promise.resolve())();
 
 /**
  * @description
- * Creates a `FormControl` instance from a domain model and binds it
- * to a form control element.
+ * Creates a `FormControl` instance from a [domain
+ * model](https://en.wikipedia.org/wiki/Domain_model) and binds it to a form control element.
  *
  * The `FormControl` instance tracks the value, user interaction, and
  * validation status of the control and keeps the view synced with the model. If used
@@ -71,8 +72,8 @@ const resolvedPromise = (() => Promise.resolve(null))();
  * for direct access. See a full list of properties directly available in
  * `AbstractControlDirective`.
  *
- * @see `RadioControlValueAccessor`
- * @see `SelectControlValueAccessor`
+ * @see {@link RadioControlValueAccessor}
+ * @see {@link SelectControlValueAccessor}
  *
  * @usageNotes
  *
@@ -136,7 +137,7 @@ const resolvedPromise = (() => Promise.resolve(null))();
   exportAs: 'ngModel'
 })
 export class NgModel extends NgControl implements OnChanges, OnDestroy {
-  public readonly control: FormControl = new FormControl();
+  public override readonly control: FormControl = new FormControl();
 
   // At runtime we coerce arbitrary values assigned to the "disabled" input to a "boolean".
   // This is not reflected in the type of the property because outside of templates, consumers
@@ -161,8 +162,7 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
    * Tracks the name bound to the directive. If a parent form exists, it
    * uses this name as a key to retrieve this control's value.
    */
-  // TODO(issue/24571): remove '!'.
-  @Input() name!: string;
+  @Input() override name: string = '';
 
   /**
    * @description
@@ -208,7 +208,10 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
       @Optional() @Self() @Inject(NG_VALIDATORS) validators: (Validator|ValidatorFn)[],
       @Optional() @Self() @Inject(NG_ASYNC_VALIDATORS) asyncValidators:
           (AsyncValidator|AsyncValidatorFn)[],
-      @Optional() @Self() @Inject(NG_VALUE_ACCESSOR) valueAccessors: ControlValueAccessor[]) {
+      @Optional() @Self() @Inject(NG_VALUE_ACCESSOR) valueAccessors: ControlValueAccessor[],
+      @Optional() @Inject(ChangeDetectorRef) private _changeDetectorRef?: ChangeDetectorRef|null,
+      @Optional() @Inject(CALL_SET_DISABLED_STATE) private callSetDisabledState?:
+          SetDisabledStateOption) {
     super();
     this._parent = parent;
     this._setValidators(validators);
@@ -219,7 +222,20 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
   /** @nodoc */
   ngOnChanges(changes: SimpleChanges) {
     this._checkForErrors();
-    if (!this._registered) this._setUpControl();
+    if (!this._registered || 'name' in changes) {
+      if (this._registered) {
+        this._checkName();
+        if (this.formDirective) {
+          // We can't call `formDirective.removeControl(this)`, because the `name` has already been
+          // changed. We also can't reset the name temporarily since the logic in `removeControl`
+          // is inside a promise and it won't run immediately. We work around it by giving it an
+          // object with the same shape instead.
+          const oldName = changes['name'].previousValue;
+          this.formDirective.removeControl({name: oldName, path: this._getPath(oldName)});
+        }
+      }
+      this._setUpControl();
+    }
     if ('isDisabled' in changes) {
       this._updateDisabled(changes);
     }
@@ -240,8 +256,8 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
    * Returns an array that represents the path from the top-level form to this control.
    * Each index is the string name of the control on that level.
    */
-  get path(): string[] {
-    return this._parent ? controlPath(this.name, this._parent) : [this.name];
+  override get path(): string[] {
+    return this._getPath(this.name);
   }
 
   /**
@@ -258,7 +274,7 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
    *
    * @param newValue The new value emitted by `ngModelChange`.
    */
-  viewToModelUpdate(newValue: any): void {
+  override viewToModelUpdate(newValue: any): void {
     this.viewModel = newValue;
     this.update.emit(newValue);
   }
@@ -280,7 +296,7 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
   }
 
   private _setUpStandalone(): void {
-    setUpControl(this.control, this);
+    setUpControl(this.control, this, this.callSetDisabledState);
     this.control.updateValueAndValidity({emitEvent: false});
   }
 
@@ -295,9 +311,9 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
       if (!(this._parent instanceof NgModelGroup) &&
           this._parent instanceof AbstractFormGroupDirective) {
-        TemplateDrivenErrors.formGroupNameException();
+        throw formGroupNameException();
       } else if (!(this._parent instanceof NgModelGroup) && !(this._parent instanceof NgForm)) {
-        TemplateDrivenErrors.modelParentException();
+        throw modelParentException();
       }
     }
   }
@@ -306,20 +322,21 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
     if (this.options && this.options.name) this.name = this.options.name;
 
     if (!this._isStandalone() && !this.name && (typeof ngDevMode === 'undefined' || ngDevMode)) {
-      TemplateDrivenErrors.missingNameException();
+      throw missingNameException();
     }
   }
 
   private _updateValue(value: any): void {
     resolvedPromise.then(() => {
       this.control.setValue(value, {emitViewToModelChange: false});
+      this._changeDetectorRef?.markForCheck();
     });
   }
 
   private _updateDisabled(changes: SimpleChanges) {
     const disabledValue = changes['isDisabled'].currentValue;
-
-    const isDisabled = disabledValue === '' || (disabledValue && disabledValue !== 'false');
+    // checking for 0 to avoid breaking change
+    const isDisabled = disabledValue !== 0 && booleanAttribute(disabledValue);
 
     resolvedPromise.then(() => {
       if (isDisabled && !this.control.disabled) {
@@ -327,6 +344,12 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
       } else if (!isDisabled && this.control.disabled) {
         this.control.enable();
       }
+
+      this._changeDetectorRef?.markForCheck();
     });
+  }
+
+  private _getPath(controlName: string): string[] {
+    return this._parent ? controlPath(controlName, this._parent) : [controlName];
   }
 }

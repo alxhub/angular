@@ -6,14 +6,19 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, MethodCall, ParseError, PropertyRead, SafeMethodCall, SafePropertyRead, TmplAstElement, TmplAstNode, TmplAstTemplate} from '@angular/compiler';
-import {AbsoluteFsPath} from '@angular/compiler-cli/src/ngtsc/file_system';
-import * as ts from 'typescript';
+import {AST, LiteralPrimitive, ParseSourceSpan, PropertyRead, SafePropertyRead, TmplAstElement, TmplAstNode, TmplAstTemplate, TmplAstTextAttribute} from '@angular/compiler';
+import ts from 'typescript';
 
-import {FullTemplateMapping, TypeCheckableDirectiveMeta} from './api';
+import {AbsoluteFsPath} from '../../../../src/ngtsc/file_system';
+import {ErrorCode} from '../../diagnostics';
+import {Reference} from '../../imports';
+import {NgModuleMeta, PipeMeta} from '../../metadata';
+import {ClassDeclaration} from '../../reflection';
+
+import {FullTemplateMapping, NgTemplateDiagnostic, TypeCheckableDirectiveMeta} from './api';
 import {GlobalCompletion} from './completion';
-import {DirectiveInScope, PipeInScope} from './scope';
-import {DirectiveSymbol, ElementSymbol, ShimLocation, Symbol, TemplateSymbol} from './symbols';
+import {PotentialDirective, PotentialImport, PotentialImportMode, PotentialPipe} from './scope';
+import {ElementSymbol, Symbol, TcbLocation, TemplateSymbol} from './symbols';
 
 /**
  * Interface to the Angular Template Type Checker to extract diagnostics and intelligence from the
@@ -54,7 +59,7 @@ export interface TemplateTypeChecker {
    * Given a `shim` and position within the file, returns information for mapping back to a template
    * location.
    */
-  getTemplateMappingAtShimLocation(shimLocation: ShimLocation): FullTemplateMapping|null;
+  getTemplateMappingAtTcbLocation(tcbLocation: TcbLocation): FullTemplateMapping|null;
 
   /**
    * Get all `ts.Diagnostic`s currently available that pertain to the given component.
@@ -105,34 +110,63 @@ export interface TemplateTypeChecker {
    * include completions from the template's context component, as well as any local references or
    * template variables which are in scope for that expression.
    */
-  getGlobalCompletions(context: TmplAstTemplate|null, component: ts.ClassDeclaration):
-      GlobalCompletion|null;
+  getGlobalCompletions(
+      context: TmplAstTemplate|null, component: ts.ClassDeclaration,
+      node: AST|TmplAstNode): GlobalCompletion|null;
 
 
   /**
-   * For the given expression node, retrieve a `ShimLocation` that can be used to perform
+   * For the given expression node, retrieve a `TcbLocation` that can be used to perform
    * autocompletion at that point in the expression, if such a location exists.
    */
   getExpressionCompletionLocation(
-      expr: PropertyRead|SafePropertyRead|MethodCall|SafeMethodCall,
-      component: ts.ClassDeclaration): ShimLocation|null;
+      expr: PropertyRead|SafePropertyRead, component: ts.ClassDeclaration): TcbLocation|null;
 
   /**
-   * Get basic metadata on the directives which are in scope for the given component.
+   * For the given node represents a `LiteralPrimitive`(the `TextAttribute` represents a string
+   * literal), retrieve a `TcbLocation` that can be used to perform autocompletion at that point in
+   * the node, if such a location exists.
    */
-  getDirectivesInScope(component: ts.ClassDeclaration): DirectiveInScope[]|null;
+  getLiteralCompletionLocation(
+      strNode: LiteralPrimitive|TmplAstTextAttribute, component: ts.ClassDeclaration): TcbLocation
+      |null;
 
   /**
-   * Get basic metadata on the pipes which are in scope for the given component.
+   * Get basic metadata on the directives which are in scope or can be imported for the given
+   * component.
    */
-  getPipesInScope(component: ts.ClassDeclaration): PipeInScope[]|null;
+  getPotentialTemplateDirectives(component: ts.ClassDeclaration): PotentialDirective[];
 
   /**
-   * Retrieve a `Map` of potential template element tags, to either the `DirectiveInScope` that
+   * Get basic metadata on the pipes which are in scope or can be imported for the given component.
+   */
+  getPotentialPipes(component: ts.ClassDeclaration): PotentialPipe[];
+
+  /**
+   * Retrieve a `Map` of potential template element tags, to either the `PotentialDirective` that
    * declares them (if the tag is from a directive/component), or `null` if the tag originates from
    * the DOM schema.
    */
-  getPotentialElementTags(component: ts.ClassDeclaration): Map<string, DirectiveInScope|null>;
+  getPotentialElementTags(component: ts.ClassDeclaration): Map<string, PotentialDirective|null>;
+
+  /**
+   * In the context of an Angular trait, generate potential imports for a directive.
+   */
+  getPotentialImportsFor(
+      toImport: Reference<ClassDeclaration>, inComponent: ts.ClassDeclaration,
+      importMode: PotentialImportMode): ReadonlyArray<PotentialImport>;
+
+  /**
+   * Get the primary decorator for an Angular class (such as @Component). This does not work for
+   * `@Injectable`.
+   */
+  getPrimaryAngularDecorator(target: ts.ClassDeclaration): ts.Decorator|null;
+
+  /**
+   * Get the class of the NgModule that owns this Angular trait. If the result is `null`, that
+   * probably means the provided component is standalone.
+   */
+  getOwningNgModule(component: ts.ClassDeclaration): ts.ClassDeclaration|null;
 
   /**
    * Retrieve any potential DOM bindings for the given element.
@@ -144,15 +178,52 @@ export interface TemplateTypeChecker {
   getPotentialDomBindings(tagName: string): {attribute: string, property: string}[];
 
   /**
+   * Retrieve any potential DOM events.
+   */
+  getPotentialDomEvents(tagName: string): string[];
+
+  /**
    * Retrieve the type checking engine's metadata for the given directive class, if available.
    */
   getDirectiveMetadata(dir: ts.ClassDeclaration): TypeCheckableDirectiveMeta|null;
+
+  /**
+   * Retrieve the type checking engine's metadata for the given NgModule class, if available.
+   */
+  getNgModuleMetadata(module: ts.ClassDeclaration): NgModuleMeta|null;
+
+  /**
+   * Retrieve the type checking engine's metadata for the given pipe class, if available.
+   */
+  getPipeMetadata(pipe: ts.ClassDeclaration): PipeMeta|null;
+
+  /**
+   * Gets the directives that have been used in a component's template.
+   */
+  getUsedDirectives(component: ts.ClassDeclaration): TypeCheckableDirectiveMeta[]|null;
+
+  /**
+   * Gets the pipes that have been used in a component's template.
+   */
+  getUsedPipes(component: ts.ClassDeclaration): string[]|null;
 
   /**
    * Reset the `TemplateTypeChecker`'s state for the given class, so that it will be recomputed on
    * the next request.
    */
   invalidateClass(clazz: ts.ClassDeclaration): void;
+
+  /**
+   * Constructs a `ts.Diagnostic` for a given `ParseSourceSpan` within a template.
+   */
+  makeTemplateDiagnostic<T extends ErrorCode>(
+      clazz: ts.ClassDeclaration, sourceSpan: ParseSourceSpan, category: ts.DiagnosticCategory,
+      errorCode: T, message: string, relatedInformation?: {
+        text: string,
+        start: number,
+        end: number,
+        sourceFile: ts.SourceFile,
+      }[]): NgTemplateDiagnostic<T>;
 }
 
 /**
@@ -160,8 +231,8 @@ export interface TemplateTypeChecker {
  */
 export enum OptimizeFor {
   /**
-   * Indicates that a consumer of a `TemplateTypeChecker` is only interested in results for a given
-   * file, and wants them as fast as possible.
+   * Indicates that a consumer of a `TemplateTypeChecker` is only interested in results for a
+   * given file, and wants them as fast as possible.
    *
    * Calling `TemplateTypeChecker` methods successively for multiple files while specifying
    * `OptimizeFor.SingleFile` can result in significant unnecessary overhead overall.
@@ -169,8 +240,8 @@ export enum OptimizeFor {
   SingleFile,
 
   /**
-   * Indicates that a consumer of a `TemplateTypeChecker` intends to query for results pertaining to
-   * the entire user program, and so the type-checker should internally optimize for this case.
+   * Indicates that a consumer of a `TemplateTypeChecker` intends to query for results pertaining
+   * to the entire user program, and so the type-checker should internally optimize for this case.
    *
    * Initial calls to retrieve type-checking information may take longer, but repeated calls to
    * gather information for the whole user program will be significantly faster with this mode of

@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {Type, Writable} from '../../interface/type';
 import {EMPTY_ARRAY, EMPTY_OBJ} from '../../util/empty';
 import {fillProperties} from '../../util/property';
@@ -13,6 +14,7 @@ import {ComponentDef, ContentQueriesFunction, DirectiveDef, DirectiveDefFeature,
 import {TAttributes} from '../interfaces/node';
 import {isComponentDef} from '../interfaces/type_checks';
 import {mergeHostAttrs} from '../util/attrs_utils';
+import {stringifyForError} from '../util/stringify_utils';
 
 export function getSuperType(type: Type<any>): Type<any>&
     {ɵcmp?: ComponentDef<any>, ɵdir?: DirectiveDef<any>} {
@@ -39,7 +41,12 @@ export function ɵɵInheritDefinitionFeature(definition: DirectiveDef<any>|Compo
       superDef = superType.ɵcmp || superType.ɵdir;
     } else {
       if (superType.ɵcmp) {
-        throw new Error('Directives cannot inherit Components');
+        throw new RuntimeError(
+            RuntimeErrorCode.INVALID_INHERITANCE,
+            ngDevMode &&
+                `Directives cannot inherit Components. Directive ${
+                    stringifyForError(definition.type)} is attempting to extend component ${
+                    stringifyForError(superType)}`);
       }
       // Don't use getComponentDef/getDirectiveDef. This logic relies on inheritance.
       superDef = superType.ɵdir;
@@ -52,6 +59,7 @@ export function ɵɵInheritDefinitionFeature(definition: DirectiveDef<any>|Compo
         // would've justified object creation. Unwrap them if necessary.
         const writeableDef = definition as WritableDef;
         writeableDef.inputs = maybeUnwrapEmpty(definition.inputs);
+        writeableDef.inputTransforms = maybeUnwrapEmpty(definition.inputTransforms);
         writeableDef.declaredInputs = maybeUnwrapEmpty(definition.declaredInputs);
         writeableDef.outputs = maybeUnwrapEmpty(definition.outputs);
 
@@ -69,6 +77,13 @@ export function ɵɵInheritDefinitionFeature(definition: DirectiveDef<any>|Compo
         fillProperties(definition.inputs, superDef.inputs);
         fillProperties(definition.declaredInputs, superDef.declaredInputs);
         fillProperties(definition.outputs, superDef.outputs);
+
+        if (superDef.inputTransforms !== null) {
+          if (writeableDef.inputTransforms === null) {
+            writeableDef.inputTransforms = {};
+          }
+          fillProperties(writeableDef.inputTransforms, superDef.inputTransforms);
+        }
 
         // Merge animations metadata.
         // If `superDef` is a Component, the `data` field is present (defaults to an empty object).

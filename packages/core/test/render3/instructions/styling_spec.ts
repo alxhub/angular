@@ -17,7 +17,6 @@ import {getNativeByIndex} from '@angular/core/src/render3/util/view_utils';
 import {keyValueArraySet} from '@angular/core/src/util/array_utils';
 import {ngDevModeResetPerfCounters} from '@angular/core/src/util/ng_dev_mode';
 import {getElementClasses, getElementStyles} from '@angular/core/testing/src/styling';
-import {expect} from '@angular/core/testing/src/testing_internal';
 
 import {clearFirstUpdatePass, enterViewWithOneDiv, rewindBindingIndex} from './shared_spec';
 
@@ -62,6 +61,7 @@ describe('styling', () => {
   });
 
   it('should set style based on priority', () => {
+    ngDevModeResetPerfCounters();
     ɵɵstyleProp('color', 'red');
     ɵɵstyleProp('color', 'blue');  // Higher priority, should win.
     expectStyle(div).toEqual({color: 'blue'});
@@ -98,6 +98,7 @@ describe('styling', () => {
   });
 
   it('should set class based on priority', () => {
+    ngDevModeResetPerfCounters();
     ɵɵclassProp('foo', false);
     ɵɵclassProp('foo', true);  // Higher priority, should win.
     expectClass(div).toEqual({foo: true});
@@ -126,6 +127,7 @@ describe('styling', () => {
 
   describe('styleMap', () => {
     it('should work with maps', () => {
+      ngDevModeResetPerfCounters();
       ɵɵstyleMap({});
       expectStyle(div).toEqual({});
       expect(ngDevMode!.rendererSetStyle).toEqual(0);
@@ -157,6 +159,7 @@ describe('styling', () => {
     });
 
     it('should work with object literal and strings', () => {
+      ngDevModeResetPerfCounters();
       ɵɵstyleMap('');
       expectStyle(div).toEqual({});
       expect(ngDevMode!.rendererSetStyle).toEqual(0);

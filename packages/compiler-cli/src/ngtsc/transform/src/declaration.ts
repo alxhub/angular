@@ -7,10 +7,10 @@
  */
 
 import {Type} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {ImportRewriter} from '../../imports';
-import {ClassDeclaration} from '../../reflection';
+import {ImportRewriter, ReferenceEmitter} from '../../imports';
+import {ClassDeclaration, ReflectionHost} from '../../reflection';
 import {ImportManager, translateType} from '../../translator';
 
 import {DtsTransform} from './api';
@@ -22,20 +22,12 @@ import {addImports} from './utils';
  */
 export class DtsTransformRegistry {
   private ivyDeclarationTransforms = new Map<ts.SourceFile, IvyDeclarationDtsTransform>();
-  private returnTypeTransforms = new Map<ts.SourceFile, ReturnTypeTransform>();
 
   getIvyDeclarationTransform(sf: ts.SourceFile): IvyDeclarationDtsTransform {
     if (!this.ivyDeclarationTransforms.has(sf)) {
       this.ivyDeclarationTransforms.set(sf, new IvyDeclarationDtsTransform());
     }
     return this.ivyDeclarationTransforms.get(sf)!;
-  }
-
-  getReturnTypeTransform(sf: ts.SourceFile): ReturnTypeTransform {
-    if (!this.returnTypeTransforms.has(sf)) {
-      this.returnTypeTransforms.set(sf, new ReturnTypeTransform());
-    }
-    return this.returnTypeTransforms.get(sf)!;
   }
 
   /**
@@ -57,19 +49,17 @@ export class DtsTransformRegistry {
       transforms = [];
       transforms.push(this.ivyDeclarationTransforms.get(originalSf)!);
     }
-    if (this.returnTypeTransforms.has(originalSf)) {
-      transforms = transforms || [];
-      transforms.push(this.returnTypeTransforms.get(originalSf)!);
-    }
     return transforms;
   }
 }
 
 export function declarationTransformFactory(
-    transformRegistry: DtsTransformRegistry, importRewriter: ImportRewriter,
+    transformRegistry: DtsTransformRegistry, reflector: ReflectionHost,
+    refEmitter: ReferenceEmitter, importRewriter: ImportRewriter,
     importPrefix?: string): ts.TransformerFactory<ts.SourceFile> {
   return (context: ts.TransformationContext) => {
-    const transformer = new DtsTransformer(context, importRewriter, importPrefix);
+    const transformer =
+        new DtsTransformer(context, reflector, refEmitter, importRewriter, importPrefix);
     return (fileOrBundle) => {
       if (ts.isBundle(fileOrBundle)) {
         // Only attempt to transform source files.
@@ -89,7 +79,8 @@ export function declarationTransformFactory(
  */
 class DtsTransformer {
   constructor(
-      private ctx: ts.TransformationContext, private importRewriter: ImportRewriter,
+      private ctx: ts.TransformationContext, private reflector: ReflectionHost,
+      private refEmitter: ReferenceEmitter, private importRewriter: ImportRewriter,
       private importPrefix?: string) {}
 
   /**
@@ -110,7 +101,7 @@ class DtsTransformer {
     };
 
     // Recursively scan through the AST and process all nodes as desired.
-    sf = ts.visitNode(sf, visitor);
+    sf = ts.visitNode(sf, visitor, ts.isSourceFile) || sf;
 
     // Add new imports for this file.
     return addImports(imports, sf);
@@ -145,16 +136,16 @@ class DtsTransformer {
         // not yet been incorporated. Otherwise, `newClazz.members` holds the latest class members.
         const inputMembers = (clazz === newClazz ? elements : newClazz.members);
 
-        newClazz = transform.transformClass(newClazz, inputMembers, imports);
+        newClazz = transform.transformClass(
+            newClazz, inputMembers, this.reflector, this.refEmitter, imports);
       }
     }
 
     // If some elements have been transformed but the class itself has not been transformed, create
     // an updated class declaration with the updated elements.
     if (elementsChanged && clazz === newClazz) {
-      newClazz = ts.updateClassDeclaration(
+      newClazz = ts.factory.updateClassDeclaration(
           /* node */ clazz,
-          /* decorators */ clazz.decorators,
           /* modifiers */ clazz.modifiers,
           /* name */ clazz.name,
           /* typeParameters */ clazz.typeParameters,
@@ -194,6 +185,7 @@ export class IvyDeclarationDtsTransform implements DtsTransform {
 
   transformClass(
       clazz: ts.ClassDeclaration, members: ReadonlyArray<ts.ClassElement>,
+      reflector: ReflectionHost, refEmitter: ReferenceEmitter,
       imports: ImportManager): ts.ClassDeclaration {
     const original = ts.getOriginalNode(clazz) as ClassDeclaration;
 
@@ -203,11 +195,11 @@ export class IvyDeclarationDtsTransform implements DtsTransform {
     const fields = this.declarationFields.get(original)!;
 
     const newMembers = fields.map(decl => {
-      const modifiers = [ts.createModifier(ts.SyntaxKind.StaticKeyword)];
-      const typeRef = translateType(decl.type, imports);
+      const modifiers = [ts.factory.createModifier(ts.SyntaxKind.StaticKeyword)];
+      const typeRef =
+          translateType(decl.type, original.getSourceFile(), reflector, refEmitter, imports);
       markForEmitAsSingleLine(typeRef);
-      return ts.createProperty(
-          /* decorators */ undefined,
+      return ts.factory.createPropertyDeclaration(
           /* modifiers */ modifiers,
           /* name */ decl.name,
           /* questionOrExclamationToken */ undefined,
@@ -215,9 +207,8 @@ export class IvyDeclarationDtsTransform implements DtsTransform {
           /* initializer */ undefined);
     });
 
-    return ts.updateClassDeclaration(
+    return ts.factory.updateClassDeclaration(
         /* node */ clazz,
-        /* decorators */ clazz.decorators,
         /* modifiers */ clazz.modifiers,
         /* name */ clazz.name,
         /* typeParameters */ clazz.typeParameters,
@@ -229,51 +220,4 @@ export class IvyDeclarationDtsTransform implements DtsTransform {
 function markForEmitAsSingleLine(node: ts.Node) {
   ts.setEmitFlags(node, ts.EmitFlags.SingleLine);
   ts.forEachChild(node, markForEmitAsSingleLine);
-}
-
-export class ReturnTypeTransform implements DtsTransform {
-  private typeReplacements = new Map<ts.Declaration, Type>();
-
-  addTypeReplacement(declaration: ts.Declaration, type: Type): void {
-    this.typeReplacements.set(declaration, type);
-  }
-
-  transformClassElement(element: ts.ClassElement, imports: ImportManager): ts.ClassElement {
-    if (ts.isMethodDeclaration(element)) {
-      const original = ts.getOriginalNode(element, ts.isMethodDeclaration);
-      if (!this.typeReplacements.has(original)) {
-        return element;
-      }
-      const returnType = this.typeReplacements.get(original)!;
-      const tsReturnType = translateType(returnType, imports);
-
-      return ts.updateMethod(
-          element, element.decorators, element.modifiers, element.asteriskToken, element.name,
-          element.questionToken, element.typeParameters, element.parameters, tsReturnType,
-          element.body);
-    }
-
-    return element;
-  }
-
-  transformFunctionDeclaration(element: ts.FunctionDeclaration, imports: ImportManager):
-      ts.FunctionDeclaration {
-    const original = ts.getOriginalNode(element) as ts.FunctionDeclaration;
-    if (!this.typeReplacements.has(original)) {
-      return element;
-    }
-    const returnType = this.typeReplacements.get(original)!;
-    const tsReturnType = translateType(returnType, imports);
-
-    return ts.updateFunctionDeclaration(
-        /* node */ element,
-        /* decorators */ element.decorators,
-        /* modifiers */ element.modifiers,
-        /* asteriskToken */ element.asteriskToken,
-        /* name */ element.name,
-        /* typeParameters */ element.typeParameters,
-        /* parameters */ element.parameters,
-        /* type */ tsReturnType,
-        /* body */ element.body);
-  }
 }

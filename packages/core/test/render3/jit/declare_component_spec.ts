@@ -6,8 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ChangeDetectionStrategy, Directive, ElementRef, forwardRef, Pipe, Type, ViewEncapsulation, ɵɵngDeclareComponent} from '@angular/core';
-import {AttributeMarker, ComponentDef} from '../../../src/render3';
+import {ChangeDetectionStrategy, Component, Directive, ElementRef, forwardRef, Pipe, Type, ViewEncapsulation, ɵɵngDeclareComponent} from '@angular/core';
+
+import {AttributeMarker, ComponentDef, ɵɵInheritDefinitionFeature, ɵɵInputTransformsFeature, ɵɵNgOnChangesFeature} from '../../../src/render3';
+
 import {functionContaining} from './matcher';
 
 describe('component declaration jit compilation', () => {
@@ -18,10 +20,7 @@ describe('component declaration jit compilation', () => {
                 }) as ComponentDef<TestClass>;
 
     expectComponentDef(def, {
-      template: functionContaining([
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:element|anonymous)[^(]*\(0,'div'\)/,
-      ]),
+      template: functionContaining([/element[^(]*\(0,'div'\)/]),
     });
   });
 
@@ -60,6 +59,30 @@ describe('component declaration jit compilation', () => {
       outputs: {
         'eventBindingName': 'minifiedEventName',
       },
+    });
+  });
+
+  it('should compile input with a transform function', () => {
+    const transformFn = () => 1;
+    const def = ɵɵngDeclareComponent({
+                  type: TestClass,
+                  template: '<div></div>',
+                  inputs: {
+                    minifiedClassProperty: ['bindingName', 'classProperty', transformFn],
+                  }
+                }) as ComponentDef<TestClass>;
+
+    expectComponentDef(def, {
+      inputs: {
+        'bindingName': 'minifiedClassProperty',
+      },
+      inputTransforms: {
+        'minifiedClassProperty': transformFn,
+      },
+      declaredInputs: {
+        'bindingName': 'classProperty',
+      },
+      features: [ɵɵInputTransformsFeature],
     });
   });
 
@@ -130,15 +153,13 @@ describe('component declaration jit compilation', () => {
       contentQueries: functionContaining([
         // "byRef" should use `contentQuery` with `0` (`QueryFlags.none`) for query flag
         // without a read token, and bind to the full query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:contentQuery|anonymous)[^(]*\(dirIndex,_c0,4\)/,
+        /contentQuery[^(]*\(dirIndex,_c0,4\)/,
         '(ctx.byRef = _t)',
 
         // "byToken" should use `staticContentQuery` with `3`
         // (`QueryFlags.descendants|QueryFlags.isStatic`) for query flag and `ElementRef` as
         // read token, and bind to the first result in the query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:contentQuery|anonymous)[^(]*\(dirIndex,[^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
+        /contentQuery[^(]*\(dirIndex,[^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
         '(ctx.byToken = _t.first)',
       ]),
     });
@@ -168,16 +189,14 @@ describe('component declaration jit compilation', () => {
     expectComponentDef(def, {
       viewQuery: functionContaining([
         // "byRef" should use `viewQuery` with `0` (`QueryFlags.none`) for query flag without a read
-        // token, and bind to the full query result. NOTE: the `anonymous` match is to support IE11,
-        // as functions don't have a name there.
-        /(?:viewQuery|anonymous)[^(]*\(_c0,4\)/,
+        // token, and bind to the full query result.
+        /viewQuery[^(]*\(_c0,4\)/,
         '(ctx.byRef = _t)',
 
         // "byToken" should use `viewQuery` with `3`
         // (`QueryFlags.descendants|QueryFlags.isStatic`) for query flag and `ElementRef` as
         // read token, and bind to the first result in the query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:viewQuery|anonymous)[^(]*\([^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
+        /viewQuery[^(]*\([^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
         '(ctx.byToken = _t.first)',
       ]),
     });
@@ -210,9 +229,8 @@ describe('component declaration jit compilation', () => {
       ],
       hostBindings: functionContaining([
         'return ctx.handleEvent($event)',
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:hostProperty|anonymous)[^(]*\('foo',ctx\.foo\.prop\)/,
-        /(?:attribute|anonymous)[^(]*\('bar',ctx\.bar\.prop\)/,
+        /hostProperty[^(]*\('foo',ctx\.foo\.prop\)/,
+        /attribute[^(]*\('bar',ctx\.bar\.prop\)/,
       ]),
       hostVars: 2,
     });
@@ -226,7 +244,7 @@ describe('component declaration jit compilation', () => {
                 }) as ComponentDef<TestClass>;
 
     expectComponentDef(def, {
-      features: [functionContaining(['ɵɵInheritDefinitionFeature'])],
+      features: [ɵɵInheritDefinitionFeature],
     });
   });
 
@@ -238,7 +256,7 @@ describe('component declaration jit compilation', () => {
                 }) as ComponentDef<TestClass>;
 
     expectComponentDef(def, {
-      features: [functionContaining(['ɵɵNgOnChangesFeature'])],
+      features: [ɵɵNgOnChangesFeature],
     });
   });
 
@@ -309,16 +327,14 @@ describe('component declaration jit compilation', () => {
 
     expectComponentDef(whenTrue, {
       template: functionContaining([
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:elementStart|anonymous)[^(]*\(0,'div'\)/,
-        /(?:text|anonymous)[^(]*\(1,'    Foo    '\)/,
+        /elementStart[^(]*\(0,'div'\)/,
+        /text[^(]*\(1,'    Foo    '\)/,
       ]),
     });
     expectComponentDef(whenOmitted, {
       template: functionContaining([
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:elementStart|anonymous)[^(]*\(0,'div'\)/,
-        /(?:text|anonymous)[^(]*\(1,' Foo '\)/,
+        /elementStart[^(]*\(0,'div'\)/,
+        /text[^(]*\(1,' Foo '\)/,
       ]),
     });
   });
@@ -332,9 +348,23 @@ describe('component declaration jit compilation', () => {
 
     expectComponentDef(def, {
       template: functionContaining([
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:textInterpolate|anonymous)[^(]*\(ctx.foo\)/,
+        /textInterpolate[^(]*\(ctx.foo\)/,
       ]),
+    });
+  });
+
+  it('should compile used components', () => {
+    const def = ɵɵngDeclareComponent({
+                  type: TestClass,
+                  template: '<cmp></cmp>',
+                  components: [{
+                    type: TestCmp,
+                    selector: 'cmp',
+                  }],
+                }) as ComponentDef<TestClass>;
+
+    expectComponentDef(def, {
+      directives: [TestCmp],
     });
   });
 
@@ -350,6 +380,25 @@ describe('component declaration jit compilation', () => {
 
     expectComponentDef(def, {
       directives: [TestDir],
+    });
+  });
+
+  it('should compile used directives together with used components', () => {
+    const def = ɵɵngDeclareComponent({
+                  type: TestClass,
+                  template: '<cmp dir></cmp>',
+                  components: [{
+                    type: TestCmp,
+                    selector: 'cmp',
+                  }],
+                  directives: [{
+                    type: TestDir,
+                    selector: '[dir]',
+                  }],
+                }) as ComponentDef<TestClass>;
+
+    expectComponentDef(def, {
+      directives: [TestCmp, TestDir],
     });
   });
 
@@ -461,7 +510,7 @@ type ComponentDefExpectations = jasmine.Expected<Pick<
     ComponentDef<unknown>,
     'selectors'|'template'|'inputs'|'declaredInputs'|'outputs'|'features'|'hostAttrs'|
     'hostBindings'|'hostVars'|'contentQueries'|'viewQuery'|'exportAs'|'providersResolver'|
-    'encapsulation'|'onPush'|'styles'|'data'>>&{
+    'encapsulation'|'onPush'|'styles'|'data'|'inputTransforms'>>&{
   directives: Type<unknown>[]|null;
   pipes: Type<unknown>[]|null;
 };
@@ -479,6 +528,7 @@ function expectComponentDef(
     template: jasmine.any(Function),
     inputs: {},
     declaredInputs: {},
+    inputTransforms: null,
     outputs: {},
     features: null,
     hostAttrs: null,
@@ -493,45 +543,57 @@ function expectComponentDef(
     encapsulation: ViewEncapsulation.None,
     onPush: false,
     styles: [],
-    directives: null,
-    pipes: null,
+    directives: [],
+    pipes: [],
     data: {},
     ...expected,
   };
 
   expect(actual.type).toBe(TestClass);
-  expect(actual.selectors).toEqual(expectation.selectors);
-  expect(actual.template).toEqual(expectation.template);
-  expect(actual.inputs).toEqual(expectation.inputs);
-  expect(actual.declaredInputs).toEqual(expectation.declaredInputs);
-  expect(actual.outputs).toEqual(expectation.outputs);
-  expect(actual.features).toEqual(expectation.features);
-  expect(actual.hostAttrs).toEqual(expectation.hostAttrs);
-  expect(actual.hostBindings).toEqual(expectation.hostBindings);
-  expect(actual.hostVars).toEqual(expectation.hostVars);
-  expect(actual.contentQueries).toEqual(expectation.contentQueries);
-  expect(actual.viewQuery).toEqual(expectation.viewQuery);
-  expect(actual.exportAs).toEqual(expectation.exportAs);
-  expect(actual.providersResolver).toEqual(expectation.providersResolver);
-  expect(actual.encapsulation).toEqual(expectation.encapsulation);
-  expect(actual.onPush).toEqual(expectation.onPush);
-  expect(actual.styles).toEqual(expectation.styles);
-  expect(actual.data).toEqual(expectation.data);
+  expect(actual.selectors).withContext('selectors').toEqual(expectation.selectors);
+  expect(actual.template).withContext('template').toEqual(expectation.template);
+  expect(actual.inputs).withContext('inputs').toEqual(expectation.inputs);
+  expect(actual.declaredInputs).withContext('declaredInputs').toEqual(expectation.declaredInputs);
+  expect(actual.inputTransforms)
+      .withContext('inputTransforms')
+      .toEqual(expectation.inputTransforms);
+  expect(actual.outputs).withContext('outputs').toEqual(expectation.outputs);
+  expect(actual.features).withContext('features').toEqual(expectation.features);
+  expect(actual.hostAttrs).withContext('hostAttrs').toEqual(expectation.hostAttrs);
+  expect(actual.hostBindings).withContext('hostBindings').toEqual(expectation.hostBindings);
+  expect(actual.hostVars).withContext('hostVars').toEqual(expectation.hostVars);
+  expect(actual.contentQueries).withContext('contentQueries').toEqual(expectation.contentQueries);
+  expect(actual.viewQuery).withContext('viewQuery').toEqual(expectation.viewQuery);
+  expect(actual.exportAs).withContext('exportAs').toEqual(expectation.exportAs);
+  expect(actual.providersResolver)
+      .withContext('providersResolver')
+      .toEqual(expectation.providersResolver);
+  expect(actual.encapsulation).withContext('encapsulation').toEqual(expectation.encapsulation);
+  expect(actual.onPush).withContext('onPush').toEqual(expectation.onPush);
+  expect(actual.styles).withContext('styles').toEqual(expectation.styles);
+  expect(actual.data).withContext('data').toEqual(expectation.data);
+
+  const convertNullToEmptyArray = <T extends Type<any>[]|null>(arr: T): T =>
+      arr ?? ([] as unknown as T);
 
   const directiveDefs =
       typeof actual.directiveDefs === 'function' ? actual.directiveDefs() : actual.directiveDefs;
   const directiveTypes = directiveDefs !== null ? directiveDefs.map(def => def.type) : null;
-  expect(directiveTypes).toEqual(expectation.directives);
+  expect(convertNullToEmptyArray(directiveTypes)).toEqual(expectation.directives);
 
   const pipeDefs = typeof actual.pipeDefs === 'function' ? actual.pipeDefs() : actual.pipeDefs;
   const pipeTypes = pipeDefs !== null ? pipeDefs.map(def => def.type) : null;
-  expect(pipeTypes).toEqual(expectation.pipes);
+  expect(convertNullToEmptyArray(pipeTypes)).toEqual(expectation.pipes);
 }
 
 class TestClass {}
 
 @Directive({selector: '[dir]'})
 class TestDir {
+}
+
+@Component({selector: 'cmp', template: ''})
+class TestCmp {
 }
 
 @Pipe({name: 'test'})

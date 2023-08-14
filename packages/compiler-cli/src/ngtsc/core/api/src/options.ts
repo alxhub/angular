@@ -6,9 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {BazelAndG3Options, I18nOptions, LegacyNgcOptions, MiscOptions, NgcCompatibilityOptions, StrictTemplateOptions} from './public_options';
+import {BazelAndG3Options, DiagnosticOptions, I18nOptions, LegacyNgcOptions, MiscOptions, StrictTemplateOptions, TargetOptions} from './public_options';
 
 
 /**
@@ -26,11 +26,23 @@ export interface TestOnlyOptions {
   _useHostForImportGeneration?: boolean;
 
   /**
+   * Enable the Language Service APIs for template type-checking for tests.
+   */
+  _enableTemplateTypeChecker?: boolean;
+
+  /**
+   * Names of the blocks that should be enabled. E.g. `_enabledBlockTypes: ['defer']`
+   * would allow usages of `{#defer}{/defer}` in templates.
+   *
+   * @internal
+   */
+  _enabledBlockTypes?: string[];
+
+  /**
    * An option to enable ngtsc's internal performance tracing.
    *
-   * This should be a path to a JSON file where trace information will be written. An optional 'ts:'
-   * prefix will cause the trace to be written via the TS host instead of directly to the filesystem
-   * (not all hosts support this mode of operation).
+   * This should be a path to a JSON file where trace information will be written. This is sensitive
+   * to the compiler's working directory, and should likely be an absolute path.
    *
    * This is currently not exposed to users as the trace format is still unstable.
    */
@@ -38,19 +50,30 @@ export interface TestOnlyOptions {
 }
 
 /**
- * Options that specify compilation target.
+ * Internal only options for compiler.
  */
-export interface TargetOptions {
+export interface InternalOptions {
   /**
-   * Specifies the compilation mode to use. The following modes are available:
-   * - 'full': generates fully AOT compiled code using Ivy instructions.
-   * - 'partial': generates code in a stable, but intermediate form suitable to be published to NPM.
+   * Enables the full usage of TestBed APIs within Angular unit tests by emitting class metadata
+   * for each Angular related class.
    *
-   * To become public once the linker is ready.
+   * This is only intended to be used by the Angular CLI.
+   * Defaults to true if not specified.
    *
    * @internal
    */
-  compilationMode?: 'full'|'partial';
+  supportTestBed?: boolean;
+
+  /**
+   * Enables the usage of the JIT compiler in combination with AOT compiled code by emitting
+   * selector scope information for NgModules.
+   *
+   * This is only intended to be used by the Angular CLI.
+   * Defaults to true if not specified.
+   *
+   * @internal
+   */
+  supportJitMode?: boolean;
 }
 
 /**
@@ -60,6 +83,12 @@ export interface TargetOptions {
  * Also includes a few miscellaneous options.
  */
 export interface NgCompilerOptions extends ts.CompilerOptions, LegacyNgcOptions, BazelAndG3Options,
-                                           NgcCompatibilityOptions, StrictTemplateOptions,
+                                           DiagnosticOptions, StrictTemplateOptions,
                                            TestOnlyOptions, I18nOptions, TargetOptions,
-                                           MiscOptions {}
+                                           InternalOptions, MiscOptions {
+  // Replace the index signature type from `ts.CompilerOptions` as it is more strict than it needs
+  // to be and would conflict with some types from the other interfaces. This is ok because Angular
+  // compiler options are actually separate from TS compiler options in the `tsconfig.json` and we
+  // have full control over the structure of Angular's compiler options.
+  [prop: string]: any;
+}

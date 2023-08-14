@@ -7,9 +7,8 @@
  */
 
 import {I18nPluralPipe, NgLocalization} from '@angular/common';
-import {PipeResolver} from '@angular/compiler/src/pipe_resolver';
-import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testing_internal';
-import {JitReflector} from '@angular/platform-browser-dynamic/src/compiler_reflector';
+import {Component} from '@angular/core';
+import {TestBed} from '@angular/core/testing';
 
 {
   describe('I18nPluralPipe', () => {
@@ -26,10 +25,6 @@ import {JitReflector} from '@angular/platform-browser-dynamic/src/compiler_refle
     beforeEach(() => {
       localization = new TestLocalization();
       pipe = new I18nPluralPipe(localization);
-    });
-
-    it('should be marked as pure', () => {
-      expect(new PipeResolver(new JitReflector()).resolve(I18nPluralPipe)!.pure).toEqual(true);
     });
 
     describe('transform', () => {
@@ -67,11 +62,30 @@ import {JitReflector} from '@angular/platform-browser-dynamic/src/compiler_refle
         expect(() => pipe.transform(0, 'hey' as any)).toThrowError();
       });
     });
+
+    it('should be available as a standalone pipe', () => {
+      @Component({
+        selector: 'test-component',
+        imports: [I18nPluralPipe],
+        template: '{{ value | i18nPlural:mapping }}',
+        standalone: true,
+      })
+      class TestComponent {
+        value = 1;
+        mapping = mapping;
+      }
+
+      const fixture = TestBed.createComponent(TestComponent);
+      fixture.detectChanges();
+
+      const content = fixture.nativeElement.textContent;
+      expect(content).toBe('One message.');
+    });
   });
 }
 
 class TestLocalization extends NgLocalization {
-  getPluralCategory(value: number): string {
+  override getPluralCategory(value: number): string {
     return value > 1 && value < 6 ? 'many' : 'other';
   }
 }

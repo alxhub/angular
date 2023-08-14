@@ -9,7 +9,6 @@
 import {HttpClient} from '@angular/common/http/src/client';
 import {HttpErrorResponse, HttpEventType, HttpResponse, HttpStatusCode} from '@angular/common/http/src/response';
 import {HttpClientTestingBackend} from '@angular/common/http/testing/src/backend';
-import {ddescribe, describe, fit, it} from '@angular/core/testing/src/testing_internal';
 import {toArray} from 'rxjs/operators';
 
 {
@@ -177,6 +176,30 @@ import {toArray} from 'rxjs/operators';
         testReq.flush('hello world');
       });
     });
+    describe('makes a DELETE request', () => {
+      it('with body', done => {
+        const body = {data: 'json body'};
+        client.delete('/test', {observe: 'response', responseType: 'text', body: body})
+            .subscribe(res => {
+              expect(res.ok).toBeTruthy();
+              expect(res.status).toBe(200);
+              done();
+            });
+        const testReq = backend.expectOne('/test');
+        expect(testReq.request.body).toBe(body);
+        testReq.flush('hello world');
+      });
+      it('without body', done => {
+        client.delete('/test', {observe: 'response', responseType: 'text'}).subscribe(res => {
+          expect(res.ok).toBeTruthy();
+          expect(res.status).toBe(200);
+          done();
+        });
+        const testReq = backend.expectOne('/test');
+        expect(testReq.request.body).toBe(null);
+        testReq.flush('hello world');
+      });
+    });
     describe('makes a JSONP request', () => {
       it('with properly set method and callback', done => {
         client.jsonp('/test', 'myCallback').subscribe(() => done());
@@ -193,6 +216,15 @@ import {toArray} from 'rxjs/operators';
         backend.expectOne('/test').flush(
             {'data': 'hello world'},
             {status: HttpStatusCode.InternalServerError, statusText: 'Server error'});
+      });
+    });
+    describe('throws an error', () => {
+      it('for a request with nullish header', () => {
+        client.request('GET', '/test', {headers: {foo: null!}}).subscribe();
+        expect(() => backend.expectOne('/test').request.headers.has('random-header'))
+            .toThrowError(
+                'Unexpected value of the `foo` header provided. ' +
+                'Expecting either a string, a number or an array, but got: `null`.');
       });
     });
   });

@@ -9,10 +9,12 @@
 
 import {resolveForwardRef} from '../di/forward_ref';
 import {ClassProvider, Provider} from '../di/interface/provider';
-import {isClassProvider, isTypeProvider, providerToFactory} from '../di/r3_injector';
+import {isClassProvider, isTypeProvider, SingleProvider} from '../di/provider_collection';
+import {providerToFactory} from '../di/r3_injector';
 import {assertDefined} from '../util/assert';
 
-import {diPublicInInjector, getNodeInjectable, getOrCreateNodeInjectorForNode} from './di';
+import {emitProviderConfiguredEvent, runInInjectorProfilerContext} from './debug/injector_profiler';
+import {diPublicInInjector, getNodeInjectable, getOrCreateNodeInjectorForNode, NodeInjector} from './di';
 import {ɵɵdirectiveInject} from './instructions/all';
 import {DirectiveDef} from './interfaces/definition';
 import {NodeInjectorFactory} from './interfaces/injector';
@@ -73,10 +75,18 @@ function resolveProvider(
   } else {
     const tView = getTView();
     const lView = getLView();
-    let token: any = isTypeProvider(provider) ? provider : resolveForwardRef(provider.provide);
-    let providerFactory: () => any = providerToFactory(provider);
-
     const tNode = getCurrentTNode()!;
+    let token: any = isTypeProvider(provider) ? provider : resolveForwardRef(provider.provide);
+
+    const providerFactory = providerToFactory(provider);
+    if (ngDevMode) {
+      const injector =
+          new NodeInjector(tNode as TElementNode | TContainerNode | TElementContainerNode, lView);
+      runInInjectorProfilerContext(injector, token, () => {
+        emitProviderConfiguredEvent(provider as SingleProvider, isViewProvider);
+      });
+    }
+
     const beginIndex = tNode.providerIndexes & TNodeProviderIndexes.ProvidersStartIndexMask;
     const endIndex = tNode.directiveStart;
     const cptViewProvidersCount =
@@ -191,9 +201,14 @@ function registerDestroyHooksIfSupported(
     tView: TView, provider: Exclude<Provider, any[]>, contextIndex: number,
     indexInFactory?: number) {
   const providerIsTypeProvider = isTypeProvider(provider);
-  if (providerIsTypeProvider || isClassProvider(provider)) {
-    const prototype = ((provider as ClassProvider).useClass || provider).prototype;
+  const providerIsClassProvider = isClassProvider(provider);
+
+  if (providerIsTypeProvider || providerIsClassProvider) {
+    // Resolve forward references as `useClass` can hold a forward reference.
+    const classToken = providerIsClassProvider ? resolveForwardRef(provider.useClass) : provider;
+    const prototype = classToken.prototype;
     const ngOnDestroy = prototype.ngOnDestroy;
+
     if (ngOnDestroy) {
       const hooks = tView.destroyHooks || (tView.destroyHooks = []);
 

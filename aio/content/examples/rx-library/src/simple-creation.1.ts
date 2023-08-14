@@ -3,13 +3,12 @@
   Because of how the code is merged together using the doc regions,
   we need to indent the imports with the function below.
 */
-/* tslint:disable:align */
 // #docregion promise
-  import { from } from 'rxjs';
+  import { from, Observable } from 'rxjs';
 
 // #enddocregion promise
 
-export function docRegionPromise(console, fetch) {
+export function docRegionPromise<T>(console: Console, fetch: (url: string) => Observable<T>) {
   // #docregion promise
   // Create an Observable out of a promise
   const data = from(fetch('/api/endpoint'));

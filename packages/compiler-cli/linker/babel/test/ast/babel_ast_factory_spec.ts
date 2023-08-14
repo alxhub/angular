@@ -6,11 +6,20 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {leadingComment} from '@angular/compiler';
-import generate from '@babel/generator';
-import {expression, statement} from '@babel/template';
-import * as t from '@babel/types';
+import {types as t} from '@babel/core';
+import _generate from '@babel/generator';
+import _template from '@babel/template';
 
 import {BabelAstFactory} from '../../src/ast/babel_ast_factory';
+
+// Babel is a CJS package and misuses the `default` named binding:
+// https://github.com/babel/babel/issues/15269.
+const generate = (_generate as any)['default'] as typeof _generate;
+
+// Exposes shorthands for the `expression` and `statement`
+// methods exposed by `@babel/template`.
+const expression = _template.expression;
+const statement = _template.statement;
 
 describe('BabelAstFactory', () => {
   let factory: BabelAstFactory;
@@ -94,7 +103,7 @@ describe('BabelAstFactory', () => {
       const arg1 = expression.ast`42`;
       const arg2 = expression.ast`"moo"`;
       const call = factory.createCallExpression(callee, [arg1, arg2], true);
-      expect(generate(call).code).toEqual(['/* @__PURE__ */', 'foo(42, "moo")'].join('\n'));
+      expect(generate(call).code).toEqual('/* @__PURE__ */foo(42, "moo")');
     });
   });
 
@@ -171,6 +180,14 @@ describe('BabelAstFactory', () => {
       const id = factory.createIdentifier('someId') as t.Identifier;
       expect(t.isIdentifier(id)).toBe(true);
       expect(id.name).toEqual('someId');
+    });
+  });
+
+  describe('createDynamicImport()', () => {
+    it('should create a dynamic import', () => {
+      const url = './some/path';
+      const dynamicImport = factory.createDynamicImport(url);
+      expect(generate(dynamicImport).code).toEqual(`import("${url}")`);
     });
   });
 

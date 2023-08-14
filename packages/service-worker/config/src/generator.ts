@@ -9,7 +9,7 @@
 import {parseDurationToMs} from './duration';
 import {Filesystem} from './filesystem';
 import {globToRegex} from './glob';
-import {Config} from './in';
+import {AssetGroup, Config} from './in';
 
 const DEFAULT_NAVIGATION_URLS = [
   '/**',           // Include all URLs.
@@ -45,8 +45,13 @@ export class Generator {
 
   private async processAssetGroups(config: Config, hashTable: {[file: string]: string|undefined}):
       Promise<Object[]> {
+    // Retrieve all files of the build.
+    const allFiles = await this.fs.list('/');
     const seenMap = new Set<string>();
-    return Promise.all((config.assetGroups || []).map(async (group) => {
+    const filesPerGroup = new Map<AssetGroup, string[]>();
+
+    // Computed which files belong to each asset-group.
+    for (const group of (config.assetGroups || [])) {
       if ((group.resources as any).versionedFiles) {
         throw new Error(
             `Asset-group '${group.name}' in 'ngsw-config.json' uses the 'versionedFiles' option, ` +
@@ -54,27 +59,31 @@ export class Generator {
       }
 
       const fileMatcher = globListToMatcher(group.resources.files || []);
-      const allFiles = await this.fs.list('/');
-
       const matchedFiles = allFiles.filter(fileMatcher).filter(file => !seenMap.has(file)).sort();
+
       matchedFiles.forEach(file => seenMap.add(file));
+      filesPerGroup.set(group, matchedFiles);
+    }
 
-      // Add the hashes.
-      await matchedFiles.reduce(async (previous, file) => {
-        await previous;
-        const hash = await this.fs.hash(file);
-        hashTable[joinUrls(this.baseHref, file)] = hash;
-      }, Promise.resolve());
+    // Compute hashes for all matched files and add them to the hash-table.
+    const allMatchedFiles = ([] as string[]).concat(...Array.from(filesPerGroup.values())).sort();
+    const allMatchedHashes =
+        await processInBatches(allMatchedFiles, 500, file => this.fs.hash(file));
+    allMatchedFiles.forEach((file, idx) => {
+      hashTable[joinUrls(this.baseHref, file)] = allMatchedHashes[idx];
+    });
 
-      return {
-        name: group.name,
-        installMode: group.installMode || 'prefetch',
-        updateMode: group.updateMode || group.installMode || 'prefetch',
-        cacheQueryOptions: buildCacheQueryOptions(group.cacheQueryOptions),
-        urls: matchedFiles.map(url => joinUrls(this.baseHref, url)),
-        patterns: (group.resources.urls || []).map(url => urlToRegex(url, this.baseHref, true)),
-      };
-    }));
+    // Generate and return the processed asset-groups.
+    return Array.from(filesPerGroup.entries())
+        .map(([group, matchedFiles]) => ({
+               name: group.name,
+               installMode: group.installMode || 'prefetch',
+               updateMode: group.updateMode || group.installMode || 'prefetch',
+               cacheQueryOptions: buildCacheQueryOptions(group.cacheQueryOptions),
+               urls: matchedFiles.map(url => joinUrls(this.baseHref, url)),
+               patterns:
+                   (group.resources.urls || []).map(url => urlToRegex(url, this.baseHref, true)),
+             }));
   }
 
   private processDataGroups(config: Config): Object[] {
@@ -86,6 +95,7 @@ export class Generator {
         maxSize: group.cacheConfig.maxSize,
         maxAge: parseDurationToMs(group.cacheConfig.maxAge),
         timeoutMs: group.cacheConfig.timeout && parseDurationToMs(group.cacheConfig.timeout),
+        cacheOpaqueResponses: group.cacheConfig.cacheOpaqueResponses,
         cacheQueryOptions: buildCacheQueryOptions(group.cacheQueryOptions),
         version: group.version !== undefined ? group.version : 1,
       };
@@ -97,9 +107,23 @@ export function processNavigationUrls(
     baseHref: string, urls = DEFAULT_NAVIGATION_URLS): {positive: boolean, regex: string}[] {
   return urls.map(url => {
     const positive = !url.startsWith('!');
-    url = positive ? url : url.substr(1);
+    url = positive ? url : url.slice(1);
     return {positive, regex: `^${urlToRegex(url, baseHref)}$`};
   });
+}
+
+async function processInBatches<I, O>(
+    items: I[], batchSize: number, processFn: (item: I) => O | Promise<O>): Promise<O[]> {
+  const batches = [];
+
+  for (let i = 0; i < items.length; i += batchSize) {
+    batches.push(items.slice(i, i + batchSize));
+  }
+
+  return batches.reduce(
+      async (prev, batch) =>
+          (await prev).concat(await Promise.all(batch.map(item => processFn(item)))),
+      Promise.resolve<O[]>([]));
 }
 
 function globListToMatcher(globs: string[]): (file: string) => boolean {
@@ -107,7 +131,7 @@ function globListToMatcher(globs: string[]): (file: string) => boolean {
     if (pattern.startsWith('!')) {
       return {
         positive: false,
-        regex: new RegExp('^' + globToRegex(pattern.substr(1)) + '$'),
+        regex: new RegExp('^' + globToRegex(pattern.slice(1)) + '$'),
       };
     } else {
       return {
@@ -120,14 +144,13 @@ function globListToMatcher(globs: string[]): (file: string) => boolean {
 }
 
 function matches(file: string, patterns: {positive: boolean, regex: RegExp}[]): boolean {
-  const res = patterns.reduce((isMatch, pattern) => {
+  return patterns.reduce((isMatch, pattern) => {
     if (pattern.positive) {
       return isMatch || pattern.regex.test(file);
     } else {
       return isMatch && !pattern.regex.test(file);
     }
   }, false);
-  return res;
 }
 
 function urlToRegex(url: string, baseHref: string, literalQuestionMark?: boolean): string {
@@ -143,7 +166,7 @@ function urlToRegex(url: string, baseHref: string, literalQuestionMark?: boolean
 
 function joinUrls(a: string, b: string): string {
   if (a.endsWith('/') && b.startsWith('/')) {
-    return a + b.substr(1);
+    return a + b.slice(1);
   } else if (!a.endsWith('/') && !b.startsWith('/')) {
     return a + '/' + b;
   }

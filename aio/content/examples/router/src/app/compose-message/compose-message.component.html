@@ -5,13 +5,13 @@
 </div>
 <div>
   <div>
-    <label>Message: </label>
+    <label for="message">Enter your message: </label>
   </div>
   <div>
-    <textarea [(ngModel)]="message" rows="10" cols="35" [disabled]="sending"></textarea>
+    <textarea id="message" [(ngModel)]="message" rows="10" cols="35" [disabled]="sending"></textarea>
   </div>
 </div>
 <p *ngIf="!sending">
-  <button (click)="send()">Send</button>
-  <button (click)="cancel()">Cancel</button>
+  <button type="button" (click)="send()">Send</button>
+  <button type="button" (click)="cancel()">Cancel</button>
 </p>

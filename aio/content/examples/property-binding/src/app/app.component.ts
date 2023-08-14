@@ -8,14 +8,12 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
   // #docregion item-image
-  itemImageUrl = '../assets/phone.png';
+  itemImageUrl = '../assets/phone.svg';
   // #enddocregion item-image
   // #docregion boolean
   isUnchanged = true;
   // #enddocregion boolean
-  // #docregion directive-property
   classes = 'special';
-  // #enddocregion directive-property
   // #docregion parent-data-type
   parentItem = 'lamp';
   // #enddocregion parent-data-type
@@ -30,7 +28,5 @@ export class AppComponent {
   interpolationTitle = 'Interpolation';
   propertyTitle = 'Property binding';
 
-  // #docregion malicious-content
   evilTitle = 'Template <script>alert("evil never sleeps")</script> Syntax';
-  // #enddocregion malicious-content
 }

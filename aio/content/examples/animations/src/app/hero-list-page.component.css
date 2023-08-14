@@ -6,37 +6,51 @@
 }
 
 .heroes li {
-  position: relative;
-  height: 2.3em;
-  overflow:hidden;
-  margin: .5em;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  overflow: hidden;
 }
 
-.heroes li > .inner {
-  cursor: pointer;
+.heroes .inner {
+  flex: 1;
   background-color: #EEE;
-  padding: .3em 0;
-  height: 1.6em;
+  margin: .5em;
+  padding: 0;
   border-radius: 4px;
-  width: 19em;
+  display: flex;
+  align-items: stretch;
 }
 
-.heroes li:hover > .inner {
-  color: #607D8B;
-  background-color: #DDD;
-  transform: translateX(.1em);
+.heroes button.inner {
+  cursor: pointer;
+  font-size: inherit;
 }
 
-.heroes a {
-  color: #888;
-  text-decoration: none;
-  position: relative;
-  display: block;
-  width: 250px;
+.heroes button.inner:hover {
+  color: #2c3a41;
+  background-color: #e6e6e6;
+  left: .1em;
 }
 
-.heroes a:hover {
-  color:#607D8B;
+.heroes button.inner:active {
+  background-color: #525252;
+  color: #fafafa;
+}
+
+.heroes button.inner.selected {
+  background-color: black;
+  color: white;
+}
+
+.heroes button.inner.selected:hover {
+  background-color: #505050;
+  color: white;
+}
+
+.heroes button.inner.selected:active {
+  background-color: black;
+  color: white;
 }
 
 .heroes .badge {
@@ -44,50 +58,23 @@
   font-size: small;
   color: white;
   padding: 0.8em 0.7em 0 0.7em;
-  background-color: #607D8B;
+  background-color: #405061;
   line-height: 1em;
-  position: relative;
-  left: -1px;
-  top: -4px;
-  height: 1.8em;
-  min-width: 16px;
-  text-align: right;
   margin-right: .8em;
   border-radius: 4px 0 0 4px;
 }
 
-.button {
-  background-color: #eee;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: Arial, sans-serif;
+.heroes .name {
+  min-width: max-content;
+  padding: 0.5rem 0;
 }
 
-button:hover {
-  background-color: #cfd8dc;
-}
-
-button.delete {
-  position: relative;
-  left: 24em;
-  top: -32px;
-  background-color: gray !important;
-  color: white;
-  display: inherit;
-  padding: 5px 8px;
-  width: 2em;
+label {
+  display: block;
+  padding-bottom: .5rem;
 }
 
 input {
   font-size: 100%;
-  margin-bottom: 2px;
-  width: 11em;
-}
-
-.heroes input {
-  position: relative;
-  top: -3px;
-  width: 12em;
+  margin-bottom: 1rem;
 }

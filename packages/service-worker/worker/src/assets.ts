@@ -6,12 +6,14 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Adapter, Context} from './adapter';
+import {Adapter} from './adapter';
 import {CacheState, NormalizedUrl, UpdateCacheStatus, UpdateSource, UrlMetadata} from './api';
 import {Database, Table} from './database';
+import {CacheTable} from './db-cache';
 import {errorToString, SwCriticalError, SwUnrecoverableStateError} from './error';
 import {IdleScheduler} from './idle';
 import {AssetGroupConfig} from './manifest';
+import {NamedCache} from './named-cache-storage';
 import {sha1Binary} from './sha1';
 
 /**
@@ -38,9 +40,9 @@ export abstract class AssetGroup {
 
   /**
    * A Promise which resolves to the `Cache` used to back this asset group. This
-   * is openedfrom the constructor.
+   * is opened from the constructor.
    */
-  protected cache: Promise<Cache>;
+  protected cache: Promise<NamedCache>;
 
   /**
    * Group name from the configuration.
@@ -55,7 +57,7 @@ export abstract class AssetGroup {
   constructor(
       protected scope: ServiceWorkerGlobalScope, protected adapter: Adapter,
       protected idle: IdleScheduler, protected config: AssetGroupConfig,
-      protected hashes: Map<string, string>, protected db: Database, protected prefix: string) {
+      protected hashes: Map<string, string>, protected db: Database, cacheNamePrefix: string) {
     this.name = config.name;
 
     // Normalize the config's URLs to take the ServiceWorker's scope into account.
@@ -65,13 +67,13 @@ export abstract class AssetGroup {
     this.patterns = config.patterns.map(pattern => new RegExp(pattern));
 
     // This is the primary cache, which holds all of the cached requests for this group. If a
-    // resource
-    // isn't in this cache, it hasn't been fetched yet.
-    this.cache = scope.caches.open(`${this.prefix}:${config.name}:cache`);
+    // resource isn't in this cache, it hasn't been fetched yet.
+    this.cache = adapter.caches.open(`${cacheNamePrefix}:${config.name}:cache`);
 
     // This is the metadata table, which holds specific information for each cached URL, such as
     // the timestamp of when it was added to the cache.
-    this.metadata = this.db.open(`${this.prefix}:${config.name}:meta`, config.cacheQueryOptions);
+    this.metadata =
+        this.db.open(`${cacheNamePrefix}:${config.name}:meta`, config.cacheQueryOptions);
   }
 
   async cacheStatus(url: string): Promise<UpdateCacheStatus> {
@@ -99,17 +101,20 @@ export abstract class AssetGroup {
   abstract initializeFully(updateFrom?: UpdateSource): Promise<void>;
 
   /**
-   * Clean up all the cached data for this group.
+   * Return a list of the names of all caches used by this group.
    */
-  async cleanup(): Promise<void> {
-    await this.scope.caches.delete(`${this.prefix}:${this.config.name}:cache`);
-    await this.db.delete(`${this.prefix}:${this.config.name}:meta`);
+  async getCacheNames(): Promise<string[]> {
+    const [cache, metadata] = await Promise.all([
+      this.cache,
+      this.metadata as Promise<CacheTable>,
+    ]);
+    return [cache.name, metadata.cacheName];
   }
 
   /**
    * Process a request for a given resource and return it, or return null if it's not available.
    */
-  async handleFetch(req: Request, ctx: Context): Promise<Response|null> {
+  async handleFetch(req: Request, _event: ExtendableEvent): Promise<Response|null> {
     const url = this.adapter.normalizeUrl(req.url);
     // Either the request matches one of the known resource URLs, one of the patterns for
     // dynamically matched URLs, or neither. Determine which is the case for this request in
@@ -135,10 +140,9 @@ export abstract class AssetGroup {
           // This resource has no hash, and yet exists in the cache. Check how old this request is
           // to make sure it's still usable.
           if (await this.needToRevalidate(req, cachedResponse)) {
-            this.idle.schedule(
-                `revalidate(${this.prefix}, ${this.config.name}): ${req.url}`, async () => {
-                  await this.fetchAndCacheOnce(req);
-                });
+            this.idle.schedule(`revalidate(${cache.name}): ${req.url}`, async () => {
+              await this.fetchAndCacheOnce(req);
+            });
           }
 
           // In either case (revalidation or not), the cached response must be good.
@@ -146,10 +150,8 @@ export abstract class AssetGroup {
         }
       }
 
-      // No already-cached response exists, so attempt a fetch/cache operation. The original request
-      // may specify things like credential inclusion, but for assets these are not honored in order
-      // to avoid issues with opaque responses. The SW requests the data itself.
-      const res = await this.fetchAndCacheOnce(this.adapter.newRequest(req.url));
+      // No already-cached response exists, so attempt a fetch/cache operation.
+      const res = await this.fetchAndCacheOnce(this.newRequestWithMetadata(req.url, req));
 
       // If this is successful, the response needs to be cloned as it might be used to respond to
       // multiple fetch operations at the same time.
@@ -314,7 +316,7 @@ export abstract class AssetGroup {
       try {
         // This response is safe to cache (as long as it's cloned). Wait until the cache operation
         // is complete.
-        const cache = await this.scope.caches.open(`${this.prefix}:${this.config.name}:cache`);
+        const cache = await this.cache;
         await cache.put(req, res.clone());
 
         // If the request is not hashed, update its metadata, especially the timestamp. This is
@@ -356,7 +358,7 @@ export abstract class AssetGroup {
       }
 
       // Unwrap the redirect directly.
-      return this.fetchFromNetwork(this.adapter.newRequest(res.url), redirectLimit - 1);
+      return this.fetchFromNetwork(this.newRequestWithMetadata(res.url, req), redirectLimit - 1);
     }
 
     return res;
@@ -409,7 +411,7 @@ export abstract class AssetGroup {
         // data, or because the version on the server really doesn't match. A cache-busting
         // request will differentiate these two situations.
         // TODO: handle case where the URL has parameters already (unlikely for assets).
-        const cacheBustReq = this.adapter.newRequest(this.cacheBust(req.url));
+        const cacheBustReq = this.newRequestWithMetadata(this.cacheBust(req.url), req);
         response = await this.safeFetch(cacheBustReq);
 
         // If the response was successful, check the contents against the canonical hash.
@@ -450,7 +452,6 @@ export abstract class AssetGroup {
   protected async maybeUpdate(updateFrom: UpdateSource, req: Request, cache: Cache):
       Promise<boolean> {
     const url = this.adapter.normalizeUrl(req.url);
-    const meta = await this.metadata;
     // Check if this resource is hashed and already exists in the cache of a prior version.
     if (this.hashes.has(url)) {
       const hash = this.hashes.get(url)!;
@@ -463,7 +464,6 @@ export abstract class AssetGroup {
       if (res !== null) {
         // Copy to this cache.
         await cache.put(req, res);
-        await meta.write(req.url, {ts: this.adapter.time, used: false} as UrlMetadata);
 
         // No need to do anything further with this resource, it's now cached properly.
         return true;
@@ -472,6 +472,24 @@ export abstract class AssetGroup {
 
     // No up-to-date version of this resource could be found.
     return false;
+  }
+
+  /**
+   * Create a new `Request` based on the specified URL and `RequestInit` options, preserving only
+   * metadata that are known to be safe.
+   *
+   * Currently, only headers are preserved.
+   *
+   * NOTE:
+   *   Things like credential inclusion are intentionally omitted to avoid issues with opaque
+   *   responses.
+   *
+   * TODO(gkalpak):
+   *   Investigate preserving more metadata. See, also, discussion on preserving `mode`:
+   *   https://github.com/angular/angular/issues/41931#issuecomment-1227601347
+   */
+  private newRequestWithMetadata(url: string, options: RequestInit): Request {
+    return this.adapter.newRequest(url, {headers: options.headers});
   }
 
   /**
@@ -497,7 +515,7 @@ export abstract class AssetGroup {
  * An `AssetGroup` that prefetches all of its resources during initialization.
  */
 export class PrefetchAssetGroup extends AssetGroup {
-  async initializeFully(updateFrom?: UpdateSource): Promise<void> {
+  override async initializeFully(updateFrom?: UpdateSource): Promise<void> {
     // Open the cache which actually holds requests.
     const cache = await this.cache;
 
@@ -571,7 +589,7 @@ export class PrefetchAssetGroup extends AssetGroup {
 }
 
 export class LazyAssetGroup extends AssetGroup {
-  async initializeFully(updateFrom?: UpdateSource): Promise<void> {
+  override async initializeFully(updateFrom?: UpdateSource): Promise<void> {
     // No action necessary if no update source is available - resources managed in this group
     // are all lazily loaded, so there's nothing to initialize.
     if (updateFrom === undefined) {

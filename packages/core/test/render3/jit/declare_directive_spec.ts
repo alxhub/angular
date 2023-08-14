@@ -6,8 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ElementRef, ɵɵngDeclareDirective} from '@angular/core';
-import {AttributeMarker, DirectiveDef} from '../../../src/render3';
+import {ElementRef, forwardRef, ɵɵngDeclareDirective} from '@angular/core';
+
+import {AttributeMarker, DirectiveDef, ɵɵInheritDefinitionFeature, ɵɵNgOnChangesFeature} from '../../../src/render3';
+
 import {functionContaining} from './matcher';
 
 describe('directive declaration jit compilation', () => {
@@ -104,16 +106,35 @@ describe('directive declaration jit compilation', () => {
       contentQueries: functionContaining([
         // "byRef" should use `contentQuery` with `0` (`QueryFlags.descendants|QueryFlags.isStatic`)
         // for query flag without a read token, and bind to the full query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:contentQuery|anonymous)[^(]*\(dirIndex,_c0,4\)/,
+        /contentQuery[^(]*\(dirIndex,_c0,4\)/,
         '(ctx.byRef = _t)',
 
         // "byToken" should use `viewQuery` with `3` (`QueryFlags.static|QueryFlags.descendants`)
         // for query flag and `ElementRef` as read token, and bind to the first result in the
         // query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:contentQuery|anonymous)[^(]*\([^,]*dirIndex,[^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
+        /contentQuery[^(]*\([^,]*dirIndex,[^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
         '(ctx.byToken = _t.first)',
+      ]),
+    });
+  });
+
+  it('should compile content queries with forwardRefs', () => {
+    const def = ɵɵngDeclareDirective({
+                  type: TestClass,
+                  queries: [
+                    {
+                      propertyName: 'byRef',
+                      predicate: forwardRef(() => Child),
+                    },
+                  ],
+                }) as DirectiveDef<TestClass>;
+
+    class Child {}
+
+    expectDirectiveDef(def, {
+      contentQueries: functionContaining([
+        /contentQuery[^(]*\(dirIndex,[^,]*resolveForwardRef[^,]*forward_ref[^,]*,[\s]*4\)/,
+        '(ctx.byRef = _t)',
       ]),
     });
   });
@@ -142,16 +163,35 @@ describe('directive declaration jit compilation', () => {
       viewQuery: functionContaining([
         // "byRef" should use `viewQuery` with`0` (`QueryFlags.none`) for query flag without a read
         // token, and bind to the full query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:viewQuery|anonymous)[^(]*\(_c0,4\)/,
+        /viewQuery[^(]*\(_c0,4\)/,
         '(ctx.byRef = _t)',
 
         // "byToken" should use `viewQuery` with `3` (`QueryFlags.static|QueryFlags.descendants`)
         // for query flag and `ElementRef` as read token, and bind to the first result in the
         // query result.
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:viewQuery|anonymous)[^(]*\([^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
+        /viewQuery[^(]*\([^,]*String[^,]*,3,[^)]*ElementRef[^)]*\)/,
         '(ctx.byToken = _t.first)',
+      ]),
+    });
+  });
+
+  it('should compile view queries with forwardRefs', () => {
+    const def = ɵɵngDeclareDirective({
+                  type: TestClass,
+                  viewQueries: [
+                    {
+                      propertyName: 'byRef',
+                      predicate: forwardRef(() => Child),
+                    },
+                  ],
+                }) as DirectiveDef<TestClass>;
+
+    class Child {}
+
+    expectDirectiveDef(def, {
+      viewQuery: functionContaining([
+        /viewQuery[^(]*\([^,]*resolveForwardRef[^,]*forward_ref[^,]*,[\s]*4\)/,
+        '(ctx.byRef = _t)',
       ]),
     });
   });
@@ -182,9 +222,8 @@ describe('directive declaration jit compilation', () => {
       ],
       hostBindings: functionContaining([
         'return ctx.handleEvent($event)',
-        // NOTE: the `anonymous` match is to support IE11, as functions don't have a name there.
-        /(?:hostProperty|anonymous)[^(]*\('foo',ctx\.foo\.prop\)/,
-        /(?:attribute|anonymous)[^(]*\('bar',ctx\.bar\.prop\)/,
+        /hostProperty[^(]*\('foo',ctx\.foo\.prop\)/,
+        /attribute[^(]*\('bar',ctx\.bar\.prop\)/,
       ]),
       hostVars: 2,
     });
@@ -197,7 +236,7 @@ describe('directive declaration jit compilation', () => {
                 }) as DirectiveDef<TestClass>;
 
     expectDirectiveDef(def, {
-      features: [functionContaining(['ɵɵInheritDefinitionFeature'])],
+      features: [ɵɵInheritDefinitionFeature],
     });
   });
 
@@ -208,7 +247,7 @@ describe('directive declaration jit compilation', () => {
                 }) as DirectiveDef<TestClass>;
 
     expectDirectiveDef(def, {
-      features: [functionContaining(['ɵɵNgOnChangesFeature'])],
+      features: [ɵɵNgOnChangesFeature],
     });
   });
 });
@@ -242,18 +281,20 @@ function expectDirectiveDef(
   };
 
   expect(actual.type).toBe(TestClass);
-  expect(actual.selectors).toEqual(expectation.selectors);
-  expect(actual.inputs).toEqual(expectation.inputs);
-  expect(actual.declaredInputs).toEqual(expectation.declaredInputs);
-  expect(actual.outputs).toEqual(expectation.outputs);
-  expect(actual.features).toEqual(expectation.features);
-  expect(actual.hostAttrs).toEqual(expectation.hostAttrs);
-  expect(actual.hostBindings).toEqual(expectation.hostBindings);
-  expect(actual.hostVars).toEqual(expectation.hostVars);
-  expect(actual.contentQueries).toEqual(expectation.contentQueries);
-  expect(actual.viewQuery).toEqual(expectation.viewQuery);
-  expect(actual.exportAs).toEqual(expectation.exportAs);
-  expect(actual.providersResolver).toEqual(expectation.providersResolver);
+  expect(actual.selectors).withContext('selectors').toEqual(expectation.selectors);
+  expect(actual.inputs).withContext('inputs').toEqual(expectation.inputs);
+  expect(actual.declaredInputs).withContext('declaredInputs').toEqual(expectation.declaredInputs);
+  expect(actual.outputs).withContext('outputs').toEqual(expectation.outputs);
+  expect(actual.features).withContext('features').toEqual(expectation.features);
+  expect(actual.hostAttrs).withContext('hostAttrs').toEqual(expectation.hostAttrs);
+  expect(actual.hostBindings).withContext('hostBindings').toEqual(expectation.hostBindings);
+  expect(actual.hostVars).withContext('hostVars').toEqual(expectation.hostVars);
+  expect(actual.contentQueries).withContext('contentQueries').toEqual(expectation.contentQueries);
+  expect(actual.viewQuery).withContext('viewQuery').toEqual(expectation.viewQuery);
+  expect(actual.exportAs).withContext('exportAs').toEqual(expectation.exportAs);
+  expect(actual.providersResolver)
+      .withContext('providersResolver')
+      .toEqual(expectation.providersResolver);
 }
 
 class TestClass {}

@@ -5,12 +5,13 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+import {types as t} from '@babel/core';
 import {NodePath, Scope} from '@babel/traverse';
-import * as t from '@babel/types';
 
 import {DeclarationScope} from '../../../linker';
 
-export type ConstantScopePath = NodePath<t.Function|t.Program>;
+export type ConstantScopePath =
+    NodePath<t.FunctionDeclaration>|NodePath<t.FunctionExpression>|NodePath<t.Program>;
 
 /**
  * This class represents the lexical scope of a partial declaration in Babel source code.
@@ -55,10 +56,11 @@ export class BabelDeclarationScope implements DeclarationScope<ConstantScopePath
     }
 
     // We only support shared constant statements if the binding was in a UMD module (i.e. declared
-    // within a `t.Function`) or an ECMASCript module (i.e. declared at the top level of a
+    // within a function) or an ECMASCript module (i.e. declared at the top level of a
     // `t.Program` that is marked as a module).
     const path = binding.scope.path;
-    if (!path.isFunctionParent() && !(path.isProgram() && path.node.sourceType === 'module')) {
+    if (!path.isFunctionDeclaration() && !path.isFunctionExpression() &&
+        !(path.isProgram() && path.node.sourceType === 'module')) {
       return null;
     }
 

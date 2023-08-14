@@ -6,8 +6,12 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Type, ɵstringify as stringify} from '@angular/core';
+import {Type, ɵRuntimeError as RuntimeError, ɵstringify as stringify} from '@angular/core';
+
+import {RuntimeErrorCode} from '../errors';
 
 export function invalidPipeArgumentError(type: Type<any>, value: Object) {
-  return Error(`InvalidPipeArgument: '${value}' for pipe '${stringify(type)}'`);
+  return new RuntimeError(
+      RuntimeErrorCode.INVALID_PIPE_ARGUMENT,
+      ngDevMode && `InvalidPipeArgument: '${value}' for pipe '${stringify(type)}'`);
 }

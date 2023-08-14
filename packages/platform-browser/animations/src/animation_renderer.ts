@@ -25,17 +25,17 @@ export class AnimationRendererFactory implements RendererFactory2 {
   private _animationCallbacksBuffer: [(e: any) => any, any][] = [];
   private _rendererCache = new Map<Renderer2, BaseAnimationRenderer>();
   private _cdRecurDepth = 0;
-  private promise: Promise<any> = Promise.resolve(0);
 
   constructor(
       private delegate: RendererFactory2, private engine: AnimationEngine, private _zone: NgZone) {
     engine.onRemovalComplete = (element: any, delegate: Renderer2) => {
-      // Note: if an component element has a leave animation, and the component
-      // a host leave animation, the view engine will call `removeChild` for the parent
+      // Note: if a component element has a leave animation, and a host leave animation,
+      // the view engine will call `removeChild` for the parent
       // component renderer as well as for the child component renderer.
       // Therefore, we need to check if we already removed the element.
-      if (delegate && delegate.parentNode(element)) {
-        delegate.removeChild(element.parentNode, element);
+      const parentNode = delegate?.parentNode(element);
+      if (parentNode) {
+        delegate.removeChild(parentNode, element);
       }
     };
   }
@@ -49,7 +49,11 @@ export class AnimationRendererFactory implements RendererFactory2 {
     if (!hostElement || !type || !type.data || !type.data['animation']) {
       let renderer: BaseAnimationRenderer|undefined = this._rendererCache.get(delegate);
       if (!renderer) {
-        renderer = new BaseAnimationRenderer(EMPTY_NAMESPACE_ID, delegate, this.engine);
+        // Ensure that the renderer is removed from the cache on destroy
+        // since it may contain references to detached DOM nodes.
+        const onRendererDestroy = () => this._rendererCache.delete(delegate);
+        renderer =
+            new BaseAnimationRenderer(EMPTY_NAMESPACE_ID, delegate, this.engine, onRendererDestroy);
         // only cache this result when the base renderer is used
         this._rendererCache.set(delegate, renderer);
       }
@@ -83,8 +87,7 @@ export class AnimationRendererFactory implements RendererFactory2 {
   }
 
   private _scheduleCountTask() {
-    // always use promise to schedule microtask instead of use Zone
-    this.promise.then(() => {
+    queueMicrotask(() => {
       this._microtaskId++;
     });
   }
@@ -97,7 +100,7 @@ export class AnimationRendererFactory implements RendererFactory2 {
     }
 
     if (this._animationCallbacksBuffer.length == 0) {
-      Promise.resolve(null).then(() => {
+      queueMicrotask(() => {
         this._zone.run(() => {
           this._animationCallbacksBuffer.forEach(tuple => {
             const [fn, data] = tuple;
@@ -134,19 +137,28 @@ export class AnimationRendererFactory implements RendererFactory2 {
 
 export class BaseAnimationRenderer implements Renderer2 {
   constructor(
-      protected namespaceId: string, public delegate: Renderer2, public engine: AnimationEngine) {
-    this.destroyNode = this.delegate.destroyNode ? (n) => delegate.destroyNode!(n) : null;
-  }
+      protected namespaceId: string, public delegate: Renderer2, public engine: AnimationEngine,
+      private _onDestroy?: () => void) {}
 
   get data() {
     return this.delegate.data;
   }
 
-  destroyNode: ((n: any) => void)|null;
+  destroyNode(node: any): void {
+    this.delegate.destroyNode?.(node);
+  }
 
   destroy(): void {
     this.engine.destroy(this.namespaceId, this.delegate);
-    this.delegate.destroy();
+    this.engine.afterFlushAnimationsDone(() => {
+      // Call the renderer destroy method after the animations has finished as otherwise
+      // styles will be removed too early which will cause an unstyled animation.
+      queueMicrotask(() => {
+        this.delegate.destroy();
+      });
+    });
+
+    this._onDestroy?.();
   }
 
   createElement(name: string, namespace?: string|null|undefined) {
@@ -173,7 +185,7 @@ export class BaseAnimationRenderer implements Renderer2 {
   }
 
   removeChild(parent: any, oldChild: any, isHostElement: boolean): void {
-    this.engine.onRemove(this.namespaceId, oldChild, this.delegate, isHostElement);
+    this.engine.onRemove(this.namespaceId, oldChild, this.delegate);
   }
 
   selectRootElement(selectorOrNode: any, preserveContent?: boolean) {
@@ -236,29 +248,30 @@ export class BaseAnimationRenderer implements Renderer2 {
 export class AnimationRenderer extends BaseAnimationRenderer implements Renderer2 {
   constructor(
       public factory: AnimationRendererFactory, namespaceId: string, delegate: Renderer2,
-      engine: AnimationEngine) {
-    super(namespaceId, delegate, engine);
+      engine: AnimationEngine, onDestroy?: () => void) {
+    super(namespaceId, delegate, engine, onDestroy);
     this.namespaceId = namespaceId;
   }
 
-  setProperty(el: any, name: string, value: any): void {
+  override setProperty(el: any, name: string, value: any): void {
     if (name.charAt(0) == ANIMATION_PREFIX) {
       if (name.charAt(1) == '.' && name == DISABLE_ANIMATIONS_FLAG) {
         value = value === undefined ? true : !!value;
         this.disableAnimations(el, value as boolean);
       } else {
-        this.engine.process(this.namespaceId, el, name.substr(1), value);
+        this.engine.process(this.namespaceId, el, name.slice(1), value);
       }
     } else {
       this.delegate.setProperty(el, name, value);
     }
   }
 
-  listen(target: 'window'|'document'|'body'|any, eventName: string, callback: (event: any) => any):
-      () => void {
+  override listen(
+      target: 'window'|'document'|'body'|any, eventName: string,
+      callback: (event: any) => any): () => void {
     if (eventName.charAt(0) == ANIMATION_PREFIX) {
       const element = resolveElementFromTarget(target);
-      let name = eventName.substr(1);
+      let name = eventName.slice(1);
       let phase = '';
       // @listener.phase is for trigger animation callbacks
       // @@listener is for animation builder callbacks
@@ -290,6 +303,6 @@ function resolveElementFromTarget(target: 'window'|'document'|'body'|any): any {
 function parseTriggerCallbackName(triggerName: string) {
   const dotIndex = triggerName.indexOf('.');
   const trigger = triggerName.substring(0, dotIndex);
-  const phase = triggerName.substr(dotIndex + 1);
+  const phase = triggerName.slice(dotIndex + 1);
   return [trigger, phase];
 }

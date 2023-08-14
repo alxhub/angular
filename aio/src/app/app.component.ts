@@ -1,4 +1,13 @@
-import { Component, ElementRef, HostBinding, HostListener, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostBinding,
+  HostListener,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+} from '@angular/core';
 import { MatSidenav } from '@angular/material/sidenav';
 import { DocumentContents, DocumentService } from 'app/documents/document.service';
 import { NotificationComponent } from 'app/layout/notification/notification.component';
@@ -10,11 +19,12 @@ import { Deployment } from 'app/shared/deployment.service';
 import { LocationService } from 'app/shared/location.service';
 import { ScrollService } from 'app/shared/scroll.service';
 import { TocService } from 'app/shared/toc.service';
+import { SwUpdatesService } from 'app/sw-updates/sw-updates.service';
 import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
 import { first, map } from 'rxjs/operators';
 
 const sideNavView = 'SideNav';
-export const showTopMenuWidth = 1048;
+export const showTopMenuWidth = 1150;
 export const dockSideNavWidth = 992;
 export const showFloatingTocWidth = 800;
 
@@ -23,6 +33,12 @@ export const showFloatingTocWidth = 800;
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
+
+  static reducedMotion = window.matchMedia('(prefers-reduced-motion)').matches;
+
+  // Disable all Angular animations if the user prefers reduced motion or for the initial render.
+  @HostBinding('@.disabled')
+  get disableAnimations(): boolean { return AppComponent.reducedMotion || this.isStarting; }
 
   currentDocument: DocumentContents;
   currentDocVersion: NavigationNode;
@@ -38,7 +54,7 @@ export class AppComponent implements OnInit {
    */
   pageId: string;
   /**
-   * An HTML friendly identifer for the "folder" of the currently displayed page.
+   * An HTML friendly identifier for the "folder" of the currently displayed page.
    * This is computed by taking everything up to the first `/` in the `currentDocument.id`
    */
   folderId: string;
@@ -50,14 +66,12 @@ export class AppComponent implements OnInit {
    *
    * * `page-...`: computed from the current document id (e.g. events, guide-security, tutorial-toh-pt2)
    * * `folder-...`: computed from the top level folder for an id (e.g. guide, tutorial, etc)
-   * * `view-...`: computef from the navigation view (e.g. SideNav, TopBar, etc)
+   * * `view-...`: computed from the navigation view (e.g. SideNav, TopBar, etc)
    */
   @HostBinding('class')
   hostClasses = '';
 
-  // Disable all Angular animations for the initial render.
-  @HostBinding('@.disabled')
-  isStarting = true;
+  private isStarting = true;
   isTransitioning = true;
   isFetching = false;
   showTopMenu = false;
@@ -74,12 +88,12 @@ export class AppComponent implements OnInit {
   tocMaxHeight: string;
   private tocMaxHeightOffset = 0;
 
-  versionInfo: VersionInfo;
+  currentDocsVersionNode?: NavigationNode;
 
-  private currentUrl: string;
+  versionInfo: VersionInfo | undefined;
 
   get isOpened() { return this.dockSideNav && this.isSideNavDoc; }
-  get mode() { return this.dockSideNav && (this.isSideNavDoc || this.showTopMenu) ? 'side' : 'over'; }
+  get mode() { return this.isOpened ? 'side' : 'over'; }
 
   // Search related properties
   showSearchResults = false;
@@ -88,6 +102,8 @@ export class AppComponent implements OnInit {
   searchElements: QueryList<ElementRef>;
   @ViewChild(SearchBoxComponent, { static: true })
   searchBox: SearchBoxComponent;
+  @ViewChild('searchResultsView', { read: ElementRef })
+  searchResultsView: ElementRef;
 
   @ViewChild(MatSidenav, { static: true })
   sidenav: MatSidenav;
@@ -95,6 +111,10 @@ export class AppComponent implements OnInit {
   @ViewChild(NotificationComponent, { static: true })
   notification: NotificationComponent;
   notificationAnimating = false;
+
+  @ViewChild('appToolbar', { read: ElementRef }) toolbar: ElementRef;
+
+  @ViewChildren('themeToggle, externalIcons', { read: ElementRef }) toolbarIcons: QueryList<ElementRef>;
 
   constructor(
     public deployment: Deployment,
@@ -104,6 +124,7 @@ export class AppComponent implements OnInit {
     private navigationService: NavigationService,
     private scrollService: ScrollService,
     private searchService: SearchService,
+    private swUpdatesService: SwUpdatesService,
     private tocService: TocService
   ) { }
 
@@ -148,7 +169,8 @@ export class AppComponent implements OnInit {
     combineLatest([
       this.navigationService.versionInfo,
       this.navigationService.navigationViews.pipe(map(views => views.docVersions)),
-    ]).subscribe(([versionInfo, versions]) => {
+      this.locationService.currentUrl,
+    ]).subscribe(([versionInfo, versions, currentUrl]) => {
       // TODO(pbd): consider whether we can lookup the stable and next versions from the internet
       const computedVersions: NavigationNode[] = [
         { title: 'next', url: 'https://next.angular.io/' },
@@ -158,13 +180,22 @@ export class AppComponent implements OnInit {
       if (this.deployment.mode === 'archive') {
         computedVersions.push({ title: `v${versionInfo.major}` });
       }
-      this.docVersions = [...computedVersions, ...versions];
-
-      // Find the current version - eithers title matches the current deployment mode
+      const allDocsVersionNodes = [...computedVersions, ...versions].map(version => ({
+        ...version,
+        // Update the urls so that they point to the same page the user is currently at
+        url: `${version.url}${(version.url?.endsWith('/') ? '' : '/' )}${currentUrl}`,
+      }));
+      // Find the current version - either title matches the current deployment mode
       // or its title matches the major version of the current version info
-      this.currentDocVersion = this.docVersions.find(version =>
-        version.title === this.deployment.mode || version.title === `v${versionInfo.major}`) as NavigationNode;
-      this.currentDocVersion.title += ` (v${versionInfo.raw})`;
+      this.currentDocsVersionNode = allDocsVersionNodes.find(
+        version => version.title === this.deployment.mode || version.title === `v${versionInfo.major}`
+      );
+      this.docVersions = [
+        {
+          title: 'Docs Versions',
+          children : allDocsVersionNodes
+        }
+      ];
     });
 
     this.navigationService.navigationViews.subscribe(views => {
@@ -191,7 +222,8 @@ export class AppComponent implements OnInit {
     ]).pipe(first())
       .subscribe(() => this.updateShell());
 
-    this.locationService.currentUrl.subscribe(url => this.currentUrl = url);
+    // Start listening for SW version update events.
+    this.swUpdatesService.enable();
   }
 
   onDocReady() {
@@ -232,14 +264,6 @@ export class AppComponent implements OnInit {
     this.isTransitioning = false;
   }
 
-  onDocVersionChange(versionIndex: number) {
-    const version = this.docVersions[versionIndex];
-    if (version.url) {
-      const versionUrl = version.url  + (!version.url.endsWith('/') ? '/' : '');
-      this.locationService.go(`${versionUrl}${this.currentUrl}`);
-    }
-  }
-
   @HostListener('window:resize', ['$event.target.innerWidth'])
   onResize(width: number) {
     this.showTopMenu = width >= showTopMenuWidth;
@@ -255,10 +279,38 @@ export class AppComponent implements OnInit {
     }
   }
 
+  @HostListener('focusin', ['$event.target'])
+  onFocus(eventTarget: HTMLElement) {
+    // Implement a focus trap starting at the input search and ending after the search results
+    if (this.showSearchResults) {
+      const insideFocusLoop = [
+        ...this.toolbarIcons,
+        ...this.searchElements
+      ].some(element => element.nativeElement.contains(eventTarget));
+      const insideToolbar = this.toolbar.nativeElement.contains(eventTarget);
+      if (!insideFocusLoop) {
+        if (!insideToolbar) {
+          // the user is focusing forward at the last search result element,
+          // loop it back to the search input
+          this.focusSearchBox();
+        } else {
+          // the user is focusing backward from the search input,
+          // loop it back to the results' close button
+          const closeBtn: HTMLButtonElement =
+            this.searchResultsView.nativeElement.querySelector('button.close-button');
+          closeBtn.focus();
+        }
+      }
+    }
+  }
+
   @HostListener('click', ['$event.target', '$event.button', '$event.ctrlKey', '$event.metaKey', '$event.altKey'])
   onClick(eventTarget: HTMLElement, button: number, ctrlKey: boolean, metaKey: boolean, altKey: boolean): boolean {
     // Hide the search results if we clicked outside both the "search box" and the "search results"
-    if (!this.searchElements.some(element => element.nativeElement.contains(eventTarget))) {
+    if (
+      this.showSearchResults &&
+      !this.searchElements.some(element => element.nativeElement.contains(eventTarget))
+    ) {
       this.hideSearchResults();
     }
 
@@ -362,7 +414,7 @@ export class AppComponent implements OnInit {
       }
     }
 
-    this.tocMaxHeight = (document.body.scrollHeight - window.pageYOffset - this.tocMaxHeightOffset).toFixed(2);
+    this.tocMaxHeight = (document.body.scrollHeight - window.scrollY - this.tocMaxHeightOffset).toFixed(2);
   }
 
   // Restrain scrolling inside an element, when the cursor is over it
@@ -401,7 +453,12 @@ export class AppComponent implements OnInit {
     }
   }
 
-  doSearch(query: string) {
+  doSearch(query: string, fromFocus = false) {
+    if (this.showSearchResults && fromFocus) {
+      // the results where already being displayed so there is no
+      // need to perform the search until the input actually changes
+      return;
+    }
     this.searchResults = this.searchService.search(query);
     this.showSearchResults = !!query;
   }

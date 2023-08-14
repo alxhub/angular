@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { MatIconRegistry } from '@angular/material/icon';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer } from '@angular/platform-browser';
+import { unwrapHtml } from 'safevalues';
 
 /**
  * Use SVG_ICONS (and SvgIconInfo) as "multi" providers to provide the SVG source
@@ -12,7 +13,7 @@ import { DomSanitizer } from '@angular/platform-browser';
  * the following attributes:
  *
  * * `xmlns="http://www.w3.org/2000/svg"`
- * * `focusable="false"` (disable IE11 default behavior to make SVGs focusable)
+ * * `focusable="false"` (the default)
  * * `height="100%"` (the default)
  * * `width="100%"` (the default)
  * * `preserveAspectRatio="xMidYMid meet"` (the default)
@@ -22,7 +23,7 @@ export const SVG_ICONS = new InjectionToken<Array<SvgIconInfo>>('SvgIcons');
 export interface SvgIconInfo {
   namespace?: string;
   name: string;
-  svgSource: string;
+  svgSource: TrustedHTML;
 }
 
 interface SvgIconMap {
@@ -46,7 +47,7 @@ export class CustomIconRegistry extends MatIconRegistry {
     super(http, sanitizer, document, errorHandler);
   }
 
-  getNamedSvgIcon(iconName: string, namespace?: string) {
+  override getNamedSvgIcon(iconName: string, namespace?: string) {
     const nsIconMap = this.cachedSvgElements[namespace || DEFAULT_NS];
     let preloadedElement: SVGElement | undefined = nsIconMap && nsIconMap[iconName];
     if (!preloadedElement) {
@@ -59,11 +60,10 @@ export class CustomIconRegistry extends MatIconRegistry {
   }
 
   private loadSvgElement(iconName: string, namespace?: string): SVGElement | undefined {
-    const svgIcon = this.svgIcons.find(icon => {
-      return namespace
+    const svgIcon = this.svgIcons.find(icon => namespace
       ? icon.name === iconName && icon.namespace === namespace
-      : icon.name === iconName;
-    });
+      : icon.name === iconName
+    );
 
     if (!svgIcon) {
       return;
@@ -76,7 +76,7 @@ export class CustomIconRegistry extends MatIconRegistry {
     const div = document.createElement('DIV');
 
     // SECURITY: the source for the SVG icons is provided in code by trusted developers
-    div.innerHTML = svgIcon.svgSource;
+    div.innerHTML = unwrapHtml(svgIcon.svgSource) as string;
 
     const svgElement = div.querySelector('svg') as SVGElement;
     nsIconMap[svgIcon.name] = svgElement;

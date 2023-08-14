@@ -30,8 +30,7 @@ withEachNg1Version(() => {
          // component
          @Directive({selector: 'ng1'})
          class Ng1Component extends UpgradeComponent {
-           // TODO(issue/24571): remove '!'.
-           @Input() title!: string;
+           @Input() title: string = '';
 
            constructor(elementRef: ElementRef, injector: Injector) {
              super('ng1', elementRef, injector);
@@ -44,16 +43,12 @@ withEachNg1Version(() => {
            template: 'ng2[<ng1 [title]="nameProp">transclude</ng1>](<ng-content></ng-content>)'
          })
          class Ng2Component {
-           // TODO(issue/24571): remove '!'.
-           @Input('name') nameProp!: string;
+           @Input('name') nameProp: string = '';
          }
 
          // This module represents the Angular pieces of the application
-         @NgModule({
-           declarations: [Ng1Component, Ng2Component],
-           entryComponents: [Ng2Component],
-           imports: [BrowserModule, UpgradeModule]
-         })
+         @NgModule(
+             {declarations: [Ng1Component, Ng2Component], imports: [BrowserModule, UpgradeModule]})
          class Ng2Module {
            ngDoBootstrap() { /* this is a placeholder to stop the bootstrapper from
                                 complaining */

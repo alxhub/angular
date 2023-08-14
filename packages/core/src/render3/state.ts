@@ -7,7 +7,8 @@
  */
 
 import {InjectFlags} from '../di/interface/injector';
-import {assertDefined, assertEqual, assertGreaterThanOrEqual, assertLessThan, assertNotEqual} from '../util/assert';
+import {assertDefined, assertEqual, assertGreaterThanOrEqual, assertLessThan, assertNotEqual, throwError} from '../util/assert';
+
 import {assertLViewOrUndefined, assertTNodeForLView, assertTNodeForTView} from './assert';
 import {DirectiveDef} from './interfaces/definition';
 import {TNode, TNodeType} from './interfaces/node';
@@ -82,7 +83,7 @@ interface LFrame {
    *
    * e.g. const inner = x().$implicit; const outer = x().$implicit;
    */
-  contextLView: LView;
+  contextLView: LView|null;
 
   /**
    * Store the element depth count. This is used to identify the root elements of the template
@@ -173,21 +174,33 @@ interface InstructionState {
   bindingsEnabled: boolean;
 
   /**
-   * In this mode, any changes in bindings will throw an ExpressionChangedAfterChecked error.
+   * Stores the root TNode that has the 'ngSkipHydration' attribute on it for later reference.
    *
-   * Necessary to support ChangeDetectorRef.checkNoChanges().
-   *
-   * checkNoChanges Runs only in devmode=true and verifies that no unintended changes exist in
-   * the change detector or its children.
+   * Example:
+   * ```
+   * <my-comp ngSkipHydration>
+   *   Should reference this root node
+   * </my-comp>
+   * ```
    */
-  isInCheckNoChangesMode: boolean;
+  skipHydrationRootTNode: TNode|null;
 }
 
 const instructionState: InstructionState = {
   lFrame: createLFrame(null),
   bindingsEnabled: true,
-  isInCheckNoChangesMode: false,
+  skipHydrationRootTNode: null,
 };
+
+/**
+ * In this mode, any changes in bindings will throw an ExpressionChangedAfterChecked error.
+ *
+ * Necessary to support ChangeDetectorRef.checkNoChanges().
+ *
+ * The `checkNoChanges` function is invoked only in ngDevMode=true and verifies that no unintended
+ * changes exist in the change detector or its children.
+ */
+let _isInCheckNoChangesMode = false;
 
 /**
  * Returns true if the instruction state stack is empty.
@@ -215,6 +228,22 @@ export function getBindingsEnabled(): boolean {
   return instructionState.bindingsEnabled;
 }
 
+/**
+ * Returns true if currently inside a skip hydration block.
+ * @returns boolean
+ */
+export function isInSkipHydrationBlock(): boolean {
+  return instructionState.skipHydrationRootTNode !== null;
+}
+
+/**
+ * Returns true if this is the root TNode of the skip hydration block.
+ * @param tNode the current TNode
+ * @returns boolean
+ */
+export function isSkipHydrationRootTNode(tNode: TNode): boolean {
+  return instructionState.skipHydrationRootTNode === tNode;
+}
 
 /**
  * Enables directive matching on elements.
@@ -237,6 +266,14 @@ export function getBindingsEnabled(): boolean {
  */
 export function ɵɵenableBindings(): void {
   instructionState.bindingsEnabled = true;
+}
+
+/**
+ * Sets a flag to specify that the TNode is in a skip hydration block.
+ * @param tNode the current TNode
+ */
+export function enterSkipHydrationBlock(tNode: TNode): void {
+  instructionState.skipHydrationRootTNode = tNode;
 }
 
 /**
@@ -263,10 +300,17 @@ export function ɵɵdisableBindings(): void {
 }
 
 /**
+ * Clears the root skip hydration node when leaving a skip hydration block.
+ */
+export function leaveSkipHydrationBlock(): void {
+  instructionState.skipHydrationRootTNode = null;
+}
+
+/**
  * Return the current `LView`.
  */
-export function getLView(): LView {
-  return instructionState.lFrame.lView;
+export function getLView<T>(): LView<T> {
+  return instructionState.lFrame.lView as LView<T>;
 }
 
 /**
@@ -290,7 +334,19 @@ export function getTView(): TView {
  */
 export function ɵɵrestoreView<T = any>(viewToRestore: OpaqueViewState): T {
   instructionState.lFrame.contextLView = viewToRestore as any as LView;
-  return (viewToRestore as any as LView)[CONTEXT] as T;
+  return (viewToRestore as any as LView)[CONTEXT] as unknown as T;
+}
+
+
+/**
+ * Clears the view set in `ɵɵrestoreView` from memory. Returns the passed in
+ * value so that it can be used as a return value of an instruction.
+ *
+ * @codeGenApi
+ */
+export function ɵɵresetView<T>(value?: T): T|undefined {
+  instructionState.lFrame.contextLView = null;
+  return value;
 }
 
 
@@ -326,21 +382,21 @@ export function isCurrentTNodeParent(): boolean {
 export function setCurrentTNodeAsNotParent(): void {
   instructionState.lFrame.isParent = false;
 }
-export function setCurrentTNodeAsParent(): void {
-  instructionState.lFrame.isParent = true;
-}
 
 export function getContextLView(): LView {
-  return instructionState.lFrame.contextLView;
+  const contextLView = instructionState.lFrame.contextLView;
+  ngDevMode && assertDefined(contextLView, 'contextLView must be defined.');
+  return contextLView!;
 }
 
 export function isInCheckNoChangesMode(): boolean {
-  // TODO(misko): remove this from the LView since it is ngDevMode=true mode only.
-  return instructionState.isInCheckNoChangesMode;
+  !ngDevMode && throwError('Must never be called in production mode');
+  return _isInCheckNoChangesMode;
 }
 
 export function setIsInCheckNoChangesMode(mode: boolean): void {
-  instructionState.isInCheckNoChangesMode = mode;
+  !ngDevMode && throwError('Must never be called in production mode');
+  _isInCheckNoChangesMode = mode;
 }
 
 // top level variables should not be exported for performance reasons (PERF_NOTES.md)
@@ -553,7 +609,7 @@ export function enterView(newView: LView): void {
   newLFrame.currentTNode = tView.firstChild!;
   newLFrame.lView = newView;
   newLFrame.tView = tView;
-  newLFrame.contextLView = newView!;
+  newLFrame.contextLView = newView;
   newLFrame.bindingIndex = tView.bindingStartIndex;
   newLFrame.inI18n = false;
 }
@@ -575,7 +631,7 @@ function createLFrame(parent: LFrame|null): LFrame {
     lView: null!,
     tView: null!,
     selectedIndex: -1,
-    contextLView: null!,
+    contextLView: null,
     elementDepthCount: 0,
     currentNamespace: null,
     currentDirectiveIndex: -1,
@@ -628,7 +684,7 @@ export function leaveView() {
   oldLFrame.isParent = true;
   oldLFrame.tView = null!;
   oldLFrame.selectedIndex = -1;
-  oldLFrame.contextLView = null!;
+  oldLFrame.contextLView = null;
   oldLFrame.elementDepthCount = 0;
   oldLFrame.currentDirectiveIndex = -1;
   oldLFrame.currentNamespace = null;
@@ -640,7 +696,7 @@ export function leaveView() {
 export function nextContextImpl<T = any>(level: number): T {
   const contextLView = instructionState.lFrame.contextLView =
       walkUpViews(level, instructionState.lFrame.contextLView!);
-  return contextLView[CONTEXT] as T;
+  return contextLView[CONTEXT] as unknown as T;
 }
 
 function walkUpViews(nestingLevel: number, currentView: LView): LView {
@@ -729,4 +785,22 @@ export function namespaceHTMLInternal() {
 
 export function getNamespace(): string|null {
   return instructionState.lFrame.currentNamespace;
+}
+
+let _wasLastNodeCreated = true;
+
+/**
+ * Retrieves a global flag that indicates whether the most recent DOM node
+ * was created or hydrated.
+ */
+export function wasLastNodeCreated(): boolean {
+  return _wasLastNodeCreated;
+}
+
+/**
+ * Sets a global flag to indicate whether the most recent DOM node
+ * was created or hydrated.
+ */
+export function lastNodeWasCreated(flag: boolean): void {
+  _wasLastNodeCreated = flag;
 }

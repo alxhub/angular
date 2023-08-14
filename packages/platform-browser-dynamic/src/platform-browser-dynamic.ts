@@ -7,7 +7,7 @@
  */
 
 import {ResourceLoader} from '@angular/compiler';
-import {CompilerFactory, createPlatformFactory, platformCore, PlatformRef, Provider, StaticProvider} from '@angular/core';
+import {createPlatformFactory, Provider} from '@angular/core';
 
 import {platformCoreDynamic} from './platform_core_dynamic';
 import {INTERNAL_BROWSER_DYNAMIC_PLATFORM_PROVIDERS} from './platform_providers';
@@ -19,6 +19,10 @@ export {JitCompilerFactory} from './compiler_factory';
 
 /**
  * @publicApi
+ *
+ * @deprecated This was previously necessary in some cases to test AOT-compiled components with View
+ *     Engine, but is no longer since Ivy.
+
  */
 export const RESOURCE_CACHE_PROVIDER: Provider[] =
     [{provide: ResourceLoader, useClass: CachedResourceLoader, deps: []}];

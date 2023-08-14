@@ -8,7 +8,7 @@
 
 import {computeDecimalDigest, computeDigest, decimalDigest} from '../../../i18n/digest';
 import * as i18n from '../../../i18n/i18n_ast';
-import {createI18nMessageFactory, VisitNodeFn} from '../../../i18n/i18n_parser';
+import {createI18nMessageFactory, I18nMessageFactory, VisitNodeFn} from '../../../i18n/i18n_parser';
 import {I18nError} from '../../../i18n/parse_util';
 import * as html from '../../../ml_parser/ast';
 import {DEFAULT_INTERPOLATION_CONFIG, InterpolationConfig} from '../../../ml_parser/interpolation_config';
@@ -51,9 +51,6 @@ export class I18nMetaVisitor implements html.Visitor {
   public hasI18nMeta: boolean = false;
   private _errors: I18nError[] = [];
 
-  // i18n message generation factory
-  private _createI18nMessage = createI18nMessageFactory(this.interpolationConfig);
-
   constructor(
       private interpolationConfig: InterpolationConfig = DEFAULT_INTERPOLATION_CONFIG,
       private keepI18nAttrs = false, private enableI18nLegacyMessageIdFormat = false) {}
@@ -62,7 +59,8 @@ export class I18nMetaVisitor implements html.Visitor {
       nodes: html.Node[], meta: string|i18n.I18nMeta = '',
       visitNodeFn?: VisitNodeFn): i18n.Message {
     const {meaning, description, customId} = this._parseMetadata(meta);
-    const message = this._createI18nMessage(nodes, meaning, description, customId, visitNodeFn);
+    const createI18nMessage = createI18nMessageFactory(this.interpolationConfig);
+    const message = createI18nMessage(nodes, meaning, description, customId, visitNodeFn);
     this._setMessageId(message, meta);
     this._setLegacyIds(message, meta);
     return message;
@@ -74,6 +72,8 @@ export class I18nMetaVisitor implements html.Visitor {
   }
 
   visitElement(element: html.Element): any {
+    let message: i18n.Message|undefined = undefined;
+
     if (hasI18nAttrs(element)) {
       this.hasI18nMeta = true;
       const attrs: html.Attribute[] = [];
@@ -83,12 +83,13 @@ export class I18nMetaVisitor implements html.Visitor {
         if (attr.name === I18N_ATTR) {
           // root 'i18n' node attribute
           const i18n = element.i18n || attr.value;
-          const message = this._generateI18nMessage(element.children, i18n, setI18nRefs);
-          // do not assign empty i18n meta
-          if (message.nodes.length) {
-            element.i18n = message;
+          message = this._generateI18nMessage(element.children, i18n, setI18nRefs);
+          if (message.nodes.length === 0) {
+            // Ignore the message if it is empty.
+            message = undefined;
           }
-
+          // Store the message on the element
+          element.i18n = message;
         } else if (attr.name.startsWith(I18N_ATTR_PREFIX)) {
           // 'i18n-*' attributes
           const name = attr.name.slice(I18N_ATTR_PREFIX.length);
@@ -121,11 +122,11 @@ export class I18nMetaVisitor implements html.Visitor {
         element.attrs = attrs;
       }
     }
-    html.visitAll(this, element.children, element.i18n);
+    html.visitAll(this, element.children, message);
     return element;
   }
 
-  visitExpansion(expansion: html.Expansion, currentMessage: i18n.Message|undefined): any {
+  visitExpansion(expansion: html.Expansion, currentMessage: i18n.Message|null): any {
     let message;
     const meta = expansion.i18n;
     this.hasI18nMeta = true;
@@ -137,6 +138,10 @@ export class I18nMetaVisitor implements html.Visitor {
       message = this._generateI18nMessage([expansion], meta);
       const icu = icuFromI18nMessage(message);
       icu.name = name;
+      if (currentMessage !== null) {
+        // Also update the placeholderToMessage map with this new message
+        currentMessage.placeholderToMessage[name] = message;
+      }
     } else {
       // ICU is a top level message, try to use metadata from container element if provided via
       // `context` argument. Note: context may not be available for standalone ICUs (without
@@ -160,6 +165,20 @@ export class I18nMetaVisitor implements html.Visitor {
     return expansionCase;
   }
 
+  visitBlockGroup(group: html.BlockGroup, context: any) {
+    html.visitAll(this, group.blocks, context);
+    return group;
+  }
+
+  visitBlock(block: html.Block, context: any) {
+    html.visitAll(this, block.children, context);
+    return block;
+  }
+
+  visitBlockParameter(parameter: html.BlockParameter, context: any) {
+    return parameter;
+  }
+
   /**
    * Parse the general form `meta` passed into extract the explicit metadata needed to create a
    * `Message`.
@@ -173,8 +192,9 @@ export class I18nMetaVisitor implements html.Visitor {
    * @returns the parsed metadata.
    */
   private _parseMetadata(meta: string|i18n.I18nMeta): I18nMeta {
-    return typeof meta === 'string' ? parseI18nMeta(meta) :
-                                      meta instanceof i18n.Message ? meta : {};
+    return typeof meta === 'string'  ? parseI18nMeta(meta) :
+        meta instanceof i18n.Message ? meta :
+                                       {};
   }
 
   /**
@@ -200,9 +220,9 @@ export class I18nMetaVisitor implements html.Visitor {
       // `packages/compiler/src/render3/view/template.ts`).
       // In that case we want to reuse the legacy message generated in the 1st pass (see
       // `setI18nRefs()`).
-      const previousMessage = meta instanceof i18n.Message ?
-          meta :
-          meta instanceof i18n.IcuPlaceholder ? meta.previousMessage : undefined;
+      const previousMessage = meta instanceof i18n.Message ? meta :
+          meta instanceof i18n.IcuPlaceholder              ? meta.previousMessage :
+                                                             undefined;
       message.legacyIds = previousMessage ? previousMessage.legacyIds : [];
     }
   }
@@ -248,13 +268,16 @@ export function parseI18nMeta(meta: string = ''): I18nMeta {
 
 // Converts i18n meta information for a message (id, description, meaning)
 // to a JsDoc statement formatted as expected by the Closure compiler.
-export function i18nMetaToJSDoc(meta: I18nMeta): o.JSDocComment|null {
+export function i18nMetaToJSDoc(meta: I18nMeta): o.JSDocComment {
   const tags: o.JSDocTag[] = [];
   if (meta.description) {
     tags.push({tagName: o.JSDocTagName.Desc, text: meta.description});
+  } else {
+    // Suppress the JSCompiler warning that a `@desc` was not given for this message.
+    tags.push({tagName: o.JSDocTagName.Suppress, text: '{msgDescriptions}'});
   }
   if (meta.meaning) {
     tags.push({tagName: o.JSDocTagName.Meaning, text: meta.meaning});
   }
-  return tags.length == 0 ? null : o.jsDocComment(tags);
+  return o.jsDocComment(tags);
 }

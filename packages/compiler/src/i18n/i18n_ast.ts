@@ -22,9 +22,11 @@ export interface MessagePlaceholder {
 
 export class Message {
   sources: MessageSpan[];
-  id: string = this.customId;
+  id: string;
   /** The ids to use if there are no custom id and if `i18nLegacyMessageIdFormat` is not empty */
   legacyIds: string[] = [];
+
+  messageString: string;
 
   /**
    * @param nodes message AST
@@ -38,6 +40,9 @@ export class Message {
       public nodes: Node[], public placeholders: {[phName: string]: MessagePlaceholder},
       public placeholderToMessage: {[phName: string]: Message}, public meaning: string,
       public description: string, public customId: string) {
+    this.id = this.customId;
+    this.messageString = serializeMessage(this.nodes);
+
     if (nodes.length) {
       this.sources = [{
         filePath: nodes[0].sourceSpan.start.file.url,
@@ -84,11 +89,9 @@ export class Container implements Node {
 }
 
 export class Icu implements Node {
-  // TODO(issue/24571): remove '!'.
-  public expressionPlaceholder!: string;
   constructor(
       public expression: string, public type: string, public cases: {[k: string]: Node},
-      public sourceSpan: ParseSourceSpan) {}
+      public sourceSpan: ParseSourceSpan, public expressionPlaceholder?: string) {}
 
   visit(visitor: Visitor, context?: any): any {
     return visitor.visitIcu(this, context);
@@ -157,8 +160,7 @@ export class CloneVisitor implements Visitor {
   visitIcu(icu: Icu, context?: any): Icu {
     const cases: {[k: string]: Node} = {};
     Object.keys(icu.cases).forEach(key => cases[key] = icu.cases[key].visit(this, context));
-    const msg = new Icu(icu.expression, icu.type, cases, icu.sourceSpan);
-    msg.expressionPlaceholder = icu.expressionPlaceholder;
+    const msg = new Icu(icu.expression, icu.type, cases, icu.sourceSpan, icu.expressionPlaceholder);
     return msg;
   }
 
@@ -199,4 +201,43 @@ export class RecurseVisitor implements Visitor {
   visitPlaceholder(ph: Placeholder, context?: any): any {}
 
   visitIcuPlaceholder(ph: IcuPlaceholder, context?: any): any {}
+}
+
+
+/**
+ * Serialize the message to the Localize backtick string format that would appear in compiled code.
+ */
+function serializeMessage(messageNodes: Node[]): string {
+  const visitor = new LocalizeMessageStringVisitor();
+  const str = messageNodes.map(n => n.visit(visitor)).join('');
+  return str;
+}
+
+class LocalizeMessageStringVisitor implements Visitor {
+  visitText(text: Text): any {
+    return text.value;
+  }
+
+  visitContainer(container: Container): any {
+    return container.children.map(child => child.visit(this)).join('');
+  }
+
+  visitIcu(icu: Icu): any {
+    const strCases =
+        Object.keys(icu.cases).map((k: string) => `${k} {${icu.cases[k].visit(this)}}`);
+    return `{${icu.expressionPlaceholder}, ${icu.type}, ${strCases.join(' ')}}`;
+  }
+
+  visitTagPlaceholder(ph: TagPlaceholder): any {
+    const children = ph.children.map(child => child.visit(this)).join('');
+    return `{$${ph.startName}}${children}{$${ph.closeName}}`;
+  }
+
+  visitPlaceholder(ph: Placeholder): any {
+    return `{$${ph.name}}`;
+  }
+
+  visitIcuPlaceholder(ph: IcuPlaceholder): any {
+    return `{$${ph.name}}`;
+  }
 }

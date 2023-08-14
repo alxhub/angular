@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as t from '@babel/types';
+import {types as t} from '@babel/core';
 
 import {assert, AstHost, FatalLinkerError, Range} from '../../../../linker';
 
@@ -38,11 +38,18 @@ export class BabelAstHost implements AstHost<t.Expression> {
     return num.value;
   }
 
-  isBooleanLiteral = t.isBooleanLiteral;
+  isBooleanLiteral(bool: t.Expression): boolean {
+    return t.isBooleanLiteral(bool) || isMinifiedBooleanLiteral(bool);
+  }
 
   parseBooleanLiteral(bool: t.Expression): boolean {
-    assert(bool, t.isBooleanLiteral, 'a boolean literal');
-    return bool.value;
+    if (t.isBooleanLiteral(bool)) {
+      return bool.value;
+    } else if (isMinifiedBooleanLiteral(bool)) {
+      return !bool.argument.value;
+    } else {
+      throw new FatalLinkerError(bool, 'Unsupported syntax, expected a boolean literal.');
+    }
   }
 
   isArrayLiteral = t.isArrayExpression;
@@ -65,9 +72,10 @@ export class BabelAstHost implements AstHost<t.Expression> {
     for (const property of obj.properties) {
       assert(property, t.isObjectProperty, 'a property assignment');
       assert(property.value, t.isExpression, 'an expression');
-      assert(property.key, isPropertyName, 'a property name');
+      assert(property.key, isObjectExpressionPropertyName, 'a property name');
+
       const key = t.isIdentifier(property.key) ? property.key.name : property.key.value;
-      result.set(key, property.value);
+      result.set(`${key}`, property.value);
     }
     return result;
   }
@@ -93,7 +101,9 @@ export class BabelAstHost implements AstHost<t.Expression> {
     }
     const stmt = fn.body.body[0];
     assert(stmt, t.isReturnStatement, 'a function body with a single return statement');
-    if (stmt.argument === null) {
+
+    // Babel declares `argument` as optional and nullable, so we account for both scenarios.
+    if (stmt.argument === null || stmt.argument === undefined) {
       throw new FatalLinkerError(stmt, 'Unsupported syntax, expected function to return a value.');
     }
 
@@ -116,7 +126,7 @@ export class BabelAstHost implements AstHost<t.Expression> {
   }
 
   getRange(node: t.Expression): Range {
-    if (node.loc == null || node.start === null || node.end === null) {
+    if (node.loc == null || node.start == null || node.end == null) {
       throw new FatalLinkerError(
           node, 'Unable to read range for node - it is missing location information.');
     }
@@ -148,10 +158,15 @@ function isNotSpreadElement(e: t.Expression|t.SpreadElement): e is t.Expression 
 
 
 /**
- * Return true if the expression can be considered a text based property name.
+ * Return true if the node can be considered a text based property name for an
+ * object expression.
+ *
+ * Notably in the Babel AST, object patterns (for destructuring) could be of type
+ * `t.PrivateName` so we need a distinction between object expressions and patterns.
  */
-function isPropertyName(e: t.Expression): e is t.Identifier|t.StringLiteral|t.NumericLiteral {
-  return t.isIdentifier(e) || t.isStringLiteral(e) || t.isNumericLiteral(e);
+function isObjectExpressionPropertyName(n: t.Node): n is t.Identifier|t.StringLiteral|
+    t.NumericLiteral {
+  return t.isIdentifier(n) || t.isStringLiteral(n) || t.isNumericLiteral(n);
 }
 
 /**
@@ -164,4 +179,14 @@ type ArgumentType = t.CallExpression['arguments'][number];
  */
 function isNotSpreadArgument(arg: ArgumentType): arg is Exclude<ArgumentType, t.SpreadElement> {
   return !t.isSpreadElement(arg);
+}
+
+type MinifiedBooleanLiteral = t.Expression&t.UnaryExpression&{argument: t.NumericLiteral};
+
+/**
+ * Return true if the node is either `!0` or `!1`.
+ */
+function isMinifiedBooleanLiteral(node: t.Expression): node is MinifiedBooleanLiteral {
+  return t.isUnaryExpression(node) && node.prefix && node.operator === '!' &&
+      t.isNumericLiteral(node.argument) && (node.argument.value === 0 || node.argument.value === 1);
 }

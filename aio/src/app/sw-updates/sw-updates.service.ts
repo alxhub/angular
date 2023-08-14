@@ -1,7 +1,7 @@
-import { ApplicationRef, Injectable, OnDestroy } from '@angular/core';
-import { SwUpdate } from '@angular/service-worker';
-import { concat, interval, Subject } from 'rxjs';
-import { first, takeUntil, tap } from 'rxjs/operators';
+import { ApplicationRef, ErrorHandler, Injectable, OnDestroy } from '@angular/core';
+import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
+import { concat, from, interval, Subject } from 'rxjs';
+import { filter, first, switchMap, takeUntil, tap } from 'rxjs/operators';
 
 import { LocationService } from 'app/shared/location.service';
 import { Logger } from 'app/shared/logger.service';
@@ -11,58 +11,67 @@ import { Logger } from 'app/shared/logger.service';
  * SwUpdatesService
  *
  * @description
- * 1. Checks for available ServiceWorker updates once instantiated.
- * 2. Re-checks every 6 hours.
- * 3. Whenever an update is available, it activates the update.
+ * While enabled, this service will:
+ * 1. Check for available ServiceWorker updates every 6 hours.
+ * 2. Activate an update as soon as one is available.
  */
-@Injectable()
+@Injectable({providedIn: 'root'})
 export class SwUpdatesService implements OnDestroy {
   private checkInterval = 1000 * 60 * 60 * 6;  // 6 hours
-  private onDestroy = new Subject<void>();
+  private onDisable = new Subject<void>();
 
   constructor(
-      appRef: ApplicationRef, location: LocationService, private logger: Logger,
-      private swu: SwUpdate) {
-    if (!swu.isEnabled) {
+      private appRef: ApplicationRef, private errorHandler: ErrorHandler,
+      private location: LocationService, private logger: Logger, private swu: SwUpdate) {}
+
+  disable() {
+    this.onDisable.next();
+  }
+
+  enable() {
+    if (!this.swu.isEnabled) {
       return;
     }
 
     // Periodically check for updates (after the app is stabilized).
-    const appIsStable = appRef.isStable.pipe(first(v => v));
+    const appIsStable = this.appRef.isStable.pipe(first(v => v));
     concat(appIsStable, interval(this.checkInterval))
         .pipe(
             tap(() => this.log('Checking for update...')),
-            takeUntil(this.onDestroy),
+            takeUntil(this.onDisable),
         )
         .subscribe(() => this.swu.checkForUpdate());
 
     // Activate available updates.
-    this.swu.available
+    this.swu.versionUpdates
         .pipe(
+            filter((evt): evt is VersionReadyEvent => evt.type === 'VERSION_READY'),
             tap(evt => this.log(`Update available: ${JSON.stringify(evt)}`)),
-            takeUntil(this.onDestroy),
+            takeUntil(this.onDisable),
+            switchMap(() => from(this.swu.activateUpdate()))
         )
-        .subscribe(() => this.swu.activateUpdate());
-
-    // Request a full page navigation once an update has been activated.
-    this.swu.activated
-        .pipe(
-            tap(evt => this.log(`Update activated: ${JSON.stringify(evt)}`)),
-            takeUntil(this.onDestroy),
-        )
-        .subscribe(() => location.fullPageNavigationNeeded());
+        .subscribe((isActivated) => {
+          if(isActivated) {
+            this.log('Update activated');
+            this.location.fullPageNavigationNeeded();
+          }
+        });
 
     // Request an immediate page reload once an unrecoverable state has been detected.
     this.swu.unrecoverable
         .pipe(
-            tap(evt => this.log(`Unrecoverable state: ${evt.reason}\nReloading...`)),
-            takeUntil(this.onDestroy),
+            tap(evt => {
+              const errorMsg = `Unrecoverable state: ${evt.reason}`;
+              this.errorHandler.handleError(errorMsg);
+              this.log(`${errorMsg}\nReloading...`);
+            }),
+            takeUntil(this.onDisable),
         )
-        .subscribe(() => location.reloadPage());
+        .subscribe(() => this.location.reloadPage());
   }
 
   ngOnDestroy() {
-    this.onDestroy.next();
+    this.disable();
   }
 
   private log(message: string) {

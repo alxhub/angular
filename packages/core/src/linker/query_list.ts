@@ -10,10 +10,10 @@ import {Observable} from 'rxjs';
 
 import {EventEmitter} from '../event_emitter';
 import {arrayEquals, flatten} from '../util/array_utils';
-import {getSymbolIterator} from '../util/symbol';
 
 function symbolIterator<T>(this: QueryList<T>): Iterator<T> {
-  return ((this as any as {_results: Array<T>})._results as any)[getSymbolIterator()]();
+  // @ts-expect-error accessing a private member
+  return this._results[Symbol.iterator]();
 }
 
 /**
@@ -62,17 +62,15 @@ export class QueryList<T> implements Iterable<T> {
   /**
    * @param emitDistinctChangesOnly Whether `QueryList.changes` should fire only when actual change
    *     has occurred. Or if it should fire when query is recomputed. (recomputing could resolve in
-   *     the same result) This is set to `false` for backwards compatibility but will be changed to
-   *     true in v12.
+   *     the same result)
    */
   constructor(private _emitDistinctChangesOnly: boolean = false) {
     // This function should be declared on the prototype, but doing so there will cause the class
     // declaration to have side-effects and become not tree-shakable. For this reason we do it in
     // the constructor.
-    // [getSymbolIterator()](): Iterator<T> { ... }
-    const symbol = getSymbolIterator();
-    const proto = QueryList.prototype as any;
-    if (!proto[symbol]) proto[symbol] = symbolIterator;
+    // [Symbol.iterator](): Iterator<T> { ... }
+    const proto = QueryList.prototype;
+    if (!proto[Symbol.iterator]) proto[Symbol.iterator] = symbolIterator;
   }
 
   /**
@@ -94,6 +92,8 @@ export class QueryList<T> implements Iterable<T> {
    * See
    * [Array.filter](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
    */
+  filter<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S): S[];
+  filter(predicate: (value: T, index: number, array: readonly T[]) => unknown): T[];
   filter(fn: (item: T, index: number, array: T[]) => boolean): T[] {
     return this._results.filter(fn);
   }

@@ -7,14 +7,15 @@ import { Hero } from '../model/hero';
 @Component({
   selector: 'dashboard-hero',
   template: `
-    <div (click)="click()" class="hero">
+    <button type="button" (click)="click()" class="hero">
       {{hero.name | uppercase}}
-    </div>`,
+    </button>
+  `,
   styleUrls: [ './dashboard-hero.component.css' ]
 })
 // #docregion class
 export class DashboardHeroComponent {
-  @Input() hero: Hero;
+  @Input() hero!: Hero;
   @Output() selected = new EventEmitter<Hero>();
   click() { this.selected.emit(this.hero); }
 }

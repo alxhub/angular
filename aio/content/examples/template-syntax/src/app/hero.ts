@@ -3,7 +3,7 @@ export class Hero {
 
   static heroes: Hero[] = [
     new Hero(
-      null,
+      0,
       'Hercules',
       'happy',
       new Date(1970, 1, 25),
@@ -11,22 +11,20 @@ export class Hero {
       325
     ),
     new Hero(1, 'Dr Nice',   'happy'),
-    new Hero(2, 'Narco',     'sad' ),
-    new Hero(3, 'Windstorm', 'confused' ),
+    new Hero(2, 'RubberMan', 'sad'),
+    new Hero(3, 'Windstorm', 'confused'),
     new Hero(4, 'Magneta')
   ];
 
 
   constructor(
-    public id?: number,
+    public id = Hero.nextId++,
     public name?: string,
     public emotion?: string,
     public birthdate?: Date,
     public url?: string,
     public rate = 100,
-    ) {
-    this.id = id ? id : Hero.nextId++;
-  }
+    ) {}
 
   clone(): Hero {
     return Object.assign(new Hero(), this);

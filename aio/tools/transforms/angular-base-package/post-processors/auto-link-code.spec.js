@@ -89,7 +89,7 @@ describe('autoLinkCode post-processor', () => {
        expect(doc.renderedContent).toEqual('<code>xyz-MyClass</code>');
      });
 
-  it('should ignore code items that are filtered out by custom filters', () => {
+  it('should ignore code items that are filtered out by custom filters (multiple words)', () => {
     autoLinkCode.customFilters = [filterPipes];
     aliasMap.addDoc({
       docType: 'pipe',
@@ -110,8 +110,51 @@ describe('autoLinkCode post-processor', () => {
             '{ xyz | <a href="a/b/myclass" class="code-anchor">myClass</a> } ' +
             '{ xyz|<a href="a/b/myclass" class="code-anchor">myClass</a> } ' +
             '<a href="a/b/myclass" class="code-anchor">MyClass</a> ' +
-            'myClass OtherClass|<a href="a/b/myclass" class="code-anchor">MyClass</a>' +
+            'myClass ' +
+            'OtherClass|<a href="a/b/myclass" class="code-anchor">MyClass</a>' +
             '</code>');
+  });
+
+  it('should ignore code items that are filtered out by custom filters (single word)', () => {
+    const filterAnchors = (docs, words, index) => (words[index].toLowerCase() === 'a') ? [] : docs;
+    autoLinkCode.customFilters = [filterAnchors];
+    autoLinkCode.docTypes = ['directive'];
+
+    aliasMap.addDoc({
+      docType: 'directive',
+      id: 'MyAnchorDirective',
+      aliases: ['MyAnchorDirective', 'a'],
+      path: 'a/b/my-anchor-directive',
+    });
+    const doc = {
+      docType: 'test-doc',
+      renderedContent: '<code>a</code>',
+    };
+
+    processor.$process([doc]);
+
+    expect(doc.renderedContent).toBe('<code>a</code>');
+  });
+
+  it('should ignore generated nodes', () => {
+    const filterAnchors = (docs, words, index) => (words[index].toLowerCase() === 'a') ? [] : docs;
+    autoLinkCode.customFilters = [filterAnchors];
+    autoLinkCode.docTypes = ['directive'];
+
+    aliasMap.addDoc({
+      docType: 'directive',
+      id: 'MyAnchorDirective',
+      aliases: ['MyAnchorDirective', 'a'],
+      path: 'a/b/my-anchor-directive',
+    });
+    const doc = {
+      docType: 'test-doc',
+      renderedContent: '<code>&#x3C;a></code>',
+    };
+
+    processor.$process([doc]);
+
+    expect(doc.renderedContent).toBe('<code>&#x3C;a></code>');
   });
 
   it('should ignore code items that match an internal API doc', () => {
@@ -176,6 +219,20 @@ describe('autoLinkCode post-processor', () => {
     const doc = {docType: 'test-doc', renderedContent: '<code class="no-auto-link">MyClass</code>'};
     processor.$process([doc]);
     expect(doc.renderedContent).toEqual('<code class="no-auto-link">MyClass</code>');
+  });
+
+  it('should ignore symbols marked as internal', () => {
+    aliasMap.addDoc({docType: 'class', id: 'MyClass', aliases: ['MyClass'], internal: true});
+    const doc = {docType: 'test-doc', renderedContent: '<code>MyClass</code>'};
+    processor.$process([doc]);
+    expect(doc.renderedContent).toEqual('<code>MyClass</code>');
+  });
+
+  it('should ignore symbols marked as privately exported (that start with `ɵ`)', () => {
+    aliasMap.addDoc({docType: 'class', id: 'MyClass', aliases: ['MyClass'], privateExport: true});
+    const doc = {docType: 'test-doc', renderedContent: '<code>MyClass</code>'};
+    processor.$process([doc]);
+    expect(doc.renderedContent).toEqual('<code>MyClass</code>');
   });
 
   it('should ignore code blocks that are marked with an "ignored" language', () => {

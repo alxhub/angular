@@ -6,9 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {InjectionToken} from '../../di/injection_token';
 import {InjectFlags} from '../../di/interface/injector';
-import {AbstractType, Type} from '../../interface/type';
+import {ProviderToken} from '../../di/provider_token';
 import {assertDefined, assertEqual} from '../../util/assert';
 
 import {TDirectiveHostNode} from './node';
@@ -49,7 +48,7 @@ import {LView, TData} from './view';
  * index + 7: cumulative bloom filter
  * index + 8: cumulative bloom filter
  * index + TNODE: TNode associated with this `NodeInjector`
- *                `canst tNode = tView.data[index + NodeInjectorOffset.TNODE]`
+ *                `const tNode = tView.data[index + NodeInjectorOffset.TNODE]`
  * ```
  */
 export const enum NodeInjectorOffset {
@@ -176,8 +175,7 @@ export class NodeInjectorFactory {
   /**
    * The inject implementation to be activated when using the factory.
    */
-  injectImpl: null|
-      (<T>(token: Type<T>|AbstractType<T>|InjectionToken<T>, flags?: InjectFlags) => T);
+  injectImpl: null|(<T>(token: ProviderToken<T>, flags?: InjectFlags) => T);
 
   /**
    * Marker set to true during factory invocation to see if we get into recursive loop.
@@ -206,11 +204,11 @@ export class NodeInjectorFactory {
    * If we have a component and directive active an a single element as declared here
    * ```
    * component:
-   *   provides: [ {provide: String, useValue: 'component', multi: true} ],
-   *   viewProvides: [ {provide: String, useValue: 'componentView', multi: true} ],
+   *   providers: [ {provide: String, useValue: 'component', multi: true} ],
+   *   viewProviders: [ {provide: String, useValue: 'componentView', multi: true} ],
    *
    * directive:
-   *   provides: [ {provide: String, useValue: 'directive', multi: true} ],
+   *   providers: [ {provide: String, useValue: 'directive', multi: true} ],
    * ```
    *
    * Then the expected results are:
@@ -233,23 +231,23 @@ export class NodeInjectorFactory {
   index?: number;
 
   /**
-   * Because the same `multi` provider can be declared in `provides` and `viewProvides` it is
-   * possible for `viewProvides` to shadow the `provides`. For this reason we store the
+   * Because the same `multi` provider can be declared in `providers` and `viewProviders` it is
+   * possible for `viewProviders` to shadow the `providers`. For this reason we store the
    * `provideFactory` of the `providers` so that `providers` can be extended with `viewProviders`.
    *
    * Example:
    *
    * Given:
    * ```
-   * provides: [ {provide: String, useValue: 'all', multi: true} ],
-   * viewProvides: [ {provide: String, useValue: 'viewOnly', multi: true} ],
+   * providers: [ {provide: String, useValue: 'all', multi: true} ],
+   * viewProviders: [ {provide: String, useValue: 'viewOnly', multi: true} ],
    * ```
    *
    * We have to return `['all']` in case of content injection, but `['all', 'viewOnly']` in case
    * of view injection. We further have to make sure that the shared instances (in our case
    * `all`) are the exact same instance in both the content as well as the view injection. (We
-   * have to make sure that we don't double instantiate.) For this reason the `viewProvides`
-   * `Factory` has a pointer to the shadowed `provides` factory so that it can instantiate the
+   * have to make sure that we don't double instantiate.) For this reason the `viewProviders`
+   * `Factory` has a pointer to the shadowed `providers` factory so that it can instantiate the
    * `providers` (`['all']`) and then extend it with `viewProviders` (`['all'] + ['viewOnly'] =
    * ['all', 'viewOnly']`).
    */
@@ -280,8 +278,7 @@ export class NodeInjectorFactory {
        * Set to `true` if the token is declared in `viewProviders` (or if it is component).
        */
       isViewProvider: boolean,
-      injectImplementation: null|
-      (<T>(token: Type<T>|AbstractType<T>|InjectionToken<T>, flags?: InjectFlags) => T)) {
+      injectImplementation: null|(<T>(token: ProviderToken<T>, flags?: InjectFlags) => T)) {
     ngDevMode && assertDefined(factory, 'Factory not specified');
     ngDevMode && assertEqual(typeof factory, 'function', 'Expected factory function.');
     this.canSeeViewProviders = isViewProvider;

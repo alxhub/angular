@@ -16,7 +16,8 @@
           ],
           "failureMessage": "Incorrect template"
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should correctly bind to context in nested template with many bindings",
@@ -84,7 +85,8 @@
           ],
           "failureMessage": "Incorrect template"
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should correctly skip contexts as needed",
@@ -135,7 +137,8 @@
           ],
           "failureMessage": "Incorrect template"
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should support directive outputs on <ng-template>",
@@ -152,7 +155,8 @@
           ],
           "failureMessage": "Incorrect template"
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should allow directive inputs as an interpolated prop on <ng-template>",
@@ -195,7 +199,8 @@
           ],
           "failureMessage": "Incorrect outer template"
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should create unique template function names even for similar nested template structures",
@@ -205,7 +210,11 @@
       "expectations": [
         {
           "extraChecks": [
-            ["verifyUniqueFunctions", "Template", 16]
+            [
+              "verifyUniqueFunctions",
+              "Template",
+              16
+            ]
           ]
         }
       ]
@@ -218,10 +227,15 @@
       "expectations": [
         {
           "extraChecks": [
-            ["verifyUniqueFunctions", "Template", 4]
+            [
+              "verifyUniqueFunctions",
+              "Template",
+              4
+            ]
           ]
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should create unique listener function names even for similar nested template structures",
@@ -231,7 +245,11 @@
       "expectations": [
         {
           "extraChecks": [
-            ["verifyUniqueFunctions", "listener", 3]
+            [
+              "verifyUniqueFunctions",
+              "listener",
+              3
+            ]
           ]
         }
       ]
@@ -264,6 +282,57 @@
             {
               "expected": "nested_ternary_operation_template.js",
               "generated": "nested_ternary_operation.js"
+            }
+          ],
+          "failureMessage": "Incorrect template"
+        }
+      ]
+    },
+    {
+      "description": "should handle shorthand property declarations in templates",
+      "inputFiles": [
+        "shorthand_property_declaration.ts"
+      ],
+      "expectations": [
+        {
+          "files": [
+            {
+              "expected": "shorthand_property_declaration_template.js",
+              "generated": "shorthand_property_declaration.js"
+            }
+          ],
+          "failureMessage": "Incorrect template"
+        }
+      ]
+    },
+    {
+      "description": "should allow self-closing custom elements in templates",
+      "inputFiles": [
+        "self_closing_tags.ts"
+      ],
+      "expectations": [
+        {
+          "files": [
+            {
+              "expected": "self_closing_tags_template.js",
+              "generated": "self_closing_tags.js"
+            }
+          ],
+          "failureMessage": "Incorrect template"
+        }
+      ]
+    },
+    {
+      "description": "should not confuse self-closing tag for an end tag",
+      "inputFiles": [
+        "self_closing_tags_nested.ts"
+      ],
+      "expectations": [
+        {
+          "files": [
+            {
+              "expected": "self_closing_tags_nested_template.js",
+              "generated": "self_closing_tags_nested.js"
             }
           ],
           "failureMessage": "Incorrect template"

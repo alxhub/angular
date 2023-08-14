@@ -1,6 +1,10 @@
 # Enable debugging tests with --config=debug
 test:debug --test_arg=--node_options=--inspect-brk --test_output=streamed --test_strategy=exclusive --test_timeout=9999 --nocache_test_results
 
+# Do not attempt to de-flake locally.
+# On CI we might set this to `3` to run with deflaking.
+test --flaky_test_attempts=1
+
 ###############################
 # Filesystem interactions     #
 ###############################
@@ -38,6 +42,8 @@ test --incompatible_strict_action_env
 # and https://github.com/bazelbuild/bazel/commit/03246077f948f2790a83520e7dccc2625650e6df
 build --nobuild_runfile_links
 
+build --enable_runfiles
+
 ###############################
 # Release support             #
 # Turn on these settings with #
@@ -50,9 +56,31 @@ build --nobuild_runfile_links
 build:release --workspace_status_command="yarn -s ng-dev release build-env-stamp --mode=release"
 build:release --stamp
 
+# Building AIO against local Angular deps requires stamping
+# versions in Angular packages due to CLI version checks.
+build:aio_local_deps --stamp
+build:aio_local_deps --workspace_status_command="yarn -s --cwd aio local-workspace-status"
+
 # Snapshots should also be stamped with version control information.
-build:snapshot --workspace_status_command="yarn -s ng-dev release build-env-stamp --mode=snapshot"
-build:snapshot --stamp
+build:snapshot-build --workspace_status_command="yarn -s ng-dev release build-env-stamp --mode=snapshot"
+build:snapshot-build --stamp
+
+##########################################################
+# AIO architect build configuration                      #
+# See aio/angular.json for available configurations.     #
+# To build with a partiular configuration:               #
+#   bazel build //aio:build --aio_build_config=<config>  #
+# Default config is `stable``.                           #
+##########################################################
+build --flag_alias=aio_build_config=//aio:flag_aio_build_config
+
+####################################
+# AIO first party dep substitution #
+# Turn on with                     #
+#  --config=aio_local_deps         #
+####################################
+
+build:aio_local_deps --//aio:flag_aio_local_deps
 
 ###############################
 # Output                      #
@@ -72,26 +100,6 @@ test --test_output=errors
 # Bazel flags for CircleCI are in /.circleci/bazel.linux.rc and /.circleci/bazel.windows.rc
 
 ##################################
-# Settings for integration tests #
-##################################
-
-# Trick bazel into treating BUILD files under integration/bazel as being regular files
-# This lets us glob() up all the files inside this integration test to make them inputs to tests
-# (Note, we cannot use common --deleted_packages because the bazel version command doesn't support it)
-build --deleted_packages=integration/bazel,integration/bazel/src,integration/bazel/src/hello-world,integration/bazel/test,integration/bazel/tools,integration/bazel/test/e2e
-query --deleted_packages=integration/bazel,integration/bazel/src,integration/bazel/src/hello-world,integration/bazel/test,integration/bazel/tools,integration/bazel/test/e2e
-
-################################
-# Temporary Settings for Ivy   #
-################################
-# To determine if the compiler used should be Ivy instead of ViewEngine, one can use `--config=ivy`
-# on any bazel target. This is a temporary flag until codebase is permanently switched to Ivy.
-build --define=angular_ivy_enabled=False
-
-build:view-engine --define=angular_ivy_enabled=False
-build:ivy --define=angular_ivy_enabled=True
-
-##################################
 # Remote Build Execution support #
 # Turn on these settings with    #
 #  --config=remote               #
@@ -104,31 +112,54 @@ build:remote --define=EXECUTOR=remote
 # Set a higher timeout value, just in case.
 build:remote --remote_timeout=600
 
-# Increase the default number of jobs by 50% because our build has lots of
-# parallelism
-build:remote --jobs=150
+# Bazel detects maximum number of jobs based on host resources.
+# Since we run remotely, we can increase this number significantly.
+common:remote --jobs=200
+
 build:remote --google_default_credentials
+
+# Limit the number of test jobs for on an AIO local deps build. The example tests running
+# concurrently pushes the circleci executor RAM usage to its limits.
+test:aio_local_deps --jobs=24
 
 # Force remote exeuctions to consider the entire run as linux
 build:remote --cpu=k8
 build:remote --host_cpu=k8
 
 # Toolchain and platform related flags
-build:remote --host_javabase=@rbe_ubuntu1604_angular//java:jdk
-build:remote --javabase=@rbe_ubuntu1604_angular//java:jdk
-build:remote --host_java_toolchain=@bazel_tools//tools/jdk:toolchain_hostjdk8
-build:remote --java_toolchain=@bazel_tools//tools/jdk:toolchain_hostjdk8
-build:remote --crosstool_top=@rbe_ubuntu1604_angular//cc:toolchain
-build:remote --extra_toolchains=@rbe_ubuntu1604_angular//config:cc-toolchain
-build:remote --extra_execution_platforms=//tools:rbe_ubuntu1604-angular
-build:remote --host_platform=//tools:rbe_ubuntu1604-angular
-build:remote --platforms=//tools:rbe_ubuntu1604-angular
+build:remote --crosstool_top=@npm//@angular/build-tooling/bazel/remote-execution/cpp:cc_toolchain_suite
+build:remote --extra_toolchains=@npm//@angular/build-tooling/bazel/remote-execution/cpp:cc_toolchain
+build:remote --extra_execution_platforms=@npm//@angular/build-tooling/bazel/remote-execution:platform
+build:remote --host_platform=@npm//@angular/build-tooling/bazel/remote-execution:platform
+build:remote --platforms=@npm//@angular/build-tooling/bazel/remote-execution:platform
 
 # Remote instance and caching
-build:remote --remote_instance_name=projects/internal-200822/instances/default_instance
+build:remote --remote_instance_name=projects/internal-200822/instances/primary_instance
 build:remote --project_id=internal-200822
 build:remote --remote_cache=remotebuildexecution.googleapis.com
 build:remote --remote_executor=remotebuildexecution.googleapis.com
+
+# Use HTTP remote cache
+build:remote-cache --remote_cache=https://storage.googleapis.com/angular-team-cache
+build:remote-cache --remote_accept_cached=true
+build:remote-cache --remote_upload_local_results=true
+build:remote-cache --google_default_credentials
+
+# Ensure that tags like "no-remote-exec" get propagated to actions created by rules,
+# even if the rule implementation does not explicitly pass them to the execution requirements.
+# https://bazel.build/reference/command-line-reference#flag--experimental_allow_tags_propagation
+common --experimental_allow_tags_propagation
+
+# Disable network access in the sandbox by default. To enable network access
+# for a particular target, use:
+#
+# load("@npm//@angular/build-tooling/bazel/remote-execution:index.bzl", "ENABLE_NETWORK")
+# my_target(
+#   ...,
+#   exec_properties = ENABLE_NETWORK,   # Enables network in remote exec
+#   tags = ["requires-network"]         # Enables network in sandbox
+# )
+build --nosandbox_default_allow_network
 
 ##################################
 # Saucelabs tests settings       #
@@ -140,6 +171,13 @@ build:remote --remote_executor=remotebuildexecution.googleapis.com
 # retry mechanism and we do not want to retry unnecessarily if Karma already tried multiple times.
 test:saucelabs --flaky_test_attempts=1
 
+################
+# Flag Aliases #
+################
+
+# --ng_perf will ask the Ivy compiler to produce performance results for each build.
+build --flag_alias=ng_perf=//packages/compiler-cli:ng_perf
+
 ####################################################
 # User bazel configuration
 # NOTE: This needs to be the *last* entry in the config.
@@ -147,4 +185,4 @@ test:saucelabs --flaky_test_attempts=1
 
 # Load any settings which are specific to the current user. Needs to be *last* statement
 # in this config, as the user configuration should be able to overwrite flags from this file.
-try-import .bazelrc.user
+try-import %workspace%/.bazelrc.user

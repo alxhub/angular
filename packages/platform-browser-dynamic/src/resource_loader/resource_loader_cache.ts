@@ -17,6 +17,9 @@ import {ɵglobal as global} from '@angular/core';
  * via a separate mechanism.
  *
  * @publicApi
+ *
+ * @deprecated This was previously necessary in some cases to test AOT-compiled components with View
+ *     Engine, but is no longer since Ivy.
  */
 export class CachedResourceLoader extends ResourceLoader {
   private _cache: {[url: string]: string};
@@ -29,7 +32,7 @@ export class CachedResourceLoader extends ResourceLoader {
     }
   }
 
-  get(url: string): Promise<string> {
+  override get(url: string): Promise<string> {
     if (this._cache.hasOwnProperty(url)) {
       return Promise.resolve(this._cache[url]);
     } else {

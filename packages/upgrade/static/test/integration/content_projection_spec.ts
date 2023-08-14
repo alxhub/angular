@@ -34,7 +34,6 @@ withEachNg1Version(() => {
          @NgModule({
            imports: [BrowserModule, UpgradeModule],
            declarations: [Ng2Component],
-           entryComponents: [Ng2Component]
          })
          class Ng2Module {
            ngDoBootstrap() {}
@@ -60,14 +59,12 @@ withEachNg1Version(() => {
     it('should correctly project structural directives', waitForAsync(() => {
          @Component({selector: 'ng2', template: 'ng2-{{ itemId }}(<ng-content></ng-content>)'})
          class Ng2Component {
-           // TODO(issue/24571): remove '!'.
-           @Input() itemId!: string;
+           @Input() itemId: string = '';
          }
 
          @NgModule({
            imports: [BrowserModule, UpgradeModule],
            declarations: [Ng2Component],
-           entryComponents: [Ng2Component]
          })
          class Ng2Module {
            ngDoBootstrap() {}
@@ -113,7 +110,6 @@ withEachNg1Version(() => {
 
          @NgModule({
            declarations: [Ng1WrapperComponent, Ng2Component],
-           entryComponents: [Ng2Component],
            imports: [BrowserModule, UpgradeModule]
          })
          class Ng2Module {
@@ -149,11 +145,7 @@ withEachNg1Version(() => {
            constructor() {}
          }
 
-         @NgModule({
-           declarations: [Ng2Component],
-           entryComponents: [Ng2Component],
-           imports: [BrowserModule, UpgradeModule]
-         })
+         @NgModule({declarations: [Ng2Component], imports: [BrowserModule, UpgradeModule]})
          class Ng2Module {
            ngDoBootstrap() {}
          }

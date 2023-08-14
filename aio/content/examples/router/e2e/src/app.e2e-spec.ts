@@ -2,43 +2,43 @@ import { browser, element, by, ExpectedConditions as EC } from 'protractor';
 
 const numDashboardTabs = 5;
 const numCrises = 4;
-const numHeroes = 10;
+const numHeroes = 9;
 
 describe('Router', () => {
 
   beforeAll(() => browser.get(''));
 
   function getPageStruct() {
-    const hrefEles = element.all(by.css('app-root > nav a'));
-    const crisisDetail = element.all(by.css('app-root > div > app-crisis-center > app-crisis-list > app-crisis-detail > div')).first();
-    const heroDetail = element(by.css('app-root > div > app-hero-detail'));
+    const hrefEles = element.all(by.css('nav a'));
+    const crisisDetail = element.all(by.css('app-crisis-center > app-crisis-list > app-crisis-detail > div')).first();
+    const heroDetail = element(by.css('app-hero-detail'));
 
     return {
       hrefs: hrefEles,
-      activeHref: element(by.css('app-root > nav a.active')),
+      activeHref: element(by.css('nav a.active')),
 
       crisisHref: hrefEles.get(0),
-      crisisList: element.all(by.css('app-root > div > app-crisis-center > app-crisis-list li')),
+      crisisList: element.all(by.css('app-crisis-center app-crisis-list li')),
       crisisDetail,
       crisisDetailTitle: crisisDetail.element(by.xpath('*[1]')),
 
       heroesHref: hrefEles.get(1),
-      heroesList: element.all(by.css('app-root > div > app-hero-list li')),
+      heroesList: element.all(by.css('app-hero-list li')),
       heroDetail,
       heroDetailTitle: heroDetail.element(by.xpath('*[2]')),
 
       adminHref: hrefEles.get(2),
-      adminPage: element(by.css('app-root > div > app-admin')),
-      adminPreloadList: element.all(by.css('app-root > div > app-admin > app-admin-dashboard > ul > li')),
+      adminPage: element(by.css('app-admin')),
+      adminPreloadList: element.all(by.css('app-admin > app-admin-dashboard > ul > li')),
 
       loginHref: hrefEles.get(3),
-      loginButton: element.all(by.css('app-root > div > app-login > p > button')),
+      loginButton: element.all(by.css('app-login > p > button')),
 
       contactHref: hrefEles.get(4),
       contactCancelButton: element.all(by.buttonText('Cancel')),
 
-      primaryOutlet: element.all(by.css('app-root > div > app-hero-list')),
-      secondaryOutlet: element.all(by.css('app-root > app-compose-message'))
+      primaryOutlet: element.all(by.css('app-hero-list')),
+      secondaryOutlet: element.all(by.css('app-compose-message'))
     };
   }
 
@@ -102,7 +102,7 @@ describe('Router', () => {
     const text = await heroEle.getText();
     expect(text.length).toBeGreaterThan(0, 'hero item text length');
     // remove leading id from text
-    const heroText = text.substr(text.indexOf(' ')).trim();
+    const heroText = text.slice(text.indexOf(' ')).trim();
 
     await heroEle.click();
     await browser.sleep(600);
@@ -168,7 +168,7 @@ describe('Router', () => {
     const text = await crisisEle.getText();
     expect(text.length).toBeGreaterThan(0, 'crisis item text length');
     // remove leading id from text
-    const crisisText = text.substr(text.indexOf(' ')).trim();
+    const crisisText = text.slice(text.indexOf(' ')).trim();
 
     await crisisEle.click();
     expect(await page.crisisDetail.isPresent()).toBe(true, 'crisis detail present');

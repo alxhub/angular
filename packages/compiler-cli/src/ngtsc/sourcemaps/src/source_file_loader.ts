@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {commentRegex, fromComment, mapFileCommentRegex} from 'convert-source-map';
+import mapHelpers from 'convert-source-map';
 
 import {AbsoluteFsPath, ReadonlyFileSystem} from '../../file_system';
 import {Logger} from '../../logging';
@@ -111,7 +111,7 @@ export class SourceFileLoader {
       return new SourceFile(sourcePath, contents, sourceMapInfo, sources, this.fs);
     } catch (e) {
       this.logger.warn(
-          `Unable to fully load ${sourcePath} for source-map flattening: ${e.message}`);
+          `Unable to fully load ${sourcePath} for source-map flattening: ${(e as Error).message}`);
       return null;
     } finally {
       // We are finished with this recursion so revert the paths being tracked
@@ -139,10 +139,10 @@ export class SourceFileLoader {
     // are embedded source-map comments elsewhere in the file (as can be the case with bundlers like
     // webpack).
     const lastLine = this.getLastNonEmptyLine(sourceContents);
-    const inline = commentRegex.exec(lastLine);
+    const inline = mapHelpers.commentRegex.exec(lastLine);
     if (inline !== null) {
       return {
-        map: fromComment(inline.pop()!).sourcemap,
+        map: mapHelpers.fromComment(inline.pop()!).sourcemap,
         mapPath: null,
         origin: ContentOrigin.Inline,
       };
@@ -155,7 +155,7 @@ export class SourceFileLoader {
       return null;
     }
 
-    const external = mapFileCommentRegex.exec(lastLine);
+    const external = mapHelpers.mapFileCommentRegex.exec(lastLine);
     if (external) {
       try {
         const fileName = external[1] || external[2];
@@ -166,8 +166,8 @@ export class SourceFileLoader {
           origin: ContentOrigin.FileSystem,
         };
       } catch (e) {
-        this.logger.warn(
-            `Unable to fully load ${sourcePath} for source-map flattening: ${e.message}`);
+        this.logger.warn(`Unable to fully load ${sourcePath} for source-map flattening: ${
+            (e as Error).message}`);
         return null;
       }
     }
@@ -252,7 +252,7 @@ export class SourceFileLoader {
     if (lastRealLineIndex === -1) {
       lastRealLineIndex = 0;
     }
-    return contents.substr(lastRealLineIndex + 1);
+    return contents.slice(lastRealLineIndex + 1);
   }
 
   /**

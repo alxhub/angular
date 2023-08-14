@@ -57,14 +57,14 @@ abstract class OverrideResolver<T> implements Resolver<T> {
       const isKnownType = annotation instanceof Directive || annotation instanceof Component ||
           annotation instanceof Pipe || annotation instanceof NgModule;
       if (isKnownType) {
-        return annotation instanceof this.type ? annotation : null;
+        return annotation instanceof this.type ? annotation as unknown as T : null;
       }
     }
     return null;
   }
 
   resolve(type: Type<any>): T|null {
-    let resolved = this.resolved.get(type) || null;
+    let resolved: T|null = this.resolved.get(type) || null;
 
     if (!resolved) {
       resolved = this.getAnnotation(type);
@@ -86,25 +86,25 @@ abstract class OverrideResolver<T> implements Resolver<T> {
 
 
 export class DirectiveResolver extends OverrideResolver<Directive> {
-  get type() {
+  override get type() {
     return Directive;
   }
 }
 
 export class ComponentResolver extends OverrideResolver<Component> {
-  get type() {
+  override get type() {
     return Component;
   }
 }
 
 export class PipeResolver extends OverrideResolver<Pipe> {
-  get type() {
+  override get type() {
     return Pipe;
   }
 }
 
 export class NgModuleResolver extends OverrideResolver<NgModule> {
-  get type() {
+  override get type() {
     return NgModule;
   }
 }

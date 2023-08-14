@@ -1,5 +1,5 @@
-load("//tools:defaults.bzl", "ng_module", "ng_rollup_bundle", "ts_devserver")
-load("//dev-infra/benchmark/component_benchmark:benchmark_test.bzl", "benchmark_test")
+load("//tools:defaults.bzl", "app_bundle", "http_server", "ng_module")
+load("@npm//@angular/build-tooling/bazel/benchmark/component_benchmark:benchmark_test.bzl", "benchmark_test")
 load("//modules/benchmarks:e2e_test.bzl", "e2e_test")
 
 package(default_visibility = ["//modules/benchmarks:__subpackages__"])
@@ -7,7 +7,6 @@ package(default_visibility = ["//modules/benchmarks:__subpackages__"])
 ng_module(
     name = "transplanted_views_lib",
     srcs = glob(["*.ts"]),
-    generate_ve_shims = True,
     tsconfig = "//modules/benchmarks:tsconfig-build.json",
     deps = [
         "//modules/benchmarks/src:util_lib",
@@ -18,7 +17,7 @@ ng_module(
     ],
 )
 
-ng_rollup_bundle(
+app_bundle(
     name = "bundle",
     entry_point = ":index_aot.ts",
     deps = [
@@ -27,12 +26,21 @@ ng_rollup_bundle(
     ],
 )
 
-ts_devserver(
+# The script needs to be called `app_bundle` for easier syncing into g3.
+genrule(
+    name = "app_bundle",
+    srcs = [":bundle.debug.min.js"],
+    outs = ["app_bundle.js"],
+    cmd = "cp $< $@",
+)
+
+http_server(
     name = "prodserver",
-    bootstrap = ["//packages/zone.js/bundles:zone.umd.js"],
-    port = 4200,
-    static_files = ["index.html"],
-    deps = [":bundle.min_debug.js"],
+    srcs = ["index.html"],
+    deps = [
+        ":app_bundle",
+        "//packages/zone.js/bundles:zone.umd.js",
+    ],
 )
 
 benchmark_test(

@@ -6,7 +6,13 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
-import {TestsAppModuleNgFactory} from './test_module.ngfactory';
+import 'zone.js/lib/browser/rollup-main';
+import 'zone.js/lib/zone-spec/task-tracking';
 
-platformBrowserDynamic().bootstrapModuleFactory(TestsAppModuleNgFactory);
+// okd
+
+import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+
+import {TestsAppModule} from './test_module';
+
+platformBrowserDynamic().bootstrapModule(TestsAppModule);

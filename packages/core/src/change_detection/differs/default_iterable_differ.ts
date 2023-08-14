@@ -6,8 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {RuntimeError, RuntimeErrorCode} from '../../errors';
+import {isListLikeIterable, iterateListLike} from '../../util/iterable';
 import {stringify} from '../../util/stringify';
-import {isListLikeIterable, iterateListLike} from '../change_detection_util';
 
 import {IterableChangeRecord, IterableChanges, IterableDiffer, IterableDifferFactory, NgIterable, TrackByFunction} from './iterable_differs';
 
@@ -31,7 +32,7 @@ const trackByIdentity = (index: number, item: any) => item;
  */
 export class DefaultIterableDiffer<V> implements IterableDiffer<V>, IterableChanges<V> {
   public readonly length: number = 0;
-  // TODO(issue/24571): remove '!'.
+  // TODO: confirm the usage of `collection` as it's unused, readonly and on a non public API.
   public readonly collection!: V[]|Iterable<V>|null;
   // Keeps track of the used records at any point in time (during & across `_check()` calls)
   private _linkedRecords: _DuplicateMap<V>|null = null;
@@ -152,8 +153,11 @@ export class DefaultIterableDiffer<V> implements IterableDiffer<V>, IterableChan
   diff(collection: NgIterable<V>|null|undefined): DefaultIterableDiffer<V>|null {
     if (collection == null) collection = [];
     if (!isListLikeIterable(collection)) {
-      throw new Error(
-          `Error trying to diff '${stringify(collection)}'. Only arrays and iterables are allowed`);
+      throw new RuntimeError(
+          RuntimeErrorCode.INVALID_DIFFER_INPUT,
+          ngDevMode &&
+              `Error trying to diff '${
+                  stringify(collection)}'. Only arrays and iterables are allowed`);
     }
 
     if (this.check(collection)) {
@@ -213,7 +217,8 @@ export class DefaultIterableDiffer<V> implements IterableDiffer<V>, IterableChan
     }
 
     this._truncate(record);
-    (this as {collection: V[] | Iterable<V>}).collection = collection;
+    // @ts-expect-error overwriting a readonly member
+    this.collection = collection;
     return this.isDirty;
   }
 

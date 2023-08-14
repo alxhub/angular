@@ -13,8 +13,8 @@ import localeDeAt from '@angular/common/locales/de-AT';
 import localeEn from '@angular/common/locales/en';
 import localeEsUS from '@angular/common/locales/es-US';
 import localeFr from '@angular/common/locales/fr';
-import {ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
-import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testing_internal';
+import {Component, ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
+import {TestBed} from '@angular/core/testing';
 
 {
   describe('Number pipes', () => {
@@ -65,9 +65,10 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
         it('should not support other objects', () => {
           expect(() => pipe.transform({} as any))
               .toThrowError(
-                  `InvalidPipeArgument: '[object Object] is not a number' for pipe 'DecimalPipe'`);
+                  `NG02100: InvalidPipeArgument: '[object Object] is not a number' for pipe 'DecimalPipe'`);
           expect(() => pipe.transform('123abc'))
-              .toThrowError(`InvalidPipeArgument: '123abc is not a number' for pipe 'DecimalPipe'`);
+              .toThrowError(
+                  `NG02100: InvalidPipeArgument: '123abc is not a number' for pipe 'DecimalPipe'`);
         });
       });
 
@@ -76,6 +77,24 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
           const pipe = new DecimalPipe('es-US');
           expect(pipe.transform('9999999.99', '1.2-2')).toEqual('9,999,999.99');
         });
+      });
+
+      it('should be available as a standalone pipe', () => {
+        @Component({
+          selector: 'test-component',
+          imports: [DecimalPipe],
+          template: '{{ value | number }}',
+          standalone: true,
+        })
+        class TestComponent {
+          value = 12345;
+        }
+
+        const fixture = TestBed.createComponent(TestComponent);
+        fixture.detectChanges();
+
+        const content = fixture.nativeElement.textContent;
+        expect(content).toBe('12,345');
       });
     });
 
@@ -109,8 +128,26 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
         it('should not support other objects', () => {
           expect(() => pipe.transform({} as any))
               .toThrowError(
-                  `InvalidPipeArgument: '[object Object] is not a number' for pipe 'PercentPipe'`);
+                  `NG02100: InvalidPipeArgument: '[object Object] is not a number' for pipe 'PercentPipe'`);
         });
+      });
+
+      it('should be available as a standalone pipe', () => {
+        @Component({
+          selector: 'test-component',
+          imports: [PercentPipe],
+          template: '{{ value | percent }}',
+          standalone: true,
+        })
+        class TestComponent {
+          value = 15;
+        }
+
+        const fixture = TestBed.createComponent(TestComponent);
+        fixture.detectChanges();
+
+        const content = fixture.nativeElement.textContent;
+        expect(content).toBe('1,500%');
       });
     });
 
@@ -141,6 +178,11 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
           expect(pipe.transform(5.1234, 'DKK', '', '', 'da')).toEqual('5,12');
         });
 
+        it('should use the injected default currency code if none is provided', () => {
+          const clpPipe = new CurrencyPipe('en-US', 'CLP');
+          expect(clpPipe.transform(1234)).toEqual('CLP1,234');
+        });
+
         it('should support any currency code name', () => {
           // currency code is unknown, default formatting options will be used
           expect(pipe.transform(5.1234, 'unexisting_ISO_code', 'symbol'))
@@ -164,7 +206,7 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
         it('should not support other objects', () => {
           expect(() => pipe.transform({} as any))
               .toThrowError(
-                  `InvalidPipeArgument: '[object Object] is not a number' for pipe 'CurrencyPipe'`);
+                  `NG02100: InvalidPipeArgument: '[object Object] is not a number' for pipe 'CurrencyPipe'`);
         });
 
         it('should warn if you are using the v4 signature', () => {
@@ -173,6 +215,24 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
           expect(warnSpy).toHaveBeenCalledWith(
               `Warning: the currency pipe has been changed in Angular v5. The symbolDisplay option (third parameter) is now a string instead of a boolean. The accepted values are "code", "symbol" or "symbol-narrow".`);
         });
+      });
+
+      it('should be available as a standalone pipe', () => {
+        @Component({
+          selector: 'test-component',
+          imports: [CurrencyPipe],
+          template: '{{ value | currency }}',
+          standalone: true,
+        })
+        class TestComponent {
+          value = 15;
+        }
+
+        const fixture = TestBed.createComponent(TestComponent);
+        fixture.detectChanges();
+
+        const content = fixture.nativeElement.textContent;
+        expect(content).toBe('$15.00');
       });
     });
   });

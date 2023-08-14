@@ -11,6 +11,7 @@ import {Observable, of} from 'rxjs';
 import {concatMap, filter, map} from 'rxjs/operators';
 
 import {HttpHandler} from './backend';
+import {HttpContext} from './context';
 import {HttpHeaders} from './headers';
 import {HttpParams, HttpParamsOptions} from './params';
 import {HttpRequest} from './request';
@@ -30,6 +31,7 @@ import {HttpEvent, HttpResponse} from './response';
 function addBody<T>(
     options: {
       headers?: HttpHeaders|{[header: string]: string | string[]},
+      context?: HttpContext,
       observe?: 'body'|'events'|'response',
       params?: HttpParams|
             {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -41,6 +43,7 @@ function addBody<T>(
   return {
     body,
     headers: options.headers,
+    context: options.context,
     observe: options.observe,
     params: options.params,
     reportProgress: options.reportProgress,
@@ -62,7 +65,7 @@ function addBody<T>(
 
  *
  * @usageNotes
- * Sample HTTP requests for the [Tour of Heroes](/tutorial/toh-pt0) application.
+ * Sample HTTP requests for the [Tour of Heroes](/tutorial/tour-of-heroes/toh-pt0) application.
  *
  * ### HTTP Request Example
  *
@@ -99,7 +102,7 @@ function addBody<T>(
  * }
  * ```
  *
- * @see [HTTP Guide](guide/http)
+ * @see [HTTP Guide](guide/understanding-communicating-with-http)
  * @see [HTTP Request](api/common/http/HttpRequest)
  *
  * @publicApi
@@ -129,6 +132,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -149,6 +153,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -169,6 +174,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -190,6 +196,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
           observe: 'events',
@@ -211,6 +218,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -231,6 +239,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -238,8 +247,8 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a request which interprets the body as a JSON object and returns the full event
-   * stream.
+   * Constructs a request which interprets the body as a JavaScript object and returns the full
+   * event stream.
    *
    * @param method  The HTTP method.
    * @param url     The endpoint URL.
@@ -251,6 +260,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     reportProgress?: boolean, observe: 'events',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -259,8 +269,8 @@ export class HttpClient {
   }): Observable<HttpEvent<any>>;
 
   /**
-   * Constructs a request which interprets the body as a JSON object and returns the full event
-   * stream.
+   * Constructs a request which interprets the body as a JavaScript object and returns the full
+   * event stream.
    *
    * @param method  The HTTP method.
    * @param url     The endpoint URL.
@@ -272,6 +282,7 @@ export class HttpClient {
   request<R>(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     reportProgress?: boolean, observe: 'events',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -292,6 +303,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -310,6 +322,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -329,6 +342,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -336,7 +350,7 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a request which interprets the body as a JSON object and returns the full
+   * Constructs a request which interprets the body as a JavaScript object and returns the full
    * `HttpResponse`.
    *
    * @param method  The HTTP method.
@@ -349,6 +363,7 @@ export class HttpClient {
   request(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     reportProgress?: boolean, observe: 'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -357,7 +372,7 @@ export class HttpClient {
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs a request which interprets the body as a JSON object and returns
+   * Constructs a request which interprets the body as a JavaScript object and returns
    * the full `HttpResponse` with the response body in the requested type.
    *
    * @param method  The HTTP method.
@@ -369,6 +384,7 @@ export class HttpClient {
   request<R>(method: string, url: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     reportProgress?: boolean, observe: 'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -377,8 +393,8 @@ export class HttpClient {
   }): Observable<HttpResponse<R>>;
 
   /**
-   * Constructs a request which interprets the body as a JSON object and returns the full
-   * `HttpResponse` as a JSON object.
+   * Constructs a request which interprets the body as a JavaScript object and returns the full
+   * `HttpResponse` as a JavaScript object.
    *
    * @param method  The HTTP method.
    * @param url     The endpoint URL.
@@ -389,6 +405,7 @@ export class HttpClient {
   request(method: string, url: string, options?: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -398,7 +415,7 @@ export class HttpClient {
   }): Observable<Object>;
 
   /**
-   * Constructs a request which interprets the body as a JSON object
+   * Constructs a request which interprets the body as a JavaScript object
    * with the response body of the requested type.
    *
    * @param method  The HTTP method.
@@ -410,6 +427,7 @@ export class HttpClient {
   request<R>(method: string, url: string, options?: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -425,11 +443,12 @@ export class HttpClient {
    * @param url     The endpoint URL.
    * @param options The HTTP options to send with the request.
    *
-   * @return An `Observable` of the reuested response, wuth body of type `any`.
+   * @return An `Observable` of the requested response, with body of type `any`.
    */
   request(method: string, url: string, options?: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     observe?: 'body'|'events'|'response',
@@ -467,6 +486,7 @@ export class HttpClient {
   request(first: string|HttpRequest<any>, url?: string, options: {
     body?: any,
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -506,6 +526,7 @@ export class HttpClient {
       // Construct the request.
       req = new HttpRequest(first, url!, (options.body !== undefined ? options.body : null), {
         headers,
+        context: options.context,
         params,
         reportProgress: options.reportProgress,
         // By default, JSON is assumed to be returned for all calls.
@@ -592,11 +613,13 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<ArrayBuffer>;
 
 
@@ -611,11 +634,13 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<Blob>;
 
   /**
@@ -629,11 +654,13 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<string>;
 
   /**
@@ -648,10 +675,12 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
     withCredentials?: boolean,
+    body?: any|null
   }): Observable<HttpEvent<ArrayBuffer>>;
 
   /**
@@ -666,10 +695,12 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpEvent<Blob>>;
 
   /**
@@ -684,14 +715,16 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a `DELETE` request that interprets the body as a JSON object
+   * Constructs a `DELETE` request that interprets the body as JSON
    * and returns the full event stream.
    *
    * @param url     The endpoint URL.
@@ -702,15 +735,17 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
     responseType?: 'json',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs a `DELETE`request that interprets the body as a JSON object
+   * Constructs a `DELETE`request that interprets the body as JSON
    * and returns the full event stream.
    *
    * @param url     The endpoint URL.
@@ -721,11 +756,13 @@ export class HttpClient {
    */
   delete<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | (string | number | boolean)[]},
     reportProgress?: boolean,
     responseType?: 'json',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpEvent<T>>;
 
   /**
@@ -739,10 +776,12 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpResponse<ArrayBuffer>>;
 
   /**
@@ -756,10 +795,12 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpResponse<Blob>>;
 
   /**
@@ -773,14 +814,16 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a `DELETE` request the interprets the body as a JSON object and returns
+   * Constructs a `DELETE` request the interprets the body as a JavaScript object and returns
    * the full `HttpResponse`.
    *
    * @param url     The endpoint URL.
@@ -791,15 +834,17 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
     responseType?: 'json',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs a `DELETE` request that interprets the body as a JSON object
+   * Constructs a `DELETE` request that interprets the body as JSON
    * and returns the full `HttpResponse`.
    *
    * @param url     The endpoint URL.
@@ -809,16 +854,18 @@ export class HttpClient {
    */
   delete<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
     responseType?: 'json',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs a `DELETE` request that interprets the body as a JSON object and
-   * returns the response body as a JSON object.
+   * Constructs a `DELETE` request that interprets the body as JSON and
+   * returns the response body as an object parsed from JSON.
    *
    * @param url     The endpoint URL.
    * @param options The HTTP options to send with the request.
@@ -827,16 +874,18 @@ export class HttpClient {
    */
   delete(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
     responseType?: 'json',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<Object>;
 
   /**
-   * Constructs a DELETE request that interprets the body as a JSON object and returns
+   * Constructs a DELETE request that interprets the body as JSON and returns
    * the response in a given type.
    *
    * @param url     The endpoint URL.
@@ -846,12 +895,14 @@ export class HttpClient {
    */
   delete<T>(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
     responseType?: 'json',
     withCredentials?: boolean,
+    body?: any|null,
   }): Observable<T>;
 
   /**
@@ -865,12 +916,14 @@ export class HttpClient {
    */
   delete(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
     responseType?: 'arraybuffer'|'blob'|'json'|'text',
     withCredentials?: boolean,
+    body?: any|null,
   } = {}): Observable<any> {
     return this.request<any>('DELETE', url, options as any);
   }
@@ -887,6 +940,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -905,6 +959,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -923,6 +978,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -942,6 +998,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -959,6 +1016,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -976,6 +1034,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -983,7 +1042,7 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a `GET` request that interprets the body as a JSON object
+   * Constructs a `GET` request that interprets the body as JSON
    * and returns the full event stream.
    *
    * @param url     The endpoint URL.
@@ -993,6 +1052,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1001,8 +1061,8 @@ export class HttpClient {
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs a `GET` request that interprets the body as a JSON object and returns the full event
-   * stream.
+   * Constructs a `GET` request that interprets the body as JSON and returns the full
+   * event stream.
    *
    * @param url     The endpoint URL.
    * @param options The HTTP options to send with the request.
@@ -1011,6 +1071,7 @@ export class HttpClient {
    */
   get<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1030,6 +1091,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1048,6 +1110,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -1066,6 +1129,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -1073,7 +1137,7 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a `GET` request that interprets the body as a JSON object and
+   * Constructs a `GET` request that interprets the body as JSON and
    * returns the full `HttpResponse`.
    *
    * @param url     The endpoint URL.
@@ -1084,6 +1148,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1092,7 +1157,7 @@ export class HttpClient {
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs a `GET` request that interprets the body as a JSON object and
+   * Constructs a `GET` request that interprets the body as JSON and
    * returns the full `HttpResponse`.
    *
    * @param url     The endpoint URL.
@@ -1103,6 +1168,7 @@ export class HttpClient {
    */
   get<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1111,17 +1177,18 @@ export class HttpClient {
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs a `GET` request that interprets the body as a JSON object and
-   * returns the response body as a JSON object.
+   * Constructs a `GET` request that interprets the body as JSON and
+   * returns the response body as an object parsed from JSON.
    *
    * @param url     The endpoint URL.
    * @param options The HTTP options to send with the request.
    *
    *
-   * @return An `Observable` of the response body as a JSON object.
+   * @return An `Observable` of the response body as a JavaScript object.
    */
   get(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1131,7 +1198,7 @@ export class HttpClient {
   }): Observable<Object>;
 
   /**
-   * Constructs a `GET` request that interprets the body as a JSON object and returns
+   * Constructs a `GET` request that interprets the body as JSON and returns
    * the response body in a given type.
    *
    * @param url     The endpoint URL.
@@ -1141,6 +1208,7 @@ export class HttpClient {
    */
   get<T>(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1156,6 +1224,7 @@ export class HttpClient {
    */
   get(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1178,6 +1247,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1197,6 +1267,7 @@ export class HttpClient {
 
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1215,6 +1286,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1234,6 +1306,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1252,6 +1325,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -1270,6 +1344,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -1277,7 +1352,7 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a `HEAD` request that interprets the body as a JSON object
+   * Constructs a `HEAD` request that interprets the body as JSON
    * and returns the full HTTP event stream.
    *
    * @param url     The endpoint URL.
@@ -1288,6 +1363,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1296,7 +1372,7 @@ export class HttpClient {
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs a `HEAD` request that interprets the body as a JSON object and
+   * Constructs a `HEAD` request that interprets the body as JSON and
    * returns the full event stream.
    *
    * @return An `Observable` of all the `HttpEvent`s for the request,
@@ -1307,6 +1383,7 @@ export class HttpClient {
    */
   head<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1326,6 +1403,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1344,6 +1422,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -1362,6 +1441,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -1369,7 +1449,7 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a `HEAD` request that interprets the body as a JSON object and
+   * Constructs a `HEAD` request that interprets the body as JSON and
    * returns the full `HttpResponse`.
    *
    * @param url     The endpoint URL.
@@ -1380,6 +1460,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1388,17 +1469,18 @@ export class HttpClient {
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs a `HEAD` request that interprets the body as a JSON object
+   * Constructs a `HEAD` request that interprets the body as JSON
    * and returns the full `HttpResponse`.
    *
    * @param url     The endpoint URL.
    * @param options The HTTP options to send with the request.
    *
    * @return An `Observable` of the `HttpResponse` for the request,
-   * with a responmse body of the requested type.
+   * with a response body of the requested type.
    */
   head<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1407,16 +1489,18 @@ export class HttpClient {
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs a `HEAD` request that interprets the body as a JSON object and
-   * returns the response body as a JSON object.
+
+   * Constructs a `HEAD` request that interprets the body as JSON and
+   * returns the response body as an object parsed from JSON.
    *
    * @param url     The endpoint URL.
    * @param options The HTTP options to send with the request.
    *
-   * @return An `Observable` of the response, with the response body as a JSON object.
+   * @return An `Observable` of the response, with the response body as an object parsed from JSON.
    */
   head(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1426,7 +1510,7 @@ export class HttpClient {
   }): Observable<Object>;
 
   /**
-   * Constructs a `HEAD` request that interprets the body as a JSON object and returns
+   * Constructs a `HEAD` request that interprets the body as JSON and returns
    * the response in a given type.
    *
    * @param url     The endpoint URL.
@@ -1437,6 +1521,7 @@ export class HttpClient {
    */
   head<T>(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1454,6 +1539,7 @@ export class HttpClient {
    */
   head(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1525,6 +1611,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1543,6 +1630,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1561,6 +1649,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1580,6 +1669,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1598,6 +1688,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -1616,6 +1707,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -1623,7 +1715,7 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs an `OPTIONS` request that interprets the body as a JSON object
+   * Constructs an `OPTIONS` request that interprets the body as JSON
    * and returns the full event stream.
    *
    * @param url The endpoint URL.
@@ -1634,6 +1726,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1642,7 +1735,7 @@ export class HttpClient {
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs an `OPTIONS` request that interprets the body as a JSON object and
+   * Constructs an `OPTIONS` request that interprets the body as JSON and
    * returns the full event stream.
    *
    * @param url The endpoint URL.
@@ -1653,6 +1746,7 @@ export class HttpClient {
    */
   options<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1672,6 +1766,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1690,6 +1785,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -1708,6 +1804,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -1715,7 +1812,7 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs an `OPTIONS` request that interprets the body as a JSON object
+   * Constructs an `OPTIONS` request that interprets the body as JSON
    * and returns the full `HttpResponse`.
    *
    * @param url The endpoint URL.
@@ -1726,6 +1823,7 @@ export class HttpClient {
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1734,7 +1832,7 @@ export class HttpClient {
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs an `OPTIONS` request that interprets the body as a JSON object and
+   * Constructs an `OPTIONS` request that interprets the body as JSON and
    * returns the full `HttpResponse`.
    *
    * @param url The endpoint URL.
@@ -1745,6 +1843,7 @@ export class HttpClient {
    */
   options<T>(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1753,16 +1852,18 @@ export class HttpClient {
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs an `OPTIONS` request that interprets the body as a JSON object and returns the
-   * response body as a JSON object.
+
+   * Constructs an `OPTIONS` request that interprets the body as JSON and returns the
+   * response body as an object parsed from JSON.
    *
    * @param url The endpoint URL.
    * @param options HTTP options.
    *
-   * @return An `Observable` of the response, with the response body as a JSON object.
+   * @return An `Observable` of the response, with the response body as an object parsed from JSON.
    */
   options(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1772,7 +1873,7 @@ export class HttpClient {
   }): Observable<Object>;
 
   /**
-   * Constructs an `OPTIONS` request that interprets the body as a JSON object and returns the
+   * Constructs an `OPTIONS` request that interprets the body as JSON and returns the
    * response in a given type.
    *
    * @param url The endpoint URL.
@@ -1782,6 +1883,7 @@ export class HttpClient {
    */
   options<T>(url: string, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1793,12 +1895,13 @@ export class HttpClient {
   /**
    * Constructs an `Observable` that, when subscribed, causes the configured
    * `OPTIONS` request to execute on the server. This method allows the client
-   * to determine the supported HTTP methods and other capabilites of an endpoint,
+   * to determine the supported HTTP methods and other capabilities of an endpoint,
    * without implying a resource action. See the individual overloads for
    * details on the return type.
    */
   options(url: string, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1821,6 +1924,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1840,6 +1944,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1859,6 +1964,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -1880,6 +1986,7 @@ export class HttpClient {
 
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1899,6 +2006,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -1918,6 +2026,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -1925,7 +2034,7 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a `PATCH` request that interprets the body as a JSON object
+   * Constructs a `PATCH` request that interprets the body as JSON
    * and returns the full event stream.
    *
    * @param url The endpoint URL.
@@ -1937,6 +2046,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1945,7 +2055,7 @@ export class HttpClient {
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs a `PATCH` request that interprets the body as a JSON object
+   * Constructs a `PATCH` request that interprets the body as JSON
    * and returns the full event stream.
    *
    * @param url The endpoint URL.
@@ -1957,6 +2067,7 @@ export class HttpClient {
    */
   patch<T>(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -1977,6 +2088,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -1996,6 +2108,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -2015,6 +2128,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -2022,7 +2136,7 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a `PATCH` request that interprets the body as a JSON object
+   * Constructs a `PATCH` request that interprets the body as JSON
    * and returns the full `HttpResponse`.
    *
    * @param url The endpoint URL.
@@ -2034,6 +2148,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2042,7 +2157,7 @@ export class HttpClient {
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs a `PATCH` request that interprets the body as a JSON object
+   * Constructs a `PATCH` request that interprets the body as JSON
    * and returns the full `HttpResponse`.
    *
    * @param url The endpoint URL.
@@ -2054,6 +2169,7 @@ export class HttpClient {
    */
   patch<T>(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2062,17 +2178,19 @@ export class HttpClient {
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs a `PATCH` request that interprets the body as a JSON object and
-   * returns the response body as a JSON object.
+
+   * Constructs a `PATCH` request that interprets the body as JSON and
+   * returns the response body as an object parsed from JSON.
    *
    * @param url The endpoint URL.
    * @param body The resources to edit.
    * @param options HTTP options.
    *
-   * @return An `Observable` of the response, with the response body as a JSON object.
+   * @return An `Observable` of the response, with the response body as an object parsed from JSON.
    */
   patch(url: string, body: any|null, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2082,7 +2200,7 @@ export class HttpClient {
   }): Observable<Object>;
 
   /**
-   * Constructs a `PATCH` request that interprets the body as a JSON object
+   * Constructs a `PATCH` request that interprets the body as JSON
    * and returns the response in a given type.
    *
    * @param url The endpoint URL.
@@ -2094,6 +2212,7 @@ export class HttpClient {
    */
   patch<T>(url: string, body: any|null, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2109,6 +2228,7 @@ export class HttpClient {
    */
   patch(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2131,6 +2251,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2150,6 +2271,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2169,6 +2291,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2189,6 +2312,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -2207,6 +2331,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -2226,6 +2351,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -2233,8 +2359,8 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a POST request that interprets the body as a JSON object and returns the full event
-   * stream.
+   * Constructs a POST request that interprets the body as JSON and returns the full
+   * event stream.
    *
    * @param url The endpoint URL.
    * @param body The content to replace with.
@@ -2245,6 +2371,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2253,8 +2380,8 @@ export class HttpClient {
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs a POST request that interprets the body as a JSON object and returns the full event
-   * stream.
+   * Constructs a POST request that interprets the body as JSON and returns the full
+   * event stream.
    *
    * @param url The endpoint URL.
    * @param body The content to replace with.
@@ -2265,6 +2392,7 @@ export class HttpClient {
    */
   post<T>(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2285,6 +2413,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -2304,6 +2433,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -2323,6 +2453,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -2330,7 +2461,7 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a `POST` request that interprets the body as a JSON object
+   * Constructs a `POST` request that interprets the body as JSON
    * and returns the full `HttpResponse`.
    *
    * @param url The endpoint URL.
@@ -2342,6 +2473,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2350,8 +2482,8 @@ export class HttpClient {
   }): Observable<HttpResponse<Object>>;
 
   /**
-   * Constructs a `POST` request that interprets the body as a JSON object and returns the full
-   * `HttpResponse`.
+   * Constructs a `POST` request that interprets the body as JSON and returns the
+   * full `HttpResponse`.
    *
    *
    * @param url The endpoint URL.
@@ -2363,6 +2495,7 @@ export class HttpClient {
    */
   post<T>(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2371,17 +2504,18 @@ export class HttpClient {
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs a `POST` request that interprets the body as a
-   * JSON object and returns the response body as a JSON object.
+   * Constructs a `POST` request that interprets the body as JSON
+   * and returns the response body as an object parsed from JSON.
    *
    * @param url The endpoint URL.
    * @param body The content to replace with.
    * @param options HTTP options
    *
-   * @return An `Observable` of the response, with the response body as a JSON object.
+   * @return An `Observable` of the response, with the response body as an object parsed from JSON.
    */
   post(url: string, body: any|null, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2391,7 +2525,7 @@ export class HttpClient {
   }): Observable<Object>;
 
   /**
-   * Constructs a `POST` request that interprets the body as a JSON object
+   * Constructs a `POST` request that interprets the body as JSON
    * and returns an observable of the response.
    *
    * @param url The endpoint URL.
@@ -2403,6 +2537,7 @@ export class HttpClient {
    */
   post<T>(url: string, body: any|null, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2419,6 +2554,7 @@ export class HttpClient {
    */
   post(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2441,6 +2577,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2460,6 +2597,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2479,6 +2617,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2499,6 +2638,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -2518,6 +2658,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -2537,6 +2678,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -2544,8 +2686,8 @@ export class HttpClient {
   }): Observable<HttpEvent<string>>;
 
   /**
-   * Constructs a `PUT` request that interprets the body as a JSON object and returns the full event
-   * stream.
+   * Constructs a `PUT` request that interprets the body as JSON and returns the full
+   * event stream.
    *
    * @param url The endpoint URL.
    * @param body The resources to add/update.
@@ -2556,6 +2698,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2564,7 +2707,7 @@ export class HttpClient {
   }): Observable<HttpEvent<Object>>;
 
   /**
-   * Constructs a `PUT` request that interprets the body as a JSON object and returns the
+   * Constructs a `PUT` request that interprets the body as JSON and returns the
    * full event stream.
    *
    * @param url The endpoint URL.
@@ -2576,6 +2719,7 @@ export class HttpClient {
    */
   put<T>(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'events',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2596,6 +2740,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'arraybuffer',
@@ -2615,6 +2760,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'blob',
@@ -2634,6 +2780,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean, responseType: 'text',
@@ -2641,8 +2788,8 @@ export class HttpClient {
   }): Observable<HttpResponse<string>>;
 
   /**
-   * Constructs a `PUT` request that interprets the body as a JSON object and returns the full HTTP
-   * response.
+   * Constructs a `PUT` request that interprets the body as JSON and returns the full
+   * HTTP response.
    *
    * @param url The endpoint URL.
    * @param body The resources to add/update.
@@ -2653,6 +2800,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2673,6 +2821,7 @@ export class HttpClient {
    */
   put<T>(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]}, observe: 'response',
+    context?: HttpContext,
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
     reportProgress?: boolean,
@@ -2681,17 +2830,18 @@ export class HttpClient {
   }): Observable<HttpResponse<T>>;
 
   /**
-   * Constructs a `PUT` request that interprets the body as a JSON object
-   * and returns an observable of JSON object.
+   * Constructs a `PUT` request that interprets the body as JSON
+   * and returns an observable of JavaScript object.
    *
    * @param url The endpoint URL.
    * @param body The resources to add/update.
    * @param options HTTP options
    *
-   * @return An `Observable` of the response as a JSON object.
+   * @return An `Observable` of the response as a JavaScript object.
    */
   put(url: string, body: any|null, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2712,6 +2862,7 @@ export class HttpClient {
    */
   put<T>(url: string, body: any|null, options?: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},
@@ -2728,6 +2879,7 @@ export class HttpClient {
    */
   put(url: string, body: any|null, options: {
     headers?: HttpHeaders|{[header: string]: string | string[]},
+    context?: HttpContext,
     observe?: 'body'|'events'|'response',
     params?: HttpParams|
           {[param: string]: string | number | boolean | ReadonlyArray<string|number|boolean>},

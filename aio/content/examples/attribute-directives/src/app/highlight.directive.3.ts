@@ -1,4 +1,3 @@
-/* tslint:disable:member-ordering */
 // #docregion, imports
 import { Directive, ElementRef, HostListener, Input } from '@angular/core';
 // #enddocregion imports
@@ -10,14 +9,18 @@ export class HighlightDirective {
 
   constructor(private el: ElementRef) { }
 
-  @Input('appHighlight') highlightColor: string;
+  // #docregion input
+  @Input() appHighlight = '';
+  // #enddocregion input
 
+  // #docregion mouse-enter
   @HostListener('mouseenter') onMouseEnter() {
-    this.highlight(this.highlightColor || 'red');
+    this.highlight(this.appHighlight || 'red');
   }
+  // #enddocregion mouse-enter
 
   @HostListener('mouseleave') onMouseLeave() {
-    this.highlight(null);
+    this.highlight('');
   }
 
   private highlight(color: string) {

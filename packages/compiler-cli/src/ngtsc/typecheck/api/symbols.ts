@@ -7,11 +7,12 @@
  */
 
 import {TmplAstElement, TmplAstReference, TmplAstTemplate, TmplAstVariable} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {AbsoluteFsPath} from '../../file_system';
-import {ClassDeclaration} from '../../reflection';
-import {DirectiveInScope} from './scope';
+import {SymbolWithValueDeclaration} from '../../util/src/typescript';
+
+import {PotentialDirective} from './scope';
 
 export enum SymbolKind {
   Input,
@@ -38,16 +39,24 @@ export type Symbol = InputBindingSymbol|OutputBindingSymbol|ElementSymbol|Refere
  */
 export type TemplateDeclarationSymbol = ReferenceSymbol|VariableSymbol;
 
-/** Information about where a `ts.Node` can be found in the type check block shim file. */
-export interface ShimLocation {
+/**
+ * Information about where a `ts.Node` can be found in the type check file. This can either be
+ * a type-checking shim file, or an original source file for inline type check blocks.
+ */
+export interface TcbLocation {
   /**
    * The fully qualified path of the file which contains the generated TypeScript type check
    * code for the component's template.
    */
-  shimPath: AbsoluteFsPath;
+  tcbPath: AbsoluteFsPath;
 
-  /** The location in the shim file where node appears. */
-  positionInShimFile: number;
+  /**
+   * Whether the type check block exists in a type-checking shim file or is inline.
+   */
+  isShimFile: boolean;
+
+  /** The location in the file where node appears. */
+  positionInFile: number;
 }
 
 /**
@@ -61,7 +70,7 @@ export interface TsNodeSymbolInfo {
   tsSymbol: ts.Symbol|null;
 
   /** The position of the most relevant part of the template node. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 }
 
 /**
@@ -80,7 +89,7 @@ export interface ExpressionSymbol {
   tsSymbol: ts.Symbol|null;
 
   /** The position of the most relevant part of the expression. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 }
 
 /** Represents either an input or output binding in a template. */
@@ -100,7 +109,7 @@ export interface BindingSymbol {
   target: DirectiveSymbol|ElementSymbol|TemplateSymbol;
 
   /** The location in the shim file where the field access for the binding appears. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 }
 
 /**
@@ -170,7 +179,7 @@ export interface ReferenceSymbol {
    * ```
    * This `targetLocation` is `[_t1 variable declaration].getStart()`.
    */
-  targetLocation: ShimLocation;
+  targetLocation: TcbLocation;
 
   /**
    * The location in the TCB for the identifier node in the reference variable declaration.
@@ -178,7 +187,7 @@ export interface ReferenceSymbol {
    * `var _t2 = _t1`, this location is `[_t2 node].getStart()`. This location can
    * be used to find references to the variable within the template.
    */
-  referenceVarLocation: ShimLocation;
+  referenceVarLocation: TcbLocation;
 }
 
 /**
@@ -210,13 +219,13 @@ export interface VariableSymbol {
   /**
    * The location in the shim file for the identifier that was declared for the template variable.
    */
-  localVarLocation: ShimLocation;
+  localVarLocation: TcbLocation;
 
   /**
    * The location in the shim file for the initializer node of the variable that represents the
    * template variable.
    */
-  initializerLocation: ShimLocation;
+  initializerLocation: TcbLocation;
 }
 
 /**
@@ -235,7 +244,7 @@ export interface ElementSymbol {
   directives: DirectiveSymbol[];
 
   /** The location in the shim file for the variable that holds the type of the element. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 
   templateNode: TmplAstElement;
 }
@@ -249,19 +258,26 @@ export interface TemplateSymbol {
   templateNode: TmplAstTemplate;
 }
 
-/**
- * A representation of a directive/component whose selector matches a node in a component
- * template.
- */
-export interface DirectiveSymbol extends DirectiveInScope {
+/** Interface shared between host and non-host directives. */
+interface DirectiveSymbolBase extends PotentialDirective {
   kind: SymbolKind.Directive;
 
   /** The `ts.Type` for the class declaration. */
   tsType: ts.Type;
 
   /** The location in the shim file for the variable that holds the type of the directive. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 }
+
+/**
+ * A representation of a directive/component whose selector matches a node in a component
+ * template.
+ */
+export type DirectiveSymbol = (DirectiveSymbolBase&{isHostDirective: false})|(DirectiveSymbolBase&{
+  isHostDirective: true;
+  exposedInputs: Record<string, string>|null;
+  exposedOutputs: Record<string, string>|null;
+});
 
 /**
  * A representation of an attribute on an element or template. These bindings aren't currently
@@ -291,7 +307,7 @@ export interface PipeSymbol {
   tsSymbol: ts.Symbol|null;
 
   /** The position of the transform call in the template. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 
   /** The symbol for the pipe class as an instance that appears in the TCB. */
   classSymbol: ClassSymbol;
@@ -303,8 +319,8 @@ export interface ClassSymbol {
   tsType: ts.Type;
 
   /** The `ts.Symbol` for class. */
-  tsSymbol: ts.Symbol;
+  tsSymbol: SymbolWithValueDeclaration;
 
   /** The position for the variable declaration for the class instance. */
-  shimLocation: ShimLocation;
+  tcbLocation: TcbLocation;
 }

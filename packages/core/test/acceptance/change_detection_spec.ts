@@ -8,10 +8,9 @@
 
 
 import {CommonModule} from '@angular/common';
-import {ApplicationRef, ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentFactoryResolver, ComponentRef, Directive, DoCheck, EmbeddedViewRef, ErrorHandler, EventEmitter, Input, NgModule, OnInit, Output, QueryList, TemplateRef, Type, ViewChild, ViewChildren, ViewContainerRef} from '@angular/core';
+import {ApplicationRef, ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, Directive, DoCheck, EmbeddedViewRef, ErrorHandler, EventEmitter, Input, NgModule, OnInit, Output, QueryList, TemplateRef, Type, ViewChild, ViewChildren, ViewContainerRef} from '@angular/core';
 import {ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {ivyEnabled} from '@angular/private/testing';
 import {BehaviorSubject} from 'rxjs';
 
 describe('change detection', () => {
@@ -136,21 +135,10 @@ describe('change detection', () => {
         noop() {}
       }
 
-      // We need to declare a module so that we can specify `entryComponents`
-      // for when the test is run against ViewEngine.
-      @NgModule({
-        declarations: [App, ViewManipulation, DynamicComp],
-        exports: [App, ViewManipulation, DynamicComp],
-        entryComponents: [DynamicComp]
-      })
-      class AppModule {
-      }
-
-      TestBed.configureTestingModule({imports: [AppModule]});
+      TestBed.configureTestingModule({declarations: [App, ViewManipulation, DynamicComp]});
       const fixture = TestBed.createComponent(App);
       const vm: ViewManipulation = fixture.debugElement.childNodes[0].references['vm'];
-      const factory = TestBed.get(ComponentFactoryResolver).resolveComponentFactory(DynamicComp);
-      const componentRef = vm.vcRef.createComponent(factory);
+      const componentRef = vm.vcRef.createComponent(DynamicComp);
       const button = fixture.nativeElement.querySelector('button');
       fixture.detectChanges();
 
@@ -186,11 +174,10 @@ describe('change detection', () => {
         counter = 0;
         @ViewChild('vc', {read: ViewContainerRef}) vcRef!: ViewContainerRef;
 
-        constructor(private _cfr: ComponentFactoryResolver) {}
+        constructor() {}
 
         createComponentView<T>(cmptType: Type<T>): ComponentRef<T> {
-          const cf = this._cfr.resolveComponentFactory(cmptType);
-          return this.vcRef.createComponent(cf);
+          return this.vcRef.createComponent(cmptType);
         }
       }
 
@@ -202,7 +189,7 @@ describe('change detection', () => {
       class DynamicCmpt {
       }
 
-      @NgModule({declarations: [DynamicCmpt], entryComponents: [DynamicCmpt]})
+      @NgModule({declarations: [DynamicCmpt]})
       class DynamicModule {
       }
 
@@ -1122,7 +1109,7 @@ describe('change detection', () => {
              template: ` <ng-container [ngTemplateOutlet]="template"> </ng-container> `
            })
            class Insertion {
-             @Input() template !: TemplateRef<{}>;
+             @Input() template!: TemplateRef<{}>;
            }
 
            // This component uses async pipe (which calls markForCheck) in a view that has different
@@ -1189,7 +1176,7 @@ describe('change detection', () => {
       // Custom error handler that just rethrows all the errors from the
       // view, rather than logging them out. Used to keep our logs clean.
       class RethrowErrorHandler extends ErrorHandler {
-        handleError(error: any) {
+        override handleError(error: any) {
           throw error;
         }
       }
@@ -1398,16 +1385,14 @@ describe('change detection', () => {
     }
 
     it('should include field name in case of property binding', () => {
-      const message = ivyEnabled ? `Previous value for 'id': 'initial'. Current value: 'changed'` :
-                                   `Previous value: 'id: initial'. Current value: 'id: changed'`;
+      const message = `Previous value for 'id': 'initial'. Current value: 'changed'`;
       expect(() => initWithTemplate('<div [id]="unstableStringExpression"></div>'))
           .toThrowError(new RegExp(message));
     });
 
     it('should include field name in case of property interpolation', () => {
-      const message = ivyEnabled ?
-          `Previous value for 'id': 'Expressions: a and initial!'. Current value: 'Expressions: a and changed!'` :
-          `Previous value: 'id: Expressions: a and initial!'. Current value: 'id: Expressions: a and changed!'`;
+      const message =
+          `Previous value for 'id': 'Expressions: a and initial!'. Current value: 'Expressions: a and changed!'`;
       expect(
           () => initWithTemplate(
               '<div id="Expressions: {{ a }} and {{ unstableStringExpression }}!"></div>'))
@@ -1415,17 +1400,14 @@ describe('change detection', () => {
     });
 
     it('should include field name in case of attribute binding', () => {
-      const message = ivyEnabled ?
-          `Previous value for 'attr.id': 'initial'. Current value: 'changed'` :
-          `Previous value: 'id: initial'. Current value: 'id: changed'`;
+      const message = `Previous value for 'attr.id': 'initial'. Current value: 'changed'`;
       expect(() => initWithTemplate('<div [attr.id]="unstableStringExpression"></div>'))
           .toThrowError(new RegExp(message));
     });
 
     it('should include field name in case of attribute interpolation', () => {
-      const message = ivyEnabled ?
-          `Previous value for 'attr.id': 'Expressions: a and initial!'. Current value: 'Expressions: a and changed!'` :
-          `Previous value: 'id: Expressions: a and initial!'. Current value: 'id: Expressions: a and changed!'`;
+      const message =
+          `Previous value for 'attr.id': 'Expressions: a and initial!'. Current value: 'Expressions: a and changed!'`;
       expect(
           () => initWithTemplate(
               '<div attr.id="Expressions: {{ a }} and {{ unstableStringExpression }}!"></div>'))
@@ -1450,16 +1432,13 @@ describe('change detection', () => {
        });
 
     it('should include style prop name in case of style binding', () => {
-      const message = ivyEnabled ? `Previous value for 'color': 'red'. Current value: 'green'` :
-                                   `Previous value: 'color: red'. Current value: 'color: green'`;
+      const message = `Previous value for 'color': 'red'. Current value: 'green'`;
       expect(() => initWithTemplate('<div [style.color]="unstableColorExpression"></div>'))
           .toThrowError(new RegExp(message));
     });
 
     it('should include class name in case of class binding', () => {
-      const message = ivyEnabled ?
-          `Previous value for 'someClass': 'true'. Current value: 'false'` :
-          `Previous value: 'someClass: true'. Current value: 'someClass: false'`;
+      const message = `Previous value for 'someClass': 'true'. Current value: 'false'`;
       expect(() => initWithTemplate('<div [class.someClass]="unstableBooleanExpression"></div>'))
           .toThrowError(new RegExp(message));
     });
@@ -1480,23 +1459,19 @@ describe('change detection', () => {
        });
 
     it('should include field name in case of host property binding', () => {
-      const message = ivyEnabled ? `Previous value for 'id': 'initial'. Current value: 'changed'` :
-                                   `Previous value: 'id: initial'. Current value: 'id: changed'`;
+      const message = `Previous value for 'id': 'initial'. Current value: 'changed'`;
       expect(() => initWithHostBindings({'[id]': 'unstableStringExpression'}))
           .toThrowError(new RegExp(message));
     });
 
     it('should include style prop name in case of host style bindings', () => {
-      const message = ivyEnabled ? `Previous value for 'color': 'red'. Current value: 'green'` :
-                                   `Previous value: 'color: red'. Current value: 'color: green'`;
+      const message = `Previous value for 'color': 'red'. Current value: 'green'`;
       expect(() => initWithHostBindings({'[style.color]': 'unstableColorExpression'}))
           .toThrowError(new RegExp(message));
     });
 
     it('should include class name in case of host class bindings', () => {
-      const message = ivyEnabled ?
-          `Previous value for 'someClass': 'true'. Current value: 'false'` :
-          `Previous value: 'someClass: true'. Current value: 'someClass: false'`;
+      const message = `Previous value for 'someClass': 'true'. Current value: 'false'`;
       expect(() => initWithHostBindings({'[class.someClass]': 'unstableBooleanExpression'}))
           .toThrowError(new RegExp(message));
     });

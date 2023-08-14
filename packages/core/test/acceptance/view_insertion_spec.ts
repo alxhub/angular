@@ -7,10 +7,9 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, ComponentFactoryResolver, Directive, EmbeddedViewRef, Injector, Input, NgModule, TemplateRef, ViewChild, ViewContainerRef, ViewRef} from '@angular/core';
+import {ChangeDetectorRef, Component, Directive, EmbeddedViewRef, Injectable, Injector, Input, TemplateRef, ViewChild, ViewContainerRef, ViewRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
-import {onlyInIvy} from '@angular/private/testing';
 
 describe('view insertion', () => {
   describe('of a simple template', () => {
@@ -337,15 +336,14 @@ describe('view insertion', () => {
             .toBe('insert|before');
       });
 
-      onlyInIvy('VE incorrectly inserts views before ng-container content')
-          .it('should insert before a view with a ng-container where ViewContainerRef is injected',
-              () => {
-                expect(createAndInsertViews(`
+      it('should insert before a view with a ng-container where ViewContainerRef is injected',
+         () => {
+           expect(createAndInsertViews(`
           <ng-container [ngTemplateOutlet]="after">|before</ng-container>
           <ng-template #after>|after</ng-template>
         `).textContent)
-                    .toBe('insert|before|after');
-              });
+               .toBe('insert|before|after');
+         });
 
 
       it('should insert before a view with an element where ViewContainerRef is injected', () => {
@@ -493,12 +491,12 @@ describe('view insertion', () => {
           @ViewChild('insert', {static: true}) insertTpl!: TemplateRef<{}>;
           @ViewChild('vi', {static: true}) viewInsertingDir!: ViewInsertingDir;
 
-          constructor(private _cfr: ComponentFactoryResolver, private _injector: Injector) {}
+          constructor(private _vcr: ViewContainerRef, private _injector: Injector) {}
 
           insert() {
             // create a dynamic component view to act as an "insert before" view
-            const componentFactory = this._cfr.resolveComponentFactory(DynamicComponent);
-            const beforeView = componentFactory.create(this._injector).hostView;
+            const beforeView =
+                this._vcr.createComponent(DynamicComponent, {injector: this._injector}).hostView;
             // change-detect the "before view" to create all child views
             beforeView.detectChanges();
             this.viewInsertingDir.insert(beforeView, this.insertTpl);
@@ -506,15 +504,8 @@ describe('view insertion', () => {
         }
 
 
-        @NgModule({
-          declarations: [TestCmpt, ViewInsertingDir, DynamicComponent],
-          imports: [CommonModule],
-          entryComponents: [DynamicComponent]
-        })
-        class TestModule {
-        }
-
-        TestBed.configureTestingModule({imports: [TestModule]});
+        TestBed.configureTestingModule(
+            {declarations: [TestCmpt, ViewInsertingDir, DynamicComponent]});
 
         const fixture = TestBed.createComponent(TestCmpt);
         fixture.detectChanges();
@@ -548,23 +539,13 @@ describe('view insertion', () => {
          class AppComponent {
            @ViewChild('container', {read: ViewContainerRef, static: true}) vcr!: ViewContainerRef;
 
-           constructor(private _cfr: ComponentFactoryResolver) {}
-
            click() {
-             this.vcr.createComponent(this._cfr.resolveComponentFactory(DynamicComponent));
+             this.vcr.createComponent(DynamicComponent);
            }
          }
 
-         @NgModule({
-           declarations: [DynamicComponent],
-           entryComponents: [DynamicComponent],
-         })
-         class TestModule {
-         }
-
          TestBed.configureTestingModule({
-           declarations: [AppComponent],
-           imports: [TestModule],
+           declarations: [AppComponent, DynamicComponent],
          });
          const fixture = TestBed.createComponent(AppComponent);
          fixture.detectChanges();
@@ -592,7 +573,7 @@ describe('view insertion', () => {
          class AppComponent {
            @ViewChild('container', {read: ViewContainerRef, static: true}) vcr!: ViewContainerRef;
 
-           @ViewChild('template', {read: TemplateRef, static: true}) template !: TemplateRef<any>;
+           @ViewChild('template', {read: TemplateRef, static: true}) template!: TemplateRef<any>;
 
            click() {
              this.vcr.createEmbeddedView(this.template, undefined, 0);
@@ -707,36 +688,35 @@ describe('view insertion', () => {
       expect(fixture.nativeElement.textContent).toContain('OK');
     });
 
-    onlyInIvy('Test depends on static inputs being set during creation')
-        .it('should consistently report errors raised a directive input setter', () => {
-          @Directive({
-            selector: '[failInInputAlways]',
-          })
-          class FailInInputAlways {
-            @Input()
-            set failInInputAlways(_: string) {
-              throw new Error('Error in an input');
-            }
-          }
+    it('should consistently report errors raised a directive input setter', () => {
+      @Directive({
+        selector: '[failInInputAlways]',
+      })
+      class FailInInputAlways {
+        @Input()
+        set failInInputAlways(_: string) {
+          throw new Error('Error in an input');
+        }
+      }
 
-          @Component({
-            template: `<div failInInputAlways="static"></div>`,
-          })
-          class TestCmpt {
-          }
+      @Component({
+        template: `<div failInInputAlways="static"></div>`,
+      })
+      class TestCmpt {
+      }
 
-          TestBed.configureTestingModule({
-            declarations: [TestCmpt, FailInInputAlways],
-          });
+      TestBed.configureTestingModule({
+        declarations: [TestCmpt, FailInInputAlways],
+      });
 
-          expect(() => {
-            TestBed.createComponent(TestCmpt);
-          }).toThrowError('Error in an input');
+      expect(() => {
+        TestBed.createComponent(TestCmpt);
+      }).toThrowError('Error in an input');
 
-          expect(() => {
-            TestBed.createComponent(TestCmpt);
-          }).toThrowError('Error in an input');
-        });
+      expect(() => {
+        TestBed.createComponent(TestCmpt);
+      }).toThrowError('Error in an input');
+    });
 
     it('should consistently report errors raised a static query setter', () => {
       @Directive({
@@ -885,6 +865,47 @@ describe('view insertion', () => {
       fixture.componentInstance.value = 2;
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toContain('2');
+    });
+
+    it('should consistently report errors raised by createEmbeddedView', () => {
+      // Intentionally hasn't been added to `providers` so that it throws a DI error.
+      @Injectable()
+      class DoesNotExist {
+      }
+
+      @Directive({selector: 'dir'})
+      class Dir {
+        constructor(willCauseError: DoesNotExist) {}
+      }
+
+      @Component({
+        template: `
+          <ng-template #broken>
+            <dir></dir>
+          </ng-template>
+        `,
+      })
+      class App {
+        @ViewChild('broken') template!: TemplateRef<unknown>;
+
+        constructor(private _viewContainerRef: ViewContainerRef) {}
+
+        insertTemplate() {
+          this._viewContainerRef.createEmbeddedView(this.template);
+        }
+      }
+
+      TestBed.configureTestingModule({declarations: [App, Dir]});
+      const fixture = TestBed.createComponent(App);
+      const tryRender = () => {
+        fixture.componentInstance.insertTemplate();
+        fixture.detectChanges();
+      };
+      fixture.detectChanges();
+
+      // We try to render the same template twice to ensure that we get consistent error messages.
+      expect(tryRender).toThrowError(/No provider for DoesNotExist/);
+      expect(tryRender).toThrowError(/No provider for DoesNotExist/);
     });
   });
 });

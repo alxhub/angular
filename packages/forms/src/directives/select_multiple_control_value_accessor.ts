@@ -6,11 +6,13 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, ElementRef, forwardRef, Host, Input, OnDestroy, Optional, Renderer2, StaticProvider} from '@angular/core';
+import {Directive, ElementRef, forwardRef, Host, Input, OnDestroy, Optional, Provider, Renderer2, ɵRuntimeError as RuntimeError} from '@angular/core';
 
-import {ControlValueAccessor, NG_VALUE_ACCESSOR} from './control_value_accessor';
+import {RuntimeErrorCode} from '../errors';
 
-export const SELECT_MULTIPLE_VALUE_ACCESSOR: StaticProvider = {
+import {BuiltInControlValueAccessor, ControlValueAccessor, NG_VALUE_ACCESSOR} from './control_value_accessor';
+
+const SELECT_MULTIPLE_VALUE_ACCESSOR: Provider = {
   provide: NG_VALUE_ACCESSOR,
   useExisting: forwardRef(() => SelectMultipleControlValueAccessor),
   multi: true
@@ -46,7 +48,7 @@ abstract class HTMLCollection {
  * control changes. The value accessor is used by the `FormControlDirective`, `FormControlName`, and
  * `NgModel` directives.
  *
- * @see `SelectControlValueAccessor`
+ * @see {@link SelectControlValueAccessor}
  *
  * @usageNotes
  *
@@ -81,7 +83,8 @@ abstract class HTMLCollection {
   host: {'(change)': 'onChange($event.target)', '(blur)': 'onTouched()'},
   providers: [SELECT_MULTIPLE_VALUE_ACCESSOR]
 })
-export class SelectMultipleControlValueAccessor implements ControlValueAccessor {
+export class SelectMultipleControlValueAccessor extends BuiltInControlValueAccessor implements
+    ControlValueAccessor {
   /**
    * The current value.
    * @nodoc
@@ -95,18 +98,6 @@ export class SelectMultipleControlValueAccessor implements ControlValueAccessor 
   _idCounter: number = 0;
 
   /**
-   * The registered callback function called when a change event occurs on the input element.
-   * @nodoc
-   */
-  onChange = (_: any) => {};
-
-  /**
-   * The registered callback function called when a blur event occurs on the input element.
-   * @nodoc
-   */
-  onTouched = () => {};
-
-  /**
    * @description
    * Tracks the option comparison algorithm for tracking identities when
    * checking for changes.
@@ -114,14 +105,14 @@ export class SelectMultipleControlValueAccessor implements ControlValueAccessor 
   @Input()
   set compareWith(fn: (o1: any, o2: any) => boolean) {
     if (typeof fn !== 'function' && (typeof ngDevMode === 'undefined' || ngDevMode)) {
-      throw new Error(`compareWith must be a function, but received ${JSON.stringify(fn)}`);
+      throw new RuntimeError(
+          RuntimeErrorCode.COMPAREWITH_NOT_A_FN,
+          `compareWith must be a function, but received ${JSON.stringify(fn)}`);
     }
     this._compareWith = fn;
   }
 
   private _compareWith: (o1: any, o2: any) => boolean = Object.is;
-
-  constructor(private _renderer: Renderer2, private _elementRef: ElementRef) {}
 
   /**
    * Sets the "value" property on one or of more of the select's options.
@@ -149,24 +140,27 @@ export class SelectMultipleControlValueAccessor implements ControlValueAccessor 
    * and writes an array of the selected options.
    * @nodoc
    */
-  registerOnChange(fn: (value: any) => any): void {
-    this.onChange = (_: any) => {
+  override registerOnChange(fn: (value: any) => any): void {
+    this.onChange = (element: HTMLSelectElement) => {
       const selected: Array<any> = [];
-      if (_.selectedOptions !== undefined) {
-        const options: HTMLCollection = _.selectedOptions;
+      const selectedOptions = element.selectedOptions;
+      if (selectedOptions !== undefined) {
+        const options = selectedOptions;
         for (let i = 0; i < options.length; i++) {
-          const opt: any = options.item(i);
-          const val: any = this._getOptionValue(opt.value);
+          const opt = options[i];
+          const val = this._getOptionValue(opt.value);
           selected.push(val);
         }
       }
-      // Degrade on IE
+      // Degrade to use `options` when `selectedOptions` property is not available.
+      // Note: the `selectedOptions` is available in all supported browsers, but the Domino lib
+      // doesn't have it currently, see https://github.com/fgnass/domino/issues/177.
       else {
-        const options: HTMLCollection = <HTMLCollection>_.options;
+        const options = element.options;
         for (let i = 0; i < options.length; i++) {
-          const opt: HTMLOption = options.item(i);
+          const opt = options[i];
           if (opt.selected) {
-            const val: any = this._getOptionValue(opt.value);
+            const val = this._getOptionValue(opt.value);
             selected.push(val);
           }
         }
@@ -174,22 +168,6 @@ export class SelectMultipleControlValueAccessor implements ControlValueAccessor 
       this.value = selected;
       fn(selected);
     };
-  }
-
-  /**
-   * Registers a function called when the control is touched.
-   * @nodoc
-   */
-  registerOnTouched(fn: () => any): void {
-    this.onTouched = fn;
-  }
-
-  /**
-   * Sets the "disabled" property on the select input element.
-   * @nodoc
-   */
-  setDisabledState(isDisabled: boolean): void {
-    this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
   }
 
   /** @internal */
@@ -201,7 +179,7 @@ export class SelectMultipleControlValueAccessor implements ControlValueAccessor 
 
   /** @internal */
   _getOptionId(value: any): string|null {
-    for (const id of Array.from(this._optionMap.keys())) {
+    for (const id of this._optionMap.keys()) {
       if (this._compareWith(this._optionMap.get(id)!._value, value)) return id;
     }
     return null;
@@ -218,7 +196,7 @@ export class SelectMultipleControlValueAccessor implements ControlValueAccessor 
  * @description
  * Marks `<option>` as dynamic, so Angular can be notified when options change.
  *
- * @see `SelectMultipleControlValueAccessor`
+ * @see {@link SelectMultipleControlValueAccessor}
  *
  * @ngModule ReactiveFormsModule
  * @ngModule FormsModule

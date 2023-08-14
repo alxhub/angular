@@ -7,8 +7,9 @@
  */
 
 import * as html from './ast';
+import {NGSP_UNICODE} from './entities';
 import {ParseTreeResult} from './parser';
-import {NGSP_UNICODE} from './tags';
+import {TextToken, TokenType} from './tokens';
 
 export const PRESERVE_WS_ATTR_NAME = 'ngPreserveWhitespaces';
 
@@ -25,10 +26,9 @@ function hasPreserveWhitespacesAttr(attrs: html.Attribute[]): boolean {
 }
 
 /**
- * Angular Dart introduced &ngsp; as a placeholder for non-removable space, see:
- * https://github.com/dart-lang/angular/blob/0bb611387d29d65b5af7f9d2515ab571fd3fbee4/_tests/test/compiler/preserve_whitespace_test.dart#L25-L32
- * In Angular Dart &ngsp; is converted to the 0xE500 PUA (Private Use Areas) unicode character
- * and later on replaced by a space. We are re-implementing the same idea here.
+ * &ngsp; is a placeholder for non-removable space
+ * &ngsp; is converted to the 0xE500 PUA (Private Use Areas) unicode character
+ * and later on replaced by a space.
  */
 export function replaceNgsp(value: string): string {
   // lexer is replacing the &ngsp; pseudo-entity with NGSP_UNICODE
@@ -74,8 +74,13 @@ export class WhitespaceVisitor implements html.Visitor {
         (context.prev instanceof html.Expansion || context.next instanceof html.Expansion);
 
     if (isNotBlank || hasExpansionSibling) {
-      return new html.Text(
-          replaceNgsp(text.value).replace(WS_REPLACE_REGEXP, ' '), text.sourceSpan, text.i18n);
+      // Process the whitespace in the tokens of this Text node
+      const tokens = text.tokens.map(
+          token =>
+              token.type === TokenType.TEXT ? createWhitespaceProcessedTextToken(token) : token);
+      // Process the whitespace of the value of this Text node
+      const value = processWhitespace(text.value);
+      return new html.Text(value, text.sourceSpan, tokens, text.i18n);
     }
 
     return null;
@@ -92,6 +97,30 @@ export class WhitespaceVisitor implements html.Visitor {
   visitExpansionCase(expansionCase: html.ExpansionCase, context: any): any {
     return expansionCase;
   }
+
+  visitBlockGroup(group: html.BlockGroup, context: any): any {
+    return new html.BlockGroup(
+        visitAllWithSiblings(this, group.blocks), group.sourceSpan, group.startSourceSpan,
+        group.endSourceSpan);
+  }
+
+  visitBlock(block: html.Block, context: any): any {
+    return new html.Block(
+        block.name, block.parameters, visitAllWithSiblings(this, block.children), block.sourceSpan,
+        block.startSourceSpan);
+  }
+
+  visitBlockParameter(parameter: html.BlockParameter, context: any) {
+    return parameter;
+  }
+}
+
+function createWhitespaceProcessedTextToken({type, parts, sourceSpan}: TextToken): TextToken {
+  return {type, parts: [processWhitespace(parts[0])], sourceSpan};
+}
+
+function processWhitespace(text: string): string {
+  return replaceNgsp(text).replace(WS_REPLACE_REGEXP, ' ');
 }
 
 export function removeWhitespaces(htmlAstWithErrors: ParseTreeResult): ParseTreeResult {

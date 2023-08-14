@@ -8,9 +8,10 @@
 import '../../util/ng_dev_mode';
 import '../../util/ng_i18n_closure_mode';
 
-import {getTemplateContent, SRCSET_ATTRS, URI_ATTRS, VALID_ATTRS, VALID_ELEMENTS} from '../../sanitization/html_sanitizer';
+import {XSS_SECURITY_URL} from '../../error_details_base_url';
+import {getTemplateContent, URI_ATTRS, VALID_ATTRS, VALID_ELEMENTS} from '../../sanitization/html_sanitizer';
 import {getInertBodyHelper} from '../../sanitization/inert_body';
-import {_sanitizeUrl, sanitizeSrcset} from '../../sanitization/url_sanitizer';
+import {_sanitizeUrl} from '../../sanitization/url_sanitizer';
 import {assertDefined, assertEqual, assertGreaterThanOrEqual, assertOneOf, assertString} from '../../util/assert';
 import {CharCode} from '../../util/char_code';
 import {loadIcuContainerVisitor} from '../instructions/i18n_icu_container_visitor';
@@ -21,7 +22,6 @@ import {TNode, TNodeType} from '../interfaces/node';
 import {SanitizerFn} from '../interfaces/sanitization';
 import {HEADER_OFFSET, LView, TView} from '../interfaces/view';
 import {getCurrentParentTNode, getCurrentTNode, setCurrentTNode} from '../state';
-import {attachDebugGetter} from '../util/debug_utils';
 
 import {i18nCreateOpCodesToString, i18nRemoveOpCodesToString, i18nUpdateOpCodesToString, icuCreateOpCodesToString} from './i18n_debug';
 import {addTNodeAndUpdateInsertBeforeIndex} from './i18n_insert_before_index';
@@ -40,15 +40,31 @@ const SUBTEMPLATE_REGEXP = /�\/?\*(\d+:\d+)�/gi;
 const PH_REGEXP = /�(\/?[#*]\d+):?\d*�/gi;
 
 /**
- * Angular Dart introduced &ngsp; as a placeholder for non-removable space, see:
- * https://github.com/dart-lang/angular/blob/0bb611387d29d65b5af7f9d2515ab571fd3fbee4/_tests/test/compiler/preserve_whitespace_test.dart#L25-L32
- * In Angular Dart &ngsp; is converted to the 0xE500 PUA (Private Use Areas) unicode character
- * and later on replaced by a space. We are re-implementing the same idea here, since translations
- * might contain this special character.
+ * Angular uses the special entity &ngsp; as a placeholder for non-removable space.
+ * It's replaced by the 0xE500 PUA (Private Use Areas) unicode character and later on replaced by a
+ * space.
+ * We are re-implementing the same idea since translations might contain this special character.
  */
 const NGSP_UNICODE_REGEXP = /\uE500/g;
 function replaceNgsp(value: string): string {
   return value.replace(NGSP_UNICODE_REGEXP, ' ');
+}
+
+/**
+ * Patch a `debug` property getter on top of the existing object.
+ *
+ * NOTE: always call this method with `ngDevMode && attachDebugObject(...)`
+ *
+ * @param obj Object to patch
+ * @param debugGetter Getter returning a value to patch
+ */
+function attachDebugGetter<T>(obj: T, debugGetter: (this: T) => any): void {
+  if (ngDevMode) {
+    Object.defineProperty(obj, 'debug', {get: debugGetter, enumerable: false});
+  } else {
+    throw new Error(
+        'This method should be guarded with `ngDevMode` so that it can be tree shaken in production!');
+  }
 }
 
 /**
@@ -141,7 +157,7 @@ export function i18nStartFirstCreatePass(
 }
 
 /**
- * Allocate space in i18n Range add create OpCode instruction to crete a text or comment node.
+ * Allocate space in i18n Range add create OpCode instruction to create a text or comment node.
  *
  * @param tView Current `TView` needed to allocate space in i18n range.
  * @param rootTNode Root `TNode` of the i18n block. This node determines if the new TNode will be
@@ -219,7 +235,7 @@ function i18nStartFirstCreatePassProcessTextNode(
   const tNode = createTNodeAndAddOpCode(
       tView, rootTNode, existingTNodes, lView, createOpCodes, hasBinding ? null : text, false);
   if (hasBinding) {
-    generateBindingUpdateOpCodes(updateOpCodes, text, tNode.index);
+    generateBindingUpdateOpCodes(updateOpCodes, text, tNode.index, null, 0, null);
   }
 }
 
@@ -251,7 +267,11 @@ export function i18nAttributesFirstPass(tView: TView, index: number, values: str
 
         // i18n attributes that hit this code path are guaranteed to have bindings, because
         // the compiler treats static i18n attributes as regular attribute bindings.
-        generateBindingUpdateOpCodes(updateOpCodes, message, previousElementIndex, attrName);
+        // Since this may not be the first i18n attribute on this element we need to pass in how
+        // many previous bindings there have already been.
+        generateBindingUpdateOpCodes(
+            updateOpCodes, message, previousElementIndex, attrName, countBindings(updateOpCodes),
+            null);
       }
     }
     tView.data[index] = updateOpCodes;
@@ -267,10 +287,12 @@ export function i18nAttributesFirstPass(tView: TView, index: number, values: str
  * @param destinationNode Index of the destination node which will receive the binding.
  * @param attrName Name of the attribute, if the string belongs to an attribute.
  * @param sanitizeFn Sanitization function used to sanitize the string after update, if necessary.
+ * @param bindingStart The lView index of the next expression that can be bound via an opCode.
+ * @returns The mask value for these bindings
  */
-export function generateBindingUpdateOpCodes(
-    updateOpCodes: I18nUpdateOpCodes, str: string, destinationNode: number, attrName?: string,
-    sanitizeFn: SanitizerFn|null = null): number {
+function generateBindingUpdateOpCodes(
+    updateOpCodes: I18nUpdateOpCodes, str: string, destinationNode: number, attrName: string|null,
+    bindingStart: number, sanitizeFn: SanitizerFn|null): number {
   ngDevMode &&
       assertGreaterThanOrEqual(
           destinationNode, HEADER_OFFSET, 'Index must be in absolute LView offset');
@@ -289,7 +311,7 @@ export function generateBindingUpdateOpCodes(
 
     if (j & 1) {
       // Odd indexes are bindings
-      const bindingIndex = parseInt(textValue, 10);
+      const bindingIndex = bindingStart + parseInt(textValue, 10);
       updateOpCodes.push(-1 - bindingIndex);
       mask = mask | toMaskBit(bindingIndex);
     } else if (textValue !== '') {
@@ -309,6 +331,28 @@ export function generateBindingUpdateOpCodes(
   return mask;
 }
 
+/**
+ * Count the number of bindings in the given `opCodes`.
+ *
+ * It could be possible to speed this up, by passing the number of bindings found back from
+ * `generateBindingUpdateOpCodes()` to `i18nAttributesFirstPass()` but this would then require more
+ * complexity in the code and/or transient objects to be created.
+ *
+ * Since this function is only called once when the template is instantiated, is trivial in the
+ * first instance (since `opCodes` will be an empty array), and it is not common for elements to
+ * contain multiple i18n bound attributes, it seems like this is a reasonable compromise.
+ */
+function countBindings(opCodes: I18nUpdateOpCodes): number {
+  let count = 0;
+  for (let i = 0; i < opCodes.length; i++) {
+    const opCode = opCodes[i];
+    // Bindings are negative numbers.
+    if (typeof opCode === 'number' && opCode < 0) {
+      count++;
+    }
+  }
+  return count;
+}
 
 /**
  * Convert binding index to mask bit.
@@ -356,7 +400,7 @@ function removeInnerTemplateTranslation(message: string): string {
           `Tag mismatch: unable to find the end of the sub-template in the translation "${
               message}"`);
 
-  res += message.substr(index);
+  res += message.slice(index);
   return res;
 }
 
@@ -455,7 +499,7 @@ export function parseICUBlock(pattern: string): IcuExpression {
     } else {
       icuType = IcuType.plural;
     }
-    mainBinding = parseInt(binding.substr(1), 10);
+    mainBinding = parseInt(binding.slice(1), 10);
     return '';
   });
 
@@ -595,19 +639,16 @@ function walkIcuTree(
               if (VALID_ATTRS.hasOwnProperty(lowerAttrName)) {
                 if (URI_ATTRS[lowerAttrName]) {
                   generateBindingUpdateOpCodes(
-                      update, attr.value, newIndex, attr.name, _sanitizeUrl);
-                } else if (SRCSET_ATTRS[lowerAttrName]) {
-                  generateBindingUpdateOpCodes(
-                      update, attr.value, newIndex, attr.name, sanitizeSrcset);
+                      update, attr.value, newIndex, attr.name, 0, _sanitizeUrl);
                 } else {
-                  generateBindingUpdateOpCodes(update, attr.value, newIndex, attr.name);
+                  generateBindingUpdateOpCodes(update, attr.value, newIndex, attr.name, 0, null);
                 }
               } else {
                 ngDevMode &&
                     console.warn(
                         `WARNING: ignoring unsafe attribute value ` +
                         `${lowerAttrName} on element ${tagName} ` +
-                        `(see https://g.co/ng/security#xss)`);
+                        `(see ${XSS_SECURITY_URL})`);
               }
             } else {
               addCreateAttribute(create, newIndex, attr);
@@ -627,7 +668,8 @@ function walkIcuTree(
         addCreateNodeAndAppend(create, null, hasBinding ? '' : value, parentIdx, newIndex);
         addRemoveNode(remove, newIndex, depth);
         if (hasBinding) {
-          bindingMask = generateBindingUpdateOpCodes(update, value, newIndex) | bindingMask;
+          bindingMask =
+              generateBindingUpdateOpCodes(update, value, newIndex, null, 0, null) | bindingMask;
         }
         break;
       case Node.COMMENT_NODE:

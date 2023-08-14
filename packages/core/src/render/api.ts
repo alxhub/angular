@@ -6,17 +6,12 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {InjectionToken} from '../di/injection_token';
-import {isProceduralRenderer} from '../render3/interfaces/renderer';
 import {isLView} from '../render3/interfaces/type_checks';
-import {LView, RENDERER} from '../render3/interfaces/view';
+import {RENDERER} from '../render3/interfaces/view';
 import {getCurrentTNode, getLView} from '../render3/state';
 import {getComponentLViewByIndex} from '../render3/util/view_utils';
-import {noop} from '../util/noop';
+
 import {RendererStyleFlags2, RendererType2} from './api_flags';
-
-
-export const Renderer2Interceptor = new InjectionToken<Renderer2[]>('Renderer2Interceptor');
 
 
 /**
@@ -99,8 +94,7 @@ export abstract class Renderer2 {
    * If null or undefined, the view engine won't call it.
    * This is used as a performance optimization for production mode.
    */
-  // TODO(issue/24571): remove '!'.
-  destroyNode!: ((node: any) => void)|null;
+  destroyNode: ((node: any) => void)|null = null;
   /**
    * Appends a child to a given parent node in the host element DOM.
    * @param parent The parent node.
@@ -144,7 +138,6 @@ export abstract class Renderer2 {
    * in the host element's DOM.
    * @param node The child node to query.
    * @returns The parent node, or null if there is no parent.
-   * For WebWorkers, always returns true.
    * This is because the check is synchronous,
    * and the caller can't rely on checking for null.
    */
@@ -153,7 +146,6 @@ export abstract class Renderer2 {
    * Implement this callback to get the next sibling node of a given node
    * in the host element's DOM.
    * @returns The sibling node, or null if there is no sibling.
-   * For WebWorkers, always returns a value.
    * This is because the check is synchronous,
    * and the caller can't rely on checking for null.
    */
@@ -237,21 +229,7 @@ export abstract class Renderer2 {
    * @internal
    * @nocollapse
    */
-  static __NG_ELEMENT_ID__: () => Renderer2 = () => SWITCH_RENDERER2_FACTORY();
-}
-
-
-export const SWITCH_RENDERER2_FACTORY__POST_R3__ = injectRenderer2;
-const SWITCH_RENDERER2_FACTORY__PRE_R3__ = noop;
-const SWITCH_RENDERER2_FACTORY: typeof injectRenderer2 = SWITCH_RENDERER2_FACTORY__PRE_R3__;
-
-/** Returns a Renderer2 (or throws when application was bootstrapped with Renderer3) */
-function getOrCreateRenderer2(lView: LView): Renderer2 {
-  const renderer = lView[RENDERER];
-  if (ngDevMode && !isProceduralRenderer(renderer)) {
-    throw new Error('Cannot inject Renderer2 when the application uses Renderer3!');
-  }
-  return renderer as Renderer2;
+  static __NG_ELEMENT_ID__: () => Renderer2 = () => injectRenderer2();
 }
 
 /** Injects a Renderer2 for the current component. */
@@ -261,5 +239,5 @@ export function injectRenderer2(): Renderer2 {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
   const nodeAtIndex = getComponentLViewByIndex(tNode.index, lView);
-  return getOrCreateRenderer2(isLView(nodeAtIndex) ? nodeAtIndex : lView);
+  return (isLView(nodeAtIndex) ? nodeAtIndex : lView)[RENDERER] as Renderer2;
 }

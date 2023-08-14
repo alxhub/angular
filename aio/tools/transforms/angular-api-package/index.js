@@ -9,13 +9,15 @@ const Package = require('dgeni').Package;
 
 const basePackage = require('../angular-base-package');
 const typeScriptPackage = require('dgeni-packages/typescript');
-const {API_SOURCE_PATH, API_TEMPLATES_PATH, requireFolder} = require('../config');
+const {API_SOURCE_PATH, API_TEMPLATES_PATH, requireFolder, CONTENTS_PATH} = require('../config');
+const API_SEGMENT = 'api';
 
 module.exports =
     new Package('angular-api', [basePackage, typeScriptPackage])
 
         // Register the processors
         .processor(require('./processors/mergeParameterInfo'))
+        .processor(require('./processors/processSeeTags'))
         .processor(require('./processors/processPseudoClasses'))
         .processor(require('./processors/convertPrivateClassesToInterfaces'))
         .processor(require('./processors/generateApiListDoc'))
@@ -36,12 +38,14 @@ module.exports =
         .processor(require('./processors/computeSearchTitle'))
         .processor(require('./processors/simplifyMemberAnchors'))
         .processor(require('./processors/computeStability'))
-        .processor(require('./processors/removeInjectableConstructors'))
+        .processor(require('./processors/removeInjectableAndInternalConstructors'))
+        .processor(require('./processors/processSpecialElements'))
         .processor(require('./processors/collectPackageContentDocs'))
         .processor(require('./processors/processPackages'))
         .processor(require('./processors/processNgModuleDocs'))
-        .processor(require('./processors/fixupRealProjectRelativePath'))
+        .processor(require('./processors/fixupProjectRelativePath'))
         .processor(require('./processors/processAliasDocs'))
+        .processor(require('./processors/mergeOverriddenImplementation'))
 
 
         /**
@@ -50,7 +54,7 @@ module.exports =
          * more Angular specific API types, such as decorators and directives.
          */
         .factory(function API_DOC_TYPES_TO_RENDER(EXPORT_DOC_TYPES) {
-          return EXPORT_DOC_TYPES.concat(['decorator', 'directive', 'ngmodule', 'pipe', 'package']);
+          return EXPORT_DOC_TYPES.concat(['decorator', 'directive', 'ngmodule', 'pipe', 'package', 'element']);
         })
 
         /**
@@ -72,11 +76,12 @@ module.exports =
         })
 
         .factory(require('./readers/package-content'))
+        .factory(require('./readers/element'))
 
         // Where do we get the source files?
         .config(function(
             readTypeScriptModules, readFilesProcessor, collectExamples, tsParser,
-            packageContentFileReader) {
+            packageContentFileReader, specialElementFileReader) {
           // Tell TypeScript how to load modules that start with with `@angular`
           tsParser.options.paths = {'@angular/*': [API_SOURCE_PATH + '/*']};
           tsParser.options.baseUrl = '.';
@@ -86,7 +91,7 @@ module.exports =
           readTypeScriptModules.ignoreExportsMatching = [/^_|^ɵɵ|^VERSION$/];
           readTypeScriptModules.hidePrivateMembers = true;
 
-          // NOTE: This list should be in sync with tools/public_api_guard/BUILD.bazel
+          // NOTE: This list should be in sync with the folders/files in `goldens/public-api`.
           readTypeScriptModules.sourceFiles = [
             'animations/index.ts',
             'animations/browser/index.ts',
@@ -98,9 +103,12 @@ module.exports =
             'common/upgrade/index.ts',
             'core/index.ts',
             'core/global/index.ts',
+            'core/rxjs-interop/index.ts',
             'core/testing/index.ts',
             'elements/index.ts',
             'forms/index.ts',
+            'localize/index.ts',
+            'localize/init/index.ts',
             'platform-browser/index.ts',
             'platform-browser/animations/index.ts',
             'platform-browser/testing/index.ts',
@@ -109,8 +117,6 @@ module.exports =
             'platform-server/index.ts',
             'platform-server/init/index.ts',
             'platform-server/testing/index.ts',
-            'platform-webworker/index.ts',
-            'platform-webworker-dynamic/index.ts',
             'router/index.ts',
             'router/testing/index.ts',
             'router/upgrade/index.ts',
@@ -120,22 +126,45 @@ module.exports =
             'upgrade/static/testing/index.ts',
           ];
 
-          readFilesProcessor.fileReaders.push(packageContentFileReader);
-
-          // API Examples
+          // Special elements and packages docs are not extracted directly from TS code.
+          readFilesProcessor.fileReaders.push(packageContentFileReader, specialElementFileReader);
           readFilesProcessor.sourceFiles = [
-            {
-              basePath: API_SOURCE_PATH,
-              include: API_SOURCE_PATH + '/examples/**/*',
-              fileReader: 'exampleFileReader'
-            },
             {
               basePath: API_SOURCE_PATH,
               include: API_SOURCE_PATH + '/**/PACKAGE.md',
               fileReader: 'packageContentFileReader'
+            },
+            {
+              basePath: CONTENTS_PATH + '/special-elements',
+              include: CONTENTS_PATH + '/special-elements/*/**/*.md',
+              fileReader: 'specialElementFileReader'
+            },
+            {
+              basePath: API_SOURCE_PATH,
+              include: API_SOURCE_PATH + '/examples/**/*',
+              fileReader: 'exampleFileReader'
             }
           ];
+
           collectExamples.exampleFolders.push('examples');
+        })
+
+        // Configure element ids and paths
+        .config(function(computeIdsProcessor, computePathsProcessor) {
+          computeIdsProcessor.idTemplates.push({
+            docTypes: ['element'],
+            getId(doc) {
+              // path should not have a suffix
+              return doc.fileInfo.relativePath.replace(/\.\w*$/, '');
+            },
+            getAliases(doc) { return [doc.name, doc.id]; }
+          });
+
+          computePathsProcessor.pathTemplates.push({
+            docTypes: ['element'],
+            pathTemplate: API_SEGMENT + '/${id}',
+            outputPathTemplate: '${path}.json'
+          });
         })
 
         // Configure jsdoc-style tag parsing
@@ -152,7 +181,7 @@ module.exports =
             API_DOC_TYPES_TO_RENDER, API_DOC_TYPES) {
           computeStability.docTypes = API_DOC_TYPES_TO_RENDER;
           // Only split the description on the API docs
-          splitDescription.docTypes = API_DOC_TYPES.concat(['package-content']);
+          splitDescription.docTypes = API_DOC_TYPES.concat(['package-content', 'element']);
           addNotYetDocumentedProperty.docTypes = API_DOC_TYPES;
         })
 
@@ -184,8 +213,6 @@ module.exports =
 
 
         .config(function(computePathsProcessor, EXPORT_DOC_TYPES, generateApiListDoc) {
-          const API_SEGMENT = 'api';
-
           generateApiListDoc.outputFolder = API_SEGMENT;
 
           computePathsProcessor.pathTemplates.push({
@@ -215,7 +242,7 @@ module.exports =
           convertToJsonProcessor.docTypes =
               convertToJsonProcessor.docTypes.concat(API_DOC_TYPES_TO_RENDER);
           postProcessHtml.docTypes =
-              convertToJsonProcessor.docTypes.concat(API_DOC_TYPES_TO_RENDER);
+              postProcessHtml.docTypes.concat(API_DOC_TYPES_TO_RENDER);
           autoLinkCode.docTypes = API_DOC_TYPES;
           autoLinkCode.codeElements = ['code', 'code-example', 'code-pane'];
         });

@@ -5,25 +5,27 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {LifecycleHooksFeature, renderComponent, whenRendered} from './component';
+import {LifecycleHooksFeature} from './component_ref';
 import {ɵɵdefineComponent, ɵɵdefineDirective, ɵɵdefineNgModule, ɵɵdefinePipe, ɵɵsetComponentScope, ɵɵsetNgModuleScope} from './definition';
 import {ɵɵCopyDefinitionFeature} from './features/copy_definition_feature';
+import {ɵɵHostDirectivesFeature} from './features/host_directives_feature';
 import {ɵɵInheritDefinitionFeature} from './features/inherit_definition_feature';
+import {ɵɵInputTransformsFeature} from './features/input_transforms_feature';
 import {ɵɵNgOnChangesFeature} from './features/ng_onchanges_feature';
 import {ɵɵProvidersFeature} from './features/providers_feature';
-import {ComponentDef, ComponentTemplate, ComponentType, DirectiveDef, DirectiveType, PipeDef, ɵɵComponentDefWithMeta, ɵɵDirectiveDefWithMeta, ɵɵFactoryDef, ɵɵPipeDefWithMeta} from './interfaces/definition';
-import {getComponent, getDirectives, getHostElement, getRenderedText} from './util/discovery_utils';
+import {ɵɵStandaloneFeature} from './features/standalone_feature';
+import {ComponentDef, ComponentTemplate, ComponentType, DirectiveDef, DirectiveType, PipeDef} from './interfaces/definition';
+import {ɵɵComponentDeclaration, ɵɵDirectiveDeclaration, ɵɵFactoryDeclaration, ɵɵInjectorDeclaration, ɵɵNgModuleDeclaration, ɵɵPipeDeclaration} from './interfaces/public_definitions';
+import {ComponentDebugMetadata, DirectiveDebugMetadata, getComponent, getDirectiveMetadata, getDirectives, getHostElement, getRenderedText} from './util/discovery_utils';
 
 export {NgModuleType} from '../metadata/ng_module_def';
-export {ComponentFactory, ComponentFactoryResolver, ComponentRef, injectComponentFactoryResolver} from './component_ref';
+export {ComponentFactory, ComponentFactoryResolver, ComponentRef} from './component_ref';
 export {ɵɵgetInheritedFactory} from './di';
 export {getLocaleId, setLocaleId} from './i18n/i18n_locale_id';
 // clang-format off
 export {
   detectChanges,
-  markDirty,
   store,
-  tick,
   ɵɵadvance,
 
   ɵɵattribute,
@@ -116,6 +118,22 @@ export {
 
   ɵɵtemplate,
 
+  ɵɵdefer,
+  ɵɵdeferWhen,
+  ɵɵdeferOnIdle,
+  ɵɵdeferOnImmediate,
+  ɵɵdeferOnTimer,
+  ɵɵdeferOnHover,
+  ɵɵdeferOnInteraction,
+  ɵɵdeferOnViewport,
+  ɵɵdeferPrefetchWhen,
+  ɵɵdeferPrefetchOnIdle,
+  ɵɵdeferPrefetchOnImmediate,
+  ɵɵdeferPrefetchOnTimer,
+  ɵɵdeferPrefetchOnHover,
+  ɵɵdeferPrefetchOnInteraction,
+  ɵɵdeferPrefetchOnViewport,
+
   ɵɵtext,
   ɵɵtextInterpolate,
   ɵɵtextInterpolate1,
@@ -127,6 +145,10 @@ export {
   ɵɵtextInterpolate7,
   ɵɵtextInterpolate8,
   ɵɵtextInterpolateV,
+  ɵgetUnknownElementStrictMode,
+  ɵsetUnknownElementStrictMode,
+  ɵgetUnknownPropertyStrictMode,
+  ɵsetUnknownPropertyStrictMode
 } from './instructions/all';
 export {ɵɵi18n, ɵɵi18nApply, ɵɵi18nAttributes, ɵɵi18nEnd, ɵɵi18nExp,ɵɵi18nPostprocess, ɵɵi18nStart} from './instructions/i18n';
 export {RenderFlags} from './interfaces/definition';
@@ -137,7 +159,7 @@ export {CssSelectorList, ProjectionSlots} from './interfaces/projection';
 export {
   setClassMetadata,
 } from './metadata';
-export {NgModuleFactory, NgModuleRef} from './ng_module_ref';
+export {NgModuleFactory, NgModuleRef, createEnvironmentInjector} from './ng_module_ref';
 export {
   ɵɵpipe,
   ɵɵpipeBind1,
@@ -167,39 +189,47 @@ export {
   ɵɵdisableBindings,
 
   ɵɵenableBindings,
+  ɵɵresetView,
   ɵɵrestoreView,
 } from './state';
 export {NO_CHANGE} from './tokens';
 export { ɵɵresolveBody, ɵɵresolveDocument,ɵɵresolveWindow} from './util/misc_utils';
-export { ɵɵinjectPipeChangeDetectorRef,ɵɵtemplateRefExtractor} from './view_engine_compatibility_prebound';
+export { ɵɵtemplateRefExtractor} from './view_engine_compatibility_prebound';
+export {ɵɵgetComponentDepsFactory} from './local_compilation';
 // clang-format on
 
 export {
+  ComponentDebugMetadata,
   ComponentDef,
   ComponentTemplate,
   ComponentType,
+  DirectiveDebugMetadata,
   DirectiveDef,
   DirectiveType,
   getComponent,
+  getDirectiveMetadata,
   getDirectives,
   getHostElement,
   getRenderedText,
   LifecycleHooksFeature,
   PipeDef,
-  renderComponent,
-  whenRendered,
-  ɵɵComponentDefWithMeta,
+  ɵɵComponentDeclaration,
   ɵɵCopyDefinitionFeature,
   ɵɵdefineComponent,
   ɵɵdefineDirective,
   ɵɵdefineNgModule,
   ɵɵdefinePipe,
-  ɵɵDirectiveDefWithMeta,
-  ɵɵFactoryDef,
+  ɵɵDirectiveDeclaration,
+  ɵɵFactoryDeclaration,
+  ɵɵHostDirectivesFeature,
   ɵɵInheritDefinitionFeature,
+  ɵɵInjectorDeclaration,
+  ɵɵInputTransformsFeature,
+  ɵɵNgModuleDeclaration,
   ɵɵNgOnChangesFeature,
-  ɵɵPipeDefWithMeta,
+  ɵɵPipeDeclaration,
   ɵɵProvidersFeature,
   ɵɵsetComponentScope,
   ɵɵsetNgModuleScope,
+  ɵɵStandaloneFeature,
 };

@@ -56,22 +56,24 @@ describe('HighlightDirective', () => {
   it('should bind <input> background to value color', () => {
     // easier to work with nativeElement
     const input = des[2].nativeElement as HTMLInputElement;
-    expect(input.style.backgroundColor).toBe('cyan', 'initial backgroundColor');
+    expect(input.style.backgroundColor)
+      .withContext('initial backgroundColor')
+      .toBe('cyan');
 
     input.value = 'green';
 
     // Dispatch a DOM event so that Angular responds to the input value change.
-    // In older browsers, such as IE, you might need a CustomEvent instead. See
-    // https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent/CustomEvent#Polyfill
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    expect(input.style.backgroundColor).toBe('green', 'changed backgroundColor');
+    expect(input.style.backgroundColor)
+      .withContext('changed backgroundColor')
+      .toBe('green');
   });
 
 
   it('bare <h2> should not have a customProperty', () => {
-    expect(bareH2.properties.customProperty).toBeUndefined();
+    expect(bareH2.properties['customProperty']).toBeUndefined();
   });
   // #enddocregion selected-tests
 

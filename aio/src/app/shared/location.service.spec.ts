@@ -2,7 +2,7 @@ import { Injector } from '@angular/core';
 import { Location, LocationStrategy, PlatformLocation } from '@angular/common';
 import { MockLocationStrategy } from '@angular/common/testing';
 
-import { GaService } from 'app/shared/ga.service';
+import { AnalyticsService } from 'app/shared/analytics.service';
 import { LocationService } from './location.service';
 import { ScrollService } from './scroll.service';
 
@@ -15,9 +15,9 @@ describe('LocationService', () => {
   beforeEach(() => {
     injector = Injector.create({
       providers: [
-        { provide: LocationService, deps: [GaService, Location, ScrollService, PlatformLocation] },
+        { provide: LocationService, deps: [AnalyticsService, Location, ScrollService, PlatformLocation] },
         { provide: Location, deps: [LocationStrategy, PlatformLocation] },
-        { provide: GaService, useClass: TestGaService, deps: [] },
+        { provide: AnalyticsService, useClass: TestAnalyticsService, deps: [] },
         { provide: LocationStrategy, useClass: MockLocationStrategy, deps: [] },
         { provide: PlatformLocation, useClass: MockPlatformLocation, deps: [] },
         { provide: ScrollService, useClass: MockScrollService, deps: [] }
@@ -279,7 +279,7 @@ describe('LocationService', () => {
         service.currentUrl.subscribe(u => url = u);
 
         service.go('');
-        expect(url).toEqual(initialUrl, 'should not have re-navigated locally');
+        expect(url).withContext('should not have re-navigated locally').toEqual(initialUrl);
         expect(goExternalSpy).not.toHaveBeenCalled();
     });
 
@@ -331,7 +331,7 @@ describe('LocationService', () => {
       spyOn(service, 'goExternal');
       service.currentUrl.subscribe(url => localUrl = url);
       service.go('https://some/far/away/land');
-      expect(localUrl).toBeFalsy('should not set local url');
+      expect(localUrl).withContext('should not set local url').toBeFalsy();
     });
 
   });
@@ -389,7 +389,9 @@ describe('LocationService', () => {
     it('should convert the params to a query string', () => {
       const params = { foo: 'bar', moo: 'car' };
       service.setSearch('Some label', params);
-      expect(platformLocation.replaceState).toHaveBeenCalledWith(jasmine.any(Object), 'Some label', jasmine.any(String));
+      expect(platformLocation.replaceState).toHaveBeenCalledWith(
+        jasmine.any(Object),'Some label', jasmine.any(String)
+      );
       const [path, query] = platformLocation.replaceState.calls.mostRecent().args[2].split('?');
       expect(path).toEqual('a/b/c');
       expect(query).toContain('foo=bar');
@@ -431,6 +433,14 @@ describe('LocationService', () => {
         anchor.href = '/some/local/url';
         const result = service.handleAnchorClick(anchor);
         expect(service.go).toHaveBeenCalledWith('/some/local/url');
+        expect(result).toBe(false);
+      });
+
+      it('local fragment-only URL', () => {
+        location.internalPath = '/some/path';
+        anchor.href = '#some-fragment';
+        const result = service.handleAnchorClick(anchor);
+        expect(service.go).toHaveBeenCalledWith('/some/path#some-fragment');
         expect(result).toBe(false);
       });
 
@@ -527,7 +537,7 @@ describe('LocationService', () => {
       });
 
       it('zip url', () => {
-        anchor.href = 'tutorial/toh-p2.zip';
+        anchor.href = 'tutorial/tour-of-heroes/toh-p2.zip';
         const result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
         expect(result).toBe(true);
@@ -537,31 +547,31 @@ describe('LocationService', () => {
         anchor.href = 'cat-photo.png';
         let result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
-        expect(result).toBe(true, 'png');
+        expect(result).withContext('png').toBe(true);
 
         anchor.href = 'cat-photo.gif';
         result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
-        expect(result).toBe(true, 'gif');
+        expect(result).withContext('gif').toBe(true);
 
         anchor.href = 'cat-photo.jpg';
         result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
-        expect(result).toBe(true, 'jpg');
+        expect(result).withContext('jpg').toBe(true);
 
         anchor.href = 'dog-bark.mp3';
         result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
-        expect(result).toBe(true, 'mp3');
+        expect(result).withContext('mp3').toBe(true);
 
         anchor.href = 'pet-tricks.mp4';
         result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
-        expect(result).toBe(true, 'mp4');
+        expect(result).withContext('mp4').toBe(true);
       });
 
       it('url has any extension', () => {
-        anchor.href = 'tutorial/toh-p2.html';
+        anchor.href = 'tutorial/tour-of-heroes/toh-p2.html';
         const result = service.handleAnchorClick(anchor);
         expect(service.go).not.toHaveBeenCalled();
         expect(result).toBe(true);
@@ -569,13 +579,13 @@ describe('LocationService', () => {
     });
   });
 
-  describe('google analytics - GaService#locationChanged', () => {
+  describe('google analytics - AnalyticsService#locationChanged', () => {
 
-    let gaLocationChanged: jasmine.Spy;
+    let locationChanged: jasmine.Spy;
 
     beforeEach(() => {
-      const gaService = injector.get(GaService) as unknown as TestGaService;
-      gaLocationChanged = gaService.locationChanged;
+      const analyticsService = injector.get(AnalyticsService) as unknown as TestAnalyticsService;
+      locationChanged = analyticsService.locationChanged;
       // execute currentPath observable so that gaLocationChanged is called
       service.currentPath.subscribe();
     });
@@ -583,15 +593,15 @@ describe('LocationService', () => {
     it('should call locationChanged with initial URL', () => {
       const initialUrl = location.path().replace(/^\/+/, '');  // strip leading slashes
 
-      expect(gaLocationChanged.calls.count()).toBe(1, 'gaService.locationChanged');
-      const args = gaLocationChanged.calls.first().args;
+      expect(locationChanged.calls.count()).withContext('gaService.locationChanged').toBe(1);
+      const args = locationChanged.calls.first().args;
       expect(args[0]).toBe(initialUrl);
     });
 
     it('should call locationChanged when `go` to a page', () => {
       service.go('some-new-url');
-      expect(gaLocationChanged.calls.count()).toBe(2, 'gaService.locationChanged');
-      const args = gaLocationChanged.calls.argsFor(1);
+      expect(locationChanged.calls.count()).withContext('gaService.locationChanged').toBe(2);
+      const args = locationChanged.calls.argsFor(1);
       expect(args[0]).toBe('some-new-url');
     });
 
@@ -601,17 +611,17 @@ describe('LocationService', () => {
       service.go('some-new-url#one');
       service.go('some-new-url#two');
       service.go('some-new-url/?foo="true"');
-      expect(gaLocationChanged.calls.count()).toBe(4, 'gaService.locationChanged called');
-      const args = gaLocationChanged.calls.allArgs();
-      expect(args[1]).toEqual(args[2], 'same url for hash calls');
-      expect(args[1]).toEqual(args[3], 'same url for query string call');
+      expect(locationChanged.calls.count()).withContext('gaService.locationChanged called').toBe(4);
+      const args = locationChanged.calls.allArgs();
+      expect(args[1]).withContext('same url for hash calls').toEqual(args[2]);
+      expect(args[1]).withContext('same url for query string call').toEqual(args[3]);
     });
 
     it('should call locationChanged when window history changes', () => {
       location.simulatePopState('/next-url');
 
-      expect(gaLocationChanged.calls.count()).toBe(2, 'gaService.locationChanged');
-      const args = gaLocationChanged.calls.argsFor(1);
+      expect(locationChanged.calls.count()).withContext('gaService.locationChanged').toBe(2);
+      const args = locationChanged.calls.argsFor(1);
       expect(args[0]).toBe('next-url');
     });
 
@@ -629,6 +639,6 @@ class MockScrollService {
   removeStoredScrollInfo() { }
 }
 
-class TestGaService {
+class TestAnalyticsService {
   locationChanged = jasmine.createSpy('locationChanged');
 }

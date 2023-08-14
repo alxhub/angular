@@ -3,21 +3,20 @@
   Because of how the code is merged together using the doc regions,
   we need to indent the imports with the function below.
 */
-/* tslint:disable:align */
 // #docregion event
   import { fromEvent } from 'rxjs';
 
 // #enddocregion event
 
-export function docRegionEvent(console, document) {
+export function docRegionEvent(console: Console, document: Document) {
   // #docregion event
-  const el = document.getElementById('my-element');
+  const el = document.getElementById('my-element')!;
 
   // Create an Observable that will publish mouse movements
-  const mouseMoves = fromEvent(el, 'mousemove');
+  const mouseMoves = fromEvent<MouseEvent>(el, 'mousemove');
 
   // Subscribe to start listening for mouse-move events
-  const subscription = mouseMoves.subscribe((evt: MouseEvent) => {
+  const subscription = mouseMoves.subscribe(evt => {
     // Log coords of mouse movements
     console.log(`Coords: ${evt.clientX} X ${evt.clientY}`);
 

@@ -8,14 +8,11 @@
 
 
 import {TestBed} from '@angular/core/testing';
-import {RouterTestingModule} from '@angular/router/testing';
-import {Observable, Observer, of} from 'rxjs';
-import {every, mergeMap} from 'rxjs/operators';
+import {RouterModule} from '@angular/router';
 import {TestScheduler} from 'rxjs/testing';
 
 import {prioritizedGuardValue} from '../../src/operators/prioritized_guard_value';
 import {Router} from '../../src/router';
-import {UrlTree} from '../../src/url_tree';
 
 
 describe('prioritizedGuardValue operator', () => {
@@ -24,7 +21,7 @@ describe('prioritizedGuardValue operator', () => {
   const TF = {T: true, F: false};
 
   beforeEach(() => {
-    TestBed.configureTestingModule({imports: [RouterTestingModule]});
+    TestBed.configureTestingModule({imports: [RouterModule.forRoot([])]});
   });
   beforeEach(() => {
     testScheduler = new TestScheduler(assertDeepEquals);
@@ -173,6 +170,27 @@ describe('prioritizedGuardValue operator', () => {
           .toBe(
               expected,
               urlLookup,
+              /* an error here maybe */);
+    });
+  });
+
+  it('should ignore invalid values', () => {
+    testScheduler.run(({hot, cold, expectObservable}) => {
+      const resultLookup = {T: true, U: undefined, S: 'I am not a valid guard result' as any};
+
+      const a = cold('       ----------(T|)', resultLookup);
+      const b = cold('       -----(U|)', resultLookup);
+      const c = cold('       -----(S|)', resultLookup);
+      const d = cold('       --(T|)', resultLookup);
+
+      const source = hot('---o---', {o: [a, b, c, d]});
+
+      const expected = '  -------------T---';
+
+      expectObservable(source.pipe(prioritizedGuardValue()))
+          .toBe(
+              expected,
+              resultLookup,
               /* an error here maybe */);
     });
   });

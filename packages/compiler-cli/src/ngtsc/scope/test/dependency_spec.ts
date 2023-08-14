@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {ExternalExpr, ExternalReference} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {UnifiedModulesHost} from '../../core/api';
 import {absoluteFrom} from '../../file_system';
@@ -68,8 +68,7 @@ function makeTestEnv(
       const exportedSymbol = symbol.exports!.get(name as ts.__String);
       if (exportedSymbol !== undefined) {
         const decl = exportedSymbol.valueDeclaration as ts.ClassDeclaration;
-        const specifier = MODULE_FROM_NODE_MODULES_PATH.exec(sf.fileName)![1];
-        return new Reference(decl, {specifier, resolutionContext: sf.fileName});
+        return new Reference(decl);
       }
     }
     throw new Error('Class not found: ' + name);
@@ -143,10 +142,13 @@ runInEachFileSystem(() => {
       });
       const {Dir, ModuleB} = refs;
       const scope = resolver.resolve(ModuleB)!;
-      expect(scopeToRefs(scope)).toEqual([Dir]);
+      expect(scopeToRefs(scope).map(ref => ref.node)).toEqual([Dir.node]);
 
       // Explicitly verify that the directive has the correct owning module.
-      expect(scope.exported.directives[0].ref.ownedByModuleGuess).toBe('declaration');
+      expect(scope.exported.dependencies[0].ref.bestGuessOwningModule).toEqual({
+        specifier: 'declaration',
+        resolutionContext: ModuleB.node.getSourceFile().fileName,
+      });
     });
 
     it('should write correct aliases for deep dependencies', () => {
@@ -276,9 +278,8 @@ runInEachFileSystem(() => {
   });
 
   function scopeToRefs(scope: ExportScope): Reference<ClassDeclaration>[] {
-    const directives = scope.exported.directives.map(dir => dir.ref);
-    const pipes = scope.exported.pipes.map(pipe => pipe.ref);
-    return [...directives, ...pipes].sort((a, b) => a.debugName!.localeCompare(b.debugName!));
+    return scope.exported.dependencies.map(dep => dep.ref)
+        .sort((a, b) => a.debugName!.localeCompare(b.debugName!));
   }
 
   function getAlias(ref: Reference<ClassDeclaration>): ExternalReference|null {

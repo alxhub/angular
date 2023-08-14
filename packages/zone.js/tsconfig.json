@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es5",
+    "module": "esnext",
+    "target": "es2020",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
     "outDir": "build",
     "inlineSourceMap": true,
     "inlineSources": true,
@@ -9,6 +11,7 @@
     "noEmitOnError": false,
     "stripInternal": false,
     "strict": true,
+    "noImplicitOverride": true,
     "lib": [
       "es5",
       "dom",
@@ -17,7 +20,7 @@
       "es2015.symbol",
       "es2015.symbol.wellknown"
     ],
-    "typeRoots": ["node_modules/@types"],
+    "typeRoots": ["node_modules/@types"]
   },
   "exclude": [
     "node_modules",

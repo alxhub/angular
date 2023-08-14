@@ -6,13 +6,15 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import '@angular/compiler';
+
 import {ApplicationRef, enableProdMode} from '@angular/core';
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 
 import {bindAction, profile} from '../../util';
-import {buildTree, emptyTree} from '../util';
+import {buildTree, emptyTree, initTreeUtils} from '../util';
 
-import {AppModule, RootTreeComponent} from './tree';
+import {createAppModule, RootTreeComponent} from './tree';
 
 let tree: RootTreeComponent;
 let appRef: ApplicationRef;
@@ -30,12 +32,17 @@ function createDom() {
 function noop() {}
 
 function init() {
+  initTreeUtils();
   enableProdMode();
-  platformBrowserDynamic().bootstrapModule(AppModule).then((ref) => {
-    const injector = ref.injector;
-    appRef = injector.get(ApplicationRef);
 
+  const appModule = createAppModule();
+
+  platformBrowserDynamic().bootstrapModule(appModule).then((ref) => {
+    const injector = ref.injector;
+
+    appRef = injector.get(ApplicationRef);
     tree = appRef.components[0].instance;
+
     bindAction('#destroyDom', destroyDom);
     bindAction('#createDom', createDom);
     bindAction('#updateDomProfile', profile(createDom, noop, 'update'));

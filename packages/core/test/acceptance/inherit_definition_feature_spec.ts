@@ -8,43 +8,42 @@
 
 import {state, style, trigger} from '@angular/animations';
 import {Component, ContentChildren, Directive, EventEmitter, HostBinding, HostListener, Input, OnChanges, Output, QueryList, ViewChildren} from '@angular/core';
-import {ivyEnabled} from '@angular/core/src/ivy_switch';
 import {getDirectiveDef} from '@angular/core/src/render3/definition';
 import {TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {onlyInIvy} from '@angular/private/testing';
 
 describe('inheritance', () => {
-  onlyInIvy('View Engine does not provide this check')
-      .it('should throw when trying to inherit a component from a directive', () => {
-        @Component({
-          selector: 'my-comp',
-          template: '<div></div>',
-        })
-        class MyComponent {
-        }
+  it('should throw when trying to inherit a component from a directive', () => {
+    @Component({
+      selector: 'my-comp',
+      template: '<div></div>',
+    })
+    class MyComponent {
+    }
 
-        @Directive({
-          selector: '[my-dir]',
-        })
-        class MyDirective extends MyComponent {
-        }
+    @Directive({
+      selector: '[my-dir]',
+    })
+    class MyDirective extends MyComponent {
+    }
 
-        @Component({
-          template: `<div my-dir></div>`,
-        })
-        class App {
-        }
+    @Component({
+      template: `<div my-dir></div>`,
+    })
+    class App {
+    }
 
-        TestBed.configureTestingModule({
-          declarations: [App, MyComponent, MyDirective],
-        });
+    TestBed.configureTestingModule({
+      declarations: [App, MyComponent, MyDirective],
+    });
 
-        expect(() => {
-          TestBed.createComponent(App);
-        }).toThrowError('Directives cannot inherit Components');
-      });
+    expect(() => {
+      TestBed.createComponent(App);
+    })
+        .toThrowError(
+            'NG0903: Directives cannot inherit Components. Directive MyDirective is attempting to extend component MyComponent');
+  });
 
   describe('multiple children', () => {
     it('should ensure that multiple child classes don\'t cause multiple parent execution', () => {
@@ -111,18 +110,16 @@ describe('inheritance', () => {
       });
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges(false);  // Don't check for no changes (so that assertion does not need
-                                     // to worry about it.)
+      // to worry about it.)
 
       expect(log).toEqual([
         'Base.backgroundColor', 'Super.color', 'Sub1.height',  //
         'Base.backgroundColor', 'Super.color', 'Sub2.width',   //
       ]);
-      if (ivyEnabled) {
-        expect(getDirectiveDef(BaseDirective)!.hostVars).toEqual(2);
-        expect(getDirectiveDef(SuperDirective)!.hostVars).toEqual(4);
-        expect(getDirectiveDef(Sub1Directive)!.hostVars).toEqual(6);
-        expect(getDirectiveDef(Sub2Directive)!.hostVars).toEqual(6);
-      }
+      expect(getDirectiveDef(BaseDirective)!.hostVars).toEqual(2);
+      expect(getDirectiveDef(SuperDirective)!.hostVars).toEqual(4);
+      expect(getDirectiveDef(Sub1Directive)!.hostVars).toEqual(6);
+      expect(getDirectiveDef(Sub2Directive)!.hostVars).toEqual(6);
     });
   });
 
@@ -321,7 +318,7 @@ describe('inheritance', () => {
       }
 
       abstract class UndecoratedBase extends Base {
-        abstract input: any;
+        abstract override input: any;
         ngOnChanges() {
           changes++;
         }
@@ -329,7 +326,7 @@ describe('inheritance', () => {
 
       @Component({selector: 'my-comp', template: ''})
       class MyComp extends UndecoratedBase {
-        @Input() input: any;
+        @Input() override input: any;
       }
 
       @Component({template: '<my-comp [input]="value"></my-comp>'})
@@ -383,7 +380,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -424,7 +421,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -465,7 +462,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -506,7 +503,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -547,7 +544,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -588,7 +585,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -629,7 +626,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -684,7 +681,7 @@ describe('inheritance', () => {
           selector: '[sub-dir]',
         })
         class SubDirective extends SuperDirective {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -875,31 +872,28 @@ describe('inheritance', () => {
       });
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of a directive by another directive', () => {
@@ -943,7 +937,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -984,7 +978,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -1025,7 +1019,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -1066,7 +1060,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -1107,7 +1101,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -1148,7 +1142,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -1189,7 +1183,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -1245,7 +1239,7 @@ describe('inheritance', () => {
           selector: '[sub-dir]',
         })
         class SubDirective extends SuperDirective {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -1444,31 +1438,28 @@ describe('inheritance', () => {
       expect(foundQueryList!.length).toBe(2);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of a directive by a bare class then by another directive', () => {
@@ -1513,7 +1504,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -1554,7 +1545,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -1595,7 +1586,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -1636,7 +1627,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -1677,7 +1668,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -1718,7 +1709,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -1759,7 +1750,7 @@ describe('inheritance', () => {
           selector: '[subDir]',
         })
         class SubDirective extends SuperDirective {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -1817,7 +1808,7 @@ describe('inheritance', () => {
           selector: '[sub-dir]',
         })
         class SubDirective extends SuperDirective {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -2056,31 +2047,28 @@ describe('inheritance', () => {
       expect(foundChildDir2s!.length).toBe(2);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of bare super class by a component', () => {
@@ -2118,7 +2106,7 @@ describe('inheritance', () => {
       it('ngOnInit', () => {
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends SuperComponent {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -2159,7 +2147,7 @@ describe('inheritance', () => {
           selector: 'my-comp',
         })
         class MyComponent extends SuperComponent {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -2201,7 +2189,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -2243,7 +2231,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -2285,7 +2273,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -2327,7 +2315,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -2369,7 +2357,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -2422,7 +2410,7 @@ describe('inheritance', () => {
 
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends SuperComponent {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -2610,31 +2598,28 @@ describe('inheritance', () => {
       expect(foundQueryList!.length).toBe(2);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of a directive inherited by a component', () => {
@@ -2675,7 +2660,7 @@ describe('inheritance', () => {
       it('ngOnInit', () => {
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends SuperDirective {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -2717,7 +2702,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperDirective {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -2759,7 +2744,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperDirective {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -2801,7 +2786,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperDirective {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -2843,7 +2828,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperDirective {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -2885,7 +2870,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperDirective {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -2927,7 +2912,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperDirective {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -2983,7 +2968,7 @@ describe('inheritance', () => {
 
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends SuperDirective {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -3229,31 +3214,28 @@ describe('inheritance', () => {
       expect(foundQueryList!.length).toBe(5);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of a directive inherited by a bare class and then by a component', () => {
@@ -3296,7 +3278,7 @@ describe('inheritance', () => {
       it('ngOnInit', () => {
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends BareClass {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -3337,7 +3319,7 @@ describe('inheritance', () => {
           selector: 'my-comp',
         })
         class MyComponent extends BareClass {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -3379,7 +3361,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends BareClass {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -3421,7 +3403,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends BareClass {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -3463,7 +3445,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends BareClass {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -3505,7 +3487,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends BareClass {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -3547,7 +3529,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends BareClass {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -3605,7 +3587,7 @@ describe('inheritance', () => {
 
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends BareClass {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -3872,31 +3854,28 @@ describe('inheritance', () => {
       expect(foundQueryList!.length).toBe(5);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of a component inherited by a component', () => {
@@ -3941,7 +3920,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -3983,7 +3962,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -4025,7 +4004,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -4067,7 +4046,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -4109,7 +4088,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -4151,7 +4130,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -4193,7 +4172,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -4250,7 +4229,7 @@ describe('inheritance', () => {
 
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends SuperComponent {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -4329,96 +4308,94 @@ describe('inheritance', () => {
     });
 
     describe('animations', () => {
-      onlyInIvy('View Engine does not inherit `host` metadata from superclass')
-          .it('should work with inherited host bindings and animations', () => {
-            @Component({
-              selector: 'super-comp',
-              template: '<div>super-comp</div>',
-              host: {
-                '[@animation]': 'colorExp',
-              },
-              animations: [
-                trigger('animation', [state('color', style({color: 'red'}))]),
-              ],
-            })
-            class SuperComponent {
-              colorExp = 'color';
-            }
+      it('should work with inherited host bindings and animations', () => {
+        @Component({
+          selector: 'super-comp',
+          template: '<div>super-comp</div>',
+          host: {
+            '[@animation]': 'colorExp',
+          },
+          animations: [
+            trigger('animation', [state('color', style({color: 'red'}))]),
+          ],
+        })
+        class SuperComponent {
+          colorExp = 'color';
+        }
 
-            @Component({
-              selector: 'my-comp',
-              template: `<div>my-comp</div>`,
-            })
-            class MyComponent extends SuperComponent {
-            }
+        @Component({
+          selector: 'my-comp',
+          template: `<div>my-comp</div>`,
+        })
+        class MyComponent extends SuperComponent {
+        }
 
-            @Component({
-              template: '<my-comp>app</my-comp>',
-            })
-            class App {
-            }
+        @Component({
+          template: '<my-comp>app</my-comp>',
+        })
+        class App {
+        }
 
-            TestBed.configureTestingModule({
-              declarations: [App, MyComponent, SuperComponent],
-              imports: [NoopAnimationsModule],
-            });
-            const fixture = TestBed.createComponent(App);
-            fixture.detectChanges();
-            const queryResult = fixture.debugElement.query(By.css('my-comp'));
+        TestBed.configureTestingModule({
+          declarations: [App, MyComponent, SuperComponent],
+          imports: [NoopAnimationsModule],
+        });
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        const queryResult = fixture.debugElement.query(By.css('my-comp'));
 
-            expect(queryResult.nativeElement.style.color).toBe('red');
-          });
+        expect(queryResult.nativeElement.style.color).toBe('red');
+      });
 
-      onlyInIvy('View Engine does not inherit `host` metadata from superclass')
-          .it('should compose animations (from super class)', () => {
-            @Component({
-              selector: 'super-comp',
-              template: '...',
-              animations: [
-                trigger('animation1', [state('color', style({color: 'red'}))]),
-                trigger('animation2', [state('opacity', style({opacity: '0.5'}))]),
-              ],
-            })
-            class SuperComponent {
-            }
+      it('should compose animations (from super class)', () => {
+        @Component({
+          selector: 'super-comp',
+          template: '...',
+          animations: [
+            trigger('animation1', [state('color', style({color: 'red'}))]),
+            trigger('animation2', [state('opacity', style({opacity: '0.5'}))]),
+          ],
+        })
+        class SuperComponent {
+        }
 
-            @Component({
-              selector: 'my-comp',
-              template: '<div>my-comp</div>',
-              host: {
-                '[@animation1]': 'colorExp',
-                '[@animation2]': 'opacityExp',
-                '[@animation3]': 'bgExp',
-              },
-              animations: [
-                trigger('animation1', [state('color', style({color: 'blue'}))]),
-                trigger('animation3', [state('bg', style({backgroundColor: 'green'}))]),
-              ],
-            })
-            class MyComponent extends SuperComponent {
-              colorExp = 'color';
-              opacityExp = 'opacity';
-              bgExp = 'bg';
-            }
+        @Component({
+          selector: 'my-comp',
+          template: '<div>my-comp</div>',
+          host: {
+            '[@animation1]': 'colorExp',
+            '[@animation2]': 'opacityExp',
+            '[@animation3]': 'bgExp',
+          },
+          animations: [
+            trigger('animation1', [state('color', style({color: 'blue'}))]),
+            trigger('animation3', [state('bg', style({backgroundColor: 'green'}))]),
+          ],
+        })
+        class MyComponent extends SuperComponent {
+          colorExp = 'color';
+          opacityExp = 'opacity';
+          bgExp = 'bg';
+        }
 
-            @Component({
-              template: '<my-comp>app</my-comp>',
-            })
-            class App {
-            }
+        @Component({
+          template: '<my-comp>app</my-comp>',
+        })
+        class App {
+        }
 
-            TestBed.configureTestingModule({
-              declarations: [App, MyComponent, SuperComponent],
-              imports: [NoopAnimationsModule],
-            });
-            const fixture = TestBed.createComponent(App);
-            fixture.detectChanges();
-            const queryResult = fixture.debugElement.query(By.css('my-comp'));
+        TestBed.configureTestingModule({
+          declarations: [App, MyComponent, SuperComponent],
+          imports: [NoopAnimationsModule],
+        });
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        const queryResult = fixture.debugElement.query(By.css('my-comp'));
 
-            expect(queryResult.nativeElement.style.color).toBe('blue');
-            expect(queryResult.nativeElement.style.opacity).toBe('0.5');
-            expect(queryResult.nativeElement.style.backgroundColor).toBe('green');
-          });
+        expect(queryResult.nativeElement.style.color).toBe('blue');
+        expect(queryResult.nativeElement.style.opacity).toBe('0.5');
+        expect(queryResult.nativeElement.style.backgroundColor).toBe('green');
+      });
     });
 
     describe('host bindings (style related)', () => {
@@ -4623,7 +4600,7 @@ describe('inheritance', () => {
         focused() {
         }
 
-        clicked() {
+        override clicked() {
           events.push('ChildComponent.clicked');
         }
       }
@@ -4640,7 +4617,7 @@ describe('inheritance', () => {
         blurred() {
         }
 
-        clicked() {
+        override clicked() {
           events.push('GrandChildComponent.clicked');
         }
       }
@@ -4670,31 +4647,28 @@ describe('inheritance', () => {
           ['BaseComponent.clicked', 'ChildComponent.clicked', 'GrandChildComponent.clicked']);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 
   describe('of a component inherited by a bare class then by a component', () => {
@@ -4741,7 +4715,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngOnInit() {
+          override ngOnInit() {
             fired.push('sub init');
           }
         }
@@ -4783,7 +4757,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngDoCheck() {
+          override ngDoCheck() {
             fired.push('sub do check');
           }
         }
@@ -4825,7 +4799,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterContentInit() {
+          override ngAfterContentInit() {
             fired.push('sub after content init');
           }
         }
@@ -4867,7 +4841,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterContentChecked() {
+          override ngAfterContentChecked() {
             fired.push('sub after content checked');
           }
         }
@@ -4909,7 +4883,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterViewInit() {
+          override ngAfterViewInit() {
             fired.push('sub after view init');
           }
         }
@@ -4951,7 +4925,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngAfterViewChecked() {
+          override ngAfterViewChecked() {
             fired.push('sub after view checked');
           }
         }
@@ -4993,7 +4967,7 @@ describe('inheritance', () => {
           template: `<p>test</p>`,
         })
         class MyComponent extends SuperComponent {
-          ngOnDestroy() {
+          override ngOnDestroy() {
             fired.push('sub destroy');
           }
         }
@@ -5052,7 +5026,7 @@ describe('inheritance', () => {
 
         @Component({selector: 'my-comp', template: `<p>test</p>`})
         class MyComponent extends BareClass {
-          @Input() baz = '';
+          @Input() override baz = '';
 
           @Input() qux = '';
         }
@@ -5143,68 +5117,67 @@ describe('inheritance', () => {
     });
 
     describe('animations', () => {
-      onlyInIvy('View Engine does not inherit `host` metadata from superclass')
-          .it('should compose animations across multiple inheritance levels', () => {
-            @Component({
-              selector: 'super-comp',
-              template: '...',
-              host: {
-                '[@animation1]': 'colorExp',
-                '[@animation2]': 'opacityExp',
-              },
-              animations: [
-                trigger('animation1', [state('color', style({color: 'red'}))]),
-                trigger('animation2', [state('opacity', style({opacity: '0.5'}))]),
-              ],
-            })
-            class SuperComponent {
-              colorExp = 'color';
-              opacityExp = 'opacity';
-            }
+      it('should compose animations across multiple inheritance levels', () => {
+        @Component({
+          selector: 'super-comp',
+          template: '...',
+          host: {
+            '[@animation1]': 'colorExp',
+            '[@animation2]': 'opacityExp',
+          },
+          animations: [
+            trigger('animation1', [state('color', style({color: 'red'}))]),
+            trigger('animation2', [state('opacity', style({opacity: '0.5'}))]),
+          ],
+        })
+        class SuperComponent {
+          colorExp = 'color';
+          opacityExp = 'opacity';
+        }
 
-            @Component({
-              selector: 'intermediate-comp',
-              template: '...',
-            })
-            class IntermediateComponent extends SuperComponent {
-            }
+        @Component({
+          selector: 'intermediate-comp',
+          template: '...',
+        })
+        class IntermediateComponent extends SuperComponent {
+        }
 
-            @Component({
-              selector: 'my-comp',
-              template: '<div>my-comp</div>',
-              host: {
-                '[@animation1]': 'colorExp',
-                '[@animation3]': 'bgExp',
-              },
-              animations: [
-                trigger('animation1', [state('color', style({color: 'blue'}))]),
-                trigger('animation3', [state('bg', style({backgroundColor: 'green'}))]),
-              ],
-            })
-            class MyComponent extends IntermediateComponent {
-              colorExp = 'color';
-              opacityExp = 'opacity';
-              bgExp = 'bg';
-            }
+        @Component({
+          selector: 'my-comp',
+          template: '<div>my-comp</div>',
+          host: {
+            '[@animation1]': 'colorExp',
+            '[@animation3]': 'bgExp',
+          },
+          animations: [
+            trigger('animation1', [state('color', style({color: 'blue'}))]),
+            trigger('animation3', [state('bg', style({backgroundColor: 'green'}))]),
+          ],
+        })
+        class MyComponent extends IntermediateComponent {
+          override colorExp = 'color';
+          override opacityExp = 'opacity';
+          bgExp = 'bg';
+        }
 
-            @Component({
-              template: '<my-comp>app</my-comp>',
-            })
-            class App {
-            }
+        @Component({
+          template: '<my-comp>app</my-comp>',
+        })
+        class App {
+        }
 
-            TestBed.configureTestingModule({
-              declarations: [App, MyComponent, IntermediateComponent, SuperComponent],
-              imports: [NoopAnimationsModule],
-            });
-            const fixture = TestBed.createComponent(App);
-            fixture.detectChanges();
-            const queryResult = fixture.debugElement.query(By.css('my-comp'));
+        TestBed.configureTestingModule({
+          declarations: [App, MyComponent, IntermediateComponent, SuperComponent],
+          imports: [NoopAnimationsModule],
+        });
+        const fixture = TestBed.createComponent(App);
+        fixture.detectChanges();
+        const queryResult = fixture.debugElement.query(By.css('my-comp'));
 
-            expect(queryResult.nativeElement.style.color).toBe('blue');
-            expect(queryResult.nativeElement.style.opacity).toBe('0.5');
-            expect(queryResult.nativeElement.style.backgroundColor).toBe('green');
-          });
+        expect(queryResult.nativeElement.style.color).toBe('blue');
+        expect(queryResult.nativeElement.style.opacity).toBe('0.5');
+        expect(queryResult.nativeElement.style.backgroundColor).toBe('green');
+      });
     });
     describe('host bindings (style related)', () => {
       // TODO: sub and super HostBinding same property but different bindings
@@ -5395,30 +5368,27 @@ describe('inheritance', () => {
       expect(foundQueryList!.length).toBe(5);
     });
 
-    xdescribe(
-        'what happens when...',
-        () => {
-            // TODO: sub has Input and super has Output on same property
-            // TODO: sub has Input and super has HostBinding on same property
-            // TODO: sub has Input and super has ViewChild on same property
-            // TODO: sub has Input and super has ViewChildren on same property
-            // TODO: sub has Input and super has ContentChild on same property
-            // TODO: sub has Input and super has ContentChildren on same property
-            // TODO: sub has Output and super has HostBinding on same property
-            // TODO: sub has Output and super has ViewChild on same property
-            // TODO: sub has Output and super has ViewChildren on same property
-            // TODO: sub has Output and super has ContentChild on same property
-            // TODO: sub has Output and super has ContentChildren on same property
-            // TODO: sub has HostBinding and super has ViewChild on same property
-            // TODO: sub has HostBinding and super has ViewChildren on same property
-            // TODO: sub has HostBinding and super has ContentChild on same property
-            // TODO: sub has HostBinding and super has ContentChildren on same property
-            // TODO: sub has ViewChild and super has ViewChildren on same property
-            // TODO: sub has ViewChild and super has ContentChild on same property
-            // TODO: sub has ViewChild and super has ContentChildren on same property
-            // TODO: sub has ViewChildren and super has ContentChild on same property
-            // TODO: sub has ViewChildren and super has ContentChildren on same property
-            // TODO: sub has ContentChild and super has ContentChildren on same property
-        });
+
+    // TODO: sub has Input and super has Output on same property
+    // TODO: sub has Input and super has HostBinding on same property
+    // TODO: sub has Input and super has ViewChild on same property
+    // TODO: sub has Input and super has ViewChildren on same property
+    // TODO: sub has Input and super has ContentChild on same property
+    // TODO: sub has Input and super has ContentChildren on same property
+    // TODO: sub has Output and super has HostBinding on same property
+    // TODO: sub has Output and super has ViewChild on same property
+    // TODO: sub has Output and super has ViewChildren on same property
+    // TODO: sub has Output and super has ContentChild on same property
+    // TODO: sub has Output and super has ContentChildren on same property
+    // TODO: sub has HostBinding and super has ViewChild on same property
+    // TODO: sub has HostBinding and super has ViewChildren on same property
+    // TODO: sub has HostBinding and super has ContentChild on same property
+    // TODO: sub has HostBinding and super has ContentChildren on same property
+    // TODO: sub has ViewChild and super has ViewChildren on same property
+    // TODO: sub has ViewChild and super has ContentChild on same property
+    // TODO: sub has ViewChild and super has ContentChildren on same property
+    // TODO: sub has ViewChildren and super has ContentChild on same property
+    // TODO: sub has ViewChildren and super has ContentChildren on same property
+    // TODO: sub has ContentChild and super has ContentChildren on same property
   });
 });

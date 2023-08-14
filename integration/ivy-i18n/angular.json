@@ -20,13 +20,8 @@
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.app.json",
-            "assets": [
-              "src/favicon.ico",
-              "src/assets"
-            ],
-            "styles": [
-              "src/styles.css"
-            ],
+            "assets": ["src/favicon.ico", "src/assets"],
+            "styles": ["src/styles.css"],
             "scripts": [],
             "progress": false
           },
@@ -35,16 +30,9 @@
               "tsConfig": "tsconfig.view-engine.json"
             },
             "production": {
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.prod.ts"
-                }
-              ],
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": true,
-              "extractCss": true,
               "namedChunks": false,
               "extractLicenses": true,
               "vendorChunk": false,
@@ -75,7 +63,6 @@
               "optimization": false,
               "outputHashing": "all",
               "sourceMap": true,
-              "extractCss": true,
               "namedChunks": false,
               "aot": true,
               "extractLicenses": true,
@@ -87,7 +74,6 @@
               "optimization": false,
               "outputHashing": "all",
               "sourceMap": true,
-              "extractCss": true,
               "namedChunks": false,
               "aot": true,
               "extractLicenses": true,
@@ -105,16 +91,12 @@
             "production": {
               "browserTarget": "cli-hello-world-ivy-i18n:build:production"
             },
-            "ci": {
-              "progress": false
-            },
+            "ci": {},
             "ci-production": {
-              "browserTarget": "cli-hello-world-ivy-i18n:build:production",
-              "progress": false
+              "browserTarget": "cli-hello-world-ivy-i18n:build:production"
             },
             "runtime-translations": {
-              "browserTarget": "cli-hello-world-ivy-i18n:build:runtime-translations",
-              "progress": false
+              "browserTarget": "cli-hello-world-ivy-i18n:build:runtime-translations"
             }
           }
         },
@@ -133,13 +115,8 @@
             "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.spec.json",
             "karmaConfig": "karma.conf.js",
-            "assets": [
-              "src/favicon.ico",
-              "src/assets"
-            ],
-            "styles": [
-              "src/styles.css"
-            ],
+            "assets": ["src/favicon.ico", "src/assets"],
+            "styles": ["src/styles.css"],
             "scripts": [],
             "progress": false,
             "watch": false
@@ -148,14 +125,8 @@
         "lint": {
           "builder": "@angular-devkit/build-angular:tslint",
           "options": {
-            "tsConfig": [
-              "tsconfig.app.json",
-              "tsconfig.spec.json",
-              "e2e/tsconfig.json"
-            ],
-            "exclude": [
-              "**/node_modules/**"
-            ]
+            "tsConfig": ["tsconfig.app.json", "tsconfig.spec.json", "e2e/tsconfig.json"],
+            "exclude": ["**/node_modules/**"]
           }
         },
         "e2e": {
@@ -199,6 +170,5 @@
         }
       }
     }
-  },
-  "defaultProject": "cli-hello-world-ivy-i18n"
+  }
 }

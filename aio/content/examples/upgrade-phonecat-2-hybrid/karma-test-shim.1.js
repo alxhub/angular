@@ -20,7 +20,7 @@ function isSpecFile(path) {
 }
 
 function isBuiltFile(path) {
-  return isJsFile(path) && (path.substr(0, builtPath.length) == builtPath);
+  return isJsFile(path) && (path.slice(0, builtPath.length) == builtPath);
 }
 
 var allSpecFiles = Object.keys(window.__karma__.files)
@@ -33,16 +33,16 @@ System.config({
   packages: { 'testing': { main: 'index.js', defaultExtension: 'js' } },
 
   // Assume npm: is set in `paths` in systemjs.config
-  // Map the angular testing umd bundles
+  // Map the angular testing bundles
   map: {
-    '@angular/core/testing': 'npm:@angular/core/bundles/core-testing.umd.js',
-    '@angular/common/testing': 'npm:@angular/common/bundles/common-testing.umd.js',
-    '@angular/common/http/testing': 'npm:@angular/common/bundles/common-http-testing.umd.js',
-    '@angular/compiler/testing': 'npm:@angular/compiler/bundles/compiler-testing.umd.js',
-    '@angular/platform-browser/testing': 'npm:@angular/platform-browser/bundles/platform-browser-testing.umd.js',
-    '@angular/platform-browser-dynamic/testing': 'npm:@angular/platform-browser-dynamic/bundles/platform-browser-dynamic-testing.umd.js',
-    '@angular/router/testing': 'npm:@angular/router/bundles/router-testing.umd.js',
-    '@angular/forms/testing': 'npm:@angular/forms/bundles/forms-testing.umd.js',
+    '@angular/core/testing': 'npm:@angular/core/fesm2022/testing.mjs',
+    '@angular/common/testing': 'npm:@angular/common/fesm2022/testing.mjs',
+    '@angular/common/http/testing': 'npm:@angular/common/fesm2022/http/testing.mjs',
+    '@angular/compiler/testing': 'npm:@angular/compiler/fesm2022/testing.mjs',
+    '@angular/platform-browser/testing': 'npm:@angular/platform-browser/fesm2022/testing.mjs',
+    '@angular/platform-browser-dynamic/testing': 'npm:@angular/platform-browser-dynamic/fesm2022/testing.mjs',
+    '@angular/router/testing': 'npm:@angular/router/fesm2022/testing.mjs',
+    '@angular/forms/testing': 'npm:@angular/forms/fesm2022/testing.mjs',
   },
 });
 

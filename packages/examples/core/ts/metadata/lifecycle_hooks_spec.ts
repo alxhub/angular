@@ -106,8 +106,7 @@ describe('lifecycle hooks examples', () => {
     // #docregion OnChanges
     @Component({selector: 'my-cmp', template: `...`})
     class MyComponent implements OnChanges {
-      // TODO(issue/24571): remove '!'.
-      @Input() prop!: number;
+      @Input() prop: number = 0;
 
       ngOnChanges(changes: SimpleChanges) {
         // changes.prop contains the old and the new value...
@@ -133,7 +132,6 @@ function createAndLogComponent(clazz: Type<any>, inputs: string[] = []): any[] {
   class ParentComponent {
   }
 
-
   const fixture = TestBed.configureTestingModule({declarations: [ParentComponent, clazz]})
                       .createComponent(ParentComponent);
   fixture.detectChanges();
@@ -143,7 +141,12 @@ function createAndLogComponent(clazz: Type<any>, inputs: string[] = []): any[] {
 
 function createLoggingSpiesFromProto(clazz: Type<any>, log: any[]) {
   const proto = clazz.prototype;
-  Object.keys(proto).forEach((method) => {
+  // For ES2015+ classes, members are not enumerable in the prototype.
+  Object.getOwnPropertyNames(proto).forEach((method) => {
+    if (method === 'constructor') {
+      return;
+    }
+
     proto[method] = (...args: any[]) => {
       log.push([method, args]);
     };

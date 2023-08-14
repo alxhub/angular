@@ -6,11 +6,21 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {merge, Observable, Observer, Subscription} from 'rxjs';
+import {share} from 'rxjs/operators';
+
+import {inject, InjectionToken} from '../di';
+import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {EventEmitter} from '../event_emitter';
 import {global} from '../util/global';
 import {noop} from '../util/noop';
 import {getNativeRequestAnimationFrame} from '../util/raf';
 
+import {AsyncStackTaggingZoneSpec} from './async-stack-tagging';
+
+// The below is needed as otherwise a number of targets fail in G3 due to:
+// ERROR - [JSC_UNDEFINED_VARIABLE] variable Zone is undeclared
+declare const Zone: any;
 
 /**
  * An injectable service for executing work inside or outside of the Angular zone.
@@ -119,14 +129,15 @@ export class NgZone {
    */
   readonly onError: EventEmitter<any> = new EventEmitter(false);
 
-
   constructor({
     enableLongStackTrace = false,
     shouldCoalesceEventChangeDetection = false,
     shouldCoalesceRunChangeDetection = false
   }) {
     if (typeof Zone == 'undefined') {
-      throw new Error(`In this configuration Angular requires Zone.js`);
+      throw new RuntimeError(
+          RuntimeErrorCode.MISSING_ZONEJS,
+          ngDevMode && `In this configuration Angular requires Zone.js`);
     }
 
     Zone.assertZonePatched();
@@ -134,6 +145,15 @@ export class NgZone {
     self._nesting = 0;
 
     self._outer = self._inner = Zone.current;
+
+    // AsyncStackTaggingZoneSpec provides `linked stack traces` to show
+    // where the async operation is scheduled. For more details, refer
+    // to this article, https://developer.chrome.com/blog/devtools-better-angular-debugging/
+    // And we only import this AsyncStackTaggingZoneSpec in development mode,
+    // in the production mode, the AsyncStackTaggingZoneSpec will be tree shaken away.
+    if (ngDevMode) {
+      self._inner = self._inner.fork(new AsyncStackTaggingZoneSpec('Angular'));
+    }
 
     if ((Zone as any)['TaskTrackingZoneSpec']) {
       self._inner = self._inner.fork(new ((Zone as any)['TaskTrackingZoneSpec'] as any));
@@ -152,19 +172,33 @@ export class NgZone {
     forkInnerZoneWithAngularBehavior(self);
   }
 
+  /**
+    This method checks whether the method call happens within an Angular Zone instance.
+  */
   static isInAngularZone(): boolean {
-    return Zone.current.get('isAngularZone') === true;
+    // Zone needs to be checked, because this method might be called even when NoopNgZone is used.
+    return typeof Zone !== 'undefined' && Zone.current.get('isAngularZone') === true;
   }
 
+  /**
+    Assures that the method is called within the Angular Zone, otherwise throws an error.
+  */
   static assertInAngularZone(): void {
     if (!NgZone.isInAngularZone()) {
-      throw new Error('Expected to be in Angular Zone, but it is not!');
+      throw new RuntimeError(
+          RuntimeErrorCode.UNEXPECTED_ZONE_STATE,
+          ngDevMode && 'Expected to be in Angular Zone, but it is not!');
     }
   }
 
+  /**
+    Assures that the method is called outside of the Angular Zone, otherwise throws an error.
+  */
   static assertNotInAngularZone(): void {
     if (NgZone.isInAngularZone()) {
-      throw new Error('Expected to not be in Angular Zone, but it is!');
+      throw new RuntimeError(
+          RuntimeErrorCode.UNEXPECTED_ZONE_STATE,
+          ngDevMode && 'Expected to not be in Angular Zone, but it is!');
     }
   }
 
@@ -463,13 +497,13 @@ function onLeave(zone: NgZonePrivate) {
  * to framework to perform rendering.
  */
 export class NoopNgZone implements NgZone {
-  readonly hasPendingMicrotasks: boolean = false;
-  readonly hasPendingMacrotasks: boolean = false;
-  readonly isStable: boolean = true;
-  readonly onUnstable: EventEmitter<any> = new EventEmitter();
-  readonly onMicrotaskEmpty: EventEmitter<any> = new EventEmitter();
-  readonly onStable: EventEmitter<any> = new EventEmitter();
-  readonly onError: EventEmitter<any> = new EventEmitter();
+  readonly hasPendingMicrotasks = false;
+  readonly hasPendingMacrotasks = false;
+  readonly isStable = true;
+  readonly onUnstable = new EventEmitter<any>();
+  readonly onMicrotaskEmpty = new EventEmitter<any>();
+  readonly onStable = new EventEmitter<any>();
+  readonly onError = new EventEmitter<any>();
 
   run<T>(fn: (...args: any[]) => T, applyThis?: any, applyArgs?: any): T {
     return fn.apply(applyThis, applyArgs);
@@ -486,4 +520,68 @@ export class NoopNgZone implements NgZone {
   runTask<T>(fn: (...args: any[]) => T, applyThis?: any, applyArgs?: any, name?: string): T {
     return fn.apply(applyThis, applyArgs);
   }
+}
+
+/**
+ * Token used to drive ApplicationRef.isStable
+ *
+ * TODO: This should be moved entirely to NgZone (as a breaking change) so it can be tree-shakeable
+ * for `NoopNgZone` which is always just an `Observable` of `true`. Additionally, we should consider
+ * whether the property on `NgZone` should be `Observable` or `Signal`.
+ */
+export const ZONE_IS_STABLE_OBSERVABLE =
+    new InjectionToken<Observable<boolean>>(ngDevMode ? 'isStable Observable' : '', {
+      providedIn: 'root',
+      // TODO(atscott): Replace this with a suitable default like `new
+      // BehaviorSubject(true).asObservable`. Again, long term this won't exist on ApplicationRef at
+      // all but until we can remove it, we need a default value zoneless.
+      factory: isStableFactory,
+    });
+
+export function isStableFactory() {
+  const zone = inject(NgZone);
+  let _stable = true;
+  const isCurrentlyStable = new Observable<boolean>((observer: Observer<boolean>) => {
+    _stable = zone.isStable && !zone.hasPendingMacrotasks && !zone.hasPendingMicrotasks;
+    zone.runOutsideAngular(() => {
+      observer.next(_stable);
+      observer.complete();
+    });
+  });
+
+  const isStable = new Observable<boolean>((observer: Observer<boolean>) => {
+    // Create the subscription to onStable outside the Angular Zone so that
+    // the callback is run outside the Angular Zone.
+    let stableSub: Subscription;
+    zone.runOutsideAngular(() => {
+      stableSub = zone.onStable.subscribe(() => {
+        NgZone.assertNotInAngularZone();
+
+        // Check whether there are no pending macro/micro tasks in the next tick
+        // to allow for NgZone to update the state.
+        queueMicrotask(() => {
+          if (!_stable && !zone.hasPendingMacrotasks && !zone.hasPendingMicrotasks) {
+            _stable = true;
+            observer.next(true);
+          }
+        });
+      });
+    });
+
+    const unstableSub: Subscription = zone.onUnstable.subscribe(() => {
+      NgZone.assertInAngularZone();
+      if (_stable) {
+        _stable = false;
+        zone.runOutsideAngular(() => {
+          observer.next(false);
+        });
+      }
+    });
+
+    return () => {
+      stableSub.unsubscribe();
+      unstableSub.unsubscribe();
+    };
+  });
+  return merge(isCurrentlyStable, isStable.pipe(share()));
 }

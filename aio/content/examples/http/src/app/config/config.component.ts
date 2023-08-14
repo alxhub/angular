@@ -7,13 +7,13 @@ import { Config, ConfigService } from './config.service';
   selector: 'app-config',
   templateUrl: './config.component.html',
   providers: [ ConfigService ],
-  styles: ['.error {color: red;}']
+  styles: ['.error { color: #b30000; }']
 })
 export class ConfigComponent {
   error: any;
-  headers: string[];
+  headers: string[] = [];
   // #docregion v2
-  config: Config;
+  config: Config | undefined;
 
   // #enddocregion v2
   constructor(private configService: ConfigService) {}
@@ -21,17 +21,17 @@ export class ConfigComponent {
   clear() {
     this.config = undefined;
     this.error = undefined;
-    this.headers = undefined;
+    this.headers = [];
   }
 
   // #docregion v1, v2
   showConfig() {
     this.configService.getConfig()
   // #enddocregion v1, v2
-      .subscribe(
-        (data: Config) => this.config = { ...data }, // success path
-        error => this.error = error // error path
-      );
+      .subscribe({
+        next: (data: Config) => this.config = { ...data }, // success path
+        error: error => this.error = error, // error path
+      });
   }
 
   showConfig_v1() {
@@ -64,12 +64,12 @@ export class ConfigComponent {
           `${key}: ${resp.headers.get(key)}`);
 
         // access the body directly, which is typed as `Config`.
-        this.config = { ... resp.body };
+        this.config = { ...resp.body! };
       });
   }
 // #enddocregion showConfigResponse
   makeError() {
-    this.configService.makeIntentionalError().subscribe(null, error => this.error = error );
+    this.configService.makeIntentionalError().subscribe({ error: error => this.error = error.message });
   }
 
   getType(val: any): string {

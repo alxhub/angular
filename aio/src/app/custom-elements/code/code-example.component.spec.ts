@@ -33,7 +33,7 @@ describe('CodeExampleComponent', () => {
   });
 
   it('should be able to capture the code snippet provided in content', () => {
-    expect(codeExampleComponent.aioCode.code.trim()).toBe(`const foo = "bar";`);
+    expect(codeExampleComponent.aioCode.code.toString().trim()).toBe('const foo = "bar";');
   });
 
   it('should clean-up the projected code snippet once captured', () => {
@@ -43,20 +43,19 @@ describe('CodeExampleComponent', () => {
   it('should change aio-code classes based on header presence', () => {
     expect(codeExampleComponent.header).toBe('Great Example');
     expect(fixture.nativeElement.querySelector('header')).toBeTruthy();
-    expect(codeExampleComponent.classes).toEqual({
-      'headed-code': true,
-      'simple-code': false
-    });
+
+    const aioCodeEl = fixture.nativeElement.querySelector('aio-code');
+
+    expect(aioCodeEl).toHaveClass('headed-code');
+    expect(aioCodeEl).not.toHaveClass('simple-code');
 
     codeExampleComponent.header = '';
     fixture.detectChanges();
 
     expect(codeExampleComponent.header).toBe('');
     expect(fixture.nativeElement.querySelector('header')).toBeFalsy();
-    expect(codeExampleComponent.classes).toEqual({
-      'headed-code': false,
-      'simple-code': true
-    });
+    expect(aioCodeEl).not.toHaveClass('headed-code');
+    expect(aioCodeEl).toHaveClass('simple-code');
   });
 
   it('should set avoidFile class if path has .avoid.', () => {
@@ -98,7 +97,7 @@ describe('CodeExampleComponent', () => {
   `
 })
 class HostComponent {
-  code = `const foo = "bar";`;
+  code = 'const foo = "bar";';
   header = 'Great Example';
   path = 'code-path';
   hidecopy: boolean | string = false;

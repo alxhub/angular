@@ -6,10 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {discardPeriodicTasks, fakeAsync, flush, flushMicrotasks, tick} from '@angular/core/testing';
-import {beforeEach, describe, inject, it, Log} from '@angular/core/testing/src/testing_internal';
+import {discardPeriodicTasks, fakeAsync, flush, flushMicrotasks, inject, tick} from '@angular/core/testing';
+import {Log} from '@angular/core/testing/src/testing_internal';
 import {EventManager} from '@angular/platform-browser';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
 
 const resolvedPromise = Promise.resolve(null);
 const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'];
@@ -26,7 +25,7 @@ const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'
     });
 
     it('should pass arguments to the wrapped function', () => {
-      fakeAsync((foo: any /** TODO #9100 */, bar: any /** TODO #9100 */) => {
+      fakeAsync((foo: string, bar: string) => {
         expect(foo).toEqual('foo');
         expect(bar).toEqual('bar');
       })('foo', 'bar');
@@ -34,13 +33,13 @@ const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'
 
     it('should work with inject()',
        fakeAsync(inject([EventManager], (eventManager: EventManager) => {
-         expect(eventManager).toBeAnInstanceOf(EventManager);
+         expect(eventManager).toBeInstanceOf(EventManager);
        })));
 
     it('should throw on nested calls', () => {
       expect(() => {
         fakeAsync(() => {
-          fakeAsync((): any /** TODO #9100 */ => null)();
+          fakeAsync((): null => null)();
         })();
       }).toThrowError('fakeAsync() calls can not be nested');
     });
@@ -76,7 +75,7 @@ const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'
          }));
 
       it('should run chained thens', fakeAsync(() => {
-           const log = new Log();
+           const log = new Log<number>();
 
            resolvedPromise.then((_) => log.add(1)).then((_) => log.add(2));
 
@@ -87,7 +86,7 @@ const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'
          }));
 
       it('should run Promise created in Promise', fakeAsync(() => {
-           const log = new Log();
+           const log = new Log<number>();
 
            resolvedPromise.then((_) => {
              log.add(1);
@@ -245,9 +244,7 @@ const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'
 
       it('should be able to cancel periodic timers from a callback', fakeAsync(() => {
            let cycles = 0;
-           let id: any /** TODO #9100 */;
-
-           id = setInterval(() => {
+           const id = setInterval(() => {
              cycles++;
              clearInterval(id);
            }, 10);
@@ -261,7 +258,7 @@ const ProxyZoneSpec: {assertPresent: () => void} = (Zone as any)['ProxyZoneSpec'
 
       it('should clear periodic timers', fakeAsync(() => {
            let cycles = 0;
-           const id = setInterval(() => {
+           setInterval(() => {
              cycles++;
            }, 10);
 

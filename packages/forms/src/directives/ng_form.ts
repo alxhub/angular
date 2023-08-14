@@ -6,9 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AfterViewInit, Directive, EventEmitter, forwardRef, Inject, Input, Optional, Self} from '@angular/core';
+import {AfterViewInit, Directive, EventEmitter, forwardRef, Inject, Input, Optional, Provider, Self} from '@angular/core';
 
-import {AbstractControl, FormControl, FormGroup, FormHooks} from '../model';
+import {AbstractControl, FormHooks} from '../model/abstract_model';
+import {FormControl} from '../model/form_control';
+import {FormGroup} from '../model/form_group';
 import {composeAsyncValidators, composeValidators, NG_ASYNC_VALIDATORS, NG_VALIDATORS} from '../validators';
 
 import {ControlContainer} from './control_container';
@@ -16,15 +18,15 @@ import {Form} from './form_interface';
 import {NgControl} from './ng_control';
 import {NgModel} from './ng_model';
 import {NgModelGroup} from './ng_model_group';
-import {removeListItem, setUpControl, setUpFormContainer, syncPendingControls} from './shared';
+import {CALL_SET_DISABLED_STATE, SetDisabledStateOption, setUpControl, setUpFormContainer, syncPendingControls} from './shared';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from './validators';
 
-export const formDirectiveProvider: any = {
+const formDirectiveProvider: Provider = {
   provide: ControlContainer,
   useExisting: forwardRef(() => NgForm)
 };
 
-const resolvedPromise = (() => Promise.resolve(null))();
+const resolvedPromise = (() => Promise.resolve())();
 
 /**
  * @description
@@ -104,7 +106,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
    */
   public readonly submitted: boolean = false;
 
-  private _directives: NgModel[] = [];
+  private _directives = new Set<NgModel>();
 
   /**
    * @description
@@ -133,7 +135,9 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
   constructor(
       @Optional() @Self() @Inject(NG_VALIDATORS) validators: (Validator|ValidatorFn)[],
       @Optional() @Self() @Inject(NG_ASYNC_VALIDATORS) asyncValidators:
-          (AsyncValidator|AsyncValidatorFn)[]) {
+          (AsyncValidator|AsyncValidatorFn)[],
+      @Optional() @Inject(CALL_SET_DISABLED_STATE) private callSetDisabledState?:
+          SetDisabledStateOption) {
     super();
     this.form =
         new FormGroup({}, composeValidators(validators), composeAsyncValidators(asyncValidators));
@@ -148,7 +152,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
    * @description
    * The directive instance.
    */
-  get formDirective(): Form {
+  override get formDirective(): Form {
     return this;
   }
 
@@ -156,7 +160,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
    * @description
    * The internal `FormGroup` instance.
    */
-  get control(): FormGroup {
+  override get control(): FormGroup {
     return this.form;
   }
 
@@ -165,7 +169,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
    * Returns an array representing the path to this group. Because this directive
    * always lives at the top level of a form, it is always an empty array.
    */
-  get path(): string[] {
+  override get path(): string[] {
     return [];
   }
 
@@ -189,9 +193,9 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
       const container = this._findContainer(dir.path);
       (dir as {control: FormControl}).control =
           <FormControl>container.registerControl(dir.name, dir.control);
-      setUpControl(dir.control, dir);
+      setUpControl(dir.control, dir, this.callSetDisabledState);
       dir.control.updateValueAndValidity({emitEvent: false});
-      this._directives.push(dir);
+      this._directives.add(dir);
     });
   }
 
@@ -217,7 +221,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
       if (container) {
         container.removeControl(dir.name);
       }
-      removeListItem(this._directives, dir);
+      this._directives.delete(dir);
     });
   }
 
@@ -296,7 +300,9 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
     (this as {submitted: boolean}).submitted = true;
     syncPendingControls(this.form, this._directives);
     this.ngSubmit.emit($event);
-    return false;
+    // Forms with `method="dialog"` have some special behavior
+    // that won't reload the page and that shouldn't be prevented.
+    return ($event?.target as HTMLFormElement | null)?.method === 'dialog';
   }
 
   /**
@@ -324,8 +330,7 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
     }
   }
 
-  /** @internal */
-  _findContainer(path: string[]): FormGroup {
+  private _findContainer(path: string[]): FormGroup {
     path.pop();
     return path.length ? <FormGroup>this.form.get(path) : this.form;
   }

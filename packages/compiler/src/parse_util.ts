@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import * as chars from './chars';
-import {CompileIdentifierMetadata, identifierModuleUrl, identifierName} from './compile_metadata';
+import {stringify} from './util';
 
 export class ParseLocation {
   constructor(
@@ -29,7 +29,8 @@ export class ParseLocation {
       const ch = source.charCodeAt(offset);
       if (ch == chars.$LF) {
         line--;
-        const priorLine = source.substr(0, offset - 1).lastIndexOf(String.fromCharCode(chars.$LF));
+        const priorLine =
+            source.substring(0, offset - 1).lastIndexOf(String.fromCharCode(chars.$LF));
         col = priorLine > 0 ? offset - priorLine : offset;
       } else {
         col--;
@@ -154,15 +155,6 @@ export class ParseError {
   }
 }
 
-export function typeSourceSpan(kind: string, type: CompileIdentifierMetadata): ParseSourceSpan {
-  const moduleUrl = identifierModuleUrl(type);
-  const sourceFileName = moduleUrl != null ? `in ${kind} ${identifierName(type)} in ${moduleUrl}` :
-                                             `in ${kind} ${identifierName(type)}`;
-  const sourceFile = new ParseSourceFile('', sourceFileName);
-  return new ParseSourceSpan(
-      new ParseLocation(sourceFile, -1, -1, -1), new ParseLocation(sourceFile, -1, -1, -1));
-}
-
 /**
  * Generates Source Span object for a given R3 Type for JIT mode.
  *
@@ -177,4 +169,39 @@ export function r3JitTypeSourceSpan(
   const sourceFile = new ParseSourceFile('', sourceFileName);
   return new ParseSourceSpan(
       new ParseLocation(sourceFile, -1, -1, -1), new ParseLocation(sourceFile, -1, -1, -1));
+}
+
+let _anonymousTypeIndex = 0;
+
+export function identifierName(compileIdentifier: CompileIdentifierMetadata|null|undefined): string|
+    null {
+  if (!compileIdentifier || !compileIdentifier.reference) {
+    return null;
+  }
+  const ref = compileIdentifier.reference;
+  if (ref['__anonymousType']) {
+    return ref['__anonymousType'];
+  }
+  if (ref['__forward_ref__']) {
+    // We do not want to try to stringify a `forwardRef()` function because that would cause the
+    // inner function to be evaluated too early, defeating the whole point of the `forwardRef`.
+    return '__forward_ref__';
+  }
+  let identifier = stringify(ref);
+  if (identifier.indexOf('(') >= 0) {
+    // case: anonymous functions!
+    identifier = `anonymous_${_anonymousTypeIndex++}`;
+    ref['__anonymousType'] = identifier;
+  } else {
+    identifier = sanitizeIdentifier(identifier);
+  }
+  return identifier;
+}
+
+export interface CompileIdentifierMetadata {
+  reference: any;
+}
+
+export function sanitizeIdentifier(name: string): string {
+  return name.replace(/\W/g, '_');
 }

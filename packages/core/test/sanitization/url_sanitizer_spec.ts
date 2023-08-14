@@ -6,16 +6,14 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as t from '@angular/core/testing/src/testing_internal';
-
-import {_sanitizeUrl, sanitizeSrcset} from '../../src/sanitization/url_sanitizer';
+import {_sanitizeUrl} from '../../src/sanitization/url_sanitizer';
 
 {
-  t.describe('URL sanitizer', () => {
+  describe('URL sanitizer', () => {
     let logMsgs: string[];
     let originalLog: (msg: any) => any;
 
-    t.beforeEach(() => {
+    beforeEach(() => {
       logMsgs = [];
       originalLog = console.warn;  // Monkey patch DOM.log.
       console.warn = (msg: any) => logMsgs.push(msg);
@@ -25,12 +23,12 @@ import {_sanitizeUrl, sanitizeSrcset} from '../../src/sanitization/url_sanitizer
       console.warn = originalLog;
     });
 
-    t.it('reports unsafe URLs', () => {
-      t.expect(_sanitizeUrl('javascript:evil()')).toBe('unsafe:javascript:evil()');
-      t.expect(logMsgs.join('\n')).toMatch(/sanitizing unsafe URL value/);
+    it('reports unsafe URLs', () => {
+      expect(_sanitizeUrl('javascript:evil()')).toBe('unsafe:javascript:evil()');
+      expect(logMsgs.join('\n')).toMatch(/sanitizing unsafe URL value/);
     });
 
-    t.describe('valid URLs', () => {
+    describe('valid URLs', () => {
       const validUrls = [
         '',
         'http://abc',
@@ -49,17 +47,18 @@ import {_sanitizeUrl, sanitizeSrcset} from '../../src/sanitization/url_sanitizer
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',  // Truncated.
         'data:video/webm;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
         'data:audio/opus;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
+        'unknown-scheme:abc',
       ];
       for (const url of validUrls) {
-        t.it(`valid ${url}`, () => t.expect(_sanitizeUrl(url)).toEqual(url));
+        it(`valid ${url}`, () => expect(_sanitizeUrl(url)).toEqual(url));
       }
     });
 
-    t.describe('invalid URLs', () => {
+    describe('invalid URLs', () => {
       const invalidUrls = [
         'javascript:evil()',
         'JavaScript:abc',
-        'evilNewProtocol:abc',
+        ' javascript:abc',
         ' \n Java\n Script:abc',
         '&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;',
         '&#106&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;',
@@ -68,51 +67,9 @@ import {_sanitizeUrl, sanitizeSrcset} from '../../src/sanitization/url_sanitizer
         '&#x6A&#x61&#x76&#x61&#x73&#x63&#x72&#x69&#x70&#x74&#x3A;',
         'jav&#x09;ascript:alert();',
         'jav\u0000ascript:alert();',
-        'data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
-        'data:,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
-        'data:iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
-        'data:text/javascript;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
-        'data:application/x-msdownload;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/',
       ];
       for (const url of invalidUrls) {
-        t.it(`valid ${url}`, () => t.expect(_sanitizeUrl(url)).toMatch(/^unsafe:/));
-      }
-    });
-
-    t.describe('valid srcsets', () => {
-      const validSrcsets = [
-        '',
-        'http://angular.io/images/test.png',
-        'http://angular.io/images/test.png, http://angular.io/images/test.png',
-        'http://angular.io/images/test.png, http://angular.io/images/test.png, http://angular.io/images/test.png',
-        'http://angular.io/images/test.png 2x',
-        'http://angular.io/images/test.png 2x, http://angular.io/images/test.png 3x',
-        'http://angular.io/images/test.png 1.5x',
-        'http://angular.io/images/test.png 1.25x',
-        'http://angular.io/images/test.png 200w, http://angular.io/images/test.png 300w',
-        'https://angular.io/images/test.png, http://angular.io/images/test.png',
-        'http://angular.io:80/images/test.png, http://angular.io:8080/images/test.png',
-        'http://www.angular.io:80/images/test.png, http://www.angular.io:8080/images/test.png',
-        'https://angular.io/images/test.png, https://angular.io/images/test.png',
-        '//angular.io/images/test.png, //angular.io/images/test.png',
-        '/images/test.png, /images/test.png',
-        'images/test.png, images/test.png',
-        'http://angular.io/images/test.png?12345, http://angular.io/images/test.png?12345',
-        'http://angular.io/images/test.png?maxage, http://angular.io/images/test.png?maxage',
-        'http://angular.io/images/test.png?maxage=234, http://angular.io/images/test.png?maxage=234',
-      ];
-      for (const srcset of validSrcsets) {
-        t.it(`valid ${srcset}`, () => t.expect(sanitizeSrcset(srcset)).toEqual(srcset));
-      }
-    });
-
-    t.describe('invalid srcsets', () => {
-      const invalidSrcsets = [
-        'ht:tp://angular.io/images/test.png',
-        'http://angular.io/images/test.png, ht:tp://angular.io/images/test.png',
-      ];
-      for (const srcset of invalidSrcsets) {
-        t.it(`valid ${srcset}`, () => t.expect(sanitizeSrcset(srcset)).toMatch(/unsafe:/));
+        it(`valid ${url}`, () => expect(_sanitizeUrl(url)).toMatch(/^unsafe:/));
       }
     });
   });

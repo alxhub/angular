@@ -5,13 +5,28 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as ts from 'typescript';
+import ts from 'typescript';
+
 import {absoluteFrom, getSourceFileOrError} from '../../file_system';
 import {runInEachFileSystem} from '../../file_system/testing';
 import {getDeclaration, makeProgram} from '../../testing';
-import {ClassMember, ClassMemberKind, CtorParameter, DeclarationKind, TypeValueReferenceKind} from '../src/host';
+import {ClassMember, ClassMemberKind, CtorParameter, TypeValueReferenceKind} from '../src/host';
 import {TypeScriptReflectionHost} from '../src/typescript';
 import {isNamedClassDeclaration} from '../src/util';
+
+function findFirstImportDeclaration(node: ts.Node): ts.ImportDeclaration|null {
+  let found: ts.ImportDeclaration|null = null;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isImportDeclaration(node)) {
+      found = node;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(node);
+  return found;
+}
 
 runInEachFileSystem(() => {
   describe('reflector', () => {
@@ -153,6 +168,30 @@ runInEachFileSystem(() => {
         expectParameter(args[0], 'bar', {moduleName: './bar', name: 'Bar'});
       });
 
+      it('should reflect an argument from a namespace declarations', () => {
+        const {program} = makeProgram([{
+          name: _('/entry.ts'),
+          contents: `
+            export declare class Bar {}
+            declare namespace i1 {
+              export {
+                Bar,
+              }
+            }
+
+            class Foo {
+              constructor(bar: i1.Bar) {}
+            }
+        `
+        }]);
+        const clazz = getDeclaration(program, _('/entry.ts'), 'Foo', isNamedClassDeclaration);
+        const checker = program.getTypeChecker();
+        const host = new TypeScriptReflectionHost(checker);
+        const args = host.getConstructorParameters(clazz)!;
+        expect(args.length).toBe(1);
+        expectParameter(args[0], 'bar', 'i1.Bar');
+      });
+
       it('should reflect an argument from a default import', () => {
         const {program} = makeProgram([
           {
@@ -258,9 +297,12 @@ runInEachFileSystem(() => {
         }
         const Target = foo.type.typeName;
         const directImport = host.getImportOfIdentifier(Target);
+        const sf = foo.getSourceFile();
+        const importDecl = findFirstImportDeclaration(sf);
         expect(directImport).toEqual({
           name: 'Target',
           from: 'absolute',
+          node: importDecl as ts.ImportDeclaration,
         });
       });
 
@@ -285,9 +327,12 @@ runInEachFileSystem(() => {
         }
         const Target = foo.type.typeName.right;
         const namespacedImport = host.getImportOfIdentifier(Target);
+        const sf = foo.getSourceFile();
+        const importDecl = findFirstImportDeclaration(sf);
         expect(namespacedImport).toEqual({
           name: 'Target',
           from: 'absolute',
+          node: importDecl as ts.ImportDeclaration,
         });
       });
     });
@@ -360,11 +405,8 @@ runInEachFileSystem(() => {
         const Target = foo.type.typeName;
         const decl = host.getDeclarationOfIdentifier(Target);
         expect(decl).toEqual({
-          kind: DeclarationKind.Concrete,
           node: targetDecl,
-          known: null,
           viaModule: 'absolute',
-          identity: null,
         });
       });
 
@@ -393,10 +435,7 @@ runInEachFileSystem(() => {
         const decl = host.getDeclarationOfIdentifier(Target);
         expect(decl).toEqual({
           node: targetDecl,
-          known: null,
           viaModule: 'absolute',
-          identity: null,
-          kind: DeclarationKind.Concrete
         });
       });
     });

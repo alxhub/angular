@@ -5,12 +5,12 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {AbsoluteFsPath, FileSystem, PathManipulation, ReadonlyFileSystem} from '../../../src/ngtsc/file_system';
 import {initMockFileSystem} from '../../../src/ngtsc/file_system/testing';
 import {loadStandardTestFiles, loadTestDirectory, NgtscTestCompilerHost} from '../../../src/ngtsc/testing';
-import {Diagnostics, performCompilation} from '../../../src/perform_compile';
+import {performCompilation} from '../../../src/perform_compile';
 import {CompilerOptions} from '../../../src/transformers/api';
 
 import {ConfigOptions} from './get_compliance_tests';
@@ -114,10 +114,9 @@ function getOptions(
     target: ts.ScriptTarget.ES2015,
     newLine: ts.NewLineKind.LineFeed,
     module: ts.ModuleKind.ES2015,
-    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    moduleResolution: ts.ModuleResolutionKind.Node10,
     typeRoots: ['node_modules/@types'],
     ...convertedCompilerOptions.options,
-    enableIvy: true,
     enableI18nLegacyMessageIdFormat: false,
     ...angularCompilerOptions,
   };
@@ -150,7 +149,7 @@ function monkeyPatchReadFile(fs: ReadonlyFileSystem): void {
  *
  * @param diagnostics The diagnostics to parse.
  */
-function parseDiagnostics(diagnostics: Diagnostics): string[] {
+function parseDiagnostics(diagnostics: readonly ts.Diagnostic[]): string[] {
   return diagnostics.map(diagnostic => {
     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
     if ('file' in diagnostic && diagnostic.file !== undefined && diagnostic.start !== undefined) {

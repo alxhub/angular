@@ -75,7 +75,7 @@ export class Provider4Component {
 export class EvenBetterLogger extends Logger {
   constructor(private userService: UserService) { super(); }
 
-  log(message: string) {
+  override log(message: string) {
     const name = this.userService.user.name;
     super.log(`Message to ${name}: ${message}`);
   }
@@ -154,7 +154,6 @@ export class Provider6bComponent {
 
 //////////////////////////////////////////
 
-// #docregion silent-logger
 // An object in the shape of the logger service
 function silentLoggerFn() {}
 
@@ -162,15 +161,12 @@ export const SilentLogger = {
   logs: ['Silent logger says "Shhhhh!". Provided via "useValue"'],
   log: silentLoggerFn
 };
-// #enddocregion silent-logger
 
 @Component({
   selector: 'provider-7',
   template,
   providers:
-    // #docregion providers-7
     [{ provide: Logger, useValue: SilentLogger }]
-    // #enddocregion providers-7
 })
 export class Provider7Component {
   log: string;
@@ -210,7 +206,7 @@ export class Provider8Component {
   // #enddocregion providers-9
 })
 export class Provider9Component implements OnInit {
-  log: string;
+  log = '';
   /*
    // #docregion provider-9-ctor-interface
    // Can't inject using the interface as the parameter type
@@ -237,7 +233,7 @@ const someMessage = 'Hello from the injected logger';
   providers: [{ provide: Logger, useValue: null }]
 })
 export class Provider10Component implements OnInit {
-  log: string;
+  log = '';
   constructor(@Optional() private logger?: Logger) {
     if (this.logger) {
       this.logger.log(someMessage);

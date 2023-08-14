@@ -7,7 +7,7 @@ describe('Component Communication Cookbook Tests', () => {
   describe('Parent-to-child communication', () => {
     // #docregion parent-to-child
     // ...
-    const heroNames = ['Dr IQ', 'Magneta', 'Bombasto'];
+    const heroNames = ['Dr. IQ', 'Magneta', 'Bombasto'];
     const masterName = 'Master';
 
     it('should pass properties to children properly', async () => {
@@ -30,7 +30,7 @@ describe('Component Communication Cookbook Tests', () => {
     // ...
     it('should display trimmed, non-empty names', async () => {
       const nonEmptyNameIndex = 0;
-      const nonEmptyName = '"Dr IQ"';
+      const nonEmptyName = '"Dr. IQ"';
       const parent = element(by.tagName('app-name-parent'));
       const hero = parent.all(by.tagName('app-name-child')).get(nonEmptyNameIndex);
 
@@ -66,7 +66,7 @@ describe('Component Communication Cookbook Tests', () => {
       expect(await actual.logs.get(0).getText()).toBe(initialLog);
     });
 
-    it('should set expected values after clicking \'Minor\' twice', async () => {
+    it("should set expected values after clicking 'Minor' twice", async () => {
       const repoTag = element(by.tagName('app-version-parent'));
       const newMinorButton = repoTag.all(by.tagName('button')).get(0);
 
@@ -83,7 +83,7 @@ describe('Component Communication Cookbook Tests', () => {
       expect(await actual.logs.get(2).getText()).toBe(logAfter2Minor);
     });
 
-    it('should set expected values after clicking \'Major\' once', async () => {
+    it("should set expected values after clicking 'Major' once", async () => {
       const repoTag = element(by.tagName('app-version-parent'));
       const newMajorButton = repoTag.all(by.tagName('button')).get(1);
 

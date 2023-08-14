@@ -10,15 +10,78 @@ import * as e from '../../../src/expression_parser/ast';
 import {Lexer} from '../../../src/expression_parser/lexer';
 import {Parser} from '../../../src/expression_parser/parser';
 import * as html from '../../../src/ml_parser/ast';
-import {HtmlParser, ParseTreeResult} from '../../../src/ml_parser/html_parser';
+import {HtmlParser} from '../../../src/ml_parser/html_parser';
 import {WhitespaceVisitor} from '../../../src/ml_parser/html_whitespaces';
 import {DEFAULT_INTERPOLATION_CONFIG, InterpolationConfig} from '../../../src/ml_parser/interpolation_config';
+import {ParseTreeResult} from '../../../src/ml_parser/parser';
 import * as a from '../../../src/render3/r3_ast';
 import {htmlAstToRender3Ast, Render3ParseResult} from '../../../src/render3/r3_template_transform';
 import {I18nMetaVisitor} from '../../../src/render3/view/i18n/meta';
 import {LEADING_TRIVIA_CHARS} from '../../../src/render3/view/template';
+import {ElementSchemaRegistry} from '../../../src/schema/element_schema_registry';
 import {BindingParser} from '../../../src/template_parser/binding_parser';
-import {MockSchemaRegistry} from '../../../testing';
+
+class MockSchemaRegistry implements ElementSchemaRegistry {
+  constructor(
+      public existingProperties: {[key: string]: boolean},
+      public attrPropMapping: {[key: string]: string},
+      public existingElements: {[key: string]: boolean}, public invalidProperties: Array<string>,
+      public invalidAttributes: Array<string>) {}
+
+  hasProperty(tagName: string, property: string, schemas: any[]): boolean {
+    const value = this.existingProperties[property];
+    return value === void 0 ? true : value;
+  }
+
+  hasElement(tagName: string, schemaMetas: any[]): boolean {
+    const value = this.existingElements[tagName.toLowerCase()];
+    return value === void 0 ? true : value;
+  }
+
+  allKnownElementNames(): string[] {
+    return Object.keys(this.existingElements);
+  }
+
+  securityContext(selector: string, property: string, isAttribute: boolean): any {
+    return 0;
+  }
+
+  getMappedPropName(attrName: string): string {
+    return this.attrPropMapping[attrName] || attrName;
+  }
+
+  getDefaultComponentElementName(): string {
+    return 'ng-component';
+  }
+
+  validateProperty(name: string): {error: boolean, msg?: string} {
+    if (this.invalidProperties.indexOf(name) > -1) {
+      return {error: true, msg: `Binding to property '${name}' is disallowed for security reasons`};
+    } else {
+      return {error: false};
+    }
+  }
+
+  validateAttribute(name: string): {error: boolean, msg?: string} {
+    if (this.invalidAttributes.indexOf(name) > -1) {
+      return {
+        error: true,
+        msg: `Binding to attribute '${name}' is disallowed for security reasons`
+      };
+    } else {
+      return {error: false};
+    }
+  }
+
+  normalizeAnimationStyleProperty(propName: string): string {
+    return propName;
+  }
+  normalizeAnimationStyleValue(camelCaseProp: string, userProvidedProp: string, val: string|number):
+      {error: string, value: string} {
+    return {error: null!, value: val.toString()};
+  }
+}
+
 
 export function findExpression(tmpl: a.Node[], expr: string): e.AST|null {
   const res = tmpl.reduce((found, node) => {
@@ -78,16 +141,18 @@ export function toStringExpression(expr: e.AST): string {
 }
 
 // Parse an html string to IVY specific info
-export function parseR3(
-    input: string,
-    options: {preserveWhitespaces?: boolean,
-              leadingTriviaChars?: string[],
-              ignoreError?: boolean} = {}): Render3ParseResult {
+export function parseR3(input: string, options: {
+  preserveWhitespaces?: boolean,
+  leadingTriviaChars?: string[],
+  ignoreError?: boolean,
+  enabledBlockTypes?: string[],
+} = {}): Render3ParseResult {
   const htmlParser = new HtmlParser();
-
+  const enabledBlockTypes = new Set(options.enabledBlockTypes ?? []);
   const parseResult = htmlParser.parse(input, 'path:://to/template', {
     tokenizeExpansionForms: true,
     leadingTriviaChars: options.leadingTriviaChars ?? LEADING_TRIVIA_CHARS,
+    tokenizeBlocks: enabledBlockTypes.size > 0,
   });
 
   if (parseResult.errors.length > 0 && !options.ignoreError) {
@@ -106,8 +171,9 @@ export function parseR3(
       {'invalidProp': false}, {'mappedAttr': 'mappedProp'}, {'unknown': false, 'un-known': false},
       ['onEvent'], ['onEvent']);
   const bindingParser =
-      new BindingParser(expressionParser, DEFAULT_INTERPOLATION_CONFIG, schemaRegistry, null, []);
-  const r3Result = htmlAstToRender3Ast(htmlNodes, bindingParser);
+      new BindingParser(expressionParser, DEFAULT_INTERPOLATION_CONFIG, schemaRegistry, []);
+  const r3Result = htmlAstToRender3Ast(
+      htmlNodes, bindingParser, {collectCommentNodes: false, enabledBlockTypes});
 
   if (r3Result.errors.length > 0 && !options.ignoreError) {
     const msg = r3Result.errors.map(e => e.toString()).join('\n');

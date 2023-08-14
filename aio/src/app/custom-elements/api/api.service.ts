@@ -14,6 +14,7 @@ export interface ApiItem {
   docType: string;
   stability: string;
   securityRisk: boolean;
+  developerPreview: boolean;
 }
 
 export interface ApiSection {
@@ -30,7 +31,7 @@ export class ApiService implements OnDestroy {
   private apiBase = DOC_CONTENT_URL_PREFIX + 'api/';
   private apiListJsonDefault = 'api-list.json';
   private firstTime = true;
-  private onDestroy = new Subject();
+  private onDestroy = new Subject<void>();
   private sectionsSubject = new ReplaySubject<ApiSection[]>(1);
   private _sections = this.sectionsSubject.pipe(takeUntil(this.onDestroy));
 
@@ -77,13 +78,13 @@ export class ApiService implements OnDestroy {
         takeUntil(this.onDestroy),
         tap(() => this.logger.log(`Got API sections from ${url}`)),
       )
-      .subscribe(
-        sections => this.sectionsSubject.next(sections),
-        (err: HttpErrorResponse) => {
+      .subscribe({
+        next: sections => this.sectionsSubject.next(sections),
+        error: (err: HttpErrorResponse) => {
           // TODO: handle error
           this.logger.error(err);
           throw err; // rethrow for now.
-        }
-      );
+        },
+      });
   }
 }

@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as t from '@babel/types';
+import {types as t} from '@babel/core';
 
 import {assert} from '../../../../linker';
 import {AstFactory, BinaryOperator, LeadingComment, ObjectLiteralProperty, SourceMapRange, TemplateLiteral, VariableDeclarationType} from '../../../../src/ngtsc/translator';
@@ -39,6 +39,7 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
     switch (operator) {
       case '&&':
       case '||':
+      case '??':
         return t.logicalExpression(operator, leftOperand, rightOperand);
       default:
         return t.binaryExpression(operator, leftOperand, rightOperand);
@@ -80,6 +81,10 @@ export class BabelAstFactory implements AstFactory<t.Statement, t.Expression> {
   createIdentifier = t.identifier;
 
   createIfStatement = t.ifStatement;
+
+  createDynamicImport(url: string): t.Expression {
+    return this.createCallExpression(t.import(), [t.stringLiteral(url)], false /* pure */);
+  }
 
   createLiteral(value: string|number|boolean|null|undefined): t.Expression {
     if (typeof value === 'string') {

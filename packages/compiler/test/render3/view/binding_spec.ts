@@ -30,51 +30,82 @@ class IdentityInputMapping implements InputOutputPropertySet {
   }
 }
 
-function makeSelectorMatcher(): SelectorMatcher<DirectiveMeta> {
-  const matcher = new SelectorMatcher<DirectiveMeta>();
-  matcher.addSelectables(CssSelector.parse('[ngFor][ngForOf]'), {
-    name: 'NgFor',
-    exportAs: null,
-    inputs: new IdentityInputMapping(['ngForOf']),
-    outputs: new IdentityInputMapping([]),
-    isComponent: false,
-    isStructural: true,
-    selector: '[ngFor][ngForOf]',
-  });
-  matcher.addSelectables(CssSelector.parse('[dir]'), {
-    name: 'Dir',
-    exportAs: null,
-    inputs: new IdentityInputMapping([]),
-    outputs: new IdentityInputMapping([]),
-    isComponent: false,
-    isStructural: false,
-    selector: '[dir]'
-  });
-  matcher.addSelectables(CssSelector.parse('[hasOutput]'), {
-    name: 'HasOutput',
-    exportAs: null,
-    inputs: new IdentityInputMapping([]),
-    outputs: new IdentityInputMapping(['outputBinding']),
-    isComponent: false,
-    isStructural: false,
-    selector: '[hasOutput]'
-  });
-  matcher.addSelectables(CssSelector.parse('[hasInput]'), {
-    name: 'HasInput',
-    exportAs: null,
-    inputs: new IdentityInputMapping(['inputBinding']),
-    outputs: new IdentityInputMapping([]),
-    isComponent: false,
-    isStructural: false,
-    selector: '[hasInput]'
-  });
+function makeSelectorMatcher(): SelectorMatcher<DirectiveMeta[]> {
+  const matcher = new SelectorMatcher<DirectiveMeta[]>();
+  matcher.addSelectables(CssSelector.parse('[ngFor][ngForOf]'), [{
+                           name: 'NgFor',
+                           exportAs: null,
+                           inputs: new IdentityInputMapping(['ngForOf']),
+                           outputs: new IdentityInputMapping([]),
+                           isComponent: false,
+                           isStructural: true,
+                           selector: '[ngFor][ngForOf]',
+                           animationTriggerNames: null,
+                         }]);
+  matcher.addSelectables(CssSelector.parse('[dir]'), [{
+                           name: 'Dir',
+                           exportAs: null,
+                           inputs: new IdentityInputMapping([]),
+                           outputs: new IdentityInputMapping([]),
+                           isComponent: false,
+                           isStructural: false,
+                           selector: '[dir]',
+                           animationTriggerNames: null,
+                         }]);
+  matcher.addSelectables(CssSelector.parse('[hasOutput]'), [{
+                           name: 'HasOutput',
+                           exportAs: null,
+                           inputs: new IdentityInputMapping([]),
+                           outputs: new IdentityInputMapping(['outputBinding']),
+                           isComponent: false,
+                           isStructural: false,
+                           selector: '[hasOutput]',
+                           animationTriggerNames: null,
+                         }]);
+  matcher.addSelectables(CssSelector.parse('[hasInput]'), [{
+                           name: 'HasInput',
+                           exportAs: null,
+                           inputs: new IdentityInputMapping(['inputBinding']),
+                           outputs: new IdentityInputMapping([]),
+                           isComponent: false,
+                           isStructural: false,
+                           selector: '[hasInput]',
+                           animationTriggerNames: null,
+                         }]);
+  matcher.addSelectables(CssSelector.parse('[sameSelectorAsInput]'), [{
+                           name: 'SameSelectorAsInput',
+                           exportAs: null,
+                           inputs: new IdentityInputMapping(['sameSelectorAsInput']),
+                           outputs: new IdentityInputMapping([]),
+                           isComponent: false,
+                           isStructural: false,
+                           selector: '[sameSelectorAsInput]',
+                           animationTriggerNames: null,
+                         }]);
+
+  const simpleDirectives = ['a', 'b', 'c', 'd', 'e', 'f'];
+  const deferBlockDirectives = ['loading', 'error', 'placeholder'];
+  for (const dir of [...simpleDirectives, ...deferBlockDirectives]) {
+    const name = dir[0].toUpperCase() + dir.slice(1).toLowerCase();
+    matcher.addSelectables(CssSelector.parse(`[${dir}]`), [{
+                             name: `Dir${name}`,
+                             exportAs: null,
+                             inputs: new IdentityInputMapping([]),
+                             outputs: new IdentityInputMapping([]),
+                             isComponent: false,
+                             isStructural: true,
+                             selector: `[${dir}]`,
+                             animationTriggerNames: null,
+                           }]);
+  }
+
   return matcher;
 }
 
 describe('t2 binding', () => {
   it('should bind a simple template', () => {
     const template = parseTemplate('<div *ngFor="let item of items">{{item.name}}</div>', '', {});
-    const binder = new R3TargetBinder(new SelectorMatcher<DirectiveMeta>());
+    const binder = new R3TargetBinder(new SelectorMatcher<DirectiveMeta[]>());
     const res = binder.bind({template: template.nodes});
 
     const itemBinding =
@@ -104,16 +135,17 @@ describe('t2 binding', () => {
 
   it('should match directives on namespaced elements', () => {
     const template = parseTemplate('<svg><text dir>SVG</text></svg>', '', {});
-    const matcher = new SelectorMatcher<DirectiveMeta>();
-    matcher.addSelectables(CssSelector.parse('text[dir]'), {
-      name: 'Dir',
-      exportAs: null,
-      inputs: new IdentityInputMapping([]),
-      outputs: new IdentityInputMapping([]),
-      isComponent: false,
-      isStructural: false,
-      selector: 'text[dir]'
-    });
+    const matcher = new SelectorMatcher<DirectiveMeta[]>();
+    matcher.addSelectables(CssSelector.parse('text[dir]'), [{
+                             name: 'Dir',
+                             exportAs: null,
+                             inputs: new IdentityInputMapping([]),
+                             outputs: new IdentityInputMapping([]),
+                             isComponent: false,
+                             isStructural: false,
+                             selector: 'text[dir]',
+                             animationTriggerNames: null,
+                           }]);
     const binder = new R3TargetBinder(matcher);
     const res = binder.bind({template: template.nodes});
     const svgNode = template.nodes[0] as a.Element;
@@ -171,6 +203,17 @@ describe('t2 binding', () => {
       expect(consumer.name).toBe('HasInput');
     });
 
+    it('should not match directives on attribute bindings with the same name as an input', () => {
+      const template =
+          parseTemplate('<ng-template [attr.sameSelectorAsInput]="123"></ng-template>', '', {});
+      const binder = new R3TargetBinder(makeSelectorMatcher());
+      const res = binder.bind({template: template.nodes});
+      const el = template.nodes[0] as a.Element;
+      const input = el.inputs[0];
+      const consumer = res.getConsumerOfBinding(input);
+      expect(consumer).toEqual(el);
+    });
+
     it('should bind to the encompassing node when no directive input is matched', () => {
       const template = parseTemplate('<span dir></span>', '', {});
       const binder = new R3TargetBinder(makeSelectorMatcher());
@@ -202,6 +245,136 @@ describe('t2 binding', () => {
       const attr = el.outputs[0];
       const consumer = res.getConsumerOfBinding(attr);
       expect(consumer).toEqual(el);
+    });
+  });
+
+  describe('extracting defer blocks info', () => {
+    const templateOptions = {enabledBlockTypes: new Set(['defer'])};
+
+    it('should extract top-level defer blocks', () => {
+      const template = parseTemplate(
+          `
+            {#defer}<cmp-a />{/defer}
+            {#defer}<cmp-b />{/defer}
+            <cmp-c />
+          `,
+          '', templateOptions);
+      const binder = new R3TargetBinder(makeSelectorMatcher());
+      const bound = binder.bind({template: template.nodes});
+      const deferBlocks = bound.getDeferBlocks();
+      expect(deferBlocks.length).toBe(2);
+    });
+
+    it('should extract nested defer blocks and associated pipes', () => {
+      const template = parseTemplate(
+          `
+            {#defer}
+              {{ name | pipeA }}
+              {#defer}{{ name | pipeB }}{/defer}
+            {:loading}
+              {#defer}{{ name | pipeC }}{/defer}
+              {{ name | loading }}
+            {:placeholder}
+              {#defer}{{ name | pipeD }}{/defer}
+              {{ name | placeholder }}
+            {:error}
+              {#defer}{{ name | pipeE }}{/defer}
+              {{ name | error }}
+            {/defer}
+            {{ name | pipeF }}
+          `,
+          '', templateOptions);
+      const binder = new R3TargetBinder(makeSelectorMatcher());
+      const bound = binder.bind({template: template.nodes});
+      const deferBlocks = bound.getDeferBlocks();
+
+      expect(deferBlocks.length).toBe(5);
+
+      // Record all pipes used within :placeholder, :loading and :error sub-blocks,
+      // also record pipes used outside of any {#defer} blocks.
+      expect(bound.getEagerlyUsedPipes()).toEqual(['placeholder', 'loading', 'error', 'pipeF']);
+
+      // Record *all* pipes from the template, including the ones from {#defer} blocks.
+      expect(bound.getUsedPipes()).toEqual([
+        'pipeA', 'pipeB', 'pipeD', 'placeholder', 'pipeC', 'loading', 'pipeE', 'error', 'pipeF'
+      ]);
+    });
+
+    it('should identify pipes used after a nested defer block as being lazy', () => {
+      const template = parseTemplate(
+          `
+          {#defer}
+            {{ name | pipeA }}
+            {#defer}{{ name | pipeB }}{/defer}
+            {{ name | pipeC }}
+          {/defer}
+          `,
+          '', templateOptions);
+      const binder = new R3TargetBinder(makeSelectorMatcher());
+      const bound = binder.bind({template: template.nodes});
+
+      expect(bound.getUsedPipes()).toEqual(['pipeA', 'pipeB', 'pipeC']);
+      expect(bound.getEagerlyUsedPipes()).toEqual([]);
+    });
+
+    it('should extract nested defer blocks and associated directives', () => {
+      const template = parseTemplate(
+          `
+            {#defer}
+              <img *a />
+              {#defer}<img *b />{/defer}
+            {:loading}
+              {#defer}<img *c />{/defer}
+              <img *loading />
+            {:placeholder}
+              {#defer}<img *d />{/defer}
+              <img *placeholder />
+            {:error}
+              {#defer}<img *e />{/defer}
+              <img *error />
+            {/defer}
+            <img *f />
+          `,
+          '', templateOptions);
+      const binder = new R3TargetBinder(makeSelectorMatcher());
+      const bound = binder.bind({template: template.nodes});
+      const deferBlocks = bound.getDeferBlocks();
+
+      expect(deferBlocks.length).toBe(5);
+
+      // Record all directives used within :placeholder, :loading and :error sub-blocks,
+      // also record directives used outside of any {#defer} blocks.
+      const eagerDirs = bound.getEagerlyUsedDirectives();
+      expect(eagerDirs.length).toBe(4);
+      expect(eagerDirs.map(dir => dir.name)).toEqual([
+        'DirPlaceholder', 'DirLoading', 'DirError', 'DirF'
+      ]);
+
+      // Record *all* directives from the template, including the ones from {#defer} blocks.
+      const allDirs = bound.getUsedDirectives();
+      expect(allDirs.length).toBe(9);
+      expect(allDirs.map(dir => dir.name)).toEqual([
+        'DirA', 'DirB', 'DirD', 'DirPlaceholder', 'DirC', 'DirLoading', 'DirE', 'DirError', 'DirF'
+      ]);
+    });
+
+    it('should identify directives used after a nested defer block as being lazy', () => {
+      const template = parseTemplate(
+          `
+          {#defer}
+            <img *a />
+            {#defer}<img *b />{/defer}
+            <img *c />
+          {/defer}
+          `,
+          '', templateOptions);
+      const binder = new R3TargetBinder(makeSelectorMatcher());
+      const bound = binder.bind({template: template.nodes});
+      const allDirs = bound.getUsedDirectives().map(dir => dir.name);
+      const eagerDirs = bound.getEagerlyUsedDirectives().map(dir => dir.name);
+
+      expect(allDirs).toEqual(['DirA', 'DirB', 'DirC']);
+      expect(eagerDirs).toEqual([]);
     });
   });
 

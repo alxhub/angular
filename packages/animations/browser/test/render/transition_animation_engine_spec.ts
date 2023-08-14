@@ -20,7 +20,7 @@ const DEFAULT_NAMESPACE_ID = 'id';
 (function() {
 const driver = new MockAnimationDriver();
 
-// these tests are only mean't to be run within the DOM
+// these tests are only meant to be run within the DOM
 if (isNode) return;
 
 describe('TransitionAnimationEngine', () => {
@@ -67,7 +67,10 @@ describe('TransitionAnimationEngine', () => {
       expect(engine.players.length).toEqual(1);
 
       const player = MockAnimationDriver.log.pop() as MockAnimationPlayer;
-      expect(player.keyframes).toEqual([{height: '0px', offset: 0}, {height: '100px', offset: 1}]);
+      expect(player.keyframes).toEqual([
+        new Map<string, string|number>([['height', '0px'], ['offset', 0]]),
+        new Map<string, string|number>([['height', '100px'], ['offset', 1]])
+      ]);
     });
 
     it('should not queue an animation if the property value has not changed at all', () => {
@@ -110,13 +113,20 @@ describe('TransitionAnimationEngine', () => {
       registerTrigger(element, engine, trig);
       setProperty(element, engine, 'myTrigger', 'value');
       engine.flush();
+      expect(engine.statesByElement.has(element))
+          .toBe(true, 'Expected element data to be defined.');
+      expect(engine.playersByElement.has(element))
+          .toBe(true, 'Expected element data to be defined.');
 
-      expect(engine.elementContainsData(DEFAULT_NAMESPACE_ID, element)).toBeTruthy();
-
-      engine.removeNode(DEFAULT_NAMESPACE_ID, element, true, true);
+      engine.destroy(DEFAULT_NAMESPACE_ID, null);
+      engine.removeNode(DEFAULT_NAMESPACE_ID, element, true);
       engine.flush();
+      engine.players[0].finish();
 
-      expect(engine.elementContainsData(DEFAULT_NAMESPACE_ID, element)).toBeTruthy();
+      expect(engine.statesByElement.has(element))
+          .toBe(false, 'Expected element data to be undefined.');
+      expect(engine.playersByElement.has(element))
+          .toBe(false, 'Expected element data to be undefined.');
     });
 
     it('should create and recreate a namespace for a host element with the same component source',
@@ -168,7 +178,7 @@ describe('TransitionAnimationEngine', () => {
       expect(engine.statesByElement.has(element)).toBe(true, 'Expected parent data to be defined.');
       expect(engine.statesByElement.has(child)).toBe(true, 'Expected child data to be defined.');
 
-      engine.removeNode(DEFAULT_NAMESPACE_ID, element, true, true);
+      engine.removeNode(DEFAULT_NAMESPACE_ID, element, true);
       engine.flush();
       engine.players[0].finish();
 
@@ -612,8 +622,8 @@ describe('TransitionAnimationEngine', () => {
 
          const player = MockAnimationDriver.log.pop() as MockAnimationPlayer;
          expect(player.keyframes).toEqual([
-           {'height-normalized': '100-normalized', offset: 0},
-           {'height-normalized': '0-normalized', offset: 1}
+           new Map<string, string|number>([['height-normalized', '100-normalized'], ['offset', 0]]),
+           new Map<string, string|number>([['height-normalized', '0-normalized'], ['offset', 1]])
          ]);
        });
 
@@ -633,7 +643,7 @@ describe('TransitionAnimationEngine', () => {
       try {
         engine.flush();
       } catch (e) {
-        errorMessage = e.toString();
+        errorMessage = (e as Error).toString();
       }
 
       expect(errorMessage).toMatch(/Unable to animate due to the following errors:/);
@@ -693,13 +703,13 @@ class SuffixNormalizer extends AnimationStyleNormalizer {
     super();
   }
 
-  normalizePropertyName(propertyName: string, errors: string[]): string {
+  override normalizePropertyName(propertyName: string, errors: Error[]): string {
     return propertyName + this._suffix;
   }
 
-  normalizeStyleValue(
+  override normalizeStyleValue(
       userProvidedProperty: string, normalizedProperty: string, value: string|number,
-      errors: string[]): string {
+      errors: Error[]): string {
     return value + this._suffix;
   }
 }
@@ -709,19 +719,20 @@ class ExactCssValueNormalizer extends AnimationStyleNormalizer {
     super();
   }
 
-  normalizePropertyName(propertyName: string, errors: string[]): string {
+  override normalizePropertyName(propertyName: string, errors: Error[]): string {
     if (!this._allowedValues[propertyName]) {
-      errors.push(`The CSS property \`${propertyName}\` is not allowed`);
+      errors.push(new Error(`The CSS property \`${propertyName}\` is not allowed`));
     }
     return propertyName;
   }
 
-  normalizeStyleValue(
+  override normalizeStyleValue(
       userProvidedProperty: string, normalizedProperty: string, value: string|number,
-      errors: string[]): string {
+      errors: Error[]): string {
     const expectedValue = this._allowedValues[userProvidedProperty];
     if (expectedValue != value) {
-      errors.push(`The CSS property \`${userProvidedProperty}\` is not allowed to be \`${value}\``);
+      errors.push(new Error(
+          `The CSS property \`${userProvidedProperty}\` is not allowed to be \`${value}\``));
     }
     return expectedValue;
   }
@@ -730,13 +741,15 @@ class ExactCssValueNormalizer extends AnimationStyleNormalizer {
 function registerTrigger(
     element: any, engine: TransitionAnimationEngine, metadata: AnimationTriggerMetadata,
     id: string = DEFAULT_NAMESPACE_ID) {
-  const errors: any[] = [];
+  const errors: Error[] = [];
+  const warnings: string[] = [];
   const driver = new MockAnimationDriver();
   const name = metadata.name;
-  const ast = buildAnimationAst(driver, metadata as AnimationMetadata, errors) as TriggerAst;
+  const ast =
+      buildAnimationAst(driver, metadata as AnimationMetadata, errors, warnings) as TriggerAst;
   if (errors.length) {
   }
-  const trigger = buildTrigger(name, ast);
+  const trigger = buildTrigger(name, ast, new NoopAnimationStyleNormalizer());
   engine.register(id, element);
   engine.registerTrigger(id, name, trigger);
 }

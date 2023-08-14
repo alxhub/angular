@@ -1,33 +1,37 @@
+load("//tools:defaults.bzl", "nodejs_binary")
+load("@build_bazel_rules_nodejs//:index.bzl", "js_library")
+load("//:yarn.bzl", "YARN_PATH")
+
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "LICENSE",
     "karma-js.conf.js",
     "browser-providers.conf.js",
-    "scripts/ci/track-payload-size.sh",
+    YARN_PATH,
+    "scripts/ci/bazel-payload-size.sh",
     "scripts/ci/payload-size.sh",
     "scripts/ci/payload-size.js",
     "package.json",
 ])
+
+filegroup(
+    # filegroup is needed so that this package.json file can be a dep
+    # in a js_library target, which doesn't allow source file deps
+    name = "package_json",
+    srcs = ["package.json"],
+)
 
 alias(
     name = "tsconfig.json",
     actual = "//packages:tsconfig-build.json",
 )
 
-filegroup(
-    name = "web_test_bootstrap_scripts",
-    # do not sort
+js_library(
+    name = "browser-providers",
     srcs = [
-        "@npm//:node_modules/core-js/client/core.js",
-        "//packages/zone.js/bundles:zone.umd.js",
-        "//packages/zone.js/bundles:zone-testing.umd.js",
-        "//packages/zone.js/bundles:task-tracking.umd.js",
-        "//:test-events.js",
-        "//:third_party/shims_for_IE.js",
-        # Including systemjs because it defines `__eval`, which produces correct stack traces.
-        "@npm//:node_modules/systemjs/dist/system.src.js",
-        "@npm//:node_modules/reflect-metadata/Reflect.js",
+        "browser-providers.conf.d.ts",
+        "browser-providers.conf.js",
     ],
 )
 
@@ -36,18 +40,18 @@ filegroup(
     srcs = [
         # We also declare the unminified AngularJS files since these can be used for
         # local debugging (e.g. see: packages/upgrade/test/common/test_helpers.ts)
-        "@npm//:node_modules/angular/angular.js",
-        "@npm//:node_modules/angular/angular.min.js",
         "@npm//:node_modules/angular-1.5/angular.js",
         "@npm//:node_modules/angular-1.5/angular.min.js",
         "@npm//:node_modules/angular-1.6/angular.js",
         "@npm//:node_modules/angular-1.6/angular.min.js",
         "@npm//:node_modules/angular-1.7/angular.js",
         "@npm//:node_modules/angular-1.7/angular.min.js",
-        "@npm//:node_modules/angular-mocks/angular-mocks.js",
         "@npm//:node_modules/angular-mocks-1.5/angular-mocks.js",
         "@npm//:node_modules/angular-mocks-1.6/angular-mocks.js",
         "@npm//:node_modules/angular-mocks-1.7/angular-mocks.js",
+        "@npm//:node_modules/angular-mocks-1.8/angular-mocks.js",
+        "@npm//:node_modules/angular-1.8/angular.js",
+        "@npm//:node_modules/angular-1.8/angular.min.js",
     ],
 )
 
@@ -55,4 +59,23 @@ filegroup(
 config_setting(
     name = "stamp",
     values = {"stamp": "true"},
+)
+
+nodejs_binary(
+    name = "yarn_vendored",
+    data = [".yarn/releases/yarn-1.22.19.cjs"],
+    entry_point = ".yarn/releases/yarn-1.22.19.cjs",
+    visibility = [
+        "//aio/tools/examples/shared:__pkg__",
+        "//integration:__subpackages__",
+    ],
+)
+
+alias(
+    name = "sauce_connect",
+    actual = select({
+        "@npm//@angular/build-tooling/bazel/constraints:linux_x64": "@sauce_connect_linux_amd64//:bin/sc",
+        "@npm//@angular/build-tooling/bazel/constraints:macos_x64": "@sauce_connect_mac//:bin/sc",
+        "@npm//@angular/build-tooling/bazel/constraints:macos_arm64": "@sauce_connect_mac//:bin/sc",
+    }),
 )

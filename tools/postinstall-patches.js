@@ -21,7 +21,7 @@ try {
 }
 
 const {set, cd, sed, echo, ls, rm} = require('shelljs');
-const {readFileSync} = require('fs');
+const {readFileSync, writeFileSync} = require('fs');
 const path = require('path');
 const log = console.info;
 
@@ -61,7 +61,7 @@ ls('node_modules/@types').filter(f => f.startsWith('babel__')).forEach(pkg => {
   }
 });
 
-log('\n# patch: delete d.ts files refering to rxjs-compat');
+log('\n# patch: delete d.ts files referring to rxjs-compat');
 // more info in https://github.com/angular/angular/pull/33786
 rm('-rf', [
   'node_modules/rxjs/add/',
@@ -92,6 +92,5 @@ rm('-rf', [
   'node_modules/rxjs/Subscriber.*',
   'node_modules/rxjs/Subscription.*',
 ]);
-
 
 log('===== finished running the postinstall-patches.js script =====');

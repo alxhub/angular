@@ -7,20 +7,15 @@ import { Component, OnInit, Input } from '@angular/core';
   templateUrl: './item-detail.component.html',
   styleUrls: ['./item-detail.component.css']
 })
-export class ItemDetailComponent implements OnInit {
+export class ItemDetailComponent {
 
   // #docregion input-type
-  @Input() childItem: string;
+  @Input() childItem = '';
   // #enddocregion input-type
 
   // items = ITEMS;
 
 
   currentItem = 'bananas in boxes';
-
-  constructor() { }
-
-  ngOnInit() {
-  }
 
 }

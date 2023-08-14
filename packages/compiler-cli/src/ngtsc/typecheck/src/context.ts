@@ -6,23 +6,26 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {BoundTarget, ParseError, ParseSourceFile, R3TargetBinder, SchemaMetadata, TemplateParseError, TmplAstNode} from '@angular/compiler';
-import {ErrorCode, ngErrorCode} from '@angular/compiler-cli/src/ngtsc/diagnostics';
-import * as ts from 'typescript';
+import {BoundTarget, ParseError, ParseSourceFile, R3TargetBinder, SchemaMetadata, TmplAstNode} from '@angular/compiler';
+import ts from 'typescript';
 
+import {ErrorCode, ngErrorCode} from '../../../../src/ngtsc/diagnostics';
 import {absoluteFromSourceFile, AbsoluteFsPath} from '../../file_system';
 import {NoopImportRewriter, Reference, ReferenceEmitter} from '../../imports';
+import {PerfEvent, PerfRecorder} from '../../perf';
+import {FileUpdate} from '../../program_driver';
 import {ClassDeclaration, ReflectionHost} from '../../reflection';
 import {ImportManager} from '../../translator';
-import {ComponentToShimMappingStrategy, TemplateId, TemplateSourceMapping, TypeCheckableDirectiveMeta, TypeCheckBlockMetadata, TypeCheckContext, TypeCheckingConfig, TypeCtorMetadata} from '../api';
-import {makeTemplateDiagnostic, TemplateDiagnostic} from '../diagnostics';
+import {TemplateDiagnostic, TemplateId, TemplateSourceMapping, TypeCheckableDirectiveMeta, TypeCheckBlockMetadata, TypeCheckContext, TypeCheckingConfig, TypeCtorMetadata} from '../api';
+import {makeTemplateDiagnostic} from '../diagnostics';
 
 import {DomSchemaChecker, RegistryDomSchemaChecker} from './dom';
 import {Environment} from './environment';
 import {OutOfBandDiagnosticRecorder, OutOfBandDiagnosticRecorderImpl} from './oob';
+import {TypeCheckShimGenerator} from './shim';
 import {TemplateSourceManager} from './source';
-import {requiresInlineTypeCheckBlock} from './tcb_util';
-import {generateTypeCheckBlock} from './type_check_block';
+import {requiresInlineTypeCheckBlock, TcbInliningRequirement} from './tcb_util';
+import {generateTypeCheckBlock, TcbGenericContextBehavior} from './type_check_block';
 import {TypeCheckFile} from './type_check_file';
 import {generateInlineTypeCtor, requiresInlineTypeCtor} from './type_constructor';
 
@@ -177,9 +180,13 @@ export class TypeCheckContextImpl implements TypeCheckContext {
   constructor(
       private config: TypeCheckingConfig,
       private compilerHost: Pick<ts.CompilerHost, 'getCanonicalFileName'>,
-      private componentMappingStrategy: ComponentToShimMappingStrategy,
       private refEmitter: ReferenceEmitter, private reflector: ReflectionHost,
-      private host: TypeCheckingHost, private inlining: InliningMode) {}
+      private host: TypeCheckingHost, private inlining: InliningMode, private perf: PerfRecorder) {
+    if (inlining === InliningMode.Error && config.useInlineTypeConstructors) {
+      // We cannot use inlining for type checking since this environment does not support it.
+      throw new Error(`AssertionError: invalid inlining configuration.`);
+    }
+  }
 
   /**
    * A `Map` of `ts.SourceFile`s that the context has seen to the operations (additions of methods
@@ -203,7 +210,7 @@ export class TypeCheckContextImpl implements TypeCheckContext {
       binder: R3TargetBinder<TypeCheckableDirectiveMeta>, template: TmplAstNode[],
       pipes: Map<string, Reference<ClassDeclaration<ts.ClassDeclaration>>>,
       schemas: SchemaMetadata[], sourceMapping: TemplateSourceMapping, file: ParseSourceFile,
-      parseErrors: ParseError[]|null): void {
+      parseErrors: ParseError[]|null, isStandalone: boolean): void {
     if (!this.host.shouldCheckComponent(ref.node)) {
       return;
     }
@@ -219,31 +226,28 @@ export class TypeCheckContextImpl implements TypeCheckContext {
           ...this.getTemplateDiagnostics(parseErrors, templateId, sourceMapping));
     }
 
-    // Accumulate a list of any directives which could not have type constructors generated due to
-    // unsupported inlining operations.
-    let missingInlines: ClassDeclaration[] = [];
-
     const boundTarget = binder.bind({template});
 
-    // Get all of the directives used in the template and record type constructors for all of them.
-    for (const dir of boundTarget.getUsedDirectives()) {
-      const dirRef = dir.ref as Reference<ClassDeclaration<ts.ClassDeclaration>>;
-      const dirNode = dirRef.node;
+    if (this.inlining === InliningMode.InlineOps) {
+      // Get all of the directives used in the template and record inline type constructors when
+      // required.
+      for (const dir of boundTarget.getUsedDirectives()) {
+        const dirRef = dir.ref as Reference<ClassDeclaration<ts.ClassDeclaration>>;
+        const dirNode = dirRef.node;
 
-      if (dir.isGeneric && requiresInlineTypeCtor(dirNode, this.reflector)) {
-        if (this.inlining === InliningMode.Error) {
-          missingInlines.push(dirNode);
+        if (!dir.isGeneric || !requiresInlineTypeCtor(dirNode, this.reflector, shimData.file)) {
+          // inlining not required
           continue;
         }
-        // Add a type constructor operation for the directive.
+
+        // Add an inline type constructor operation for the directive.
         this.addInlineTypeCtor(fileData, dirNode.getSourceFile(), dirRef, {
           fnName: 'ngTypeCtor',
           // The constructor should have a body if the directive comes from a .ts file, but not if
           // it comes from a .d.ts file. .d.ts declarations don't have bodies.
           body: !dirNode.getSourceFile().isDeclarationFile,
           fields: {
-            inputs: dir.inputs.classPropertyNames,
-            outputs: dir.outputs.classPropertyNames,
+            inputs: dir.inputs,
             // TODO(alxhub): support queries
             queries: dir.queries,
           },
@@ -258,24 +262,29 @@ export class TypeCheckContextImpl implements TypeCheckContext {
       templateDiagnostics,
     });
 
-    const tcbRequiresInline = requiresInlineTypeCheckBlock(ref.node, pipes);
+    const usedPipes: Reference<ClassDeclaration<ts.ClassDeclaration>>[] = [];
+    for (const name of boundTarget.getUsedPipes()) {
+      if (!pipes.has(name)) {
+        continue;
+      }
+      usedPipes.push(pipes.get(name)!);
+    }
+
+    const inliningRequirement =
+        requiresInlineTypeCheckBlock(ref, shimData.file, usedPipes, this.reflector);
 
     // If inlining is not supported, but is required for either the TCB or one of its directive
     // dependencies, then exit here with an error.
-    if (this.inlining === InliningMode.Error && (tcbRequiresInline || missingInlines.length > 0)) {
+    if (this.inlining === InliningMode.Error &&
+        inliningRequirement === TcbInliningRequirement.MustInline) {
       // This template cannot be supported because the underlying strategy does not support inlining
       // and inlining would be required.
 
       // Record diagnostics to indicate the issues with this template.
-      if (tcbRequiresInline) {
-        shimData.oobRecorder.requiresInlineTcb(templateId, ref.node);
-      }
-
-      if (missingInlines.length > 0) {
-        shimData.oobRecorder.requiresInlineTypeConstructors(templateId, ref.node, missingInlines);
-      }
+      shimData.oobRecorder.requiresInlineTcb(templateId, ref.node);
 
       // Checking this template would be unsupported, so don't try.
+      this.perf.eventCount(PerfEvent.SkipGenerateTcbNoInline);
       return;
     }
 
@@ -284,14 +293,29 @@ export class TypeCheckContextImpl implements TypeCheckContext {
       boundTarget,
       pipes,
       schemas,
+      isStandalone
     };
-    if (tcbRequiresInline) {
+    this.perf.eventCount(PerfEvent.GenerateTcb);
+    if (inliningRequirement !== TcbInliningRequirement.None &&
+        this.inlining === InliningMode.InlineOps) {
       // This class didn't meet the requirements for external type checking, so generate an inline
       // TCB for the class.
       this.addInlineTypeCheckBlock(fileData, shimData, ref, meta);
+    } else if (
+        inliningRequirement === TcbInliningRequirement.ShouldInlineForGenericBounds &&
+        this.inlining === InliningMode.Error) {
+      // It's suggested that this TCB should be generated inline due to the component's generic
+      // bounds, but inlining is not supported by the current environment. Use a non-inline type
+      // check block, but fall back to `any` generic parameters since the generic bounds can't be
+      // referenced in that context. This will infer a less useful type for the component, but allow
+      // for type-checking it in an environment where that would not be possible otherwise.
+      shimData.file.addTypeCheckBlock(
+          ref, meta, shimData.domSchemaChecker, shimData.oobRecorder,
+          TcbGenericContextBehavior.FallbackToAny);
     } else {
-      // The class can be type-checked externally as normal.
-      shimData.file.addTypeCheckBlock(ref, meta, shimData.domSchemaChecker, shimData.oobRecorder);
+      shimData.file.addTypeCheckBlock(
+          ref, meta, shimData.domSchemaChecker, shimData.oobRecorder,
+          TcbGenericContextBehavior.UseEmitter);
     }
   }
 
@@ -343,7 +367,7 @@ export class TypeCheckContextImpl implements TypeCheckContext {
     // Use a `ts.Printer` to generate source code.
     const printer = ts.createPrinter({omitTrailingSemicolon: true});
 
-    // Begin with the intial section of the code text.
+    // Begin with the initial section of the code text.
     let code = textParts[0];
 
     // Process each operation and use the printer to generate source code for it, inserting it into
@@ -362,13 +386,16 @@ export class TypeCheckContextImpl implements TypeCheckContext {
     return code;
   }
 
-  finalize(): Map<AbsoluteFsPath, string> {
+  finalize(): Map<AbsoluteFsPath, FileUpdate> {
     // First, build the map of updates to source files.
-    const updates = new Map<AbsoluteFsPath, string>();
+    const updates = new Map<AbsoluteFsPath, FileUpdate>();
     for (const originalSf of this.opMap.keys()) {
       const newText = this.transform(originalSf);
       if (newText !== null) {
-        updates.set(absoluteFromSourceFile(originalSf), newText);
+        updates.set(absoluteFromSourceFile(originalSf), {
+          newText,
+          originalFile: originalSf,
+        });
       }
     }
 
@@ -385,7 +412,13 @@ export class TypeCheckContextImpl implements TypeCheckContext {
           path: pendingShimData.file.fileName,
           templates: pendingShimData.templates,
         });
-        updates.set(pendingShimData.file.fileName, pendingShimData.file.render());
+        const sfText = pendingShimData.file.render(false /* removeComments */);
+        updates.set(pendingShimData.file.fileName, {
+          newText: sfText,
+
+          // Shim files do not have an associated original file.
+          originalFile: null,
+        });
       }
     }
 
@@ -401,7 +434,7 @@ export class TypeCheckContextImpl implements TypeCheckContext {
       this.opMap.set(sf, []);
     }
     const ops = this.opMap.get(sf)!;
-    ops.push(new TcbOp(
+    ops.push(new InlineTcbOp(
         ref, tcbMeta, this.config, this.reflector, shimData.domSchemaChecker,
         shimData.oobRecorder));
     fileData.hasInlines = true;
@@ -409,7 +442,7 @@ export class TypeCheckContextImpl implements TypeCheckContext {
 
   private pendingShimForComponent(node: ts.ClassDeclaration): PendingShimData {
     const fileData = this.dataForFile(node.getSourceFile());
-    const shimPath = this.componentMappingStrategy.shimPathForComponent(node);
+    const shimPath = TypeCheckShimGenerator.shimFor(absoluteFromSourceFile(node.getSourceFile()));
     if (!fileData.shimData.has(shimPath)) {
       fileData.shimData.set(shimPath, {
         domSchemaChecker: new RegistryDomSchemaChecker(fileData.sourceManager),
@@ -480,9 +513,9 @@ interface Op {
 }
 
 /**
- * A type check block operation which produces type check code for a particular component.
+ * A type check block operation which produces inline type check code for a particular component.
  */
-class TcbOp implements Op {
+class InlineTcbOp implements Op {
   constructor(
       readonly ref: Reference<ClassDeclaration<ts.ClassDeclaration>>,
       readonly meta: TypeCheckBlockMetadata, readonly config: TypeCheckingConfig,
@@ -499,9 +532,13 @@ class TcbOp implements Op {
   execute(im: ImportManager, sf: ts.SourceFile, refEmitter: ReferenceEmitter, printer: ts.Printer):
       string {
     const env = new Environment(this.config, im, refEmitter, this.reflector, sf);
-    const fnName = ts.createIdentifier(`_tcb_${this.ref.node.pos}`);
+    const fnName = ts.factory.createIdentifier(`_tcb_${this.ref.node.pos}`);
+
+    // Inline TCBs should copy any generic type parameter nodes directly, as the TCB code is inlined
+    // into the class in a context where that will always be legal.
     const fn = generateTypeCheckBlock(
-        env, this.ref, fnName, this.meta, this.domSchemaChecker, this.oobRecorder);
+        env, this.ref, fnName, this.meta, this.domSchemaChecker, this.oobRecorder,
+        TcbGenericContextBehavior.CopyClassNodes);
     return printer.printNode(ts.EmitHint.Unspecified, fn, sf);
   }
 }

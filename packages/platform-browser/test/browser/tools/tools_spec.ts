@@ -6,15 +6,31 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {ApplicationRef, Injector, ɵglobal as global} from '@angular/core';
+import {ComponentRef} from '@angular/core/src/render3';
 import {disableDebugTools, enableDebugTools} from '@angular/platform-browser';
 
-import {callNgProfilerTimeChangeDetection, SpyComponentRef} from './spies';
+import {AngularProfiler} from '../../../src/browser/tools/common_tools';
 
 {
   describe('profiler', () => {
-    if (isNode) return;
+    if (isNode) {
+      // Jasmine will throw if there are no tests.
+      it('should pass', () => {});
+      return;
+    }
+
     beforeEach(() => {
-      enableDebugTools((<any>new SpyComponentRef()));
+      enableDebugTools({
+        injector: Injector.create({
+          providers: [{
+            provide: ApplicationRef,
+            useValue: jasmine.createSpyObj(
+                'ApplicationRef', ['bootstrap', 'tick', 'attachView', 'detachView']),
+            deps: []
+          }]
+        })
+      } as ComponentRef<any>);
     });
 
     afterEach(() => {
@@ -29,4 +45,8 @@ import {callNgProfilerTimeChangeDetection, SpyComponentRef} from './spies';
       callNgProfilerTimeChangeDetection({'record': true});
     });
   });
+}
+
+export function callNgProfilerTimeChangeDetection(config?: {record: true}): void {
+  (global.ng.profiler as AngularProfiler).timeChangeDetection(config);
 }

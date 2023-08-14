@@ -10,6 +10,15 @@ import {NormalizedUrl} from '../src/api';
 
 
 /**
+ * Determine whether the current environment provides all necessary APIs to run ServiceWorker tests.
+ *
+ * @return Whether ServiceWorker tests can be run in the current environment.
+ */
+export function envIsSupported(): boolean {
+  return typeof URL === 'function';
+}
+
+/**
  * Get a normalized representation of a URL relative to a provided base URL.
  *
  * More specifically:
@@ -34,9 +43,7 @@ export function normalizeUrl(url: string, relativeTo: string): NormalizedUrl {
  */
 export function parseUrl(
     url: string, relativeTo?: string): {origin: string, path: string, search: string} {
-  const parsedUrl: URL = (typeof URL === 'function') ?
-      (!relativeTo ? new URL(url) : new URL(url, relativeTo)) :
-      require('url').parse(require('url').resolve(relativeTo || '', url));
+  const parsedUrl: URL = (!relativeTo ? new URL(url) : new URL(url, relativeTo));
 
   return {
     origin: parsedUrl.origin || `${parsedUrl.protocol}//${parsedUrl.host}`,

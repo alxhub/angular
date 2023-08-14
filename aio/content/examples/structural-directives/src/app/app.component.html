@@ -52,7 +52,7 @@
 
 <h4>*ngIf with a &lt;ng-container&gt;</h4>
 
-<button (click)="hero = hero ? null : heroes[0]">Toggle hero</button>
+<button type="button" (click)="hero = hero ? null : heroes[0]">Toggle hero</button>
 
 <!-- #docregion ngif-ngcontainer -->
 <p>
@@ -72,11 +72,11 @@
   and continued on my way.
 </p>
 
-<p><i>&lt;select&gt; with &lt;span&gt;</i></p>
+<p><em>&lt;select&gt; with &lt;span&gt;</em></p>
 
 <div>
   Pick your favorite hero
-  (<label><input type="checkbox" checked (change)="showSad = !showSad">show sad</label>)
+  (<label for="show-sad"><input id="show-sad" type="checkbox" checked (change)="showSad = !showSad">show sad</label>)
 </div>
 <select [(ngModel)]="hero">
   <span *ngFor="let h of heroes">
@@ -86,11 +86,11 @@
   </span>
 </select>
 
-<p><i>&lt;select&gt; with &lt;ng-container&gt;</i></p>
+<p><em>&lt;select&gt; with &lt;ng-container&gt;</em></p>
 <!-- #docregion select-ngcontainer -->
 <div>
   Pick your favorite hero
-  (<label><input type="checkbox" checked (change)="showSad = !showSad">show sad</label>)
+  (<label for="showSad"><input id="showSad" type="checkbox" checked (change)="showSad = !showSad">show sad</label>)
 </div>
 <select [(ngModel)]="hero">
   <ng-container *ngFor="let h of heroes">
@@ -110,15 +110,20 @@
 
 <p class="code">&lt;div *ngFor="let hero of heroes; let i=index; let odd=odd; trackBy: trackById" [class.odd]="odd"&gt;</p>
 <!--#docregion inside-ngfor -->
-<div *ngFor="let hero of heroes; let i=index; let odd=odd; trackBy: trackById" [class.odd]="odd">
+<div
+  *ngFor="let hero of heroes; let i=index; let odd=odd; trackBy: trackById"
+  [class.odd]="odd">
   ({{i}}) {{hero.name}}
 </div>
 
 <!--#enddocregion inside-ngfor -->
 <p class="code">&lt;ng-template ngFor let-hero [ngForOf]="heroes" let-i="index" let-odd="odd" [ngForTrackBy]="trackById"/&gt;</p>
 <!--#docregion inside-ngfor -->
-<ng-template ngFor let-hero [ngForOf]="heroes" let-i="index" let-odd="odd" [ngForTrackBy]="trackById">
-  <div [class.odd]="odd">({{i}}) {{hero.name}}</div>
+<ng-template ngFor let-hero [ngForOf]="heroes"
+  let-i="index" let-odd="odd" [ngForTrackBy]="trackById">
+  <div [class.odd]="odd">
+    ({{i}}) {{hero.name}}
+  </div>
 </ng-template>
 <!--#enddocregion inside-ngfor -->
 
@@ -129,49 +134,39 @@
 
 <div>Pick your favorite hero</div>
 <p>
-  <label *ngFor="let h of heroes">
-    <input type="radio" name="heroes" [(ngModel)]="hero" [value]="h">{{h.name}}
+  <label for="hero-{{h}}" *ngFor="let h of heroes">
+    <input id="hero-{{h}}" type="radio" name="heroes" [(ngModel)]="hero" [value]="h">{{h.name}}
   </label>
-  <label><input type="radio" name="heroes" (click)="hero = null">None of the above</label>
+  <label for="none-of-the-above"><input id="none-of-the-above" type="radio" name="heroes" (click)="hero = null">None of the above</label>
 </p>
 
 <h4>NgSwitch</h4>
 
 <div [ngSwitch]="hero?.emotion">
-  <app-happy-hero    *ngSwitchCase="'happy'"    [hero]="hero"></app-happy-hero>
-  <app-sad-hero      *ngSwitchCase="'sad'"      [hero]="hero"></app-sad-hero>
-  <app-confused-hero *ngSwitchCase="'confused'" [hero]="hero"></app-confused-hero>
-  <app-unknown-hero  *ngSwitchDefault           [hero]="hero"></app-unknown-hero>
+  <app-happy-hero    *ngSwitchCase="'happy'"    [hero]="hero!"></app-happy-hero>
+  <app-sad-hero      *ngSwitchCase="'sad'"      [hero]="hero!"></app-sad-hero>
+  <app-confused-hero *ngSwitchCase="'confused'" [hero]="hero!"></app-confused-hero>
+  <app-unknown-hero  *ngSwitchDefault           [hero]="hero!"></app-unknown-hero>
 </div>
 
 <h4>NgSwitch with &lt;ng-template&gt;</h4>
 <div [ngSwitch]="hero?.emotion">
-  <ng-template [ngSwitchCase]="'happy'">
-    <app-happy-hero [hero]="hero"></app-happy-hero>
+  <ng-template ngSwitchCase="happy">
+    <app-happy-hero [hero]="hero!"></app-happy-hero>
   </ng-template>
-  <ng-template [ngSwitchCase]="'sad'">
-    <app-sad-hero [hero]="hero"></app-sad-hero>
+  <ng-template ngSwitchCase="sad">
+    <app-sad-hero [hero]="hero!"></app-sad-hero>
   </ng-template>
-  <ng-template [ngSwitchCase]="'confused'">
-    <app-confused-hero [hero]="hero"></app-confused-hero>
+  <ng-template ngSwitchCase="confused">
+    <app-confused-hero [hero]="hero!"></app-confused-hero>
   </ng-template >
   <ng-template ngSwitchDefault>
-    <app-unknown-hero [hero]="hero"></app-unknown-hero>
+    <app-unknown-hero [hero]="hero!"></app-unknown-hero>
   </ng-template>
 </div>
 
 <hr>
 
-<h2>&lt;ng-template&gt;</h2>
-<!-- #docregion template-tag -->
-<p>Hip!</p>
-<ng-template>
-  <p>Hip!</p>
-</ng-template>
-<p>Hooray!</p>
-<!-- #enddocregion template-tag -->
-
-<hr>
 
 <h2 id="appUnless">UnlessDirective</h2>
 <!-- #docregion toggle-info -->
@@ -179,6 +174,7 @@
   The condition is currently
   <span [ngClass]="{ 'a': !condition, 'b': condition, 'unless': true }">{{condition}}</span>.
   <button
+    type="button"
     (click)="condition = !condition"
     [ngClass] = "{ 'a': condition, 'b': !condition }" >
     Toggle condition to {{condition ? 'false' : 'true'}}
@@ -214,3 +210,19 @@
   </p>
 </ng-template>
 
+<hr />
+
+<h2 id="appIfLoaded">IfLoadedDirective</h2>
+<app-hero></app-hero>
+
+<hr />
+
+<h2 id="appTrigonometry">TrigonometryDirective</h2>
+
+<!-- #docregion appTrigonometry -->
+<ul *appTrigonometry="30; sin as s; cos as c; tan as t">
+  <li>sin(30°): {{ s }}</li>
+  <li>cos(30°): {{ c }}</li>
+  <li>tan(30°): {{ t }}</li>
+</ul>
+<!-- #enddocregion appTrigonometry -->

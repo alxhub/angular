@@ -7,8 +7,10 @@
  */
 
 import {KeyValuePipe} from '@angular/common';
+import {JsonPipe} from '@angular/common/public_api';
 import {defaultComparator} from '@angular/common/src/pipes/keyvalue_pipe';
-import {ɵdefaultKeyValueDiffers as defaultKeyValueDiffers} from '@angular/core';
+import {Component, ɵdefaultKeyValueDiffers as defaultKeyValueDiffers} from '@angular/core';
+import {TestBed} from '@angular/core/testing';
 
 describe('KeyValuePipe', () => {
   it('should return null when given null', () => {
@@ -49,6 +51,15 @@ describe('KeyValuePipe', () => {
       expect(pipe.transform(input)).toEqual([
         {key: '0', value: 1}, {key: '1', value: 1}, {key: '2', value: 1}, {key: '3', value: 1},
         {key: 'a', value: 1}, {key: 'b', value: 1}
+      ]);
+    });
+    it('should reorder when compareFn changes', () => {
+      const pipe = new KeyValuePipe(defaultKeyValueDiffers);
+      const input = {'b': 1, 'a': 2};
+      pipe.transform<string, number>(input);
+      expect(pipe.transform<string, number>(input, (a, b) => a.value - b.value)).toEqual([
+        {key: 'b', value: 1},
+        {key: 'a', value: 2},
       ]);
     });
     it('should return the same ref if nothing changes', () => {
@@ -114,6 +125,15 @@ describe('KeyValuePipe', () => {
             {key: {id: 1}, value: 1},
           ]);
     });
+    it('should reorder when compareFn changes', () => {
+      const pipe = new KeyValuePipe(defaultKeyValueDiffers);
+      const input = new Map([['b', 1], ['a', 2]]);
+      pipe.transform<string, number>(input);
+      expect(pipe.transform<string, number>(input, (a, b) => a.value - b.value)).toEqual([
+        {key: 'b', value: 1},
+        {key: 'a', value: 2},
+      ]);
+    });
     it('should return the same ref if nothing changes', () => {
       const pipe = new KeyValuePipe(defaultKeyValueDiffers);
       const transform1 = pipe.transform(new Map([[1, 2]]));
@@ -131,6 +151,24 @@ describe('KeyValuePipe', () => {
       const pipe = new KeyValuePipe(defaultKeyValueDiffers);
       expect(pipe.transform(value)).toEqual(null);
     });
+  });
+
+  it('should be available as a standalone pipe', () => {
+    @Component({
+      selector: 'test-component',
+      imports: [KeyValuePipe, JsonPipe],
+      template: '{{ value | keyvalue | json }}',
+      standalone: true,
+    })
+    class TestComponent {
+      value = {'b': 1, 'a': 2};
+    }
+
+    const fixture = TestBed.createComponent(TestComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content.replace(/\s/g, '')).toBe('[{"key":"a","value":2},{"key":"b","value":1}]');
   });
 });
 

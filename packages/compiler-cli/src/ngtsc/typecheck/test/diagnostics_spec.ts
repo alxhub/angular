@@ -6,13 +6,13 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {absoluteFrom, getSourceFileOrError} from '../../file_system';
 import {runInEachFileSystem, TestFile} from '../../file_system/testing';
 import {OptimizeFor, TypeCheckingConfig} from '../api';
-
-import {ngForDeclaration, ngForDts, setup, TestDeclaration} from './test_utils';
+import {resetParseTemplateAsSourceFileForTest, setParseTemplateAsSourceFileForTest} from '../diagnostics';
+import {ngForDeclaration, ngForDts, ngIfDeclaration, ngIfDts, setup, TestDeclaration} from '../testing';
 
 runInEachFileSystem(() => {
   describe('template diagnostics', () => {
@@ -211,7 +211,7 @@ runInEachFileSystem(() => {
     });
 
     it('does not repeat diagnostics for missing pipes in directive inputs', () => {
-      // The directive here is structured so that a type constructor is used, which resuts in each
+      // The directive here is structured so that a type constructor is used, which results in each
       // input binding being processed twice. This results in the 'uppercase' pipe being resolved
       // twice, and since it doesn't exist this operation will fail. The test is here to verify that
       // failing to resolve the pipe twice only produces a single diagnostic (no duplicates).
@@ -277,6 +277,46 @@ runInEachFileSystem(() => {
       ]);
     });
 
+    it('should retain literal types in object literals together if strictNullInputBindings is disabled',
+       () => {
+         const messages = diagnose(
+             `<div dir [ngModelOptions]="{updateOn: 'change'}"></div>`, `
+              class Dir {
+                ngModelOptions: { updateOn: 'change'|'blur' };
+              }
+
+              class TestComponent {}`,
+             [{
+               type: 'directive',
+               name: 'Dir',
+               selector: '[dir]',
+               inputs: {'ngModelOptions': 'ngModelOptions'},
+             }],
+             [], {strictNullInputBindings: false});
+
+         expect(messages).toEqual([]);
+       });
+
+    it('should retain literal types in array literals together if strictNullInputBindings is disabled',
+       () => {
+         const messages = diagnose(
+             `<div dir [options]="['literal']"></div>`, `
+                class Dir {
+                  options!: Array<'literal'>;
+                }
+
+                class TestComponent {}`,
+             [{
+               type: 'directive',
+               name: 'Dir',
+               selector: '[dir]',
+               inputs: {'options': 'options'},
+             }],
+             [], {strictNullInputBindings: false});
+
+         expect(messages).toEqual([]);
+       });
+
     it('does not produce diagnostics for user code', () => {
       const messages = diagnose(`{{ person.name }}`, `
       class TestComponent {
@@ -298,6 +338,17 @@ runInEachFileSystem(() => {
       expect(messages).toEqual([
         `TestComponent.html(1, 31): Argument of type '-2' is not assignable to parameter of type '1 | -1'.`,
       ]);
+    });
+
+    it('should support type-narrowing for methods with type guards', () => {
+      const messages = diagnose(
+          `<div *ngIf="hasSuccess()">{{ success }}</div>`, `
+          class TestComponent {
+            hasSuccess(): this is { success: boolean };
+          }`,
+          [ngIfDeclaration()], [ngIfDts()]);
+
+      expect(messages).toEqual([]);
     });
 
     describe('outputs', () => {
@@ -399,6 +450,79 @@ runInEachFileSystem(() => {
 
         expect(messages).toEqual([]);
       });
+
+      it('does not produce diagnostic for fallback value using nullish coalescing', () => {
+        const messages = diagnose(`<div>{{ greet(name ?? 'Frodo') }}</div>`, `
+        export class TestComponent {
+          name: string | null;
+
+          greet(name: string) {
+            return 'hello ' + name;
+          }
+        }`);
+
+        expect(messages).toEqual([]);
+      });
+
+      it('does not produce diagnostic for safe keyed access', () => {
+        const messages =
+            diagnose(`<div [class.red-text]="person.favoriteColors?.[0] === 'red'"></div>`, `
+              export class TestComponent {
+                person: {
+                  favoriteColors?: string[];
+                };
+              }`);
+
+        expect(messages).toEqual([]);
+      });
+
+      it('infers a safe keyed read as undefined', () => {
+        const messages = diagnose(`<div (click)="log(person.favoriteColors?.[0])"></div>`, `
+          export class TestComponent {
+            person: {
+              favoriteColors?: string[];
+            };
+
+            log(color: string) {
+              console.log(color);
+            }
+          }`);
+
+        expect(messages).toEqual([
+          `TestComponent.html(1, 19): Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.`
+        ]);
+      });
+
+      it('does not produce diagnostic for safe calls', () => {
+        const messages =
+            diagnose(`<div [class.is-hobbit]="person.getName?.() === 'Bilbo'"></div>`, `
+              export class TestComponent {
+                person: {
+                  getName?: () => string;
+                };
+              }`);
+
+        expect(messages).toEqual([]);
+      });
+
+      it('infers a safe call return value as undefined', () => {
+        const messages = diagnose(`<div (click)="log(person.getName?.())"></div>`, `
+          export class TestComponent {
+            person: {
+              getName?: () => string;
+            };
+
+            log(name: string) {
+              console.log(name);
+            }
+          }`);
+
+        expect(messages).toEqual([
+          `TestComponent.html(1, 19): Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.`
+        ]);
+      });
     });
 
     it('computes line and column offsets', () => {
@@ -418,6 +542,73 @@ class TestComponent {
       expect(messages).toEqual([
         `TestComponent.html(3, 15): Property 'srcc' does not exist on type 'TestComponent'. Did you mean 'src'?`,
         `TestComponent.html(4, 18): Property 'heihgt' does not exist on type 'TestComponent'. Did you mean 'height'?`,
+      ]);
+    });
+
+    it('works for shorthand property declarations', () => {
+      const messages = diagnose(
+          `<div dir [input]="{a, b: 2}"></div>`, `
+        class Dir {
+          input: {a: string, b: number};
+        }
+        class TestComponent {
+          a: number;
+        }`,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            exportAs: ['dir'],
+            inputs: {input: 'input'},
+          }]);
+
+      expect(messages).toEqual(
+          [`TestComponent.html(1, 20): Type 'number' is not assignable to type 'string'.`]);
+    });
+
+    it('works for shorthand property declarations referring to template variables', () => {
+      const messages = diagnose(
+          `
+          <span #span></span>
+          <div dir [input]="{span, b: 2}"></div>
+        `,
+          `
+          class Dir {
+            input: {span: string, b: number};
+          }
+          class TestComponent {}`,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            exportAs: ['dir'],
+            inputs: {input: 'input'},
+          }]);
+
+      expect(messages).toEqual(
+          [`TestComponent.html(3, 30): Type 'HTMLElement' is not assignable to type 'string'.`]);
+    });
+
+    it('allows access to protected members', () => {
+      const messages = diagnose(`<button (click)="doFoo()">{{ message }}</button>`, `
+        class TestComponent {
+          protected message = 'Hello world';
+          protected doFoo(): void {}
+        }`);
+
+      expect(messages).toEqual([]);
+    });
+
+    it('disallows access to private members', () => {
+      const messages = diagnose(`<button (click)="doFoo()">{{ message }}</button>`, `
+        class TestComponent {
+          private message = 'Hello world';
+          private doFoo(): void {}
+        }`);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 18): Property 'doFoo' is private and only accessible within class 'TestComponent'.`,
+        `TestComponent.html(1, 30): Property 'message' is private and only accessible within class 'TestComponent'.`
       ]);
     });
   });
@@ -500,6 +691,534 @@ class TestComponent {
           [`TestComponent.html(1, 15): Type 'number' is not assignable to type 'string'.`]);
     });
   });
+
+  // https://github.com/angular/angular/issues/44999
+  it('should not fail for components outside of rootDir', () => {
+    // This test configures a component that is located outside the configured `rootDir`. Such
+    // configuration requires that an inline type-check block is used as the reference emitter does
+    // not allow generating imports outside `rootDir`.
+    const messages =
+        diagnose(`{{invalid}}`, `export class TestComponent {}`, [], [], {}, {rootDir: '/root'});
+
+    expect(messages).toEqual(
+        [`TestComponent.html(1, 3): Property 'invalid' does not exist on type 'TestComponent'.`]);
+  });
+
+  describe('host directives', () => {
+    it('should produce a diagnostic for host directive input bindings', () => {
+      const messages = diagnose(
+          `<div dir [input]="person.name" [alias]="person.age"></div>`, `
+            class Dir {
+            }
+            class HostDir {
+              input: number;
+              otherInput: string;
+            }
+            class TestComponent {
+              person: {
+                name: string;
+                age: number;
+              };
+            }`,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            hostDirectives: [{
+              directive: {
+                type: 'directive',
+                name: 'HostDir',
+                selector: '',
+                inputs: {input: 'input', otherInput: 'otherInput'},
+                isStandalone: true,
+              },
+              inputs: ['input', 'otherInput: alias']
+            }]
+          }]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 11): Type 'string' is not assignable to type 'number'.`,
+        `TestComponent.html(1, 33): Type 'number' is not assignable to type 'string'.`
+      ]);
+    });
+
+    it('should produce a diagnostic for directive outputs', () => {
+      const messages = diagnose(
+          `<div
+            dir
+            (numberAlias)="handleStringEvent($event)"
+            (stringEvent)="handleNumberEvent($event)"></div>`,
+          `
+            import {EventEmitter} from '@angular/core';
+            class HostDir {
+              stringEvent = new EventEmitter<string>();
+              numberEvent = new EventEmitter<number>();
+            }
+            class Dir {
+            }
+            class TestComponent {
+              handleStringEvent(event: string): void {}
+              handleNumberEvent(event: number): void {}
+            }`,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            hostDirectives: [{
+              directive: {
+                type: 'directive',
+                name: 'HostDir',
+                selector: '',
+                isStandalone: true,
+                outputs: {stringEvent: 'stringEvent', numberEvent: 'numberEvent'},
+              },
+              outputs: ['stringEvent', 'numberEvent: numberAlias']
+            }]
+          }]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(3, 46): Argument of type 'number' is not assignable to parameter of type 'string'.`,
+        `TestComponent.html(4, 46): Argument of type 'string' is not assignable to parameter of type 'number'.`
+      ]);
+    });
+
+    it('should produce a diagnostic for host directive inputs and outputs that have not been exposed',
+       () => {
+         const messages = diagnose(
+             `<div dir [input]="person.name" (output)="handleStringEvent($event)"></div>`, `
+            class Dir {
+            }
+            class HostDir {
+              input: number;
+              output = new EventEmitter<number>();
+            }
+            class TestComponent {
+              person: {
+                name: string;
+              };
+              handleStringEvent(event: string): void {}
+            }`,
+             [{
+               type: 'directive',
+               name: 'Dir',
+               selector: '[dir]',
+               hostDirectives: [{
+                 directive: {
+                   type: 'directive',
+                   name: 'HostDir',
+                   selector: '',
+                   inputs: {input: 'input'},
+                   outputs: {output: 'output'},
+                   isStandalone: true,
+                 },
+                 // Intentionally left blank.
+                 inputs: [],
+                 outputs: []
+               }]
+             }]);
+
+         expect(messages).toEqual([
+           // These messages are expected to refer to the native
+           // typings since the inputs/outputs haven't been exposed.
+           `TestComponent.html(1, 60): Argument of type 'Event' is not assignable to parameter of type 'string'.`,
+           `TestComponent.html(1, 10): Can't bind to 'input' since it isn't a known property of 'div'.`
+         ]);
+       });
+
+    it('should infer the type of host directive references', () => {
+      const messages = diagnose(
+          `<div dir #hostDir="hostDir">{{ render(hostDir) }}</div>`, `
+            class Dir {}
+            class HostDir {
+              value: number;
+            }
+            class TestComponent {
+              render(input: string): string { return input; }
+            }`,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            hostDirectives: [{
+              directive: {
+                type: 'directive',
+                selector: '',
+                isStandalone: true,
+                name: 'HostDir',
+                exportAs: ['hostDir']
+              }
+            }]
+          }]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 39): Argument of type 'HostDir' is not assignable to parameter of type 'string'.`,
+      ]);
+    });
+  });
+
+  describe('required inputs', () => {
+    it('should produce a diagnostic when a single required input is missing', () => {
+      const messages = diagnose(
+          `<div dir></div>`, `
+            class Dir {
+              input: any;
+            }
+            class TestComponent {}
+          `,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            inputs: {
+              input: {
+                classPropertyName: 'input',
+                bindingPropertyName: 'input',
+                required: true,
+                transform: null,
+              },
+            },
+          }]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 1): Required input 'input' from directive Dir must be specified.`
+      ]);
+    });
+
+    it('should produce a diagnostic when a multiple required inputs are missing', () => {
+      const messages = diagnose(
+          `<div dir otherDir></div>`, `
+            class Dir {
+              input: any;
+              otherInput: any;
+            }
+            class OtherDir {
+              otherDirInput: any;
+            }
+            class TestComponent {}
+          `,
+          [
+            {
+              type: 'directive',
+              name: 'Dir',
+              selector: '[dir]',
+              inputs: {
+                input: {
+                  classPropertyName: 'input',
+                  bindingPropertyName: 'input',
+                  required: true,
+                  transform: null,
+                },
+                otherInput: {
+                  classPropertyName: 'otherInput',
+                  bindingPropertyName: 'otherInput',
+                  required: true,
+                  transform: null,
+                }
+              }
+            },
+            {
+              type: 'directive',
+              name: 'OtherDir',
+              selector: '[otherDir]',
+              inputs: {
+                otherDirInput: {
+                  classPropertyName: 'otherDirInput',
+                  bindingPropertyName: 'otherDirInput',
+                  required: true,
+                  transform: null,
+                }
+              },
+            }
+          ]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 1): Required inputs 'input', 'otherInput' from directive Dir must be specified.`,
+        `TestComponent.html(1, 1): Required input 'otherDirInput' from directive OtherDir must be specified.`,
+      ]);
+    });
+
+    it('should report the public name of a missing required input', () => {
+      const messages = diagnose(
+          `<div dir></div>`, `
+            class Dir {
+              input: any;
+            }
+            class TestComponent {}
+          `,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            inputs: {
+              input: {
+                classPropertyName: 'input',
+                bindingPropertyName: 'inputAlias',
+                required: true,
+                transform: null,
+              }
+            }
+          }]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 1): Required input 'inputAlias' from directive Dir must be specified.`
+      ]);
+    });
+
+    it('should not produce a diagnostic if a required input is used in a binding', () => {
+      const messages = diagnose(
+          `<div dir [input]="foo"></div>`, `
+            class Dir {
+              input: any;
+            }
+            class TestComponent {
+              foo: any;
+            }
+          `,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            inputs: {
+              input: {
+                classPropertyName: 'input',
+                bindingPropertyName: 'input',
+                required: true,
+                transform: null,
+              },
+            }
+          }]);
+
+      expect(messages).toEqual([]);
+    });
+
+    it('should not produce a diagnostic if a required input is used in a binding through an alias',
+       () => {
+         const messages = diagnose(
+             `<div dir [inputAlias]="foo"></div>`, `
+                class Dir {
+                  input: any;
+                }
+                class TestComponent {
+                  foo: any;
+                }
+              `,
+             [{
+               type: 'directive',
+               name: 'Dir',
+               selector: '[dir]',
+               inputs: {
+                 input: {
+                   classPropertyName: 'input',
+                   bindingPropertyName: 'inputAlias',
+                   required: true,
+                   transform: null,
+                 },
+               },
+             }]);
+
+         expect(messages).toEqual([]);
+       });
+
+    it('should not produce a diagnostic if a required input is used in a static binding', () => {
+      const messages = diagnose(
+          `<div dir input="hello"></div>`, `
+            class Dir {
+              input: any;
+            }
+            class TestComponent {}
+          `,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            inputs: {
+              input: {
+                classPropertyName: 'input',
+                bindingPropertyName: 'input',
+                required: true,
+                transform: null,
+              },
+            }
+          }]);
+
+      expect(messages).toEqual([]);
+    });
+
+    it('should not produce a diagnostic if a required input is used in a two-way binding', () => {
+      const messages = diagnose(
+          `<div dir [(input)]="foo"></div>`, `
+            class Dir {
+              input: any;
+              inputChange: any;
+            }
+            class TestComponent {
+              foo: any;
+            }
+          `,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            inputs: {
+              input: {
+                classPropertyName: 'input',
+                bindingPropertyName: 'input',
+                required: true,
+                transform: null,
+              },
+            },
+            outputs: {inputChange: 'inputChange'},
+          }]);
+
+      expect(messages).toEqual([]);
+    });
+
+    it('should not produce a diagnostic for a required input that is the same the directive selector',
+       () => {
+         const messages = diagnose(
+             `<div dir></div>`, `
+                  class Dir {
+                    dir: any;
+                  }
+                  class TestComponent {}
+                `,
+             [{
+               type: 'directive',
+               name: 'Dir',
+               selector: '[dir]',
+               inputs: {
+                 dir: {
+                   classPropertyName: 'dir',
+                   bindingPropertyName: 'dir',
+                   required: true,
+                   transform: null,
+                 }
+               }
+             }]);
+
+         expect(messages).toEqual([]);
+       });
+
+    it('should produce a diagnostic when a required input from a host directive is missing', () => {
+      const messages = diagnose(
+          `<div dir></div>`, `
+              class Dir {}
+              class HostDir {
+                input: any;
+              }
+              class TestComponent {}`,
+          [{
+            type: 'directive',
+            name: 'Dir',
+            selector: '[dir]',
+            hostDirectives: [{
+              directive: {
+                type: 'directive',
+                name: 'HostDir',
+                selector: '',
+                inputs: {
+                  input: {
+                    classPropertyName: 'input',
+                    bindingPropertyName: 'hostAlias',
+                    required: true,
+                    transform: null,
+                  },
+                },
+                isStandalone: true,
+              },
+              inputs: ['hostAlias: customAlias']
+            }]
+          }]);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 1): Required input 'customAlias' from directive HostDir must be specified.`
+      ]);
+    });
+
+    it('should not report missing required inputs for an attribute binding with the same name',
+       () => {
+         const messages = diagnose(
+             `<div [attr.maxlength]="123"></div>`, `
+                class MaxLengthValidator {
+                  maxlength: string;
+                }
+                class TestComponent {}
+              `,
+             [{
+               type: 'directive',
+               name: 'MaxLengthValidator',
+               selector: '[maxlength]',
+               inputs: {
+                 maxlength: {
+                   classPropertyName: 'maxlength',
+                   bindingPropertyName: 'maxlength',
+                   required: true,
+                   transform: null,
+                 },
+               },
+             }]);
+
+         expect(messages).toEqual([]);
+       });
+  });
+
+  // https://github.com/angular/angular/issues/43970
+  describe('template parse failures', () => {
+    afterEach(resetParseTemplateAsSourceFileForTest);
+
+    it('baseline test without parse failure', () => {
+      const messages = diagnose(`<div (click)="test(name)"></div>`, `
+      export class TestComponent {
+        name: string | undefined;
+        test(n: string): void {}
+      }`);
+
+      expect(messages).toEqual([
+        `TestComponent.html(1, 20): Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.`
+      ]);
+    });
+
+    it('should handle TypeScript parse failures gracefully', () => {
+      setParseTemplateAsSourceFileForTest(() => {
+        throw new Error('Simulated parse failure');
+      });
+
+      const messages = diagnose(`<div (click)="test(name)"></div>`, `
+      export class TestComponent {
+        name: string | undefined;
+        test(n: string): void {}
+      }`);
+
+      expect(messages.length).toBe(1);
+      expect(messages[0])
+          .toContain(
+              `main.ts(2, 20): Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+  Failed to report an error in 'TestComponent.html' at 1:20
+    Error: Simulated parse failure`);
+    });
+
+    it('should handle non-Error failures gracefully', () => {
+      setParseTemplateAsSourceFileForTest(() => {
+        throw 'Simulated parse failure';
+      });
+
+      const messages = diagnose(`<div (click)="test(name)"></div>`, `
+      export class TestComponent {
+        name: string | undefined;
+        test(n: string): void {}
+      }`);
+
+      expect(messages.length).toBe(1);
+      expect(messages[0])
+          .toContain(
+              `main.ts(2, 20): Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+  Failed to report an error in 'TestComponent.html' at 1:20
+    Simulated parse failure`);
+    });
+  });
 });
 
 function diagnose(
@@ -527,8 +1246,7 @@ function diagnose(
   const sf = getSourceFileOrError(program, sfPath);
   const diagnostics = templateTypeChecker.getDiagnosticsForFile(sf, OptimizeFor.WholeProgram);
   return diagnostics.map(diag => {
-    const text =
-        typeof diag.messageText === 'string' ? diag.messageText : diag.messageText.messageText;
+    const text = ts.flattenDiagnosticMessageText(diag.messageText, '\n');
     const fileName = diag.file!.fileName;
     const {line, character} = ts.getLineAndCharacterOfPosition(diag.file!, diag.start!);
     return `${fileName}(${line + 1}, ${character + 1}): ${text}`;

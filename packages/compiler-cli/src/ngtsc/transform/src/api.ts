@@ -7,14 +7,16 @@
  */
 
 import {ConstantPool, Expression, Statement, Type} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {Reexport} from '../../imports';
+import {Reexport, ReferenceEmitter} from '../../imports';
 import {SemanticSymbol} from '../../incremental/semantic_graph';
 import {IndexingContext} from '../../indexer';
-import {ClassDeclaration, Decorator} from '../../reflection';
+import {ClassDeclaration, Decorator, ReflectionHost} from '../../reflection';
 import {ImportManager} from '../../translator';
 import {TypeCheckContext} from '../../typecheck/api';
+import {ExtendedTemplateChecker} from '../../typecheck/extended/api';
+import {Xi18nContext} from '../../xi18n';
 
 /**
  * Specifies the compilation mode that is used for the compilation.
@@ -29,6 +31,12 @@ export enum CompilationMode {
    * Generates code using a stable, but intermediate format suitable to be published to NPM.
    */
   PARTIAL,
+
+  /**
+   * Generates code based on each individual source file without using its
+   * dependencies (suitable for local dev edit/refresh workflow).
+   */
+  LOCAL,
 }
 
 export enum HandlerPrecedence {
@@ -53,28 +61,6 @@ export enum HandlerPrecedence {
    */
   WEAK,
 }
-
-/**
- * A set of options which can be passed to a `DecoratorHandler` by a consumer, to tailor the output
- * of compilation beyond the decorators themselves.
- */
-export enum HandlerFlags {
-  /**
-   * No flags set.
-   */
-  NONE = 0x0,
-
-  /**
-   * Indicates that this decorator is fully inherited from its parent at runtime. In addition to
-   * normally inherited aspects such as inputs and queries, full inheritance applies to every aspect
-   * of the component or directive, such as the template function itself.
-   *
-   * Its primary effect is to cause the `CopyDefinitionFeature` to be applied to the definition
-   * being compiled. See that class for more information.
-   */
-  FULL_INHERITANCE = 0x00000001,
-}
-
 
 /**
  * Provides the interface between a decorator compiler from @angular/compiler and the Typescript
@@ -126,8 +112,7 @@ export interface DecoratorHandler<D, A, S extends SemanticSymbol|null, R> {
    * builds. Any side effects required for compilation (e.g. registration of metadata) should happen
    * in the `register` phase, which is guaranteed to run even for incremental builds.
    */
-  analyze(node: ClassDeclaration, metadata: Readonly<D>, handlerFlags?: HandlerFlags):
-      AnalysisOutput<A>;
+  analyze(node: ClassDeclaration, metadata: Readonly<D>): AnalysisOutput<A>;
 
   /**
    * React to a change in a resource file by updating the `analysis` or `resolution`, under the
@@ -176,16 +161,26 @@ export interface DecoratorHandler<D, A, S extends SemanticSymbol|null, R> {
    */
   resolve?(node: ClassDeclaration, analysis: Readonly<A>, symbol: S): ResolveResult<R>;
 
+  /**
+   * Extract i18n messages into the `Xi18nContext`, which is useful for generating various formats
+   * of message file outputs.
+   */
+  xi18n?(bundle: Xi18nContext, node: ClassDeclaration, analysis: Readonly<A>): void;
+
   typeCheck?
       (ctx: TypeCheckContext, node: ClassDeclaration, analysis: Readonly<A>,
        resolution: Readonly<R>): void;
+
+  extendedTemplateCheck?
+      (component: ts.ClassDeclaration, extendedTemplateChecker: ExtendedTemplateChecker):
+          ts.Diagnostic[];
 
   /**
    * Generate a description of the field which should be added to the class, including any
    * initialization code to be generated.
    *
-   * If the compilation mode is configured as partial, and an implementation of `compilePartial` is
-   * provided, then this method is not called.
+   * If the compilation mode is configured as other than full but an implementation of the
+   * corresponding method is not provided, then this method is called as a fallback.
    */
   compileFull(
       node: ClassDeclaration, analysis: Readonly<A>, resolution: Readonly<R>,
@@ -202,6 +197,13 @@ export interface DecoratorHandler<D, A, S extends SemanticSymbol|null, R> {
   compilePartial?
       (node: ClassDeclaration, analysis: Readonly<A>, resolution: Readonly<R>): CompileResult
       |CompileResult[];
+
+  /**
+   * Generates code based on each individual source file without using its
+   * dependencies (suitable for local dev edit/refresh workflow)
+   */
+  compileLocal(node: ClassDeclaration, analysis: Readonly<A>, constantPool: ConstantPool):
+      CompileResult|CompileResult[];
 }
 
 /**
@@ -243,9 +245,10 @@ export interface AnalysisOutput<A> {
  */
 export interface CompileResult {
   name: string;
-  initializer: Expression;
+  initializer: Expression|null;
   statements: Statement[];
   type: Type;
+  deferrableImports: Set<ts.ImportDeclaration>|null;
 }
 
 export interface ResolveResult<R> {
@@ -260,5 +263,6 @@ export interface DtsTransform {
       (element: ts.FunctionDeclaration, imports: ImportManager): ts.FunctionDeclaration;
   transformClass?
       (clazz: ts.ClassDeclaration, elements: ReadonlyArray<ts.ClassElement>,
+       reflector: ReflectionHost, refEmitter: ReferenceEmitter,
        imports: ImportManager): ts.ClassDeclaration;
 }

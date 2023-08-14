@@ -10,6 +10,11 @@ import * as o from '../../output/output_ast';
 
 export interface R3PartialDeclaration {
   /**
+   * The minimum version of the compiler that can process this partial declaration.
+   */
+  minVersion: string;
+
+  /**
    * Version number of the Angular compiler that was used to compile this declaration. The linker
    * will be able to detect which version a library is using and interpret its metadata accordingly.
    */
@@ -20,13 +25,15 @@ export interface R3PartialDeclaration {
    * to all Angular exports, including Ivy instructions.
    */
   ngImport: o.Expression;
+
+  /**
+   * Reference to the decorated class, which is subject to this partial declaration.
+   */
+  type: o.Expression;
 }
 
 /**
- * Describes the shape of the object that the `ɵɵngDeclareDirective() function accepts.
- *
- * This interface serves primarily as documentation, as conformance to this interface is not
- * enforced during linking.
+ * Describes the shape of the object that the `ɵɵngDeclareDirective()` function accepts.
  */
 export interface R3DeclareDirectiveMetadata extends R3PartialDeclaration {
   /**
@@ -35,15 +42,13 @@ export interface R3DeclareDirectiveMetadata extends R3PartialDeclaration {
   selector?: string;
 
   /**
-   * Reference to the directive class itself.
-   */
-  type: o.Expression;
-
-  /**
    * A mapping of inputs from class property names to binding property names, or to a tuple of
    * binding property name and class property name if the names are different.
    */
-  inputs?: {[classPropertyName: string]: string|[string, string]};
+  inputs?: {
+    [classPropertyName: string]: string|
+    [bindingPropertyName: string, classPropertyName: string, transformFunction?: o.Expression]
+  };
 
   /**
    * A mapping of outputs from class property names to binding property names.
@@ -111,13 +116,25 @@ export interface R3DeclareDirectiveMetadata extends R3PartialDeclaration {
    * Whether the directive implements the `ngOnChanges` hook. Defaults to false.
    */
   usesOnChanges?: boolean;
+
+  /**
+   * Whether the directive is standalone. Defaults to false.
+   */
+  isStandalone?: boolean;
+
+  /**
+   * Whether the directive is a signal-based directive. Defaults to false.
+   */
+  isSignal?: boolean;
+
+  /**
+   * Additional directives applied to the directive host.
+   */
+  hostDirectives?: R3DeclareHostDirectiveMetadata[];
 }
 
 /**
  * Describes the shape of the object that the `ɵɵngDeclareComponent()` function accepts.
- *
- * This interface serves primarily as documentation, as conformance to this interface is not
- * enforced during linking.
  */
 export interface R3DeclareComponentMetadata extends R3DeclareDirectiveMetadata {
   /**
@@ -140,38 +157,28 @@ export interface R3DeclareComponentMetadata extends R3DeclareDirectiveMetadata {
   styles?: string[];
 
   /**
+   * List of components which matched in the template, including sufficient
+   * metadata for each directive to attribute bindings and references within
+   * the template to each directive specifically, if the runtime instructions
+   * support this.
+   */
+  components?: R3DeclareDirectiveDependencyMetadata[];
+
+  /**
    * List of directives which matched in the template, including sufficient
    * metadata for each directive to attribute bindings and references within
    * the template to each directive specifically, if the runtime instructions
    * support this.
    */
-  directives?: {
-    /**
-     * Selector of the directive.
-     */
-    selector: string;
+  directives?: R3DeclareDirectiveDependencyMetadata[];
 
-    /**
-     * Reference to the directive class (possibly a forward reference wrapped in a `forwardRef`
-     * invocation).
-     */
-    type: o.Expression | (() => o.Expression);
-
-    /**
-     * Property names of the directive's inputs.
-     */
-    inputs?: string[];
-
-    /**
-     * Event names of the directive's outputs.
-     */
-    outputs?: string[];
-
-    /**
-     * Names by which this directive exports itself for references.
-     */
-    exportAs?: string[];
-  }[];
+  /**
+   * List of dependencies which matched in the template, including sufficient
+   * metadata for each directive/pipe to attribute bindings and references within
+   * the template to each directive specifically, if the runtime instructions
+   * support this.
+   */
+  dependencies?: R3DeclareTemplateDependencyMetadata[];
 
   /**
    * A map of pipe names to an expression referencing the pipe type (possibly a forward reference
@@ -196,7 +203,7 @@ export interface R3DeclareComponentMetadata extends R3DeclareDirectiveMetadata {
   changeDetection?: ChangeDetectionStrategy;
 
   /**
-   * An encapsulation policy for the template and CSS styles.
+   * An encapsulation policy for the component's styling.
    * Defaults to `ViewEncapsulation.Emulated`.
    */
   encapsulation?: ViewEncapsulation;
@@ -212,6 +219,57 @@ export interface R3DeclareComponentMetadata extends R3DeclareDirectiveMetadata {
   preserveWhitespaces?: boolean;
 }
 
+export type R3DeclareTemplateDependencyMetadata = R3DeclareDirectiveDependencyMetadata|
+    R3DeclarePipeDependencyMetadata|R3DeclareNgModuleDependencyMetadata;
+
+export interface R3DeclareDirectiveDependencyMetadata {
+  kind: 'directive'|'component';
+
+  /**
+   * Selector of the directive.
+   */
+  selector: string;
+
+  /**
+   * Reference to the directive class (possibly a forward reference wrapped in a `forwardRef`
+   * invocation).
+   */
+  type: o.Expression|(() => o.Expression);
+
+  /**
+   * Property names of the directive's inputs.
+   */
+  inputs?: string[];
+
+  /**
+   * Event names of the directive's outputs.
+   */
+  outputs?: string[];
+
+  /**
+   * Names by which this directive exports itself for references.
+   */
+  exportAs?: string[];
+}
+
+export interface R3DeclarePipeDependencyMetadata {
+  kind: 'pipe';
+
+  name: string;
+
+  /**
+   * Reference to the pipe class (possibly a forward reference wrapped in a `forwardRef`
+   * invocation).
+   */
+  type: o.Expression|(() => o.Expression);
+}
+
+export interface R3DeclareNgModuleDependencyMetadata {
+  kind: 'ngmodule';
+
+  type: o.Expression|(() => o.Expression);
+}
+
 export interface R3DeclareQueryMetadata {
   /**
    * Name of the property on the class to update with query results.
@@ -224,8 +282,8 @@ export interface R3DeclareQueryMetadata {
   first?: boolean;
 
   /**
-   * Either an expression representing a type or `InjectionToken` for the query
-   * predicate, or a set of string selectors.
+   * Either an expression representing a type (possibly wrapped in a `forwardRef()`) or
+   * `InjectionToken` for the query predicate, or a set of string selectors.
    */
   predicate: o.Expression|string[];
 
@@ -237,9 +295,6 @@ export interface R3DeclareQueryMetadata {
   /**
    * True to only fire changes if there are underlying changes to the query.
    */
-  // TODO(misko):  This will become `true` be default in v12. `QueryList.changes` would fire even if
-  // no changes to the query list were detected. This is not ideal, as changes should only fire if
-  // the `QueryList` actually materially changed.
   emitDistinctChangesOnly?: boolean;
 
   /**
@@ -265,17 +320,59 @@ export interface R3DeclareQueryMetadata {
 }
 
 /**
+ * Describes the shape of the objects that the `ɵɵngDeclareNgModule()` accepts.
+ */
+export interface R3DeclareNgModuleMetadata extends R3PartialDeclaration {
+  /**
+   * An array of expressions representing the bootstrap components specified by the module.
+   */
+  bootstrap?: o.Expression[];
+
+  /**
+   * An array of expressions representing the directives and pipes declared by the module.
+   */
+  declarations?: o.Expression[];
+
+  /**
+   * An array of expressions representing the imports of the module.
+   */
+  imports?: o.Expression[];
+
+  /**
+   * An array of expressions representing the exports of the module.
+   */
+  exports?: o.Expression[];
+
+  /**
+   * The set of schemas that declare elements to be allowed in the NgModule.
+   */
+  schemas?: o.Expression[];
+
+  /** Unique ID or expression representing the unique ID of an NgModule. */
+  id?: o.Expression;
+}
+
+/**
+ * Describes the shape of the objects that the `ɵɵngDeclareInjector()` accepts.
+ */
+export interface R3DeclareInjectorMetadata extends R3PartialDeclaration {
+  /**
+   * The list of providers provided by the injector.
+   */
+  providers?: o.Expression;
+  /**
+   * The list of imports into the injector.
+   */
+  imports?: o.Expression[];
+}
+
+/**
  * Describes the shape of the object that the `ɵɵngDeclarePipe()` function accepts.
  *
  * This interface serves primarily as documentation, as conformance to this interface is not
  * enforced during linking.
  */
 export interface R3DeclarePipeMetadata extends R3PartialDeclaration {
-  /**
-   * Reference to the pipe class itself.
-   */
-  type: o.Expression;
-
   /**
    * The name to use in templates to refer to this pipe.
    */
@@ -289,4 +386,170 @@ export interface R3DeclarePipeMetadata extends R3PartialDeclaration {
    * Default: true.
    */
   pure?: boolean;
+
+  /**
+   * Whether the pipe is standalone.
+   *
+   * Default: false.
+   */
+  isStandalone?: boolean;
+}
+
+
+/**
+ * Describes the shape of the object that the `ɵɵngDeclareFactory()` function accepts.
+ *
+ * This interface serves primarily as documentation, as conformance to this interface is not
+ * enforced during linking.
+ */
+export interface R3DeclareFactoryMetadata extends R3PartialDeclaration {
+  /**
+   * A collection of dependencies that this factory relies upon.
+   *
+   * If this is `null`, then the type's constructor is nonexistent and will be inherited from an
+   * ancestor of the type.
+   *
+   * If this is `'invalid'`, then one or more of the parameters wasn't resolvable and any attempt to
+   * use these deps will result in a runtime error.
+   */
+  deps: R3DeclareDependencyMetadata[]|'invalid'|null;
+
+  /**
+   * Type of the target being created by the factory.
+   */
+  target: FactoryTarget;
+}
+
+export enum FactoryTarget {
+  Directive = 0,
+  Component = 1,
+  Injectable = 2,
+  Pipe = 3,
+  NgModule = 4,
+}
+
+/**
+ * Describes the shape of the object that the `ɵɵngDeclareInjectable()` function accepts.
+ *
+ * This interface serves primarily as documentation, as conformance to this interface is not
+ * enforced during linking.
+ */
+export interface R3DeclareInjectableMetadata extends R3PartialDeclaration {
+  /**
+   * If provided, specifies that the declared injectable belongs to a particular injector:
+   * - `InjectorType` such as `NgModule`,
+   * - `'root'` the root injector
+   * - `'any'` all injectors.
+   * If not provided, then it does not belong to any injector. Must be explicitly listed in the
+   * providers of an injector.
+   */
+  providedIn?: o.Expression;
+
+  /**
+   * If provided, an expression that evaluates to a class to use when creating an instance of this
+   * injectable.
+   */
+  useClass?: o.Expression;
+
+  /**
+   * If provided, an expression that evaluates to a function to use when creating an instance of
+   * this injectable.
+   */
+  useFactory?: o.Expression;
+
+  /**
+   * If provided, an expression that evaluates to a token of another injectable that this injectable
+   * aliases.
+   */
+  useExisting?: o.Expression;
+
+  /**
+   * If provided, an expression that evaluates to the value of the instance of this injectable.
+   */
+  useValue?: o.Expression;
+
+  /**
+   * An array of dependencies to support instantiating this injectable via `useClass` or
+   * `useFactory`.
+   */
+  deps?: R3DeclareDependencyMetadata[];
+}
+
+/**
+ * Metadata indicating how a dependency should be injected into a factory.
+ */
+export interface R3DeclareDependencyMetadata {
+  /**
+   * An expression representing the token or value to be injected, or `null` if the dependency is
+   * not valid.
+   *
+   * If this dependency is due to the `@Attribute()` decorator, then this is an expression
+   * evaluating to the name of the attribute.
+   */
+  token: o.Expression|null;
+
+  /**
+   * Whether the dependency is injecting an attribute value.
+   * Default: false.
+   */
+  attribute?: boolean;
+
+  /**
+   * Whether the dependency has an @Host qualifier.
+   * Default: false,
+   */
+  host?: boolean;
+
+  /**
+   * Whether the dependency has an @Optional qualifier.
+   * Default: false,
+   */
+  optional?: boolean;
+
+  /**
+   * Whether the dependency has an @Self qualifier.
+   * Default: false,
+   */
+  self?: boolean;
+
+  /**
+   * Whether the dependency has an @SkipSelf qualifier.
+   * Default: false,
+   */
+  skipSelf?: boolean;
+}
+
+/**
+ * Describes the shape of the object that the `ɵɵngDeclareClassMetadata()` function accepts.
+ *
+ * This interface serves primarily as documentation, as conformance to this interface is not
+ * enforced during linking.
+ */
+export interface R3DeclareClassMetadata extends R3PartialDeclaration {
+  /**
+   * The Angular decorators of the class.
+   */
+  decorators: o.Expression;
+
+  /**
+   * Optionally specifies the constructor parameters, their types and the Angular decorators of each
+   * parameter. This property is omitted if the class does not have a constructor.
+   */
+  ctorParameters?: o.Expression;
+
+  /**
+   * Optionally specifies the Angular decorators applied to the class properties. This property is
+   * omitted if no properties have any decorators.
+   */
+  propDecorators?: o.Expression;
+}
+
+/**
+ * Describes the shape of the object literal that can be
+ * passed in as a part of the `hostDirectives` array.
+ */
+export interface R3DeclareHostDirectiveMetadata {
+  directive: o.Expression;
+  inputs?: string[];
+  outputs?: string[];
 }

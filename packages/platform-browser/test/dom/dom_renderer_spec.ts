@@ -6,23 +6,31 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {Component, Renderer2, ViewEncapsulation} from '@angular/core';
-import {TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser/src/dom/debug/by';
-import {NAMESPACE_URIS} from '@angular/platform-browser/src/dom/dom_renderer';
-import {browserDetection} from '@angular/platform-browser/testing/src/browser_util';
+import {NAMESPACE_URIS, REMOVE_STYLES_ON_COMPONENT_DESTROY} from '@angular/platform-browser/src/dom/dom_renderer';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
 
 {
   describe('DefaultDomRendererV2', () => {
-    if (isNode) return;
+    if (isNode) {
+      // Jasmine will throw if there are no tests.
+      it('should pass', () => {});
+      return;
+    }
+
     let renderer: Renderer2;
 
     beforeEach(() => {
       TestBed.configureTestingModule({
         declarations: [
-          TestCmp, SomeApp, CmpEncapsulationEmulated, CmpEncapsulationShadow, CmpEncapsulationNone,
-          CmpEncapsulationShadow
-        ]
+          TestCmp,
+          SomeApp,
+          SomeAppForCleanUp,
+          CmpEncapsulationEmulated,
+          CmpEncapsulationNone,
+          CmpEncapsulationShadow,
+        ],
       });
       renderer = TestBed.createComponent(TestCmp).componentInstance.renderer;
     });
@@ -98,24 +106,179 @@ import {expect} from '@angular/platform-browser/testing/src/matchers';
       });
     });
 
-    if (browserDetection.supportsShadowDom) {
-      it('should allow to style components with emulated encapsulation and no encapsulation inside of components with shadow DOM',
-         () => {
-           const fixture = TestBed.createComponent(SomeApp);
-           const cmp = fixture.debugElement.query(By.css('cmp-shadow')).nativeElement;
-           const shadow = cmp.shadowRoot.querySelector('.shadow');
+    it('should allow to style components with emulated encapsulation and no encapsulation inside of components with shadow DOM',
+       () => {
+         const fixture = TestBed.createComponent(SomeApp);
+         fixture.detectChanges();
 
-           expect(window.getComputedStyle(shadow).color).toEqual('rgb(255, 0, 0)');
+         const cmp = fixture.debugElement.query(By.css('cmp-shadow')).nativeElement;
+         const shadow = cmp.shadowRoot.querySelector('.shadow');
 
-           const emulated = cmp.shadowRoot.querySelector('.emulated');
-           expect(window.getComputedStyle(emulated).color).toEqual('rgb(0, 0, 255)');
+         expect(window.getComputedStyle(shadow).color).toEqual('rgb(255, 0, 0)');
 
-           const none = cmp.shadowRoot.querySelector('.none');
-           expect(window.getComputedStyle(none).color).toEqual('rgb(0, 255, 0)');
-         });
-    }
+         const emulated = cmp.shadowRoot.querySelector('.emulated');
+         expect(window.getComputedStyle(emulated).color).toEqual('rgb(0, 0, 255)');
+
+         const none = cmp.shadowRoot.querySelector('.none');
+         expect(window.getComputedStyle(none).color).toEqual('rgb(0, 255, 0)');
+       });
+
+    it('should be able to append children to a <template> element', () => {
+      const template = document.createElement('template');
+      const child = document.createElement('div');
+
+      renderer.appendChild(template, child);
+
+      expect(child.parentNode).toBe(template.content);
+    });
+
+    it('should be able to insert children before others in a <template> element', () => {
+      const template = document.createElement('template');
+      const child = document.createElement('div');
+      const otherChild = document.createElement('div');
+      template.content.appendChild(child);
+
+      renderer.insertBefore(template, otherChild, child);
+
+      expect(otherChild.parentNode).toBe(template.content);
+    });
+
+    describe('should not cleanup styles of destroyed components by default', () => {
+      it('works for components without encapsulation emulated', async () => {
+        const fixture = TestBed.createComponent(SomeAppForCleanUp);
+        const compInstance = fixture.componentInstance;
+        compInstance.showEmulatedComponents = true;
+
+        fixture.detectChanges();
+        // verify style is in DOM
+        expect(await styleCount(fixture, '.emulated')).toBe(1);
+
+        // Remove a single instance of the component.
+        compInstance.componentOneInstanceHidden = true;
+        fixture.detectChanges();
+        // Verify style is still in DOM
+        expect(await styleCount(fixture, '.emulated')).toBe(1);
+
+        // Hide all instances of the component
+        compInstance.componentTwoInstanceHidden = true;
+        fixture.detectChanges();
+
+        // Verify style is still in DOM
+        expect(await styleCount(fixture, '.emulated')).toBe(1);
+      });
+
+      it('works for components without encapsulation none', async () => {
+        const fixture = TestBed.createComponent(SomeAppForCleanUp);
+        const compInstance = fixture.componentInstance;
+        compInstance.showEmulatedComponents = false;
+
+        fixture.detectChanges();
+        // verify style is in DOM
+        expect(await styleCount(fixture, '.none')).toBe(1);
+
+        // Remove a single instance of the component.
+        compInstance.componentOneInstanceHidden = true;
+        fixture.detectChanges();
+        // Verify style is still in DOM
+        expect(await styleCount(fixture, '.none')).toBe(1);
+
+        // Hide all instances of the component
+        compInstance.componentTwoInstanceHidden = true;
+        fixture.detectChanges();
+
+        // Verify style is still in DOM
+        expect(await styleCount(fixture, '.none')).toBe(1);
+      });
+    });
+
+    describe(
+        'should cleanup styles of destroyed components when `REMOVE_STYLES_ON_COMPONENT_DESTROY` is `true`',
+        () => {
+          beforeEach(() => {
+            TestBed.resetTestingModule();
+
+            TestBed.configureTestingModule({
+              declarations: [
+                SomeAppForCleanUp,
+                CmpEncapsulationEmulated,
+                CmpEncapsulationNone,
+              ],
+              providers: [
+                {
+                  provide: REMOVE_STYLES_ON_COMPONENT_DESTROY,
+                  useValue: true,
+                },
+              ],
+            });
+          });
+
+          it('works for components without encapsulation emulated', async () => {
+            const fixture = TestBed.createComponent(SomeAppForCleanUp);
+            const compInstance = fixture.componentInstance;
+            compInstance.showEmulatedComponents = true;
+            fixture.detectChanges();
+            // verify style is in DOM
+            expect(await styleCount(fixture, '.emulated')).toBe(1);
+
+            // Remove a single instance of the component.
+            compInstance.componentOneInstanceHidden = true;
+            fixture.detectChanges();
+            // Verify style is still in DOM
+            expect(await styleCount(fixture, '.emulated')).toBe(1);
+
+            // Hide all instances of the component
+            compInstance.componentTwoInstanceHidden = true;
+            fixture.detectChanges();
+
+            // Verify style is not in DOM
+            expect(await styleCount(fixture, '.emulated')).toBe(0);
+          });
+
+          it('works for components without encapsulation none', async () => {
+            const fixture = TestBed.createComponent(SomeAppForCleanUp);
+            const compInstance = fixture.componentInstance;
+            compInstance.showEmulatedComponents = false;
+
+            fixture.detectChanges();
+            // verify style is in DOM
+            expect(await styleCount(fixture, '.none')).toBe(1);
+
+            // Remove a single instance of the component.
+            compInstance.componentOneInstanceHidden = true;
+            fixture.detectChanges();
+            // Verify style is still in DOM
+            expect(await styleCount(fixture, '.none')).toBe(1);
+
+            // Hide all instances of the component
+            compInstance.componentTwoInstanceHidden = true;
+            fixture.detectChanges();
+
+            // Verify style is not in DOM
+            expect(await styleCount(fixture, '.emulated')).toBe(0);
+          });
+        });
   });
 }
+
+async function styleCount(
+    fixture: ComponentFixture<unknown>, cssContentMatcher: string): Promise<number> {
+  // flush
+  await new Promise<void>(resolve => {
+    setTimeout(() => resolve(), 0);
+  });
+
+  const html = fixture.debugElement.parent?.parent;
+  const debugElements = html?.queryAll(By.css('style'));
+
+  if (!debugElements) {
+    return 0;
+  }
+
+  return debugElements
+      .filter(({nativeElement}) => nativeElement.textContent.includes(cssContentMatcher))
+      .length;
+}
+
 
 @Component({
   selector: 'cmp-emulated',
@@ -147,9 +310,9 @@ class CmpEncapsulationShadow {
 @Component({
   selector: 'some-app',
   template: `
-	  <cmp-shadow></cmp-shadow>
-	  <cmp-emulated></cmp-emulated>
-	  <cmp-none></cmp-none>
+    <cmp-shadow></cmp-shadow>
+    <cmp-emulated></cmp-emulated>
+    <cmp-none></cmp-none>
   `,
 })
 export class SomeApp {
@@ -158,4 +321,20 @@ export class SomeApp {
 @Component({selector: 'test-cmp', template: ''})
 class TestCmp {
   constructor(public renderer: Renderer2) {}
+}
+
+@Component({
+  selector: 'some-app',
+  template: `
+    <cmp-emulated *ngIf="!componentOneInstanceHidden && showEmulatedComponents"></cmp-emulated>
+    <cmp-emulated *ngIf="!componentTwoInstanceHidden && showEmulatedComponents"></cmp-emulated>
+
+    <cmp-none *ngIf="!componentOneInstanceHidden && !showEmulatedComponents"></cmp-none>
+    <cmp-none *ngIf="!componentTwoInstanceHidden && !showEmulatedComponents"></cmp-none>
+  `,
+})
+export class SomeAppForCleanUp {
+  componentOneInstanceHidden = false;
+  componentTwoInstanceHidden = false;
+  showEmulatedComponents = true;
 }

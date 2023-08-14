@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {CommonModule, NgLocalization} from '@angular/common';
+import {CommonModule, NgLocalization, NgPlural, NgPluralCase} from '@angular/common';
 import {Component, Injectable} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
@@ -138,11 +138,31 @@ import {expect} from '@angular/platform-browser/testing/src/matchers';
          detectChangesAndExpectText('you have a few messages.');
        }));
   });
+
+  it('should be available as a standalone directive', () => {
+    @Component({
+      selector: 'test-component',
+      imports: [NgPlural, NgPluralCase],
+      template: '<ul [ngPlural]="switchValue">' +
+          '<ng-template ngPluralCase="=0"><li>no messages</li></ng-template>' +
+          '<ng-template ngPluralCase="=1"><li>one message</li></ng-template>' +
+          '</ul>',
+      standalone: true,
+    })
+    class TestComponent {
+      switchValue = 1;
+    }
+
+    const fixture = TestBed.createComponent(TestComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toBe('one message');
+  });
 }
 
 @Injectable()
 class TestLocalization extends NgLocalization {
-  getPluralCategory(value: number): string {
+  override getPluralCategory(value: number): string {
     if (value > 1 && value < 4) {
       return 'few';
     }

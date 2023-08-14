@@ -6,29 +6,24 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {DatePipe} from '@angular/common';
+import {DATE_PIPE_DEFAULT_OPTIONS, DatePipe} from '@angular/common';
 import localeEn from '@angular/common/locales/en';
 import localeEnExtra from '@angular/common/locales/extra/en';
-import {PipeResolver} from '@angular/compiler/src/pipe_resolver';
-import {ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
-import {JitReflector} from '@angular/platform-browser-dynamic/src/compiler_reflector';
+import {Component, ɵregisterLocaleData, ɵunregisterLocaleData} from '@angular/core';
+import {TestBed} from '@angular/core/testing';
 
 {
-  let date: Date;
   describe('DatePipe', () => {
     const isoStringWithoutTime = '2015-01-01';
     let pipe: DatePipe;
+    let date: Date;
 
     beforeAll(() => ɵregisterLocaleData(localeEn, localeEnExtra));
     afterAll(() => ɵunregisterLocaleData());
 
     beforeEach(() => {
       date = new Date(2015, 5, 15, 9, 3, 1, 550);
-      pipe = new DatePipe('en-US');
-    });
-
-    it('should be marked as pure', () => {
-      expect(new PipeResolver(new JitReflector()).resolve(DatePipe)!.pure).toEqual(true);
+      pipe = new DatePipe('en-US', null);
     });
 
     describe('supports', () => {
@@ -77,8 +72,54 @@ import {JitReflector} from '@angular/platform-browser-dynamic/src/compiler_refle
     });
 
     describe('transform', () => {
-      it('should use "mediumDate" as the default format',
+      it('should use "mediumDate" as the default format if no format is provided',
          () => expect(pipe.transform('2017-01-11T10:14:39+0000')).toEqual('Jan 11, 2017'));
+
+      it('should give precedence to the passed in format',
+         () => expect(pipe.transform('2017-01-11T10:14:39+0000', 'shortDate')).toEqual('1/11/17'));
+
+      it('should use format provided in component as default format when no format is passed in',
+         () => {
+           @Component({
+             selector: 'test-component',
+             imports: [DatePipe],
+             template: '{{ value | date }}',
+             standalone: true,
+             providers: [{provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: {dateFormat: 'shortDate'}}]
+           })
+           class TestComponent {
+             value = '2017-01-11T10:14:39+0000';
+           }
+
+           const fixture = TestBed.createComponent(TestComponent);
+           fixture.detectChanges();
+
+           const content = fixture.nativeElement.textContent;
+           expect(content).toBe('1/11/17');
+         });
+
+      it('should use format provided in module as default format when no format is passed in',
+         () => {
+           @Component({
+             selector: 'test-component',
+             imports: [DatePipe],
+             template: '{{ value | date }}',
+             standalone: true,
+           })
+           class TestComponent {
+             value = '2017-01-11T10:14:39+0000';
+           }
+
+           TestBed.configureTestingModule({
+             imports: [TestComponent],
+             providers: [{provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: {dateFormat: 'shortDate'}}]
+           });
+           const fixture = TestBed.createComponent(TestComponent);
+           fixture.detectChanges();
+
+           const content = fixture.nativeElement.textContent;
+           expect(content).toBe('1/11/17');
+         });
 
       it('should return first week if some dates fall in previous year but belong to next year according to ISO 8601 format',
          () => {
@@ -100,6 +141,83 @@ import {JitReflector} from '@angular/platform-browser-dynamic/src/compiler_refle
         expect(pipe.transform('2020-08-01T23:59:59.9999', 'yyyy-MM-dd, h:mm:ss SSS'))
             .toEqual('2020-08-01, 11:59:59 999');
       });
+
+      it('should take timezone into account', () => {
+        expect(pipe.transform('2017-01-11T00:00:00', 'mediumDate', '-1200'))
+            .toEqual('Jan 10, 2017');
+      });
+
+      it('should take the default timezone into account when no timezone is passed in', () => {
+        pipe = new DatePipe('en-US', '-1200');
+        expect(pipe.transform('2017-01-11T00:00:00', 'mediumDate')).toEqual('Jan 10, 2017');
+      });
+
+      it('should give precedence to the passed in timezone over the default one', () => {
+        pipe = new DatePipe('en-US', '-1200');
+        expect(pipe.transform('2017-01-11T00:00:00', 'mediumDate', '+0100'))
+            .toEqual('Jan 11, 2017');
+      });
+
+      it('should use timezone provided in component as default timezone when no format is passed in',
+         () => {
+           @Component({
+             selector: 'test-component',
+             imports: [DatePipe],
+             template: '{{ value | date }}',
+             standalone: true,
+             providers: [{provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: {timezone: '-1200'}}]
+           })
+           class TestComponent {
+             value = '2017-01-11T00:00:00';
+           }
+
+           const fixture = TestBed.createComponent(TestComponent);
+           fixture.detectChanges();
+
+           const content = fixture.nativeElement.textContent;
+           expect(content).toBe('Jan 10, 2017');
+         });
+
+      it('should use timezone provided in module as default timezone when no format is passed in',
+         () => {
+           @Component({
+             selector: 'test-component',
+             imports: [DatePipe],
+             template: '{{ value | date }}',
+             standalone: true,
+           })
+           class TestComponent {
+             value = '2017-01-11T00:00:00';
+           }
+
+           TestBed.configureTestingModule({
+             imports: [TestComponent],
+             providers: [{provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: {timezone: '-1200'}}]
+           });
+           const fixture = TestBed.createComponent(TestComponent);
+           fixture.detectChanges();
+
+           const content = fixture.nativeElement.textContent;
+           expect(content).toBe('Jan 10, 2017');
+         });
+    });
+
+    it('should be available as a standalone pipe', () => {
+      @Component({
+        selector: 'test-component',
+        imports: [DatePipe],
+        template: '{{ value | date }}',
+        standalone: true,
+      })
+      class TestComponent {
+        value = '2017-01-11T10:14:39+0000';
+      }
+
+      const fixture = TestBed.createComponent(TestComponent);
+      fixture.detectChanges();
+
+      const content = fixture.nativeElement.textContent;
+      expect(content).toBe('Jan 11, 2017');
     });
   });
 }

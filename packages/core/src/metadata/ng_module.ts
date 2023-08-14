@@ -6,34 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {InjectorType, ɵɵdefineInjector} from '../di/interface/defs';
-import {Provider} from '../di/interface/provider';
-import {convertInjectableProviderToFactory} from '../di/util';
+import {EnvironmentProviders, ModuleWithProviders, Provider} from '../di/interface/provider';
 import {Type} from '../interface/type';
 import {SchemaMetadata} from '../metadata/schema';
-import {compileNgModule as render3CompileNgModule} from '../render3/jit/module';
+import {compileNgModule} from '../render3/jit/module';
 import {makeDecorator, TypeDecorator} from '../util/decorators';
-import {NgModuleDef} from './ng_module_def';
-
-
-/**
- * @publicApi
- */
-export type ɵɵNgModuleDefWithMeta<T, Declarations, Imports, Exports> = NgModuleDef<T>;
-
-
-/**
- * A wrapper around an NgModule that associates it with [providers](guide/glossary#provider
- * "Definition"). Usage without a generic type is deprecated.
- *
- * @see [Deprecations](guide/deprecations#modulewithproviders-type-without-a-generic)
- *
- * @publicApi
- */
-export interface ModuleWithProviders<T> {
-  ngModule: Type<T>;
-  providers?: Provider[];
-}
 
 
 /**
@@ -102,7 +79,7 @@ export interface NgModule {
    * }
    * ```
    */
-  providers?: Provider[];
+  providers?: Array<Provider|EnvironmentProviders>;
 
   /**
    * The set of components, directives, and pipes ([declarables](guide/glossary#declarable))
@@ -194,26 +171,7 @@ export interface NgModule {
   exports?: Array<Type<any>|any[]>;
 
   /**
-   * The set of components to compile when this NgModule is defined,
-   * so that they can be dynamically loaded into the view.
-   *
-   * For each component listed here, Angular creates a `ComponentFactory`
-   * and stores it in the `ComponentFactoryResolver`.
-   *
-   * Angular automatically adds components in the module's bootstrap
-   * and route definitions into the `entryComponents` list. Use this
-   * option to add components that are bootstrapped
-   * using one of the imperative techniques, such as `ViewContainerRef.createComponent()`.
-   *
-   * @see [Entry Components](guide/entry-components)
-   * @deprecated Since 9.0.0. With Ivy, this property is no longer necessary.
-   */
-  entryComponents?: Array<Type<any>|any[]>;
-
-  /**
-   * The set of components that are bootstrapped when
-   * this module is bootstrapped. The components listed here
-   * are automatically added to `entryComponents`.
+   * The set of components that are bootstrapped when this module is bootstrapped.
    */
   bootstrap?: Array<Type<any>|any[]>;
 
@@ -230,9 +188,8 @@ export interface NgModule {
   schemas?: Array<SchemaMetadata|any[]>;
 
   /**
-   * A name or path that uniquely identifies this NgModule in `getModuleFactory`.
-   * If left `undefined`, the NgModule is not registered with
-   * `getModuleFactory`.
+   * A name or path that uniquely identifies this NgModule in `getNgModuleById`.
+   * If left `undefined`, the NgModule is not registered with `getNgModuleById`.
    */
   id?: string;
 
@@ -247,7 +204,6 @@ export interface NgModule {
 
 /**
  * @Annotation
- * @publicApi
  */
 export const NgModule: NgModuleDecorator = makeDecorator(
     'NgModule', (ngModule: NgModule) => ngModule, undefined, undefined,
@@ -255,30 +211,11 @@ export const NgModule: NgModuleDecorator = makeDecorator(
      * Decorator that marks the following class as an NgModule, and supplies
      * configuration metadata for it.
      *
-     * * The `declarations` and `entryComponents` options configure the compiler
+     * * The `declarations` option configures the compiler
      * with information about what belongs to the NgModule.
      * * The `providers` options configures the NgModule's injector to provide
      * dependencies the NgModule members.
      * * The `imports` and `exports` options bring in members from other modules, and make
      * this module's members available to others.
      */
-    (type: Type<any>, meta: NgModule) => SWITCH_COMPILE_NGMODULE(type, meta));
-
-
-function preR3NgModuleCompile(moduleType: Type<any>, metadata?: NgModule): void {
-  let imports = (metadata && metadata.imports) || [];
-  if (metadata && metadata.exports) {
-    imports = [...imports, metadata.exports];
-  }
-
-  (moduleType as InjectorType<any>).ɵinj = ɵɵdefineInjector({
-    factory: convertInjectableProviderToFactory(moduleType, {useClass: moduleType}),
-    providers: metadata && metadata.providers,
-    imports: imports,
-  });
-}
-
-
-export const SWITCH_COMPILE_NGMODULE__POST_R3__ = render3CompileNgModule;
-const SWITCH_COMPILE_NGMODULE__PRE_R3__ = preR3NgModuleCompile;
-const SWITCH_COMPILE_NGMODULE: typeof render3CompileNgModule = SWITCH_COMPILE_NGMODULE__PRE_R3__;
+    (type: Type<any>, meta: NgModule) => compileNgModule(type, meta));

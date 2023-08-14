@@ -12,7 +12,7 @@ import * as o from '../../output/output_ast';
 import {ParseSourceSpan} from '../../parse_util';
 import * as t from '../r3_ast';
 import {R3DependencyMetadata} from '../r3_factory';
-import {R3Reference} from '../util';
+import {MaybeForwardRefExpression, R3Reference} from '../util';
 
 
 /**
@@ -28,15 +28,6 @@ export interface R3DirectiveMetadata {
    * An expression representing a reference to the directive itself.
    */
   type: R3Reference;
-
-  /**
-   * An expression representing a reference to the directive being compiled, intended for use within
-   * a class definition itself.
-   *
-   * This can differ from the outer `type` if the class is being compiled by ngcc and is inside
-   * an IIFE structure that uses a different name internally.
-   */
-  internalType: o.Expression;
 
   /**
    * Number of generic type parameters of the type itself.
@@ -89,7 +80,7 @@ export interface R3DirectiveMetadata {
    * A mapping of inputs from class property names to binding property names, or to a tuple of
    * binding property name and class property name if the names are different.
    */
-  inputs: {[field: string]: string|[string, string]};
+  inputs: {[field: string]: R3InputMetadata};
 
   /**
    * A mapping of outputs from class property names to binding property names, or to a tuple of
@@ -117,6 +108,21 @@ export interface R3DirectiveMetadata {
    * The list of providers defined in the directive.
    */
   providers: o.Expression|null;
+
+  /**
+   * Whether or not the component or directive is standalone.
+   */
+  isStandalone: boolean;
+
+  /**
+   * Whether or not the component or directive is signal-based.
+   */
+  isSignal: boolean;
+
+  /**
+   * Additional directives applied to the directive host.
+   */
+  hostDirectives: R3HostDirectiveMetadata[]|null;
 }
 
 /**
@@ -161,12 +167,40 @@ export const enum DeclarationListEmitMode {
    * ```
    */
   ClosureResolved,
+
+  RuntimeResolved,
+}
+
+/**
+ * Describes a dependency used within a `{#defer}` block.
+ */
+export interface DeferBlockTemplateDependency {
+  /**
+   * Reference to a dependency.
+   */
+  type: o.WrappedNodeExpr<unknown>;
+
+  /**
+   * Dependency class name.
+   */
+  symbolName: string;
+
+  /**
+   * Whether this dependency can be defer-loaded.
+   */
+  isDeferrable: boolean;
+
+  /**
+   * Import path where this dependency is located.
+   */
+  importPath: string|null;
 }
 
 /**
  * Information needed to compile a component for the render3 runtime.
  */
-export interface R3ComponentMetadata extends R3DirectiveMetadata {
+export interface R3ComponentMetadata<DeclarationT extends R3TemplateDependency> extends
+    R3DirectiveMetadata {
   /**
    * Information about the component's template.
    */
@@ -177,23 +211,25 @@ export interface R3ComponentMetadata extends R3DirectiveMetadata {
     nodes: t.Node[];
 
     /**
-     * Any ng-content selectors extracted from the template. Contains `null` when an ng-content
+     * Any ng-content selectors extracted from the template. Contains `*` when an ng-content
      * element without selector is present.
      */
     ngContentSelectors: string[];
   };
 
-  /**
-   * A map of pipe names to an expression referencing the pipe type which are in the scope of the
-   * compilation.
-   */
-  pipes: Map<string, o.Expression>;
+  declarations: DeclarationT[];
 
   /**
-   * A list of directive selectors and an expression referencing the directive type which are in the
-   * scope of the compilation.
+   * Map of all types that can be defer loaded (ts.ClassDeclaration) ->
+   * corresponding import declaration (ts.ImportDeclaration) within
+   * the current source file.
    */
-  directives: R3UsedDirectiveMetadata[];
+  deferrableDeclToImportDecl: Map<o.Expression, o.Expression>;
+
+  /**
+   * Map of {#defer} blocks -> their corresponding dependencies.
+   */
+  deferBlocks: Map<t.DeferredBlock, Array<DeferBlockTemplateDependency>>;
 
   /**
    * Specifies how the 'directives' and/or `pipes` array, if generated, need to be emitted.
@@ -206,11 +242,12 @@ export interface R3ComponentMetadata extends R3DirectiveMetadata {
   styles: string[];
 
   /**
-   * An encapsulation policy for the template and CSS styles. One of:
-   * - `ViewEncapsulation.Emulated`: Use shimmed CSS that emulates the native behavior.
-   * - `ViewEncapsulation.None`: Use global CSS without any encapsulation.
-   * - `ViewEncapsulation.ShadowDom`: Use the latest ShadowDOM API to natively encapsulate styles
-   * into a shadow root.
+   * An encapsulation policy for the component's styling.
+   * Possible values:
+   * - `ViewEncapsulation.Emulated`: Apply modified component styles in order to emulate
+   *                                 a native Shadow DOM CSS encapsulation behavior.
+   * - `ViewEncapsulation.None`: Apply component styles globally without any sort of encapsulation.
+   * - `ViewEncapsulation.ShadowDom`: Use the browser's native Shadow DOM API to encapsulate styles.
    */
   encapsulation: ViewEncapsulation;
 
@@ -246,17 +283,55 @@ export interface R3ComponentMetadata extends R3DirectiveMetadata {
    * Strategy used for detecting changes in the component.
    */
   changeDetection?: ChangeDetectionStrategy;
+
+  /**
+   * The imports expression as appears on the component decorate for standalone component. This
+   * field is currently needed only for local compilation, and so in other compilation modes it may
+   * not be set. If component has empty array imports then this field is not set.
+   */
+  rawImports?: o.Expression;
 }
+
+/**
+ * Metadata for an individual input on a directive.
+ */
+export interface R3InputMetadata {
+  classPropertyName: string;
+  bindingPropertyName: string;
+  required: boolean;
+  transformFunction: o.Expression|null;
+}
+
+export enum R3TemplateDependencyKind {
+  Directive = 0,
+  Pipe = 1,
+  NgModule = 2,
+}
+
+/**
+ * A dependency that's used within a component template.
+ */
+export interface R3TemplateDependency {
+  kind: R3TemplateDependencyKind;
+
+  /**
+   * The type of the dependency as an expression.
+   */
+  type: o.Expression;
+}
+
+/**
+ * A dependency that's used within a component template
+ */
+export type R3TemplateDependencyMetadata =
+    R3DirectiveDependencyMetadata|R3PipeDependencyMetadata|R3NgModuleDependencyMetadata;
 
 /**
  * Information about a directive that is used in a component template. Only the stable, public
  * facing information of the directive is stored here.
  */
-export interface R3UsedDirectiveMetadata {
-  /**
-   * The type of the directive as an expression.
-   */
-  type: o.Expression;
+export interface R3DirectiveDependencyMetadata extends R3TemplateDependency {
+  kind: R3TemplateDependencyKind.Directive;
 
   /**
    * The selector of the directive.
@@ -281,7 +356,17 @@ export interface R3UsedDirectiveMetadata {
   /**
    * If true then this directive is actually a component; otherwise it is not.
    */
-  isComponent?: boolean;
+  isComponent: boolean;
+}
+
+export interface R3PipeDependencyMetadata extends R3TemplateDependency {
+  kind: R3TemplateDependencyKind.Pipe;
+
+  name: string;
+}
+
+export interface R3NgModuleDependencyMetadata extends R3TemplateDependency {
+  kind: R3TemplateDependencyKind.NgModule;
 }
 
 /**
@@ -302,7 +387,7 @@ export interface R3QueryMetadata {
    * Either an expression representing a type or `InjectionToken` for the query
    * predicate, or a set of string selectors.
    */
-  predicate: o.Expression|string[];
+  predicate: MaybeForwardRefExpression|string[];
 
   /**
    * Whether to include only direct children or all descendants.
@@ -339,30 +424,6 @@ export interface R3QueryMetadata {
 }
 
 /**
- * Output of render3 directive compilation.
- */
-export interface R3DirectiveDef {
-  expression: o.Expression;
-  type: o.Type;
-}
-
-/**
- * Output of render3 component compilation.
- */
-export interface R3ComponentDef {
-  expression: o.Expression;
-  type: o.Type;
-}
-
-/**
- * Output of render3 pipe compilation.
- */
-export interface R3PipeDef {
-  expression: o.Expression;
-  type: o.Type;
-}
-
-/**
  * Mappings indicating how the class interacts with its
  * host element (host bindings, listeners, etc).
  */
@@ -383,4 +444,21 @@ export interface R3HostMetadata {
   properties: {[key: string]: string};
 
   specialAttributes: {styleAttr?: string; classAttr?: string;};
+}
+
+/**
+ * Information needed to compile a host directive for the render3 runtime.
+ */
+export interface R3HostDirectiveMetadata {
+  /** An expression representing the host directive class itself. */
+  directive: R3Reference;
+
+  /** Whether the expression referring to the host directive is a forward reference. */
+  isForwardReference: boolean;
+
+  /** Inputs from the host directive that will be exposed on the host. */
+  inputs: {[publicName: string]: string}|null;
+
+  /** Outputs from the host directive that will be exposed on the host. */
+  outputs: {[publicName: string]: string}|null;
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @angular-eslint/component-selector */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Subject } from 'rxjs';
@@ -7,7 +8,13 @@ import { SearchResults } from 'app/search/interfaces';
 import { SearchResultsComponent } from 'app/shared/search-results/search-results.component';
 import { SearchService } from 'app/search/search.service';
 import { FileNotFoundSearchComponent } from './file-not-found-search.component';
+import { Component } from '@angular/core';
 
+@Component({
+  selector: 'mat-icon',
+  template: '',
+})
+class MockMatIconComponent {}
 
 describe('FileNotFoundSearchComponent', () => {
   let fixture: ComponentFixture<FileNotFoundSearchComponent>;
@@ -17,7 +24,7 @@ describe('FileNotFoundSearchComponent', () => {
   beforeEach(() => {
 
     TestBed.configureTestingModule({
-      declarations: [ FileNotFoundSearchComponent, SearchResultsComponent ],
+      declarations: [ FileNotFoundSearchComponent, SearchResultsComponent, MockMatIconComponent ],
       providers: [
         { provide: LocationService, useValue: new MockLocationService('base/initial-url?some-query') },
         SearchService

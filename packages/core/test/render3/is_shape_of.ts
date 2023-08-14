@@ -61,8 +61,7 @@ export type ShapeOf<T> = {
  */
 export function isShapeOf<T>(obj: any, shapeOf: ShapeOf<T>): obj is T {
   if (typeof obj === 'object' && obj) {
-    return Object.keys(shapeOf).reduce(
-        (prev, key) => prev && obj.hasOwnProperty(key), true as boolean);
+    return Object.keys(shapeOf).every((key) => obj.hasOwnProperty(key));
   }
   return false;
 }
@@ -136,6 +135,7 @@ const ShapeOfTView: ShapeOf<TView> = {
   schemas: true,
   consts: true,
   incompleteFirstPass: true,
+  ssrId: true,
 };
 
 
@@ -154,6 +154,7 @@ const ShapeOfTNode: ShapeOf<TNode> = {
   directiveStart: true,
   directiveEnd: true,
   directiveStylingLast: true,
+  componentOffset: true,
   propertyBindings: true,
   flags: true,
   providerIndexes: true,
@@ -164,8 +165,9 @@ const ShapeOfTNode: ShapeOf<TNode> = {
   initialInputs: true,
   inputs: true,
   outputs: true,
-  tViews: true,
+  tView: true,
   next: true,
+  prev: true,
   projectionNext: true,
   child: true,
   parent: true,

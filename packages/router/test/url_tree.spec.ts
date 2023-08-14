@@ -26,6 +26,11 @@ describe('UrlTree', () => {
         'k/(a;b)': 'c',
       });
     });
+
+    it('should allow question marks in query param values', () => {
+      const tree = serializer.parse('/path/to?first=http://foo/bar?baz=true&second=123');
+      expect(tree.queryParams).toEqual({'first': 'http://foo/bar?baz=true', 'second': '123'});
+    });
   });
 
   describe('containsTree', () => {
@@ -44,7 +49,7 @@ describe('UrlTree', () => {
         expect(containsTree(t1, t2, exactMatchOptions)).toBe(true);
       });
 
-      it('should return true when queryParams are the same but with diffrent order', () => {
+      it('should return true when queryParams are the same but with different order', () => {
         const t1 = serializer.parse('/one/two?test=1&page=5');
         const t2 = serializer.parse('/one/two?page=5&test=1');
         expect(containsTree(t1, t2, exactMatchOptions)).toBe(true);

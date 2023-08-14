@@ -3,7 +3,12 @@ import { fakeAsync, tick } from '@angular/core/testing';
 import { DOCUMENT } from '@angular/common';
 
 import { ScrollService } from 'app/shared/scroll.service';
-import { ScrollItem, ScrollSpiedElement, ScrollSpiedElementGroup, ScrollSpyService } from 'app/shared/scroll-spy.service';
+import {
+  ScrollItem,
+  ScrollSpiedElement,
+  ScrollSpiedElementGroup,
+  ScrollSpyService,
+} from 'app/shared/scroll-spy.service';
 
 
 describe('ScrollSpiedElement', () => {
@@ -49,9 +54,9 @@ describe('ScrollSpiedElementGroup', () => {
       const callInfo = spy.calls.all();
 
       expect(spy).toHaveBeenCalledTimes(3);
-      expect(callInfo[0].object.index).toBe(0);
-      expect(callInfo[1].object.index).toBe(1);
-      expect(callInfo[2].object.index).toBe(2);
+      expect((callInfo[0].object as ScrollSpiedElement).index).toBe(0);
+      expect((callInfo[1].object as ScrollSpiedElement).index).toBe(1);
+      expect((callInfo[2].object as ScrollSpiedElement).index).toBe(2);
       expect(callInfo[0].args).toEqual([20, 10]);
       expect(callInfo[1].args).toEqual([20, 10]);
       expect(callInfo[2].args).toEqual([20, 10]);

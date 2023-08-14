@@ -9,6 +9,8 @@
 import {forwardRef, resolveForwardRef} from '../../di/forward_ref';
 import {ɵɵinject, ɵɵinvalidFactoryDep} from '../../di/injector_compatibility';
 import {ɵɵdefineInjectable, ɵɵdefineInjector} from '../../di/interface/defs';
+import {registerNgModuleType} from '../../linker/ng_module_registration';
+import * as iframe_attrs_validation from '../../sanitization/iframe_attrs_validation';
 import * as sanitization from '../../sanitization/sanitization';
 import * as r3 from '../index';
 
@@ -42,12 +44,15 @@ export const angularCoreEnv: {[name: string]: Function} =
        'ɵɵinjectAttribute': r3.ɵɵinjectAttribute,
        'ɵɵinvalidFactory': r3.ɵɵinvalidFactory,
        'ɵɵinvalidFactoryDep': ɵɵinvalidFactoryDep,
-       'ɵɵinjectPipeChangeDetectorRef': r3.ɵɵinjectPipeChangeDetectorRef,
        'ɵɵtemplateRefExtractor': r3.ɵɵtemplateRefExtractor,
+       'ɵɵresetView': r3.ɵɵresetView,
+       'ɵɵHostDirectivesFeature': r3.ɵɵHostDirectivesFeature,
        'ɵɵNgOnChangesFeature': r3.ɵɵNgOnChangesFeature,
        'ɵɵProvidersFeature': r3.ɵɵProvidersFeature,
        'ɵɵCopyDefinitionFeature': r3.ɵɵCopyDefinitionFeature,
        'ɵɵInheritDefinitionFeature': r3.ɵɵInheritDefinitionFeature,
+       'ɵɵInputTransformsFeature': r3.ɵɵInputTransformsFeature,
+       'ɵɵStandaloneFeature': r3.ɵɵStandaloneFeature,
        'ɵɵnextContext': r3.ɵɵnextContext,
        'ɵɵnamespaceHTML': r3.ɵɵnamespaceHTML,
        'ɵɵnamespaceMathML': r3.ɵɵnamespaceMathML,
@@ -133,6 +138,21 @@ export const angularCoreEnv: {[name: string]: Function} =
        'ɵɵclassProp': r3.ɵɵclassProp,
        'ɵɵadvance': r3.ɵɵadvance,
        'ɵɵtemplate': r3.ɵɵtemplate,
+       'ɵɵdefer': r3.ɵɵdefer,
+       'ɵɵdeferWhen': r3.ɵɵdeferWhen,
+       'ɵɵdeferOnIdle': r3.ɵɵdeferOnIdle,
+       'ɵɵdeferOnImmediate': r3.ɵɵdeferOnImmediate,
+       'ɵɵdeferOnTimer': r3.ɵɵdeferOnTimer,
+       'ɵɵdeferOnHover': r3.ɵɵdeferOnHover,
+       'ɵɵdeferOnInteraction': r3.ɵɵdeferOnInteraction,
+       'ɵɵdeferOnViewport': r3.ɵɵdeferOnViewport,
+       'ɵɵdeferPrefetchWhen': r3.ɵɵdeferPrefetchWhen,
+       'ɵɵdeferPrefetchOnIdle': r3.ɵɵdeferPrefetchOnIdle,
+       'ɵɵdeferPrefetchOnImmediate': r3.ɵɵdeferPrefetchOnImmediate,
+       'ɵɵdeferPrefetchOnTimer': r3.ɵɵdeferPrefetchOnTimer,
+       'ɵɵdeferPrefetchOnHover': r3.ɵɵdeferPrefetchOnHover,
+       'ɵɵdeferPrefetchOnInteraction': r3.ɵɵdeferPrefetchOnInteraction,
+       'ɵɵdeferPrefetchOnViewport': r3.ɵɵdeferPrefetchOnViewport,
        'ɵɵtext': r3.ɵɵtext,
        'ɵɵtextInterpolate': r3.ɵɵtextInterpolate,
        'ɵɵtextInterpolate1': r3.ɵɵtextInterpolate1,
@@ -156,6 +176,8 @@ export const angularCoreEnv: {[name: string]: Function} =
        'ɵɵresolveBody': r3.ɵɵresolveBody,
        'ɵɵsetComponentScope': r3.ɵɵsetComponentScope,
        'ɵɵsetNgModuleScope': r3.ɵɵsetNgModuleScope,
+       'ɵɵregisterNgModuleType': registerNgModuleType,
+       'ɵɵgetComponentDepsFactory': r3.ɵɵgetComponentDepsFactory,
 
        'ɵɵsanitizeHtml': sanitization.ɵɵsanitizeHtml,
        'ɵɵsanitizeStyle': sanitization.ɵɵsanitizeStyle,
@@ -165,6 +187,7 @@ export const angularCoreEnv: {[name: string]: Function} =
        'ɵɵsanitizeUrlOrResourceUrl': sanitization.ɵɵsanitizeUrlOrResourceUrl,
        'ɵɵtrustConstantHtml': sanitization.ɵɵtrustConstantHtml,
        'ɵɵtrustConstantResourceUrl': sanitization.ɵɵtrustConstantResourceUrl,
+       'ɵɵvalidateIframeAttribute': iframe_attrs_validation.ɵɵvalidateIframeAttribute,
 
        'forwardRef': forwardRef,
        'resolveForwardRef': resolveForwardRef,

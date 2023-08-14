@@ -10,9 +10,15 @@ ts_library(
             "src/**/*.ts",
         ],
     ),
-    module_name = "@angular/localize/src/utils",
     deps = [
         "//packages/compiler",
-        "//packages/compiler-cli/src/ngtsc/file_system",
     ],
+)
+
+filegroup(
+    name = "files_for_docgen",
+    srcs = glob([
+        "*.ts",
+        "src/**/*.ts",
+    ]),
 )

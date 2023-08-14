@@ -7,7 +7,7 @@
  */
 
 import * as core from '../../core/src/compiler/compiler_facade_interface';
-import {R3FactoryTarget, R3ResolvedDependencyType} from '../public_api';
+import {FactoryTarget} from '../public_api';
 import * as compiler from '../src/compiler_facade_interface';
 
 /**
@@ -39,84 +39,102 @@ const compilerCoreEnvironment: compiler.CoreEnvironment = null! as core.CoreEnvi
 const coreResourceLoader: core.ResourceLoader = null! as compiler.ResourceLoader;
 const compilerResourceLoader: compiler.ResourceLoader = null! as core.ResourceLoader;
 
-const coreStringMap: core.StringMap = null! as compiler.StringMap;
-const compilerStringMap: compiler.StringMap = null! as core.StringMap;
+const coreInputMap: core.InputMap = null! as compiler.InputMap;
+const compilerInputMap: compiler.InputMap = null! as core.InputMap;
 
 const coreProvider: core.Provider = null! as compiler.Provider;
 const compilerProvider: compiler.Provider = null! as core.Provider;
 
-const coreR3ResolvedDependencyType: core.R3ResolvedDependencyType =
-    null! as compiler.R3ResolvedDependencyType;
-const compilerR3ResolvedDependencyType: compiler.R3ResolvedDependencyType =
-    null! as core.R3ResolvedDependencyType;
+const coreR3FactoryTarget: core.FactoryTarget = null! as compiler.FactoryTarget;
+const compilerR3FactoryTarget: compiler.FactoryTarget = null! as core.FactoryTarget;
 
-const coreR3ResolvedDependencyType2: R3ResolvedDependencyType =
-    null! as core.R3ResolvedDependencyType;
-const compilerR3ResolvedDependencyType2: R3ResolvedDependencyType =
-    null! as core.R3ResolvedDependencyType;
+const coreR3FactoryTarget2: FactoryTarget = null! as core.FactoryTarget;
+const compilerR3FactoryTarget2: FactoryTarget = null! as core.FactoryTarget;
 
-const coreR3ResolvedDependencyType3: core.R3ResolvedDependencyType =
-    null! as R3ResolvedDependencyType;
-const compilerR3ResolvedDependencyType3: compiler.R3ResolvedDependencyType =
-    null! as R3ResolvedDependencyType;
-
-const coreR3FactoryTarget: core.R3FactoryTarget = null! as compiler.R3FactoryTarget;
-const compilerR3FactoryTarget: compiler.R3FactoryTarget = null! as core.R3FactoryTarget;
-
-const coreR3FactoryTarget2: R3FactoryTarget = null! as core.R3FactoryTarget;
-const compilerR3FactoryTarget2: R3FactoryTarget = null! as core.R3FactoryTarget;
-
-const coreR3FactoryTarget3: core.R3FactoryTarget = null! as R3FactoryTarget;
-const compilerR3FactoryTarget3: compiler.R3FactoryTarget = null! as R3FactoryTarget;
+const coreR3FactoryTarget3: core.FactoryTarget = null! as FactoryTarget;
+const compilerR3FactoryTarget3: compiler.FactoryTarget = null! as FactoryTarget;
 
 const coreR3DependencyMetadataFacade: core.R3DependencyMetadataFacade =
     null! as compiler.R3DependencyMetadataFacade;
 const compilerR3DependencyMetadataFacade: compiler.R3DependencyMetadataFacade =
     null! as core.R3DependencyMetadataFacade;
 
+const coreR3DeclareDependencyMetadataFacade: core.R3DeclareDependencyMetadataFacade =
+    null! as compiler.R3DeclareDependencyMetadataFacade;
+const compilerR3DeclareDependencyMetadataFacade: compiler.R3DeclareDependencyMetadataFacade =
+    null! as core.R3DeclareDependencyMetadataFacade;
+
 const coreR3PipeMetadataFacade: core.R3PipeMetadataFacade = null! as compiler.R3PipeMetadataFacade;
 const compilerR3PipeMetadataFacade: compiler.R3PipeMetadataFacade =
     null! as core.R3PipeMetadataFacade;
+
+const coreR3DeclarePipeFacade: core.R3DeclarePipeFacade = null! as compiler.R3DeclarePipeFacade;
+const compilerR3DeclarePipeFacade: compiler.R3DeclarePipeFacade = null! as core.R3DeclarePipeFacade;
 
 const coreR3InjectableMetadataFacade: core.R3InjectableMetadataFacade =
     null! as compiler.R3InjectableMetadataFacade;
 const compilerR3InjectableMetadataFacade: compiler.R3InjectableMetadataFacade =
     null! as core.R3InjectableMetadataFacade;
 
+const coreR3DeclareInjectableFacade: core.R3DeclareInjectableFacade =
+    null! as compiler.R3DeclareInjectableFacade;
+const compilerR3DeclareInjectableFacade: compiler.R3DeclareInjectableFacade =
+    null! as core.R3DeclareInjectableFacade;
+
 const coreR3NgModuleMetadataFacade: core.R3NgModuleMetadataFacade =
     null! as compiler.R3NgModuleMetadataFacade;
 const compilerR3NgModuleMetadataFacade: compiler.R3NgModuleMetadataFacade =
     null! as core.R3NgModuleMetadataFacade;
+
+const coreR3DeclareNgModuleFacade: core.R3DeclareNgModuleFacade =
+    null! as compiler.R3DeclareNgModuleFacade;
+const compilerR3DeclareNgModuleFacade: compiler.R3DeclareNgModuleFacade =
+    null! as core.R3DeclareNgModuleFacade;
 
 const coreR3InjectorMetadataFacade: core.R3InjectorMetadataFacade =
     null! as compiler.R3InjectorMetadataFacade;
 const compilerR3InjectorMetadataFacade: compiler.R3InjectorMetadataFacade =
     null! as core.R3InjectorMetadataFacade;
 
+const coreR3DeclareInjectorFacade: core.R3DeclareInjectorFacade =
+    null! as compiler.R3DeclareInjectorFacade;
+const compilerR3DeclareInjectorFacade: compiler.R3DeclareInjectorFacade =
+    null! as core.R3DeclareInjectorFacade;
+
 const coreR3DirectiveMetadataFacade: core.R3DirectiveMetadataFacade =
     null! as compiler.R3DirectiveMetadataFacade;
 const compilerR3DirectiveMetadataFacade: compiler.R3DirectiveMetadataFacade =
     null! as core.R3DirectiveMetadataFacade;
-
-const coreR3ComponentMetadataFacade: core.R3ComponentMetadataFacade =
-    null! as compiler.R3ComponentMetadataFacade;
-const compilerR3ComponentMetadataFacade: compiler.R3ComponentMetadataFacade =
-    null! as core.R3ComponentMetadataFacade;
 
 const coreR3DeclareDirectiveFacade: core.R3DeclareDirectiveFacade =
     null! as compiler.R3DeclareDirectiveFacade;
 const compilerR3DeclareDirectiveFacade: compiler.R3DeclareDirectiveFacade =
     null! as core.R3DeclareDirectiveFacade;
 
+const coreR3ComponentMetadataFacade: core.R3ComponentMetadataFacade =
+    null! as compiler.R3ComponentMetadataFacade;
+const compilerR3ComponentMetadataFacade: compiler.R3ComponentMetadataFacade =
+    null! as core.R3ComponentMetadataFacade;
+
 const coreR3DeclareComponentFacade: core.R3DeclareComponentFacade =
     null! as compiler.R3DeclareComponentFacade;
 const compilerR3DeclareComponentFacade: compiler.R3DeclareComponentFacade =
     null! as core.R3DeclareComponentFacade;
 
-const coreR3UsedDirectiveMetadata: core.R3UsedDirectiveMetadata =
-    null! as compiler.R3UsedDirectiveMetadata;
-const compilerR3UsedDirectiveMetadata: compiler.R3UsedDirectiveMetadata =
-    null! as core.R3UsedDirectiveMetadata;
+const coreR3DeclareDirectiveDependencyFacade: core.R3DeclareDirectiveDependencyFacade =
+    null! as compiler.R3DeclareDirectiveDependencyFacade;
+const compilerR3DeclareDirectiveDependencyFacade: compiler.R3DeclareDirectiveDependencyFacade =
+    null! as core.R3DeclareDirectiveDependencyFacade;
+
+const coreR3DeclarePipeDependencyFacade: core.R3DeclarePipeDependencyFacade =
+    null! as compiler.R3DeclarePipeDependencyFacade;
+const compilerR3DeclarePipeDependencyFacade: compiler.R3DeclarePipeDependencyFacade =
+    null! as core.R3DeclarePipeDependencyFacade;
+
+const coreR3TemplateDependencyFacade: core.R3TemplateDependencyFacade =
+    null! as compiler.R3TemplateDependencyFacade;
+const compiler3TemplateDependencyFacade: compiler.R3TemplateDependencyFacade =
+    null! as core.R3TemplateDependencyFacade;
 
 const coreViewEncapsulation: core.ViewEncapsulation = null! as compiler.ViewEncapsulation;
 const compilerViewEncapsulation: compiler.ViewEncapsulation = null! as core.ViewEncapsulation;

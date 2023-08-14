@@ -6,20 +6,22 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {describe, expect, it} from '@angular/core/testing/src/testing_internal';
+// This isn't used for anything, but for some reason Bazel won't
+// serve the file if there isn't at least one import.
+import '@angular/core/testing';
 
 {
   describe('Shim', () => {
     it('should provide correct function.name ', () => {
-      const functionWithoutName = identity(() => function(_: any /** TODO #9100 */) {});
-      function foo(_: any /** TODO #9100 */) {}
+      const functionWithoutName = identity(() => function() {});
+      function foo() {}
 
-      expect((<any>functionWithoutName).name).toBeFalsy();
-      expect((<any>foo).name).toEqual('foo');
+      expect(functionWithoutName.name).toBeFalsy();
+      expect(foo.name).toEqual('foo');
     });
   });
 }
 
-function identity(a: any /** TODO #9100 */) {
+function identity<T>(a: T): T {
   return a;
 }

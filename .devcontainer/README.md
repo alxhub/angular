@@ -1,4 +1,4 @@
-# VSCode Remote Development - Developing inside a Containers
+# VSCode Remote Development - Developing inside a Container
 
 This folder contains configuration files that can be used to opt into working on this repository in a [Docker container](https://www.docker.com/resources/what-container) via [VSCode](https://code.visualstudio.com/)'s Remote Development feature (see below).
 
@@ -12,7 +12,7 @@ Info on remote development and developing inside a container with VSCode:
 
 _Prerequisite: [Install Docker](https://docs.docker.com/install) on your local environment._
 
-To get started, read and follow the instuctions in [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers). The [.devcontainer/](.) directory contains pre-configured `devcontainer.json` and `Dockerfile` files, which you can use to set up remote development with a docker container.
+To get started, read and follow the instructions in [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers). The [.devcontainer/](.) directory contains pre-configured `devcontainer.json` and `Dockerfile` files, which you can use to set up remote development with a docker container.
 
 In a nutshell, you need to:
 - Install the [Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.

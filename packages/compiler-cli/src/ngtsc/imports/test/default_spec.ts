@@ -5,7 +5,8 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as ts from 'typescript';
+import ts from 'typescript';
+
 import {absoluteFrom} from '../../file_system';
 import {runInEachFileSystem} from '../../file_system/testing';
 import {getDeclaration, makeProgram} from '../../testing';
@@ -39,12 +40,10 @@ runInEachFileSystem(() => {
             module: ts.ModuleKind.ES2015,
           });
       const fooClause = getDeclaration(program, _('/test.ts'), 'Foo', ts.isImportClause);
-      const fooId = fooClause.name!;
       const fooDecl = fooClause.parent;
 
       const tracker = new DefaultImportTracker();
-      tracker.recordImportedIdentifier(fooId, fooDecl);
-      tracker.recordUsedIdentifier(fooId);
+      tracker.recordUsedImport(fooDecl);
       program.emit(undefined, undefined, undefined, undefined, {
         before: [tracker.importPreservingTransformer()],
       });
@@ -73,8 +72,7 @@ runInEachFileSystem(() => {
       const fooDecl = fooClause.parent;
 
       const tracker = new DefaultImportTracker();
-      tracker.recordImportedIdentifier(fooId, fooDecl);
-      tracker.recordUsedIdentifier(fooId);
+      tracker.recordUsedImport(fooDecl);
       program.emit(undefined, undefined, undefined, undefined, {
         before: [
           addReferenceTransformer(fooId),
@@ -83,7 +81,7 @@ runInEachFileSystem(() => {
       });
       const testContents = host.readFile('/test.js')!;
       expect(testContents).toContain(`var dep_1 = require("./dep");`);
-      expect(testContents).toContain(`var ref = dep_1["default"];`);
+      expect(testContents).toContain(`var ref = dep_1.default;`);
     });
   });
 
@@ -91,10 +89,10 @@ runInEachFileSystem(() => {
     return (context: ts.TransformationContext) => {
       return (sf: ts.SourceFile) => {
         if (id.getSourceFile().fileName === sf.fileName) {
-          return ts.updateSourceFileNode(sf, [
+          return ts.factory.updateSourceFile(sf, [
             ...sf.statements,
-            ts.createVariableStatement(undefined, ts.createVariableDeclarationList([
-              ts.createVariableDeclaration('ref', undefined, id),
+            ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([
+              ts.factory.createVariableDeclaration('ref', undefined, undefined, id),
             ]))
           ]);
         }

@@ -6,13 +6,15 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {makeRelatedInformation} from '../../diagnostics';
 import {Reference} from '../../imports';
 import {FunctionDefinition} from '../../reflection';
+
 import {DynamicValue, DynamicValueVisitor} from './dynamic';
 import {EnumValue, KnownFn, ResolvedModule, ResolvedValue} from './result';
+import {SyntheticValue} from './synthetic';
 
 /**
  * Derives a type representation from a resolved value to be reported in a diagnostic.
@@ -90,6 +92,11 @@ class TraceDynamicValueVisitor implements DynamicValueVisitor<ts.DiagnosticRelat
     return trace;
   }
 
+  visitSyntheticInput(value: DynamicValue<SyntheticValue<unknown>>):
+      ts.DiagnosticRelatedInformation[] {
+    return [makeRelatedInformation(value.node, 'Unable to evaluate this expression further.')];
+  }
+
   visitDynamicString(value: DynamicValue): ts.DiagnosticRelatedInformation[] {
     return [makeRelatedInformation(
         value.node, 'A string value could not be determined statically.')];
@@ -125,6 +132,10 @@ class TraceDynamicValueVisitor implements DynamicValueVisitor<ts.DiagnosticRelat
 
   visitUnknownIdentifier(value: DynamicValue): ts.DiagnosticRelatedInformation[] {
     return [makeRelatedInformation(value.node, 'Unknown reference.')];
+  }
+
+  visitDynamicType(value: DynamicValue): ts.DiagnosticRelatedInformation[] {
+    return [makeRelatedInformation(value.node, 'Dynamic type.')];
   }
 
   visitUnsupportedSyntax(value: DynamicValue): ts.DiagnosticRelatedInformation[] {

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Injector, Type} from '@angular/core';
+import {Injector, Type, ɵNG_MOD_DEF} from '@angular/core';
 
 import {element as angularElement, IAugmentedJQuery, IInjectorService, INgModelController, IRootScopeService} from './angular1';
 import {$ROOT_ELEMENT, $ROOT_SCOPE, DOWNGRADED_MODULE_COUNT_KEY, UPGRADE_APP_TYPE_KEY} from './constants';
@@ -16,12 +16,7 @@ const DIRECTIVE_SPECIAL_CHARS_REGEXP = /[:\-_]+(.)/g;
 
 export function onError(e: any) {
   // TODO: (misko): We seem to not have a stack trace here!
-  if (console.error) {
-    console.error(e, e.stack);
-  } else {
-    // tslint:disable-next-line:no-console
-    console.log(e, e.stack);
-  }
+  console.error(e, e.stack);
   throw e;
 }
 
@@ -89,6 +84,11 @@ export function isFunction(value: any): value is Function {
   return typeof value === 'function';
 }
 
+export function isNgModuleType(value: any): value is Type<unknown> {
+  // NgModule class should have the `ɵmod` static property attached by AOT or JIT compiler.
+  return isFunction(value) && !!value[ɵNG_MOD_DEF];
+}
+
 function isParentNode(node: Node|ParentNode): node is ParentNode {
   return isFunction((node as unknown as ParentNode).querySelectorAll);
 }
@@ -136,9 +136,7 @@ export function validateInjectionKey(
 
 export class Deferred<R> {
   promise: Promise<R>;
-  // TODO(issue/24571): remove '!'.
   resolve!: (value: R|PromiseLike<R>) => void;
-  // TODO(issue/24571): remove '!'.
   reject!: (error?: any) => void;
 
   constructor() {

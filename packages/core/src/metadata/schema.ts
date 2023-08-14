@@ -10,7 +10,9 @@
 /**
  * A schema definition associated with an NgModule.
  *
- * @see `@NgModule`, `CUSTOM_ELEMENTS_SCHEMA`, `NO_ERRORS_SCHEMA`
+ * @see {@link NgModule}
+ * @see {@link CUSTOM_ELEMENTS_SCHEMA}
+ * @see {@link NO_ERRORS_SCHEMA}
  *
  * @param name The name of a defined schema.
  *
@@ -34,6 +36,10 @@ export const CUSTOM_ELEMENTS_SCHEMA: SchemaMetadata = {
 
 /**
  * Defines a schema that allows any property on any element.
+ *
+ * This schema allows you to ignore the errors related to any unknown elements or properties in a
+ * template. The usage of this schema is generally discouraged because it prevents useful validation
+ * and may hide real errors in your template. Consider using the `CUSTOM_ELEMENTS_SCHEMA` instead.
  *
  * @publicApi
  */

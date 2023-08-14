@@ -1,10 +1,11 @@
-/* tslint:disable component-selector */
+/* eslint-disable  @angular-eslint/component-selector */
 import { AfterViewInit, Component, ElementRef, Input, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import { fromInnerHTML } from 'app/shared/security';
 import { CodeComponent } from './code.component';
 
 export interface TabInfo {
   class: string;
-  code: string;
+  code: TrustedHTML;
   path: string;
   region: string;
 
@@ -57,7 +58,9 @@ export class CodeTabsComponent implements OnInit, AfterViewInit {
     this.tabs = [];
     const contentElem = this.content.nativeElement;
     const codeExamples = Array.from(contentElem.querySelectorAll('code-pane'));
-    contentElem.innerHTML = '';  // Remove DOM nodes that are no longer needed.
+
+    // Remove DOM nodes that are no longer needed.
+    contentElem.textContent = '';
 
     for (const tabContent of codeExamples) {
       this.tabs.push(this.getTabInfo(tabContent));
@@ -74,7 +77,7 @@ export class CodeTabsComponent implements OnInit, AfterViewInit {
   private getTabInfo(tabContent: Element): TabInfo {
     return {
       class: tabContent.getAttribute('class') || '',
-      code: tabContent.innerHTML,
+      code: fromInnerHTML(tabContent),
       path: tabContent.getAttribute('path') || '',
       region: tabContent.getAttribute('region') || '',
 

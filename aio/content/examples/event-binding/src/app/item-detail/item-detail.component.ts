@@ -1,4 +1,3 @@
-/* tslint:disable use-input-property-decorator use-output-property-decorator */
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { Item } from '../item';
@@ -10,13 +9,12 @@ import { Item } from '../item';
 })
 export class ItemDetailComponent {
 
-  @Input() item;
+  @Input() item!: Item;
   itemImageUrl = 'assets/teapot.svg';
   lineThrough = '';
   displayNone = '';
   @Input() prefix = '';
 
-  // #docregion deleteRequest
   // This component makes a request but it can't actually delete a hero.
   @Output() deleteRequest = new EventEmitter<Item>();
 
@@ -25,6 +23,5 @@ export class ItemDetailComponent {
     this.displayNone = this.displayNone ? '' : 'none';
     this.lineThrough = this.lineThrough ? '' : 'line-through';
   }
-  // #enddocregion deleteRequest
 
 }

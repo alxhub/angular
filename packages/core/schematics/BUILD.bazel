@@ -3,29 +3,22 @@ load("//tools:defaults.bzl", "pkg_npm")
 exports_files([
     "tsconfig.json",
     "migrations.json",
+    "collection.json",
 ])
 
 pkg_npm(
     name = "npm_package",
-    srcs = ["migrations.json"],
+    srcs = [
+        "collection.json",
+        "migrations.json",
+        "package.json",
+        "//packages/core/schematics/ng-generate/standalone-migration:static_files",
+    ],
+    validate = False,
     visibility = ["//packages/core:__pkg__"],
     deps = [
-        "//packages/core/schematics/migrations/abstract-control-parent",
-        "//packages/core/schematics/migrations/can-activate-with-redirect-to",
-        "//packages/core/schematics/migrations/dynamic-queries",
-        "//packages/core/schematics/migrations/initial-navigation",
-        "//packages/core/schematics/migrations/missing-injectable",
-        "//packages/core/schematics/migrations/module-with-providers",
-        "//packages/core/schematics/migrations/move-document",
-        "//packages/core/schematics/migrations/native-view-encapsulation",
-        "//packages/core/schematics/migrations/navigation-extras-omissions",
-        "//packages/core/schematics/migrations/relative-link-resolution",
-        "//packages/core/schematics/migrations/renderer-to-renderer2",
-        "//packages/core/schematics/migrations/router-preserve-query-params",
-        "//packages/core/schematics/migrations/static-queries",
-        "//packages/core/schematics/migrations/template-var-assignment",
-        "//packages/core/schematics/migrations/undecorated-classes-with-decorated-fields",
-        "//packages/core/schematics/migrations/undecorated-classes-with-di",
-        "//packages/core/schematics/migrations/wait-for-async",
+        "//packages/core/schematics/migrations/guard-and-resolve-interfaces:bundle",
+        "//packages/core/schematics/migrations/remove-module-id:bundle",
+        "//packages/core/schematics/ng-generate/standalone-migration:bundle",
     ],
 )

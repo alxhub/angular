@@ -33,18 +33,18 @@ describe('Form Validation Tests', () => {
 const testName = 'Test Name';
 
 let page: {
-  section: ElementFinder,
-  form: ElementFinder,
-  title: ElementFinder,
-  nameInput: ElementFinder,
-  alterEgoInput: ElementFinder,
-  powerSelect: ElementFinder,
-  powerOption: ElementFinder,
-  errorMessages: ElementArrayFinder,
-  heroFormButtons: ElementArrayFinder,
-  heroSubmitted: ElementFinder,
-  alterEgoErrors: ElementFinder,
-  crossValidationErrorMessage: ElementFinder,
+  section: ElementFinder;
+  form: ElementFinder;
+  title: ElementFinder;
+  nameInput: ElementFinder;
+  alterEgoInput: ElementFinder;
+  powerSelect: ElementFinder;
+  powerOption: ElementFinder;
+  errorMessages: ElementArrayFinder;
+  heroFormButtons: ElementArrayFinder;
+  heroSubmitted: ElementFinder;
+  alterEgoErrors: ElementFinder;
+  crossValidationErrorMessage: ElementFinder;
 };
 
 function getPage(sectionTag: string) {
@@ -54,7 +54,7 @@ function getPage(sectionTag: string) {
   page = {
     section,
     form: section.element(by.css('form')),
-    title: section.element(by.css('h1')),
+    title: section.element(by.css('h2')),
     nameInput: section.element(by.css('#name')),
     alterEgoInput: section.element(by.css('#alterEgo')),
     powerSelect: section.element(by.css('#power')),

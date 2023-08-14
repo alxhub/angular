@@ -1,4 +1,3 @@
-/* tslint:disable:no-unused-variable member-ordering */
 // #docplaster
 // #docregion imports
 import { Directive, ElementRef, HostListener } from '@angular/core';
@@ -19,16 +18,13 @@ export class HighlightDirective {
   }
 
   @HostListener('mouseleave') onMouseLeave() {
-    this.highlight(null);
+    this.highlight('');
   }
 
   private highlight(color: string) {
     this.el.nativeElement.style.backgroundColor = color;
   }
   // #enddocregion mouse-methods
-  // #docregion color-2
-  @Input() appHighlight: string;
-  // #enddocregion color-2
 
 }
 // #enddocregion

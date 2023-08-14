@@ -46,18 +46,20 @@ export class ApiListComponent implements OnInit {
     { value: 'const', title: 'Const'},
     { value: 'decorator', title: 'Decorator' },
     { value: 'directive', title: 'Directive' },
+    { value: 'element', title: 'Element'},
     { value: 'enum', title: 'Enum' },
     { value: 'function', title: 'Function' },
     { value: 'interface', title: 'Interface' },
+    { value: 'package', title: 'Package'},
     { value: 'pipe', title: 'Pipe'},
     { value: 'ngmodule', title: 'NgModule'},
     { value: 'type-alias', title: 'Type alias' },
-    { value: 'package', title: 'Package'}
   ];
 
   statuses: Option[] = [
     { value: 'all', title: 'All' },
     { value: 'stable', title: 'Stable'},
+    { value: 'developer-preview', title: 'Developer Preview'},
     { value: 'deprecated', title: 'Deprecated' },
     { value: 'security-risk', title: 'Security Risk' }
   ];
@@ -118,7 +120,10 @@ export class ApiListComponent implements OnInit {
     const matchesQuery = (item: ApiItem) =>
       sectionNameMatches || item.name.indexOf(query) !== -1;
     const matchesStatus = (item: ApiItem) =>
-      status === 'all' || status === item.stability || (status === 'security-risk' && item.securityRisk);
+      status === 'all' ||
+      status === item.stability ||
+      (status === 'security-risk' && item.securityRisk) ||
+      (status === 'developer-preview' && item.developerPreview);
     const matchesType = (item: ApiItem) =>
       type === 'all' || type === item.docType;
 

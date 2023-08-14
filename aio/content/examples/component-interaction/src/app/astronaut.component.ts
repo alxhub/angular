@@ -10,6 +10,7 @@ import { Subscription } from 'rxjs';
     <p>
       {{astronaut}}: <strong>{{mission}}</strong>
       <button
+        type="button"
         (click)="confirm()"
         [disabled]="!announced || confirmed">
         Confirm
@@ -18,7 +19,7 @@ import { Subscription } from 'rxjs';
   `
 })
 export class AstronautComponent implements OnDestroy {
-  @Input() astronaut: string;
+  @Input() astronaut = '';
   mission = '<no mission announced>';
   confirmed = false;
   announced = false;

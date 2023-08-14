@@ -17,7 +17,7 @@ import {SourceFileLoader} from '../../../src/ngtsc/sourcemaps';
  * comment that has the following syntax:
  *
  * ```
- * <generated code> // SOURCE: "</path/to/original>" <original source>
+ * <generated code> // SOURCE: "</path/to/original>" "<original source>"
  * ```
  *
  * The `path/to/original` path will be absolute within the mock file-system, where the root is the
@@ -35,6 +35,7 @@ import {SourceFileLoader} from '../../../src/ngtsc/sourcemaps';
 export function checkMappings(
     fs: ReadonlyFileSystem, generated: string, generatedPath: AbsoluteFsPath,
     expectedSource: string, expectedPath: AbsoluteFsPath): string {
+  // Generate the candidate source maps.
   const actualMappings = getMappedSegments(fs, generatedPath, generated);
 
   const {expected, mappings} = extractMappings(fs, expectedSource);
@@ -80,8 +81,11 @@ function extractMappings(
     fs: ReadonlyFileSystem, expected: string): {expected: string, mappings: SegmentMapping[]} {
   const mappings: SegmentMapping[] = [];
   // capture and remove source mapping info
+  // Any newline at the end of an expectation line is removed, as a mapping expectation for a
+  // segment within a template literal would otherwise force a newline to be matched in the template
+  // literal.
   expected = expected.replace(
-      /^(.*?) \/\/ SOURCE: "([^"]*?)" (.*?)$/gm,
+      /^(.*?) \/\/ SOURCE: "([^"]*?)" "(.*?)"(?:\n|$)/gm,
       (_, rawGenerated: string, rawSourceUrl: string, rawSource: string) => {
         // Since segments need to appear on a single line in the expected file, any newlines in the
         // segment being checked must be escaped in the expected file and then unescaped here before
@@ -97,8 +101,8 @@ function extractMappings(
 }
 
 function unescape(str: string): string {
-  const replacements: Record<any, string> = {'\\n': '\n', '\\r': '\r', '\\\\': '\\'};
-  return str.replace(/\\[rn\\]/g, match => replacements[match]);
+  const replacements: Record<any, string> = {'\\n': '\n', '\\r': '\r', '\\\\': '\\', '\\"': '\"'};
+  return str.replace(/\\[rn"\\]/g, match => replacements[match]);
 }
 
 /**

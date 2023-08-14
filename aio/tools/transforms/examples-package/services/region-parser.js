@@ -5,22 +5,25 @@ const inlineCOnly = require('./region-matchers/inline-c-only');
 const inlineHash = require('./region-matchers/inline-hash');
 const DEFAULT_PLASTER = '. . .';
 const {mapObject} = require('../../helpers/utils');
+const removeEslintComments = require('./removeEslintComments');
 
 module.exports = function regionParser() {
   regionParserImpl.regionMatchers = {
     ts: inlineC,
     js: inlineC,
+    mjs: inlineCOnly,
     es6: inlineC,
-    dart: inlineC,
     html: html,
     svg: html,
     css: blockC,
+    conf: inlineHash,
     yaml: inlineHash,
     yml: inlineHash,
+    sh: inlineHash,
     jade: inlineCOnly,
     pug: inlineCOnly,
-    json: inlineC,
-    'json.annotated': inlineC
+    json: inlineCOnly,
+    'json.annotated': inlineCOnly
   };
 
   return regionParserImpl;
@@ -37,7 +40,7 @@ module.exports = function regionParser() {
 
     if (regionMatcher) {
       let plaster = regionMatcher.createPlasterComment(DEFAULT_PLASTER);
-      const lines = contents.split(/\r?\n/).filter((line, index) => {
+      const lines = removeEslintComments(contents, fileType).split(/\r?\n/).filter((line, index) => {
         const startRegion = line.match(regionMatcher.regionStartMatcher);
         const endRegion = line.match(regionMatcher.regionEndMatcher);
         const updatePlaster = line.match(regionMatcher.plasterMatcher);
@@ -58,7 +61,9 @@ module.exports = function regionParser() {
               }
               region.open = true;
               if (plaster) {
-                region.lines.push(plaster);
+                // Use the same indent as the docregion marker
+                const indent = startRegion[0].split(/[^ ]/, 1);
+                region.lines.push(indent + plaster);
               }
             } else {
               regionMap[regionName] = {lines: [], open: true};
@@ -132,7 +137,7 @@ function leftAlign(lines) {
       indent = Math.min(lineIndent, indent);
     }
   });
-  return lines.map(line => line.substr(indent));
+  return lines.map(line => line.slice(indent));
 }
 
 function RegionParserError(message, index) {

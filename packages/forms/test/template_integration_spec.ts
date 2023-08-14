@@ -6,10 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ɵgetDOM as getDOM} from '@angular/common';
-import {Component, Directive, forwardRef, Input, Type, ViewChild} from '@angular/core';
+import {CommonModule, ɵgetDOM as getDOM} from '@angular/common';
+import {Component, Directive, ElementRef, forwardRef, Input, Type, ViewChild} from '@angular/core';
 import {ComponentFixture, fakeAsync, TestBed, tick, waitForAsync} from '@angular/core/testing';
-import {AbstractControl, AsyncValidator, COMPOSITION_BUFFER_MODE, ControlValueAccessor, FormControl, FormsModule, MaxValidator, MinValidator, NG_ASYNC_VALIDATORS, NG_VALIDATORS, NG_VALUE_ACCESSOR, NgForm, NgModel} from '@angular/forms';
+import {AbstractControl, AsyncValidator, COMPOSITION_BUFFER_MODE, ControlValueAccessor, FormControl, FormsModule, MaxLengthValidator, MaxValidator, MinLengthValidator, MinValidator, NG_ASYNC_VALIDATORS, NG_VALIDATORS, NG_VALUE_ACCESSOR, NgForm, NgModel, Validator} from '@angular/forms';
 import {By} from '@angular/platform-browser/src/dom/debug/by';
 import {dispatchEvent, sortedClassList} from '@angular/platform-browser/testing/src/browser_util';
 import {merge} from 'rxjs';
@@ -20,7 +20,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
   describe('template-driven forms integration tests', () => {
     function initTest<T>(component: Type<T>, ...directives: Type<any>[]): ComponentFixture<T> {
       TestBed.configureTestingModule(
-          {declarations: [component, ...directives], imports: [FormsModule]});
+          {declarations: [component, ...directives], imports: [FormsModule, CommonModule]});
       return TestBed.createComponent(component);
     }
 
@@ -187,6 +187,21 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              dispatchEvent(input, 'input');
              fixture.detectChanges();
              expect(sortedClassList(input)).toEqual(['ng-dirty', 'ng-touched', 'ng-valid']);
+
+             const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+             dispatchEvent(formEl, 'submit');
+             fixture.detectChanges();
+
+             expect(sortedClassList(formEl)).toEqual([
+               'ng-dirty', 'ng-submitted', 'ng-touched', 'ng-valid'
+             ]);
+             expect(sortedClassList(input)).not.toContain('ng-submitted');
+
+             dispatchEvent(formEl, 'reset');
+             fixture.detectChanges();
+
+             expect(sortedClassList(formEl)).toEqual(['ng-pristine', 'ng-untouched', 'ng-valid']);
+             expect(sortedClassList(input)).not.toContain('ng-submitted');
            });
          }));
 
@@ -244,8 +259,51 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              expect(sortedClassList(modelGroup)).toEqual(['ng-dirty', 'ng-touched', 'ng-valid']);
              expect(sortedClassList(form)).toEqual(['ng-dirty', 'ng-touched', 'ng-valid']);
+
+             const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+             dispatchEvent(formEl, 'submit');
+             fixture.detectChanges();
+
+             expect(sortedClassList(formEl)).toEqual([
+               'ng-dirty', 'ng-submitted', 'ng-touched', 'ng-valid'
+             ]);
            });
          }));
+
+      it('should set status classes involving nested FormGroups', () => {
+        const fixture = initTest(NgModelNestedForm);
+        fixture.componentInstance.first = '';
+        fixture.componentInstance.other = '';
+        fixture.detectChanges();
+
+        const form = fixture.debugElement.query(By.css('form')).nativeElement;
+        const modelGroup = fixture.debugElement.query(By.css('[ngModelGroup]')).nativeElement;
+        const input = fixture.debugElement.query(By.css('input')).nativeElement;
+
+        fixture.whenStable().then(() => {
+          fixture.detectChanges();
+          expect(sortedClassList(modelGroup)).toEqual(['ng-pristine', 'ng-untouched', 'ng-valid']);
+
+          expect(sortedClassList(form)).toEqual(['ng-pristine', 'ng-untouched', 'ng-valid']);
+
+          const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+          dispatchEvent(formEl, 'submit');
+          fixture.detectChanges();
+
+          expect(sortedClassList(modelGroup)).toEqual(['ng-pristine', 'ng-untouched', 'ng-valid']);
+          expect(sortedClassList(form)).toEqual([
+            'ng-pristine', 'ng-submitted', 'ng-untouched', 'ng-valid'
+          ]);
+          expect(sortedClassList(input)).not.toContain('ng-submitted');
+
+          dispatchEvent(formEl, 'reset');
+          fixture.detectChanges();
+
+          expect(sortedClassList(modelGroup)).toEqual(['ng-pristine', 'ng-untouched', 'ng-valid']);
+          expect(sortedClassList(form)).toEqual(['ng-pristine', 'ng-untouched', 'ng-valid']);
+          expect(sortedClassList(input)).not.toContain('ng-submitted');
+        });
+      });
 
       it('should not create a template-driven form when ngNoForm is used', () => {
         const fixture = initTest(NgNoFormComp);
@@ -259,6 +317,119 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
         const form = fixture.debugElement.query(By.css('form'));
         expect(form.nativeElement.hasAttribute('novalidate')).toEqual(false);
       });
+
+      it('should keep track of the ngModel value when together used with an ngFor inside a form',
+         fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <div *ngFor="let item of items; index as i">
+                  <input [(ngModel)]="item.value" name="name-{{i}}">
+                </div>
+              </form>
+            `
+           })
+           class App {
+             private _counter = 0;
+             items: {value: string}[] = [];
+
+             add(amount: number) {
+               for (let i = 0; i < amount; i++) {
+                 this.items.push({value: `${this._counter++}`});
+               }
+             }
+
+             remove(index: number) {
+               this.items.splice(index, 1);
+             }
+           }
+
+           const getValues = () =>
+               fixture.debugElement.queryAll(By.css('input')).map(el => el.nativeElement.value);
+           const fixture = initTest(App);
+           fixture.componentInstance.add(3);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '2']);
+
+           fixture.componentInstance.remove(1);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '2']);
+
+           fixture.componentInstance.add(1);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '2', '3']);
+
+           fixture.componentInstance.items[1].value = '1';
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '3']);
+
+           fixture.componentInstance.items[2].value = '2';
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '2']);
+         }));
+
+      it('should keep track of the ngModel value when together used with an ngFor inside an ngModelGroup',
+         fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <ng-container ngModelGroup="group">
+                  <div *ngFor="let item of items; index as i">
+                    <input [(ngModel)]="item.value" name="name-{{i}}">
+                  </div>
+                </ng-container>
+              </form>
+            `
+           })
+           class App {
+             private _counter = 0;
+             group = {};
+             items: {value: string}[] = [];
+
+             add(amount: number) {
+               for (let i = 0; i < amount; i++) {
+                 this.items.push({value: `${this._counter++}`});
+               }
+             }
+
+             remove(index: number) {
+               this.items.splice(index, 1);
+             }
+           }
+
+           const getValues = () =>
+               fixture.debugElement.queryAll(By.css('input')).map(el => el.nativeElement.value);
+           const fixture = initTest(App);
+           fixture.componentInstance.add(3);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '2']);
+
+           fixture.componentInstance.remove(1);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '2']);
+
+           fixture.componentInstance.add(1);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '2', '3']);
+
+           fixture.componentInstance.items[1].value = '1';
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '3']);
+
+           fixture.componentInstance.items[2].value = '2';
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '2']);
+         }));
     });
 
     describe('name and ngModelOptions', () => {
@@ -339,10 +510,15 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              const input = fixture.debugElement.query(By.css('input')).nativeElement;
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(input.value).toEqual('Nancy Drew', 'Expected initial view value to be set.');
-             expect(form.value)
-                 .toEqual({name: 'Nancy Drew'}, 'Expected initial control value be set.');
-             expect(form.valid).toBe(true, 'Expected validation to run on initial value.');
+             expect(input.value)
+                 .withContext('Expected initial view value to be set.')
+                 .toEqual('Nancy Drew');
+             expect(form.value).withContext('Expected initial control value be set.').toEqual({
+               name: 'Nancy Drew'
+             });
+             expect(form.valid)
+                 .withContext('Expected validation to run on initial value.')
+                 .toBe(true);
            }));
 
         it('should always set value programmatically right away', fakeAsync(() => {
@@ -359,12 +535,14 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              const input = fixture.debugElement.query(By.css('input')).nativeElement;
              const form = fixture.debugElement.children[0].injector.get(NgForm);
              expect(input.value)
-                 .toEqual('Carson', 'Expected view value to update on programmatic change.');
+                 .withContext('Expected view value to update on programmatic change.')
+                 .toEqual('Carson');
              expect(form.value)
                  .toEqual(
                      {name: 'Carson'}, 'Expected form value to update on programmatic change.');
              expect(form.valid)
-                 .toBe(false, 'Expected validation to run immediately on programmatic change.');
+                 .withContext('Expected validation to run immediately on programmatic change.')
+                 .toBe(false);
            }));
 
         it('should update value/validity on blur', fakeAsync(() => {
@@ -382,15 +560,17 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
              expect(fixture.componentInstance.name)
-                 .toEqual('Carson', 'Expected value not to update on input.');
-             expect(form.valid).toBe(false, 'Expected validation not to run on input.');
+                 .withContext('Expected value not to update on input.')
+                 .toEqual('Carson');
+             expect(form.valid).withContext('Expected validation not to run on input.').toBe(false);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
              expect(fixture.componentInstance.name)
-                 .toEqual('Nancy Drew', 'Expected value to update on blur.');
-             expect(form.valid).toBe(true, 'Expected validation to run on blur.');
+                 .withContext('Expected value to update on blur.')
+                 .toEqual('Nancy Drew');
+             expect(form.valid).withContext('Expected validation to run on blur.').toBe(true);
            }));
 
         it('should wait for second blur to update value/validity again', fakeAsync(() => {
@@ -415,15 +595,21 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
              expect(fixture.componentInstance.name)
-                 .toEqual('Nancy Drew', 'Expected value not to update until another blur.');
-             expect(form.valid).toBe(true, 'Expected validation not to run until another blur.');
+                 .withContext('Expected value not to update until another blur.')
+                 .toEqual('Nancy Drew');
+             expect(form.valid)
+                 .withContext('Expected validation not to run until another blur.')
+                 .toBe(true);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
              expect(fixture.componentInstance.name)
-                 .toEqual('Carson', 'Expected value to update on second blur.');
-             expect(form.valid).toBe(false, 'Expected validation to run on second blur.');
+                 .withContext('Expected value to update on second blur.')
+                 .toEqual('Carson');
+             expect(form.valid)
+                 .withContext('Expected validation to run on second blur.')
+                 .toBe(false);
            }));
 
         it('should not update dirtiness until blur', fakeAsync(() => {
@@ -440,12 +626,14 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(form.dirty).toBe(false, 'Expected dirtiness not to update on input.');
+             expect(form.dirty)
+                 .withContext('Expected dirtiness not to update on input.')
+                 .toBe(false);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
-             expect(form.dirty).toBe(true, 'Expected dirtiness to update on blur.');
+             expect(form.dirty).withContext('Expected dirtiness to update on blur.').toBe(true);
            }));
 
         it('should not update touched until blur', fakeAsync(() => {
@@ -462,12 +650,14 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(form.touched).toBe(false, 'Expected touched not to update on input.');
+             expect(form.touched)
+                 .withContext('Expected touched not to update on input.')
+                 .toBe(false);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
-             expect(form.touched).toBe(true, 'Expected touched to update on blur.');
+             expect(form.touched).withContext('Expected touched to update on blur.').toBe(true);
            }));
 
         it('should not emit valueChanges or statusChanges until blur', fakeAsync(() => {
@@ -489,7 +679,9 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              fixture.detectChanges();
              tick();
 
-             expect(values).toEqual([], 'Expected no valueChanges or statusChanges on input.');
+             expect(values)
+                 .withContext('Expected no valueChanges or statusChanges on input.')
+                 .toEqual([]);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
@@ -509,14 +701,16 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              expect(fixture.componentInstance.events)
-                 .toEqual([], 'Expected ngModelChanges not to fire.');
+                 .withContext('Expected ngModelChanges not to fire.')
+                 .toEqual([]);
 
              const input = fixture.debugElement.query(By.css('input')).nativeElement;
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
              expect(fixture.componentInstance.events)
-                 .toEqual([], 'Expected ngModelChanges not to fire if value unchanged.');
+                 .withContext('Expected ngModelChanges not to fire if value unchanged.')
+                 .toEqual([]);
 
              input.value = 'Carson';
              dispatchEvent(input, 'input');
@@ -524,14 +718,15 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              expect(fixture.componentInstance.events)
-                 .toEqual([], 'Expected ngModelChanges not to fire on input.');
+                 .withContext('Expected ngModelChanges not to fire on input.')
+                 .toEqual([]);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
              expect(fixture.componentInstance.events)
-                 .toEqual(
-                     ['fired'], 'Expected ngModelChanges to fire once blurred if value changed.');
+                 .withContext('Expected ngModelChanges to fire once blurred if value changed.')
+                 .toEqual(['fired']);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
@@ -547,7 +742,8 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              expect(fixture.componentInstance.events)
-                 .toEqual(['fired'], 'Expected ngModelChanges not to fire on input after blur.');
+                 .withContext('Expected ngModelChanges not to fire on input after blur.')
+                 .toEqual(['fired']);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
@@ -582,10 +778,17 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              const input = fixture.debugElement.query(By.css('input')).nativeElement;
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(input.value).toEqual('Nancy Drew', 'Expected initial view value to be set.');
+             expect(input.value)
+                 .withContext('Expected initial view value to be set.')
+                 .toEqual('Nancy Drew');
              expect(form.value)
-                 .toEqual({name: 'Nancy Drew'}, 'Expected initial control value be set.');
-             expect(form.valid).toBe(true, 'Expected validation to run on initial value.');
+                 .withContext('Expected initial control value be set.')
+                 .toEqual(
+                     {name: 'Nancy Drew'},
+                 );
+             expect(form.valid)
+                 .withContext('Expected validation to run on initial value.')
+                 .toBe(true);
            }));
 
         it('should always set value programmatically right away', fakeAsync(() => {
@@ -602,12 +805,14 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              const input = fixture.debugElement.query(By.css('input')).nativeElement;
              const form = fixture.debugElement.children[0].injector.get(NgForm);
              expect(input.value)
-                 .toEqual('Carson', 'Expected view value to update on programmatic change.');
+                 .withContext('Expected view value to update on programmatic change.')
+                 .toEqual('Carson');
              expect(form.value)
-                 .toEqual(
-                     {name: 'Carson'}, 'Expected form value to update on programmatic change.');
+                 .withContext('Expected form value to update on programmatic change.')
+                 .toEqual({name: 'Carson'});
              expect(form.valid)
-                 .toBe(false, 'Expected validation to run immediately on programmatic change.');
+                 .withContext('Expected validation to run immediately on programmatic change.')
+                 .toBe(false);
            }));
 
 
@@ -626,24 +831,27 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
              expect(fixture.componentInstance.name)
-                 .toEqual('Carson', 'Expected value not to update on input.');
-             expect(form.valid).toBe(false, 'Expected validation not to run on input.');
+                 .withContext('Expected value not to update on input.')
+                 .toEqual('Carson');
+             expect(form.valid).withContext('Expected validation not to run on input.').toBe(false);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
              tick();
 
              expect(fixture.componentInstance.name)
-                 .toEqual('Carson', 'Expected value not to update on blur.');
-             expect(form.valid).toBe(false, 'Expected validation not to run on blur.');
+                 .withContext('Expected value not to update on blur.')
+                 .toEqual('Carson');
+             expect(form.valid).withContext('Expected validation not to run on blur.').toBe(false);
 
              const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
 
              expect(fixture.componentInstance.name)
-                 .toEqual('Nancy Drew', 'Expected value to update on submit.');
-             expect(form.valid).toBe(true, 'Expected validation to run on submit.');
+                 .withContext('Expected value to update on submit.')
+                 .toEqual('Nancy Drew');
+             expect(form.valid).withContext('Expected validation to run on submit.').toBe(true);
            }));
 
         it('should wait until second submit to update again', fakeAsync(() => {
@@ -671,16 +879,22 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
              expect(fixture.componentInstance.name)
-                 .toEqual('Nancy Drew', 'Expected value not to update until second submit.');
-             expect(form.valid).toBe(true, 'Expected validation not to run until second submit.');
+                 .withContext('Expected value not to update until second submit.')
+                 .toEqual('Nancy Drew');
+             expect(form.valid)
+                 .withContext('Expected validation not to run until second submit.')
+                 .toBe(true);
 
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
              tick();
 
              expect(fixture.componentInstance.name)
-                 .toEqual('Carson', 'Expected value to update on second submit.');
-             expect(form.valid).toBe(false, 'Expected validation to run on second submit.');
+                 .withContext('Expected value to update on second submit.')
+                 .toEqual('Carson');
+             expect(form.valid)
+                 .withContext('Expected validation to run on second submit.')
+                 .toBe(false);
            }));
 
         it('should not run validation for onChange controls on submit', fakeAsync(() => {
@@ -718,19 +932,23 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(form.dirty).toBe(false, 'Expected dirtiness not to update on input.');
+             expect(form.dirty)
+                 .withContext('Expected dirtiness not to update on input.')
+                 .toBe(false);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
              tick();
 
-             expect(form.dirty).toBe(false, 'Expected dirtiness not to update on blur.');
+             expect(form.dirty)
+                 .withContext('Expected dirtiness not to update on blur.')
+                 .toBe(false);
 
              const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
 
-             expect(form.dirty).toBe(true, 'Expected dirtiness to update on submit.');
+             expect(form.dirty).withContext('Expected dirtiness to update on submit.').toBe(true);
            }));
 
         it('should not update touched until submit', fakeAsync(() => {
@@ -751,13 +969,15 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(form.touched).toBe(false, 'Expected touched not to update on blur.');
+             expect(form.touched)
+                 .withContext('Expected touched not to update on blur.')
+                 .toBe(false);
 
              const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
 
-             expect(form.touched).toBe(true, 'Expected touched to update on submit.');
+             expect(form.touched).withContext('Expected touched to update on submit.').toBe(true);
            }));
 
         it('should reset properly', fakeAsync(() => {
@@ -780,23 +1000,30 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              fixture.detectChanges();
              tick();
 
-             expect(input.value).toEqual('', 'Expected view value to reset.');
-             expect(form.value).toEqual({name: null}, 'Expected form value to reset.');
+             expect(input.value).withContext('Expected view value to reset.').toEqual('');
+             expect(form.value).withContext('Expected form value to reset.').toEqual({name: null});
              expect(fixture.componentInstance.name)
-                 .toEqual(null, 'Expected ngModel value to reset.');
-             expect(form.dirty).toBe(false, 'Expected dirty to stay false on reset.');
-             expect(form.touched).toBe(false, 'Expected touched to stay false on reset.');
+                 .withContext('Expected ngModel value to reset.')
+                 .toEqual(null);
+             expect(form.dirty).withContext('Expected dirty to stay false on reset.').toBe(false);
+             expect(form.touched)
+                 .withContext('Expected touched to stay false on reset.')
+                 .toBe(false);
 
              const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
 
-             expect(form.value)
-                 .toEqual({name: null}, 'Expected form value to stay empty on submit');
+             expect(form.value).withContext('Expected form value to stay empty on submit').toEqual({
+               name: null
+             });
              expect(fixture.componentInstance.name)
-                 .toEqual(null, 'Expected ngModel value to stay empty on submit.');
-             expect(form.dirty).toBe(false, 'Expected dirty to stay false on submit.');
-             expect(form.touched).toBe(false, 'Expected touched to stay false on submit.');
+                 .withContext('Expected ngModel value to stay empty on submit.')
+                 .toEqual(null);
+             expect(form.dirty).withContext('Expected dirty to stay false on submit.').toBe(false);
+             expect(form.touched)
+                 .withContext('Expected touched to stay false on submit.')
+                 .toBe(false);
            }));
 
         it('should not emit valueChanges or statusChanges until submit', fakeAsync(() => {
@@ -818,13 +1045,17 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              fixture.detectChanges();
              tick();
 
-             expect(values).toEqual([], 'Expected no valueChanges or statusChanges on input.');
+             expect(values)
+                 .withContext('Expected no valueChanges or statusChanges on input.')
+                 .toEqual([]);
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
              tick();
 
-             expect(values).toEqual([], 'Expected no valueChanges or statusChanges on blur.');
+             expect(values)
+                 .withContext('Expected no valueChanges or statusChanges on blur.')
+                 .toEqual([]);
 
              const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
              dispatchEvent(formEl, 'submit');
@@ -849,7 +1080,8 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              fixture.detectChanges();
 
              expect(fixture.componentInstance.events)
-                 .toEqual([], 'Expected ngModelChanges not to fire if value unchanged.');
+                 .withContext('Expected ngModelChanges not to fire if value unchanged.')
+                 .toEqual([]);
 
              const input = fixture.debugElement.query(By.css('input')).nativeElement;
              input.value = 'Carson';
@@ -858,14 +1090,15 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              expect(fixture.componentInstance.events)
-                 .toEqual([], 'Expected ngModelChanges not to fire on input.');
+                 .withContext('Expected ngModelChanges not to fire on input.')
+                 .toEqual([]);
 
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
 
              expect(fixture.componentInstance.events)
-                 .toEqual(
-                     ['fired'], 'Expected ngModelChanges to fire once submitted if value changed.');
+                 .withContext('Expected ngModelChanges to fire once submitted if value changed.')
+                 .toEqual(['fired']);
 
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
@@ -881,7 +1114,8 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              expect(fixture.componentInstance.events)
-                 .toEqual(['fired'], 'Expected ngModelChanges not to fire on input after submit.');
+                 .withContext('Expected ngModelChanges not to fire on input after submit.')
+                 .toEqual(['fired']);
 
              dispatchEvent(formEl, 'submit');
              fixture.detectChanges();
@@ -890,6 +1124,21 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
                  .toEqual(
                      ['fired', 'fired'],
                      'Expected ngModelChanges to fire again on submit if value changed.');
+           }));
+
+
+        it('should not prevent the default action on forms with method="dialog"', fakeAsync(() => {
+             if (typeof HTMLDialogElement === 'undefined') {
+               return;
+             }
+
+             const fixture = initTest(NativeDialogForm);
+             fixture.detectChanges();
+             tick();
+             const event = dispatchEvent(fixture.componentInstance.form.nativeElement, 'submit');
+             fixture.detectChanges();
+
+             expect(event.defaultPrevented).toBe(false);
            }));
       });
 
@@ -905,12 +1154,14 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              const controlOne = form.control.get('one')! as FormControl;
              expect((controlOne as any)._updateOn).toBeUndefined();
              expect(controlOne.updateOn)
-                 .toEqual('blur', 'Expected first control to inherit updateOn from parent form.');
+                 .withContext('Expected first control to inherit updateOn from parent form.')
+                 .toEqual('blur');
 
              const controlTwo = form.control.get('two')! as FormControl;
              expect((controlTwo as any)._updateOn).toBeUndefined();
              expect(controlTwo.updateOn)
-                 .toEqual('blur', 'Expected last control to inherit updateOn from parent form.');
+                 .withContext('Expected last control to inherit updateOn from parent form.')
+                 .toEqual('blur');
            }));
 
         it('should actually update using ngFormOptions value', fakeAsync(() => {
@@ -927,12 +1178,16 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(form.value).toEqual({one: ''}, 'Expected value not to update on input.');
+             expect(form.value).withContext('Expected value not to update on input.').toEqual({
+               one: ''
+             });
 
              dispatchEvent(input, 'blur');
              fixture.detectChanges();
 
-             expect(form.value).toEqual({one: 'Nancy Drew'}, 'Expected value to update on blur.');
+             expect(form.value).withContext('Expected value to update on blur.').toEqual({
+               one: 'Nancy Drew'
+             });
            }));
 
         it('should allow ngModelOptions updateOn to override ngFormOptions', fakeAsync(() => {
@@ -946,13 +1201,16 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              const controlOne = form.control.get('one')! as FormControl;
              expect((controlOne as any)._updateOn).toBeUndefined();
              expect(controlOne.updateOn)
-                 .toEqual('change', 'Expected control updateOn to inherit form updateOn.');
+                 .withContext('Expected control updateOn to inherit form updateOn.')
+                 .toEqual('change');
 
              const controlTwo = form.control.get('two')! as FormControl;
              expect((controlTwo as any)._updateOn)
-                 .toEqual('blur', 'Expected control to set blur override.');
+                 .withContext('Expected control to set blur override.')
+                 .toEqual('blur');
              expect(controlTwo.updateOn)
-                 .toEqual('blur', 'Expected control updateOn to override form updateOn.');
+                 .withContext('Expected control updateOn to override form updateOn.')
+                 .toEqual('blur');
            }));
 
         it('should update using ngModelOptions override', fakeAsync(() => {
@@ -970,8 +1228,10 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              fixture.detectChanges();
 
              const form = fixture.debugElement.children[0].injector.get(NgForm);
-             expect(form.value)
-                 .toEqual({one: 'Nancy Drew', two: ''}, 'Expected first value to update on input.');
+             expect(form.value).withContext('Expected first value to update on input.').toEqual({
+               one: 'Nancy Drew',
+               two: ''
+             });
 
              inputTwo.nativeElement.value = 'Carson Drew';
              dispatchEvent(inputTwo.nativeElement, 'input');
@@ -979,8 +1239,8 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              tick();
 
              expect(form.value)
-                 .toEqual(
-                     {one: 'Nancy Drew', two: ''}, 'Expected second value not to update on input.');
+                 .withContext('Expected second value not to update on input.')
+                 .toEqual({one: 'Nancy Drew', two: ''});
 
              dispatchEvent(inputTwo.nativeElement, 'blur');
              fixture.detectChanges();
@@ -1005,7 +1265,8 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
              fixture.detectChanges();
 
              expect(fixture.componentInstance.two)
-                 .toEqual('Nancy Drew', 'Expected standalone ngModel not to inherit blur update.');
+                 .withContext('Expected standalone ngModel not to inherit blur update.')
+                 .toEqual('Nancy Drew');
            }));
       });
     });
@@ -1257,6 +1518,14 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
 
            expect(input.nativeElement.checked).toBe(false);
            expect(control.hasError('required')).toBe(true);
+
+           fixture.componentInstance.required = false;
+           dispatchEvent(input.nativeElement, 'change');
+           fixture.detectChanges();
+           tick();
+
+           expect(input.nativeElement.checked).toBe(false);
+           expect(control.hasError('required')).toBe(false);
          }));
 
       it('should validate email', fakeAsync(() => {
@@ -1524,6 +1793,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            input.value = '';
            dispatchEvent(input, 'input');
            fixture.detectChanges();
+           expect(input.getAttribute('max')).toEqual('10');
            expect(form.valid).toEqual(true);
            expect(form.controls.max.errors).toBeNull();
 
@@ -1538,6 +1808,56 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            fixture.detectChanges();
            expect(form.valid).toEqual(true);
            expect(form.controls.max.errors).toBeNull();
+
+           fixture.componentInstance.max = 0;
+           fixture.detectChanges();
+           tick();
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(input.getAttribute('max')).toEqual('0');
+           expect(form.valid).toEqual(false);
+           expect(form.controls.max.errors).toEqual({max: {max: 0, actual: 9}});
+
+           input.value = 0;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(true);
+           expect(form.controls.max.errors).toBeNull();
+         }));
+
+      it('should validate max for float number', fakeAsync(() => {
+           const fixture = initTest(NgModelMaxValidator);
+           fixture.componentInstance.max = 10.25;
+           fixture.detectChanges();
+           tick();
+
+           const input = fixture.debugElement.query(By.css('input')).nativeElement;
+           const form = fixture.debugElement.children[0].injector.get(NgForm);
+
+           input.value = '';
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(input.getAttribute('max')).toEqual('10.25');
+           expect(form.valid).toEqual(true);
+           expect(form.controls.max.errors).toBeNull();
+
+           input.value = 10.25;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(true);
+           expect(form.controls.max.errors).toBeNull();
+
+           input.value = 10.15;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(true);
+           expect(form.controls.max.errors).toBeNull();
+
+           input.value = 10.35;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(false);
+           expect(form.controls.max.errors).toEqual({max: {max: 10.25, actual: 10.35}});
          }));
 
       it('should apply max validation when control value is defined as a string', fakeAsync(() => {
@@ -1552,6 +1872,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            input.value = '11';
            dispatchEvent(input, 'input');
            fixture.detectChanges();
+           expect(input.getAttribute('max')).toEqual('10');
            expect(form.valid).toEqual(false);
            expect(form.controls.max.errors).toEqual({max: {max: 10, actual: 11}});
 
@@ -1601,6 +1922,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            input.value = '';
            dispatchEvent(input, 'input');
            fixture.detectChanges();
+           expect(input.getAttribute('min')).toEqual('10');
            expect(form.valid).toEqual(true);
            expect(form.controls.min.errors).toBeNull();
 
@@ -1615,8 +1937,58 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            fixture.detectChanges();
            expect(form.valid).toEqual(false);
            expect(form.controls.min.errors).toEqual({min: {min: 10, actual: 9}});
+
+           fixture.componentInstance.min = 0;
+           fixture.detectChanges();
+           tick();
+           input.value = -5;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(input.getAttribute('min')).toEqual('0');
+           expect(form.valid).toEqual(false);
+           expect(form.controls.min.errors).toEqual({min: {min: 0, actual: -5}});
+
+           input.value = 0;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(true);
+           expect(form.controls.min.errors).toBeNull();
          }));
 
+      it('should validate min for float number', fakeAsync(() => {
+           const fixture = initTest(NgModelMinValidator);
+           fixture.componentInstance.min = 10.25;
+           fixture.detectChanges();
+           tick();
+
+           const input = fixture.debugElement.query(By.css('input')).nativeElement;
+           const form = fixture.debugElement.children[0].injector.get(NgForm);
+
+           input.value = '';
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(input.getAttribute('min')).toEqual('10.25');
+           expect(form.valid).toEqual(true);
+           expect(form.controls.min.errors).toBeNull();
+
+           input.value = 10.35;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(true);
+           expect(form.controls.min.errors).toBeNull();
+
+           input.value = 10.25;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(true);
+           expect(form.controls.min.errors).toBeNull();
+
+           input.value = 10.15;
+           dispatchEvent(input, 'input');
+           fixture.detectChanges();
+           expect(form.valid).toEqual(false);
+           expect(form.controls.min.errors).toEqual({min: {min: 10.25, actual: 10.15}});
+         }));
       it('should apply min validation when control value is defined as a string', fakeAsync(() => {
            const fixture = initTest(NgModelMinValidator);
            fixture.componentInstance.min = 10;
@@ -1629,6 +2001,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            input.value = '11';
            dispatchEvent(input, 'input');
            fixture.detectChanges();
+           expect(input.getAttribute('min')).toEqual('10');
            expect(form.valid).toEqual(true);
            expect(form.controls.min.errors).toBeNull();
 
@@ -1754,6 +2127,182 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            expect(maxValidateFnSpy).not.toHaveBeenCalled();
            expect(minValidateFnSpy).not.toHaveBeenCalled();
          }));
+
+      describe('enabling validators conditionally', () => {
+        it('should not include the minLength and maxLength validators for null', fakeAsync(() => {
+             @Component({
+               template:
+                   '<form><input name="amount" ngModel [minlength]="minlen" [maxlength]="maxlen"></form>'
+             })
+             class MinLengthMaxLengthComponent {
+               minlen: number|null = null;
+               maxlen: number|null = null;
+               control!: FormControl;
+             }
+
+             const fixture = initTest(MinLengthMaxLengthComponent);
+             fixture.detectChanges();
+             tick();
+             const input = fixture.debugElement.query(By.css('input')).nativeElement;
+
+             const form = fixture.debugElement.children[0].injector.get(NgForm);
+             const control =
+                 fixture.debugElement.children[0].injector.get(NgForm).control.get('amount')!;
+
+             interface minmax {
+               minlength: number|null;
+               maxlength: number|null;
+             }
+
+             interface state {
+               isValid: boolean;
+               failedValidator?: string;
+             }
+
+             const setInputValue = (value: number) => {
+               input.value = value;
+               dispatchEvent(input, 'input');
+               fixture.detectChanges();
+             };
+             const verifyValidatorAttrValues = (values: {minlength: any, maxlength: any}) => {
+               expect(input.getAttribute('minlength')).toBe(values.minlength);
+               expect(input.getAttribute('maxlength')).toBe(values.maxlength);
+             };
+             const setValidatorValues = (values: minmax) => {
+               fixture.componentInstance.minlen = values.minlength;
+               fixture.componentInstance.maxlen = values.maxlength;
+               fixture.detectChanges();
+             };
+             const verifyFormState = (state: state) => {
+               expect(form.valid).toBe(state.isValid);
+               if (state.failedValidator) {
+                 expect(control!.hasError('minlength'))
+                     .toEqual(state.failedValidator === 'minlength');
+                 expect(control!.hasError('maxlength'))
+                     .toEqual(state.failedValidator === 'maxlength');
+               }
+             };
+
+             ////////// Actual test scenarios start below //////////
+             // 1. Verify that validators are disabled when input is `null`.
+             verifyValidatorAttrValues({minlength: null, maxlength: null});
+             verifyValidatorAttrValues({minlength: null, maxlength: null});
+
+             // 2. Verify that setting validator inputs (to a value different from `null`) activate
+             // validators.
+             setInputValue(12345);
+             setValidatorValues({minlength: 2, maxlength: 4});
+             verifyValidatorAttrValues({minlength: '2', maxlength: '4'});
+             verifyFormState({isValid: false, failedValidator: 'maxlength'});
+
+             // 3. Changing value to the valid range should make the form valid.
+             setInputValue(123);
+             verifyFormState({isValid: true});
+
+             // 4. Changing value to trigger `minlength` validator.
+             setInputValue(1);
+             verifyFormState({isValid: false, failedValidator: 'minlength'});
+
+             // 5. Changing validator inputs to verify that attribute values are updated (and the
+             // form is now valid).
+             setInputValue(1);
+             setValidatorValues({minlength: 1, maxlength: 5});
+             verifyValidatorAttrValues({minlength: '1', maxlength: '5'});
+             verifyFormState({isValid: true});
+
+             // 6. Reset validator inputs back to `null` should deactivate validators.
+             setInputValue(123);
+             setValidatorValues({minlength: null, maxlength: null});
+             verifyValidatorAttrValues({minlength: null, maxlength: null});
+             verifyFormState({isValid: true});
+           }));
+
+        it('should not include the min and max validators for null', fakeAsync(() => {
+             @Component({
+               template:
+                   '<form><input type="number" name="minmaxinput" ngModel [min]="minlen" [max]="maxlen"></form>'
+             })
+             class MinLengthMaxLengthComponent {
+               minlen: number|null = null;
+               maxlen: number|null = null;
+               control!: FormControl;
+             }
+
+             const fixture = initTest(MinLengthMaxLengthComponent);
+             fixture.detectChanges();
+             tick();
+             const input = fixture.debugElement.query(By.css('input')).nativeElement;
+
+             const form = fixture.debugElement.children[0].injector.get(NgForm);
+             const control =
+                 fixture.debugElement.children[0].injector.get(NgForm).control.get('minmaxinput')!;
+
+             interface minmax {
+               min: number|null;
+               max: number|null;
+             }
+
+             interface state {
+               isValid: boolean;
+               failedValidator?: string;
+             }
+
+             const setInputValue = (value: number) => {
+               input.value = value;
+               dispatchEvent(input, 'input');
+               fixture.detectChanges();
+             };
+             const verifyValidatorAttrValues = (values: {min: any, max: any}) => {
+               expect(input.getAttribute('min')).toBe(values.min);
+               expect(input.getAttribute('max')).toBe(values.max);
+             };
+             const setValidatorValues = (values: minmax) => {
+               fixture.componentInstance.minlen = values.min;
+               fixture.componentInstance.maxlen = values.max;
+               fixture.detectChanges();
+             };
+             const verifyFormState = (state: state) => {
+               expect(form.valid).toBe(state.isValid);
+               if (state.failedValidator) {
+                 expect(control!.hasError('min')).toEqual(state.failedValidator === 'min');
+                 expect(control!.hasError('max')).toEqual(state.failedValidator === 'max');
+               }
+             };
+
+             ////////// Actual test scenarios start below //////////
+             // 1. Verify that validators are disabled when input is `null`.
+             verifyValidatorAttrValues({min: null, max: null});
+             verifyValidatorAttrValues({min: null, max: null});
+
+             // 2. Verify that setting validator inputs (to a value different from `null`) activate
+             // validators.
+             setInputValue(12345);
+             setValidatorValues({min: 2, max: 4});
+             verifyValidatorAttrValues({min: '2', max: '4'});
+             verifyFormState({isValid: false, failedValidator: 'max'});
+
+             // 3. Changing value to the valid range should make the form valid.
+             setInputValue(3);
+             verifyFormState({isValid: true});
+
+             // 4. Changing value to trigger `minlength` validator.
+             setInputValue(1);
+             verifyFormState({isValid: false, failedValidator: 'min'});
+
+             // 5. Changing validator inputs to verify that attribute values are updated (and the
+             // form is now valid).
+             setInputValue(1);
+             setValidatorValues({min: 1, max: 5});
+             verifyValidatorAttrValues({min: '1', max: '5'});
+             verifyFormState({isValid: true});
+
+             // 6. Reset validator inputs back to `null` should deactivate validators.
+             setInputValue(123);
+             setValidatorValues({min: null, max: null});
+             verifyValidatorAttrValues({min: null, max: null});
+             verifyFormState({isValid: true});
+           }));
+      });
 
       ['number', 'string'].forEach((inputType: string) => {
         it(`should validate min and max when constraints are represented using a ${inputType}`,
@@ -1967,6 +2516,79 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            expect(form.valid).toBeFalse();
            expect(form.controls.min_max.errors).toEqual({max: {max: -10, actual: 0}});
          }));
+
+      it('should call registerOnValidatorChange as a part of a formGroup setup', fakeAsync(() => {
+           let registerOnValidatorChangeFired = 0;
+           let registerOnAsyncValidatorChangeFired = 0;
+
+           @Directive({
+             selector: '[ng-noop-validator]',
+             providers: [
+               {provide: NG_VALIDATORS, useExisting: forwardRef(() => NoOpValidator), multi: true}
+             ]
+           })
+           class NoOpValidator implements Validator {
+             @Input() validatorInput = '';
+
+             validate(c: AbstractControl) {
+               return null;
+             }
+
+             public registerOnValidatorChange(fn: () => void) {
+               registerOnValidatorChangeFired++;
+             }
+           }
+
+           @Directive({
+             selector: '[ng-noop-async-validator]',
+             providers: [{
+               provide: NG_ASYNC_VALIDATORS,
+               useExisting: forwardRef(() => NoOpAsyncValidator),
+               multi: true
+             }]
+           })
+           class NoOpAsyncValidator implements AsyncValidator {
+             @Input() validatorInput = '';
+
+             validate(c: AbstractControl) {
+               return Promise.resolve(null);
+             }
+
+             public registerOnValidatorChange(fn: () => void) {
+               registerOnAsyncValidatorChangeFired++;
+             }
+           }
+
+           @Component({
+             selector: 'ng-model-noop-validation',
+             template: `
+              <form>
+                <div ngModelGroup="emptyGroup" ng-noop-validator ng-noop-async-validator [validatorInput]="validatorInput">
+                  <input name="fgInput" ngModel>
+                </div>
+              </form>
+            `
+           })
+           class NgModelNoOpValidation {
+             validatorInput = 'foo';
+             emptyGroup = {};
+           }
+
+           const fixture = initTest(NgModelNoOpValidation, NoOpValidator, NoOpAsyncValidator);
+           fixture.detectChanges();
+           tick();
+
+           expect(registerOnValidatorChangeFired).toBe(1);
+           expect(registerOnAsyncValidatorChangeFired).toBe(1);
+
+           fixture.componentInstance.validatorInput = 'bar';
+           fixture.detectChanges();
+
+           // Changing validator inputs should not cause `registerOnValidatorChange` to be invoked,
+           // since it's invoked just once during the setup phase.
+           expect(registerOnValidatorChangeFired).toBe(1);
+           expect(registerOnAsyncValidatorChangeFired).toBe(1);
+         }));
     });
 
     describe('IME events', () => {
@@ -1979,7 +2601,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            tick();
            expect(inputNativeEl.value).toEqual('oldValue');
 
-           inputEl.triggerEventHandler('compositionstart', null);
+           inputEl.triggerEventHandler('compositionstart');
 
            inputNativeEl.value = 'updatedValue';
            dispatchEvent(inputNativeEl, 'input');
@@ -2014,7 +2636,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            tick();
            expect(inputNativeEl.value).toEqual('oldValue');
 
-           inputEl.triggerEventHandler('compositionstart', null);
+           inputEl.triggerEventHandler('compositionstart');
 
            inputNativeEl.value = 'updatedValue';
            dispatchEvent(inputNativeEl, 'input');
@@ -2046,7 +2668,7 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            tick();
            expect(inputNativeEl.value).toEqual('oldValue');
 
-           inputEl.triggerEventHandler('compositionstart', null);
+           inputEl.triggerEventHandler('compositionstart');
 
            inputNativeEl.value = 'updatedValue';
            dispatchEvent(inputNativeEl, 'input');
@@ -2103,7 +2725,6 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
   `
 })
 class StandaloneNgModel {
-  // TODO(issue/24571): remove '!'.
   name!: string;
 }
 
@@ -2116,9 +2737,7 @@ class StandaloneNgModel {
   `
 })
 class NgModelForm {
-  // TODO(issue/24571): remove '!'.
   name!: string|null;
-  // TODO(issue/24571): remove '!'.
   event!: Event;
   options = {};
 
@@ -2142,13 +2761,9 @@ class NgModelNativeValidateForm {
   `
 })
 class NgModelGroupForm {
-  // TODO(issue/24571): remove '!'.
   first!: string;
-  // TODO(issue/24571): remove '!'.
   last!: string;
-  // TODO(issue/24571): remove '!'.
   email!: string;
-  // TODO(issue/24571): remove '!'.
   isDisabled!: boolean;
   options = {updateOn: 'change'};
 }
@@ -2165,7 +2780,6 @@ class NgModelGroupForm {
   `
 })
 class NgModelValidBinding {
-  // TODO(issue/24571): remove '!'.
   first!: string;
 }
 
@@ -2182,12 +2796,28 @@ class NgModelValidBinding {
   `
 })
 class NgModelNgIfForm {
-  // TODO(issue/24571): remove '!'.
   first!: string;
   groupShowing = true;
   emailShowing = true;
-  // TODO(issue/24571): remove '!'.
   email!: string;
+}
+
+@Component({
+  selector: 'ng-model-nested',
+  template: `
+    <form>
+      <div ngModelGroup="contact-info">
+        <input name="first" [(ngModel)]="first">
+        <div ngModelGroup="other-names">
+          <input name="other-names" [(ngModel)]="other">
+        </div>
+      </div>
+    </form>
+  `
+})
+class NgModelNestedForm {
+  first!: string;
+  other!: string;
 }
 
 @Component({
@@ -2222,9 +2852,7 @@ class InvalidNgModelNoName {
   `
 })
 class NgModelOptionsStandalone {
-  // TODO(issue/24571): remove '!'.
   one!: string;
-  // TODO(issue/24571): remove '!'.
   two!: string;
   options: {name?: string, standalone?: boolean, updateOn?: string} = {standalone: true};
   formOptions = {};
@@ -2242,13 +2870,9 @@ class NgModelOptionsStandalone {
   `
 })
 class NgModelValidationBindings {
-  // TODO(issue/24571): remove '!'.
   required!: boolean;
-  // TODO(issue/24571): remove '!'.
   minLen!: number;
-  // TODO(issue/24571): remove '!'.
   maxLen!: number;
-  // TODO(issue/24571): remove '!'.
   pattern!: string;
 }
 
@@ -2261,11 +2885,8 @@ class NgModelValidationBindings {
   `
 })
 class NgModelMultipleValidators {
-  // TODO(issue/24571): remove '!'.
   required!: boolean;
-  // TODO(issue/24571): remove '!'.
   minLen!: number;
-  // TODO(issue/24571): remove '!'.
   pattern!: string|RegExp;
 }
 
@@ -2315,7 +2936,6 @@ class NgModelAsyncValidation {
   `
 })
 class NgModelChangesForm {
-  // TODO(issue/24571): remove '!'.
   name!: string;
   events: string[] = [];
   options: any;
@@ -2381,4 +3001,18 @@ class NgModelNoMinMaxValidator {
   min!: number;
   max!: number;
   @ViewChild('myDir') myDir: any;
+}
+
+@Component({
+  selector: 'ng-model-nested',
+  template: `
+    <dialog open>
+      <form #form method="dialog">
+        <button>Submit</button>
+      </form>
+    </dialog>
+  `
+})
+class NativeDialogForm {
+  @ViewChild('form') form!: ElementRef<HTMLFormElement>;
 }

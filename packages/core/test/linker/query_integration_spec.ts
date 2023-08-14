@@ -10,7 +10,6 @@ import {AfterContentChecked, AfterContentInit, AfterViewChecked, AfterViewInit, 
 import {ElementRef} from '@angular/core/src/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {ivyEnabled, modifiedInIvy, onlyInIvy} from '@angular/private/testing';
 import {Subject} from 'rxjs';
 
 import {stringify} from '../../src/util/stringify';
@@ -66,9 +65,8 @@ describe('Query API', () => {
           `;
       const view = createTestCmpAndDetectChanges(MyComp0, template);
 
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children)).toHaveText(ivyEnabled ? '3|' : '2|3|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('3|');
     });
 
     it('should contain all direct child directives in the content dom', () => {
@@ -114,7 +112,7 @@ describe('Query API', () => {
          const view = createTestCmp(MyComp0, template);
          view.detectChanges();
          const q: NeedsContentChild = view.debugElement.children[1].references!['q'];
-         expect(q.child.text).toEqual('foo');
+         expect(q.child?.text).toEqual('foo');
          const directive: DirectiveNeedsContentChild =
              view.debugElement.children[0].injector.get(DirectiveNeedsContentChild);
          expect(directive.child.text).toEqual('foo');
@@ -133,20 +131,6 @@ describe('Query API', () => {
         ['setter', 'foo'], ['init', 'foo'], ['check', 'foo'], ['setter', null], ['check', null]
       ]);
     });
-
-    modifiedInIvy('Static queries in Ivy require an explicit {static: true} arg')
-        .it('should set static view and content children already after the constructor call', () => {
-          const template =
-              '<needs-static-content-view-child #q><div text="contentFoo"></div></needs-static-content-view-child>';
-          const view = createTestCmp(MyComp0, template);
-          const q: NeedsStaticContentAndViewChild = view.debugElement.children[0].references!['q'];
-          expect(q.contentChild.text).toBeFalsy();
-          expect(q.viewChild.text).toBeFalsy();
-
-          view.detectChanges();
-          expect(q.contentChild.text).toEqual('contentFoo');
-          expect(q.viewChild.text).toEqual('viewFoo');
-        });
 
     it('should contain the first view child across embedded views', () => {
       TestBed.overrideComponent(
@@ -184,10 +168,8 @@ describe('Query API', () => {
           '<div text="5"></div>';
       const view = createTestCmpAndDetectChanges(MyComp0, template);
 
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children))
-          .toHaveText(ivyEnabled ? '3|4|' : '2|3|4|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('3|4|');
     });
 
     it('should contain all directives in the light dom', () => {
@@ -196,9 +178,8 @@ describe('Query API', () => {
           '<div text="4"></div>';
       const view = createTestCmpAndDetectChanges(MyComp0, template);
 
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children)).toHaveText(ivyEnabled ? '3|' : '2|3|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('3|');
     });
 
     it('should reflect dynamically inserted directives', () => {
@@ -206,15 +187,13 @@ describe('Query API', () => {
           '<needs-query text="2"><div *ngIf="shouldShow" [text]="\'3\'"></div></needs-query>' +
           '<div text="4"></div>';
       const view = createTestCmpAndDetectChanges(MyComp0, template);
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children)).toHaveText(ivyEnabled ? '' : '2|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('');
 
       view.componentInstance.shouldShow = true;
       view.detectChanges();
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children)).toHaveText(ivyEnabled ? '3|' : '2|3|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('3|');
     });
 
     it('should be cleanly destroyed when a query crosses view boundaries', () => {
@@ -233,17 +212,13 @@ describe('Query API', () => {
           '<needs-query text="2"><div *ngFor="let  i of list" [text]="i"></div></needs-query>' +
           '<div text="4"></div>';
       const view = createTestCmpAndDetectChanges(MyComp0, template);
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children))
-          .toHaveText(ivyEnabled ? '1d|2d|3d|' : '2|1d|2d|3d|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('1d|2d|3d|');
 
       view.componentInstance.list = ['3d', '2d'];
       view.detectChanges();
-      // Difference in expected text in ivy comes from the fact that ivy queries don't match host
-      // nodes of a directive that defines a content query.
-      expect(asNativeElements(view.debugElement.children))
-          .toHaveText(ivyEnabled ? '3d|2d|' : '2|3d|2d|');
+      // Queries don't match host nodes of a directive that defines a content query.
+      expect(asNativeElements(view.debugElement.children)).toHaveText('3d|2d|');
     });
 
     it('should throw with descriptive error when query selectors are not present', () => {
@@ -278,19 +253,6 @@ describe('Query API', () => {
   });
 
   describe('read a different token', () => {
-    modifiedInIvy('Host nodes no longer match in ContentChild queries in Ivy')
-        .it('should contain all content children', () => {
-          const template =
-              '<needs-content-children-read #q text="ca"><div #q text="cb"></div></needs-content-children-read>';
-          const view = createTestCmpAndDetectChanges(MyComp0, template);
-
-          const comp: NeedsContentChildrenWithRead =
-              view.debugElement.children[0].injector.get(NeedsContentChildrenWithRead);
-          expect(comp.textDirChildren.map(textDirective => textDirective.text)).toEqual([
-            'ca', 'cb'
-          ]);
-        });
-
     it('should contain the first content child', () => {
       const template =
           '<needs-content-child-read><div #q text="ca"></div></needs-content-child-read>';
@@ -656,71 +618,39 @@ describe('Query API', () => {
       expect(q.query.length).toBe(0);
     });
 
-    // Note: this test is just document our current behavior, which we do for performance reasons.
-    modifiedInIvy('Query results from views are reported upon view insert / detach')
-        .it('should not affect queries for projected templates if views are detached or moved',
-            () => {
-              const template = `<manual-projecting #q>
+    it('should update queries when a view is detached and re-inserted', () => {
+      const template = `<manual-projecting #q>
               <ng-template let-x="x">
                  <div [text]="x"></div>
               </ng-template>
           </manual-projecting>`;
-              const view = createTestCmpAndDetectChanges(MyComp0, template);
-              const q = view.debugElement.children[0].references!['q'] as ManualProjecting;
-              expect(q.query.length).toBe(0);
+      const view = createTestCmpAndDetectChanges(MyComp0, template);
+      const q = view.debugElement.children[0].references!['q'] as ManualProjecting;
+      expect(q.query.length).toBe(0);
 
-              const view1 = q.vc.createEmbeddedView(q.template, {'x': '1'});
-              const view2 = q.vc.createEmbeddedView(q.template, {'x': '2'});
-              view.detectChanges();
-              expect(q.query.map((d: TextDirective) => d.text)).toEqual(['1', '2']);
+      const view1 = q.vc.createEmbeddedView(q.template, {'x': '1'});
+      const view2 = q.vc.createEmbeddedView(q.template, {'x': '2'});
 
-              q.vc.detach(1);
-              q.vc.detach(0);
+      // 2 views were created and inserted so we've got 2 matching results
+      view.detectChanges();
+      expect(q.query.map((d: TextDirective) => d.text)).toEqual(['1', '2']);
 
-              view.detectChanges();
-              expect(q.query.map((d: TextDirective) => d.text)).toEqual(['1', '2']);
+      q.vc.detach(1);
+      q.vc.detach(0);
 
-              q.vc.insert(view2);
-              q.vc.insert(view1);
+      // both views were detached so query results from those views should not be reported
+      view.detectChanges();
+      expect(q.query.map((d: TextDirective) => d.text)).toEqual([]);
 
-              view.detectChanges();
-              expect(q.query.map((d: TextDirective) => d.text)).toEqual(['1', '2']);
-            });
+      q.vc.insert(view2);
+      q.vc.insert(view1);
 
-    onlyInIvy('Query results from views are reported upon view insert / detach')
-        .it('should update queries when a view is detached and re-inserted', () => {
-          const template = `<manual-projecting #q>
-              <ng-template let-x="x">
-                 <div [text]="x"></div>
-              </ng-template>
-          </manual-projecting>`;
-          const view = createTestCmpAndDetectChanges(MyComp0, template);
-          const q = view.debugElement.children[0].references!['q'] as ManualProjecting;
-          expect(q.query.length).toBe(0);
-
-          const view1 = q.vc.createEmbeddedView(q.template, {'x': '1'});
-          const view2 = q.vc.createEmbeddedView(q.template, {'x': '2'});
-
-          // 2 views were created and inserted so we've got 2 matching results
-          view.detectChanges();
-          expect(q.query.map((d: TextDirective) => d.text)).toEqual(['1', '2']);
-
-          q.vc.detach(1);
-          q.vc.detach(0);
-
-          // both views were detached so query results from those views should not be reported
-          view.detectChanges();
-          expect(q.query.map((d: TextDirective) => d.text)).toEqual([]);
-
-          q.vc.insert(view2);
-          q.vc.insert(view1);
-
-          // previously detached views are re-inserted in the different order so:
-          // - query results from the inserted views are reported again
-          // - the order results from views reflects orders of views
-          view.detectChanges();
-          expect(q.query.map((d: TextDirective) => d.text)).toEqual(['2', '1']);
-        });
+      // previously detached views are re-inserted in the different order so:
+      // - query results from the inserted views are reported again
+      // - the order results from views reflects orders of views
+      view.detectChanges();
+      expect(q.query.map((d: TextDirective) => d.text)).toEqual(['2', '1']);
+    });
 
     it('should remove manually projected templates if their parent view is destroyed', () => {
       const template = `
@@ -742,78 +672,35 @@ describe('Query API', () => {
       expect(q.query.length).toBe(0);
     });
 
-    modifiedInIvy('https://github.com/angular/angular/issues/15117 fixed in ivy')
-        .it('should not throw if a content template is queried and created in the view during change detection',
-            () => {
-              @Component({
-                selector: 'auto-projecting',
-                template: '<div *ngIf="true; then: content"></div>'
-              })
-              class AutoProjecting {
-                // TODO(issue/24571):
-                // remove '!'.
-                @ContentChild(TemplateRef) content!: TemplateRef<any>;
+    it('should not throw if a content template is queried and created in the view during change detection - fixed in ivy',
+       () => {
+         @Component(
+             {selector: 'auto-projecting', template: '<div *ngIf="true; then: content"></div>'})
+         class AutoProjecting {
+           @ContentChild(TemplateRef) content!: TemplateRef<any>;
+           @ContentChildren(TextDirective) query!: QueryList<TextDirective>;
+         }
 
-                // TODO(issue/24571):
-                // remove '!'.
-                @ContentChildren(TextDirective) query!: QueryList<TextDirective>;
-              }
+         TestBed.configureTestingModule({declarations: [AutoProjecting]});
+         const template =
+             '<auto-projecting #q><ng-template><div text="1"></div></ng-template></auto-projecting>';
+         const view = createTestCmpAndDetectChanges(MyComp0, template);
 
-              TestBed.configureTestingModule({declarations: [AutoProjecting]});
-              const template =
-                  '<auto-projecting #q><ng-template><div text="1"></div></ng-template></auto-projecting>';
-              const view = createTestCmpAndDetectChanges(MyComp0, template);
-
-              const q = view.debugElement.children[0].references!['q'];
-              // This should be 1, but due to
-              // https://github.com/angular/angular/issues/15117
-              // this is 0.
-              expect(q.query.length).toBe(0);
-            });
-
-    if (ivyEnabled) {
-      // The fixed version of the "should not throw if a content template is queried and created in
-      // the view during change detection" test. This test is a different as ivy fixes
-      // https://github.com/angular/angular/issues/15117 present in the view engine.
-      it('should not throw if a content template is queried and created in the view during change detection - fixed in ivy',
-         () => {
-           @Component(
-               {selector: 'auto-projecting', template: '<div *ngIf="true; then: content"></div>'})
-           class AutoProjecting {
-             // TODO(issue/24571):
-             // remove '!'.
-             @ContentChild(TemplateRef) content!: TemplateRef<any>;
-
-             // TODO(issue/24571):
-             // remove '!'.
-             @ContentChildren(TextDirective) query!: QueryList<TextDirective>;
-           }
-
-           TestBed.configureTestingModule({declarations: [AutoProjecting]});
-           const template =
-               '<auto-projecting #q><ng-template><div text="1"></div></ng-template></auto-projecting>';
-           const view = createTestCmpAndDetectChanges(MyComp0, template);
-
-           const q = view.debugElement.children[0].references!['q'];
-           expect(q.query.length).toBe(1);
-         });
-    }
+         const q = view.debugElement.children[0].references!['q'];
+         expect(q.query.length).toBe(1);
+       });
   });
 });
 
 
 @Directive({selector: '[text]', inputs: ['text'], exportAs: 'textDir'})
 class TextDirective {
-  // TODO(issue/24571): remove '!'.
-  text!: string;
-  constructor() {}
+  text: string|undefined;
 }
 
 @Component({selector: 'needs-content-children', template: ''})
 class NeedsContentChildren implements AfterContentInit {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren(TextDirective) textDirChildren!: QueryList<TextDirective>;
-  // TODO(issue/24571): remove '!'.
   numberOfChildrenAfterContentInit!: number;
 
   ngAfterContentInit() {
@@ -823,9 +710,7 @@ class NeedsContentChildren implements AfterContentInit {
 
 @Component({selector: 'needs-view-children', template: '<div text></div>'})
 class NeedsViewChildren implements AfterViewInit {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TextDirective) textDirChildren!: QueryList<TextDirective>;
-  // TODO(issue/24571): remove '!'.
   numberOfChildrenAfterViewInit!: number;
 
   ngAfterViewInit() {
@@ -835,33 +720,30 @@ class NeedsViewChildren implements AfterViewInit {
 
 @Component({selector: 'needs-content-child', template: ''})
 class NeedsContentChild implements AfterContentInit, AfterContentChecked {
-  /** @internal */
-  // TODO(issue/24571): remove '!'.
-  _child!: TextDirective;
+  private _child: TextDirective|undefined;
 
   @ContentChild(TextDirective)
   set child(value) {
     this._child = value;
-    this.logs.push(['setter', value ? value.text : null]);
+    this.logs.push(['setter', value?.text ?? null]);
   }
 
   get child() {
     return this._child;
   }
-  logs: any[] /** TODO #9100 */ = [];
+  logs: (string|null)[][] = [];
 
   ngAfterContentInit() {
-    this.logs.push(['init', this.child ? this.child.text : null]);
+    this.logs.push(['init', this.child?.text ?? null]);
   }
 
   ngAfterContentChecked() {
-    this.logs.push(['check', this.child ? this.child.text : null]);
+    this.logs.push(['check', this.child?.text ?? null]);
   }
 }
 
 @Directive({selector: '[directive-needs-content-child]'})
 class DirectiveNeedsContentChild {
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TextDirective) child!: TextDirective;
 }
 
@@ -869,27 +751,26 @@ class DirectiveNeedsContentChild {
 class NeedsViewChild implements AfterViewInit, AfterViewChecked {
   shouldShow: boolean = true;
   shouldShow2: boolean = false;
-  /** @internal */
-  // TODO(issue/24571): remove '!'.
-  _child!: TextDirective;
+
+  private _child: TextDirective|undefined;
 
   @ViewChild(TextDirective)
   set child(value) {
     this._child = value;
-    this.logs.push(['setter', value ? value.text : null]);
+    this.logs.push(['setter', value?.text ?? null]);
   }
 
   get child() {
     return this._child;
   }
-  logs: any[] /** TODO #9100 */ = [];
+  logs: (string|null)[][] = [];
 
   ngAfterViewInit() {
-    this.logs.push(['init', this.child ? this.child.text : null]);
+    this.logs.push(['init', this.child?.text ?? null]);
   }
 
   ngAfterViewChecked() {
-    this.logs.push(['check', this.child ? this.child.text : null]);
+    this.logs.push(['check', this.child?.text ?? null]);
   }
 }
 
@@ -907,9 +788,7 @@ function createTestCmpAndDetectChanges<T>(type: Type<T>, template: string): Comp
 
 @Component({selector: 'needs-static-content-view-child', template: `<div text="viewFoo"></div>`})
 class NeedsStaticContentAndViewChild {
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TextDirective, {static: true}) contentChild!: TextDirective;
-  // TODO(issue/24571): remove '!'.
   @ViewChild(TextDirective, {static: true}) viewChild!: TextDirective;
 }
 
@@ -922,19 +801,14 @@ class InertDirective {
   template: '<div text="ignoreme"></div><b *ngFor="let  dir of query">{{dir.text}}|</b>'
 })
 class NeedsQuery {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren(TextDirective) query!: QueryList<TextDirective>;
 }
 
 @Component({selector: 'needs-four-queries', template: ''})
 class NeedsFourQueries {
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TextDirective) query1!: TextDirective;
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TextDirective) query2!: TextDirective;
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TextDirective) query3!: TextDirective;
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TextDirective) query4!: TextDirective;
 }
 
@@ -943,25 +817,21 @@ class NeedsFourQueries {
   template: '<ng-content></ng-content><div *ngFor="let  dir of query">{{dir.text}}|</div>'
 })
 class NeedsQueryDesc {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren(TextDirective, {descendants: true}) query!: QueryList<TextDirective>;
 }
 
 @Component({selector: 'needs-query-by-ref-binding', template: '<ng-content>'})
 class NeedsQueryByLabel {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren('textLabel', {descendants: true}) query!: QueryList<any>;
 }
 
 @Component({selector: 'needs-view-query-by-ref-binding', template: '<div #textLabel>text</div>'})
 class NeedsViewQueryByLabel {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren('textLabel') query!: QueryList<any>;
 }
 
 @Component({selector: 'needs-query-by-ref-bindings', template: '<ng-content>'})
 class NeedsQueryByTwoLabels {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren('textLabel1,textLabel2', {descendants: true}) query!: QueryList<any>;
 }
 
@@ -970,7 +840,6 @@ class NeedsQueryByTwoLabels {
   template: '<div *ngFor="let  dir of query">{{dir.text}}|</div><ng-content></ng-content>'
 })
 class NeedsQueryAndProject {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren(TextDirective) query!: QueryList<TextDirective>;
 }
 
@@ -979,14 +848,12 @@ class NeedsQueryAndProject {
   template: '<div text="1"><div text="2"></div></div><div text="3"></div><div text="4"></div>'
 })
 class NeedsViewQuery {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TextDirective) query!: QueryList<TextDirective>;
 }
 
 @Component({selector: 'needs-view-query-if', template: '<div *ngIf="show" text="1"></div>'})
 class NeedsViewQueryIf {
   show: boolean = false;
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TextDirective) query!: QueryList<TextDirective>;
 }
 
@@ -996,7 +863,6 @@ class NeedsViewQueryIf {
 })
 class NeedsViewQueryNestedIf {
   show: boolean = true;
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TextDirective) query!: QueryList<TextDirective>;
 }
 
@@ -1007,7 +873,6 @@ class NeedsViewQueryNestedIf {
       '<div text="4"></div>'
 })
 class NeedsViewQueryOrder {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TextDirective) query!: QueryList<TextDirective>;
   list: string[] = ['2', '3'];
 }
@@ -1019,16 +884,13 @@ class NeedsViewQueryOrder {
       '<div text="4"></div></div>'
 })
 class NeedsViewQueryOrderWithParent {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TextDirective) query!: QueryList<TextDirective>;
   list: string[] = ['2', '3'];
 }
 
 @Component({selector: 'needs-tpl', template: '<ng-template><div>shadow</div></ng-template>'})
 class NeedsTpl {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren(TemplateRef) viewQuery!: QueryList<TemplateRef<Object>>;
-  // TODO(issue/24571): remove '!'.
   @ContentChildren(TemplateRef) query!: QueryList<TemplateRef<Object>>;
   constructor(public vc: ViewContainerRef) {}
 }
@@ -1036,26 +898,20 @@ class NeedsTpl {
 @Component(
     {selector: 'needs-named-tpl', template: '<ng-template #tpl><div>shadow</div></ng-template>'})
 class NeedsNamedTpl {
-  // TODO(issue/24571): remove '!'.
   @ViewChild('tpl', {static: true}) viewTpl!: TemplateRef<Object>;
-  // TODO(issue/24571): remove '!'.
   @ContentChild('tpl', {static: true}) contentTpl!: TemplateRef<Object>;
   constructor(public vc: ViewContainerRef) {}
 }
 
 @Component({selector: 'needs-content-children-read', template: ''})
 class NeedsContentChildrenWithRead {
-  // TODO(issue/24571): remove '!'.
   @ContentChildren('q', {read: TextDirective}) textDirChildren!: QueryList<TextDirective>;
-  // TODO(issue/24571): remove '!'.
   @ContentChildren('nonExisting', {read: TextDirective}) nonExistingVar!: QueryList<TextDirective>;
 }
 
 @Component({selector: 'needs-content-child-read', template: ''})
 class NeedsContentChildWithRead {
-  // TODO(issue/24571): remove '!'.
   @ContentChild('q', {read: TextDirective}) textDirChild!: TextDirective;
-  // TODO(issue/24571): remove '!'.
   @ContentChild('nonExisting', {read: TextDirective}) nonExistingVar!: TextDirective;
 }
 
@@ -1069,7 +925,6 @@ class NeedsContentChildrenShallow {
   template: '<div [ngTemplateOutlet]="templateRef"></div>'
 })
 class NeedsContentChildTemplateRef {
-  // TODO(issue/24571): remove '!'.
   @ContentChild(TemplateRef, {static: true}) templateRef!: TemplateRef<any>;
 }
 
@@ -1087,9 +942,7 @@ class NeedsContentChildTemplateRefApp {
   template: '<div #q text="va"></div><div #w text="vb"></div>',
 })
 class NeedsViewChildrenWithRead {
-  // TODO(issue/24571): remove '!'.
   @ViewChildren('q,w', {read: TextDirective}) textDirChildren!: QueryList<TextDirective>;
-  // TODO(issue/24571): remove '!'.
   @ViewChildren('nonExisting', {read: TextDirective}) nonExistingVar!: QueryList<TextDirective>;
 }
 
@@ -1098,20 +951,15 @@ class NeedsViewChildrenWithRead {
   template: '<div #q text="va"></div>',
 })
 class NeedsViewChildWithRead {
-  // TODO(issue/24571): remove '!'.
   @ViewChild('q', {read: TextDirective}) textDirChild!: TextDirective;
-  // TODO(issue/24571): remove '!'.
   @ViewChild('nonExisting', {read: TextDirective}) nonExistingVar!: TextDirective;
 }
 
 @Component({selector: 'needs-viewcontainer-read', template: '<div #q></div>'})
 class NeedsViewContainerWithRead {
-  // TODO(issue/24571): remove '!'.
   @ViewChild('q', {read: ViewContainerRef}) vc!: ViewContainerRef;
-  // TODO(issue/24571): remove '!'.
   @ViewChild('nonExisting', {read: ViewContainerRef}) nonExistingVar!: ViewContainerRef;
-  // TODO(issue/24571): remove '!'.
-  @ContentChild(TemplateRef, {static: true}) template !: TemplateRef<Object>;
+  @ContentChild(TemplateRef, {static: true}) template!: TemplateRef<Object>;
 
   createView() {
     this.vc.createEmbeddedView(this.template);
@@ -1135,13 +983,8 @@ class MyCompBroken0 {
 
 @Component({selector: 'manual-projecting', template: '<div #vc></div>'})
 class ManualProjecting {
-  // TODO(issue/24571): remove '!'.
-  @ContentChild(TemplateRef, {static: true}) template !: TemplateRef<any>;
-
-  // TODO(issue/24571): remove '!'.
+  @ContentChild(TemplateRef, {static: true}) template!: TemplateRef<any>;
   @ViewChild('vc', {read: ViewContainerRef}) vc!: ViewContainerRef;
-
-  // TODO(issue/24571): remove '!'.
   @ContentChildren(TextDirective) query!: QueryList<TextDirective>;
 
   create() {

@@ -6,24 +6,29 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {getCompilerFacade, R3InjectorMetadataFacade} from '../../compiler/compiler_facade';
+import {getCompilerFacade, JitCompilerUsage, R3InjectorMetadataFacade} from '../../compiler/compiler_facade';
 import {resolveForwardRef} from '../../di/forward_ref';
 import {NG_INJ_DEF} from '../../di/interface/defs';
+import {ModuleWithProviders} from '../../di/interface/provider';
 import {reflectDependencies} from '../../di/jit/util';
 import {Type} from '../../interface/type';
+import {registerNgModuleType} from '../../linker/ng_module_registration';
 import {Component} from '../../metadata/directives';
-import {ModuleWithProviders, NgModule} from '../../metadata/ng_module';
+import {NgModule} from '../../metadata/ng_module';
 import {NgModuleDef, NgModuleTransitiveScopes, NgModuleType} from '../../metadata/ng_module_def';
 import {deepForEach, flatten} from '../../util/array_utils';
 import {assertDefined} from '../../util/assert';
 import {EMPTY_ARRAY} from '../../util/empty';
-import {getComponentDef, getDirectiveDef, getNgModuleDef, getPipeDef} from '../definition';
-import {NG_COMP_DEF, NG_DIR_DEF, NG_MOD_DEF, NG_PIPE_DEF} from '../fields';
+import {GENERATED_COMP_IDS, getComponentDef, getDirectiveDef, getNgModuleDef, getPipeDef, isStandalone} from '../definition';
+import {depsTracker, USE_RUNTIME_DEPS_TRACKER_FOR_JIT} from '../deps_tracker/deps_tracker';
+import {NG_COMP_DEF, NG_DIR_DEF, NG_FACTORY_DEF, NG_MOD_DEF, NG_PIPE_DEF} from '../fields';
 import {ComponentDef} from '../interfaces/definition';
 import {maybeUnwrapFn} from '../util/misc_utils';
 import {stringifyForError} from '../util/stringify_utils';
 
 import {angularCoreEnv} from './environment';
+import {patchModuleCompilation} from './module_patch';
+import {isModuleWithProviders, isNgModule} from './util';
 
 interface ModuleQueueItem {
   moduleType: Type<any>;
@@ -83,7 +88,11 @@ function isResolvedDeclaration(declaration: any[]|Type<any>): boolean {
  * This function automatically gets called when a class has a `@NgModule` decorator.
  */
 export function compileNgModule(moduleType: Type<any>, ngModule: NgModule = {}): void {
+  patchModuleCompilation();
   compileNgModuleDefs(moduleType as NgModuleType, ngModule);
+  if (ngModule.id !== undefined) {
+    registerNgModuleType(moduleType as NgModuleType, ngModule.id);
+  }
 
   // Because we don't know if all declarations have resolved yet at the moment the
   // NgModule decorator is executing, we're enqueueing the setting of module scope
@@ -93,7 +102,7 @@ export function compileNgModule(moduleType: Type<any>, ngModule: NgModule = {}):
 }
 
 /**
- * Compiles and adds the `ɵmod` and `ɵinj` properties to the module class.
+ * Compiles and adds the `ɵmod`, `ɵfac` and `ɵinj` properties to the module class.
  *
  * It's possible to compile a module via this API which will allow duplicate declarations in its
  * root.
@@ -114,20 +123,21 @@ export function compileNgModuleDefs(
           // go into an infinite loop before we've reached the point where we throw all the errors.
           throw new Error(`'${stringifyForError(moduleType)}' module can't import itself`);
         }
-        ngModuleDef = getCompilerFacade().compileNgModule(
-            angularCoreEnv, `ng:///${moduleType.name}/ɵmod.js`, {
-              type: moduleType,
-              bootstrap: flatten(ngModule.bootstrap || EMPTY_ARRAY).map(resolveForwardRef),
-              declarations: declarations.map(resolveForwardRef),
-              imports: flatten(ngModule.imports || EMPTY_ARRAY)
-                           .map(resolveForwardRef)
-                           .map(expandModuleWithProviders),
-              exports: flatten(ngModule.exports || EMPTY_ARRAY)
-                           .map(resolveForwardRef)
-                           .map(expandModuleWithProviders),
-              schemas: ngModule.schemas ? flatten(ngModule.schemas) : null,
-              id: ngModule.id || null,
-            });
+        const compiler = getCompilerFacade(
+            {usage: JitCompilerUsage.Decorator, kind: 'NgModule', type: moduleType});
+        ngModuleDef = compiler.compileNgModule(angularCoreEnv, `ng:///${moduleType.name}/ɵmod.js`, {
+          type: moduleType,
+          bootstrap: flatten(ngModule.bootstrap || EMPTY_ARRAY).map(resolveForwardRef),
+          declarations: declarations.map(resolveForwardRef),
+          imports: flatten(ngModule.imports || EMPTY_ARRAY)
+                       .map(resolveForwardRef)
+                       .map(expandModuleWithProviders),
+          exports: flatten(ngModule.exports || EMPTY_ARRAY)
+                       .map(resolveForwardRef)
+                       .map(expandModuleWithProviders),
+          schemas: ngModule.schemas ? flatten(ngModule.schemas) : null,
+          id: ngModule.id || null,
+        });
         // Set `schemas` on ngModuleDef to an empty array in JIT mode to indicate that runtime
         // should verify that there are no unknown elements in a template. In AOT mode, that check
         // happens at compile time and `schemas` information is not present on Component and Module
@@ -140,25 +150,44 @@ export function compileNgModuleDefs(
     }
   });
 
+  let ngFactoryDef: any = null;
+  Object.defineProperty(moduleType, NG_FACTORY_DEF, {
+    get: () => {
+      if (ngFactoryDef === null) {
+        const compiler = getCompilerFacade(
+            {usage: JitCompilerUsage.Decorator, kind: 'NgModule', type: moduleType});
+        ngFactoryDef = compiler.compileFactory(angularCoreEnv, `ng:///${moduleType.name}/ɵfac.js`, {
+          name: moduleType.name,
+          type: moduleType,
+          deps: reflectDependencies(moduleType),
+          target: compiler.FactoryTarget.NgModule,
+          typeArgumentCount: 0,
+        });
+      }
+      return ngFactoryDef;
+    },
+    // Make the property configurable in dev mode to allow overriding in tests
+    configurable: !!ngDevMode,
+  });
+
   let ngInjectorDef: any = null;
   Object.defineProperty(moduleType, NG_INJ_DEF, {
     get: () => {
       if (ngInjectorDef === null) {
-        ngDevMode &&
-            verifySemanticsOfNgModuleDef(
-                moduleType as any as NgModuleType, allowDuplicateDeclarationsInRoot);
+        ngDevMode && verifySemanticsOfNgModuleDef(moduleType, allowDuplicateDeclarationsInRoot);
         const meta: R3InjectorMetadataFacade = {
           name: moduleType.name,
           type: moduleType,
-          deps: reflectDependencies(moduleType),
           providers: ngModule.providers || EMPTY_ARRAY,
           imports: [
             (ngModule.imports || EMPTY_ARRAY).map(resolveForwardRef),
             (ngModule.exports || EMPTY_ARRAY).map(resolveForwardRef),
           ],
         };
-        ngInjectorDef = getCompilerFacade().compileInjector(
-            angularCoreEnv, `ng:///${moduleType.name}/ɵinj.js`, meta);
+        const compiler = getCompilerFacade(
+            {usage: JitCompilerUsage.Decorator, kind: 'NgModule', type: moduleType});
+        ngInjectorDef =
+            compiler.compileInjector(angularCoreEnv, `ng:///${moduleType.name}/ɵinj.js`, meta);
       }
       return ngInjectorDef;
     },
@@ -167,10 +196,21 @@ export function compileNgModuleDefs(
   });
 }
 
+export function generateStandaloneInDeclarationsError(type: Type<any>, location: string) {
+  const prefix = `Unexpected "${stringifyForError(type)}" found in the "declarations" array of the`;
+  const suffix = `"${stringifyForError(type)}" is marked as standalone and can't be declared ` +
+      'in any NgModule - did you intend to import it instead (by adding it to the "imports" array)?';
+  return `${prefix} ${location}, ${suffix}`;
+}
+
 function verifySemanticsOfNgModuleDef(
     moduleType: NgModuleType, allowDuplicateDeclarationsInRoot: boolean,
     importingModule?: NgModuleType): void {
   if (verifiedNgModule.get(moduleType)) return;
+
+  // skip verifications of standalone components, directives, and pipes
+  if (isStandalone(moduleType)) return;
+
   verifiedNgModule.set(moduleType, true);
   moduleType = resolveForwardRef(moduleType);
   let ngModuleDef: NgModuleDef<any>;
@@ -186,20 +226,20 @@ function verifySemanticsOfNgModuleDef(
   const errors: string[] = [];
   const declarations = maybeUnwrapFn(ngModuleDef.declarations);
   const imports = maybeUnwrapFn(ngModuleDef.imports);
-  flatten(imports).map(unwrapModuleWithProvidersImports).forEach(mod => {
-    verifySemanticsOfNgModuleImport(mod, moduleType);
-    verifySemanticsOfNgModuleDef(mod, false, moduleType);
+  flatten(imports).map(unwrapModuleWithProvidersImports).forEach(modOrStandaloneCmpt => {
+    verifySemanticsOfNgModuleImport(modOrStandaloneCmpt, moduleType);
+    verifySemanticsOfNgModuleDef(modOrStandaloneCmpt, false, moduleType);
   });
   const exports = maybeUnwrapFn(ngModuleDef.exports);
   declarations.forEach(verifyDeclarationsHaveDefinitions);
   declarations.forEach(verifyDirectivesHaveSelector);
+  declarations.forEach((declarationType) => verifyNotStandalone(declarationType, moduleType));
   const combinedDeclarations: Type<any>[] = [
     ...declarations.map(resolveForwardRef),
     ...flatten(imports.map(computeCombinedExports)).map(resolveForwardRef),
   ];
   exports.forEach(verifyExportsAreDeclaredOrReExported);
   declarations.forEach(decl => verifyDeclarationIsUnique(decl, allowDuplicateDeclarationsInRoot));
-  declarations.forEach(verifyComponentEntryComponentsIsPartOfNgModule);
 
   const ngModule = getAnnotation<NgModule>(moduleType, 'NgModule');
   if (ngModule) {
@@ -210,8 +250,6 @@ function verifySemanticsOfNgModuleDef(
         });
     ngModule.bootstrap && deepForEach(ngModule.bootstrap, verifyCorrectBootstrapType);
     ngModule.bootstrap && deepForEach(ngModule.bootstrap, verifyComponentIsPartOfNgModule);
-    ngModule.entryComponents &&
-        deepForEach(ngModule.entryComponents, verifyComponentIsPartOfNgModule);
   }
 
   // Throw Error if any errors were detected.
@@ -233,6 +271,15 @@ function verifySemanticsOfNgModuleDef(
     const def = getDirectiveDef(type);
     if (!getComponentDef(type) && def && def.selectors.length == 0) {
       errors.push(`Directive ${stringifyForError(type)} has no selector, please add it!`);
+    }
+  }
+
+  function verifyNotStandalone(type: Type<any>, moduleType: NgModuleType): void {
+    type = resolveForwardRef(type);
+    const def = getComponentDef(type) || getDirectiveDef(type) || getPipeDef(type);
+    if (def?.standalone) {
+      const location = `"${stringifyForError(moduleType)}" NgModule`;
+      errors.push(generateStandaloneInDeclarationsError(type, location));
     }
   }
 
@@ -275,7 +322,7 @@ function verifySemanticsOfNgModuleDef(
   function verifyComponentIsPartOfNgModule(type: Type<any>) {
     type = resolveForwardRef(type);
     const existingModule = ownerNgModule.get(type);
-    if (!existingModule) {
+    if (!existingModule && !isStandalone(type)) {
       errors.push(`Component ${
           stringifyForError(
               type)} is not part of any NgModule or the module has not been imported into your module.`);
@@ -287,28 +334,27 @@ function verifySemanticsOfNgModuleDef(
     if (!getComponentDef(type)) {
       errors.push(`${stringifyForError(type)} cannot be used as an entry component.`);
     }
-  }
-
-  function verifyComponentEntryComponentsIsPartOfNgModule(type: Type<any>) {
-    type = resolveForwardRef(type);
-    if (getComponentDef(type)) {
-      // We know we are component
-      const component = getAnnotation<Component>(type, 'Component');
-      if (component && component.entryComponents) {
-        deepForEach(component.entryComponents, verifyComponentIsPartOfNgModule);
-      }
+    if (isStandalone(type)) {
+      // Note: this error should be the same as the
+      // `NGMODULE_BOOTSTRAP_IS_STANDALONE` one in AOT compiler.
+      errors.push(
+          `The \`${stringifyForError(type)}\` class is a standalone component, which can ` +
+          `not be used in the \`@NgModule.bootstrap\` array. Use the \`bootstrapApplication\` ` +
+          `function for bootstrap instead.`);
     }
   }
 
   function verifySemanticsOfNgModuleImport(type: Type<any>, importingModule: Type<any>) {
     type = resolveForwardRef(type);
 
-    if (getComponentDef(type) || getDirectiveDef(type)) {
+    const directiveDef = getComponentDef(type) || getDirectiveDef(type);
+    if (directiveDef !== null && !directiveDef.standalone) {
       throw new Error(`Unexpected directive '${type.name}' imported by the module '${
           importingModule.name}'. Please add an @NgModule annotation.`);
     }
 
-    if (getPipeDef(type)) {
+    const pipeDef = getPipeDef(type);
+    if (pipeDef !== null && !pipeDef.standalone) {
       throw new Error(`Unexpected pipe '${type.name}' imported by the module '${
           importingModule.name}'. Please add an @NgModule annotation.`);
     }
@@ -355,13 +401,14 @@ function getAnnotation<T>(type: any, name: string): T|null {
  * NgModule the component belongs to. We keep the list of compiled components here so that the
  * TestBed can reset it later.
  */
-let ownerNgModule = new Map<Type<any>, NgModuleType<any>>();
-let verifiedNgModule = new Map<NgModuleType<any>, boolean>();
+let ownerNgModule = new WeakMap<Type<any>, NgModuleType<any>>();
+let verifiedNgModule = new WeakMap<NgModuleType<any>, boolean>();
 
 export function resetCompiledComponents(): void {
-  ownerNgModule = new Map<Type<any>, NgModuleType<any>>();
-  verifiedNgModule = new Map<NgModuleType<any>, boolean>();
+  ownerNgModule = new WeakMap<Type<any>, NgModuleType<any>>();
+  verifiedNgModule = new WeakMap<NgModuleType<any>, boolean>();
   moduleQueue.length = 0;
+  GENERATED_COMP_IDS.clear();
 }
 
 /**
@@ -371,8 +418,14 @@ export function resetCompiledComponents(): void {
  */
 function computeCombinedExports(type: Type<any>): Type<any>[] {
   type = resolveForwardRef(type);
-  const ngModuleDef = getNgModuleDef(type, true);
-  return [...flatten(maybeUnwrapFn(ngModuleDef.exports).map((type) => {
+  const ngModuleDef = getNgModuleDef(type);
+
+  // a standalone component, directive or pipe
+  if (ngModuleDef === null) {
+    return [type];
+  }
+
+  return flatten(maybeUnwrapFn(ngModuleDef.exports).map((type) => {
     const ngModuleDef = getNgModuleDef(type);
     if (ngModuleDef) {
       verifySemanticsOfNgModuleDef(type as any as NgModuleType, false);
@@ -380,7 +433,7 @@ function computeCombinedExports(type: Type<any>): Type<any>[] {
     } else {
       return type;
     }
-  }))];
+  }));
 }
 
 /**
@@ -394,6 +447,7 @@ function setScopeOnDeclaredComponents(moduleType: Type<any>, ngModule: NgModule)
   const transitiveScopes = transitiveScopesFor(moduleType);
 
   declarations.forEach(declaration => {
+    declaration = resolveForwardRef(declaration);
     if (declaration.hasOwnProperty(NG_COMP_DEF)) {
       // A `ɵcmp` field exists - go ahead and patch the component directly.
       const component = declaration as Type<any>& {ɵcmp: ComponentDef<any>};
@@ -431,6 +485,58 @@ export function patchComponentDefWithScope<C>(
 }
 
 /**
+ * Compute the pair of transitive scopes (compilation scope and exported scope) for a given type
+ * (either a NgModule or a standalone component / directive / pipe).
+ */
+export function transitiveScopesFor<T>(type: Type<T>): NgModuleTransitiveScopes {
+  if (isNgModule(type)) {
+    if (USE_RUNTIME_DEPS_TRACKER_FOR_JIT) {
+      const scope = depsTracker.getNgModuleScope(type);
+      const def = getNgModuleDef(type, true);
+      return {
+        schemas: def.schemas || null,
+        ...scope,
+      };
+    } else {
+      return transitiveScopesForNgModule(type);
+    }
+  } else if (isStandalone(type)) {
+    const directiveDef = getComponentDef(type) || getDirectiveDef(type);
+    if (directiveDef !== null) {
+      return {
+        schemas: null,
+        compilation: {
+          directives: new Set<any>(),
+          pipes: new Set<any>(),
+        },
+        exported: {
+          directives: new Set<any>([type]),
+          pipes: new Set<any>(),
+        },
+      };
+    }
+
+    const pipeDef = getPipeDef(type);
+    if (pipeDef !== null) {
+      return {
+        schemas: null,
+        compilation: {
+          directives: new Set<any>(),
+          pipes: new Set<any>(),
+        },
+        exported: {
+          directives: new Set<any>(),
+          pipes: new Set<any>([type]),
+        },
+      };
+    }
+  }
+
+  // TODO: change the error message to be more user-facing and take standalone into account
+  throw new Error(`${type.name} does not have a module def (ɵmod property)`);
+}
+
+/**
  * Compute the pair of transitive scopes (compilation scope and exported scope) for a given module.
  *
  * This operation is memoized and the result is cached on the module's definition. This function can
@@ -439,11 +545,8 @@ export function patchComponentDefWithScope<C>(
  *
  * @param moduleType module that transitive scope should be calculated for.
  */
-export function transitiveScopesFor<T>(moduleType: Type<T>): NgModuleTransitiveScopes {
-  if (!isNgModule(moduleType)) {
-    throw new Error(`${moduleType.name} does not have a module def (ɵmod property)`);
-  }
-  const def = getNgModuleDef(moduleType)!;
+export function transitiveScopesForNgModule<T>(moduleType: Type<T>): NgModuleTransitiveScopes {
+  const def = getNgModuleDef(moduleType, true);
 
   if (def.transitiveCompileScopes !== null) {
     return def.transitiveCompileScopes;
@@ -462,18 +565,9 @@ export function transitiveScopesFor<T>(moduleType: Type<T>): NgModuleTransitiveS
   };
 
   maybeUnwrapFn(def.imports).forEach(<I>(imported: Type<I>) => {
-    const importedType = imported as Type<I>& {
-      // If imported is an @NgModule:
-      ɵmod?: NgModuleDef<I>;
-    };
-
-    if (!isNgModule<I>(importedType)) {
-      throw new Error(`Importing ${importedType.name} which does not have a ɵmod property`);
-    }
-
     // When this module imports another, the imported module's exported directives and pipes are
     // added to the compilation scope of this module.
-    const importedScope = transitiveScopesFor(importedType);
+    const importedScope = transitiveScopesFor(imported);
     importedScope.exported.directives.forEach(entry => scopes.compilation.directives.add(entry));
     importedScope.exported.pipes.forEach(entry => scopes.compilation.pipes.add(entry));
   });
@@ -532,12 +626,4 @@ function expandModuleWithProviders(value: Type<any>|ModuleWithProviders<{}>): Ty
     return value.ngModule;
   }
   return value;
-}
-
-function isModuleWithProviders(value: any): value is ModuleWithProviders<{}> {
-  return (value as {ngModule?: any}).ngModule !== undefined;
-}
-
-function isNgModule<T>(value: Type<T>): value is Type<T>&{ɵmod: NgModuleDef<T>} {
-  return !!getNgModuleDef(value);
 }

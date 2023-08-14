@@ -80,19 +80,35 @@ class _Expander implements html.Visitor {
 
   visitExpansion(icu: html.Expansion, context: any): any {
     this.isExpanded = true;
-    return icu.type == 'plural' ? _expandPluralForm(icu, this.errors) :
-                                  _expandDefaultForm(icu, this.errors);
+    return icu.type === 'plural' ? _expandPluralForm(icu, this.errors) :
+                                   _expandDefaultForm(icu, this.errors);
   }
 
   visitExpansionCase(icuCase: html.ExpansionCase, context: any): any {
     throw new Error('Should not be reached');
+  }
+
+  visitBlockGroup(group: html.BlockGroup, context: any) {
+    return new html.BlockGroup(
+        html.visitAll(this, group.blocks), group.sourceSpan, group.startSourceSpan,
+        group.endSourceSpan);
+  }
+
+  visitBlock(block: html.Block, context: any) {
+    return new html.Block(
+        block.name, block.parameters, html.visitAll(this, block.children), block.sourceSpan,
+        block.startSourceSpan);
+  }
+
+  visitBlockParameter(parameter: html.BlockParameter, context: any) {
+    return parameter;
   }
 }
 
 // Plural forms are expanded to `NgPlural` and `NgPluralCase`s
 function _expandPluralForm(ast: html.Expansion, errors: ParseError[]): html.Element {
   const children = ast.cases.map(c => {
-    if (PLURAL_CASES.indexOf(c.value) == -1 && !c.value.match(/^=\d+$/)) {
+    if (PLURAL_CASES.indexOf(c.value) === -1 && !c.value.match(/^=\d+$/)) {
       errors.push(new ExpansionError(
           c.valueSourceSpan,
           `Plural cases should be "=<number>" or one of ${PLURAL_CASES.join(', ')}`));
@@ -102,14 +118,15 @@ function _expandPluralForm(ast: html.Expansion, errors: ParseError[]): html.Elem
     errors.push(...expansionResult.errors);
 
     return new html.Element(
-        `ng-template`, [new html.Attribute(
-                           'ngPluralCase', `${c.value}`, c.valueSourceSpan, undefined /* keySpan */,
-                           undefined /* valueSpan */, undefined /* i18n */)],
+        `ng-template`,
+        [new html.Attribute(
+            'ngPluralCase', `${c.value}`, c.valueSourceSpan, undefined /* keySpan */,
+            undefined /* valueSpan */, undefined /* valueTokens */, undefined /* i18n */)],
         expansionResult.nodes, c.sourceSpan, c.sourceSpan, c.sourceSpan);
   });
   const switchAttr = new html.Attribute(
       '[ngPlural]', ast.switchValue, ast.switchValueSourceSpan, undefined /* keySpan */,
-      undefined /* valueSpan */, undefined /* i18n */);
+      undefined /* valueSpan */, undefined /* valueTokens */, undefined /* i18n */);
   return new html.Element(
       'ng-container', [switchAttr], children, ast.sourceSpan, ast.sourceSpan, ast.sourceSpan);
 }
@@ -123,21 +140,23 @@ function _expandDefaultForm(ast: html.Expansion, errors: ParseError[]): html.Ele
     if (c.value === 'other') {
       // other is the default case when no values match
       return new html.Element(
-          `ng-template`, [new html.Attribute(
-                             'ngSwitchDefault', '', c.valueSourceSpan, undefined /* keySpan */,
-                             undefined /* valueSpan */, undefined /* i18n */)],
+          `ng-template`,
+          [new html.Attribute(
+              'ngSwitchDefault', '', c.valueSourceSpan, undefined /* keySpan */,
+              undefined /* valueSpan */, undefined /* valueTokens */, undefined /* i18n */)],
           expansionResult.nodes, c.sourceSpan, c.sourceSpan, c.sourceSpan);
     }
 
     return new html.Element(
-        `ng-template`, [new html.Attribute(
-                           'ngSwitchCase', `${c.value}`, c.valueSourceSpan, undefined /* keySpan */,
-                           undefined /* valueSpan */, undefined /* i18n */)],
+        `ng-template`,
+        [new html.Attribute(
+            'ngSwitchCase', `${c.value}`, c.valueSourceSpan, undefined /* keySpan */,
+            undefined /* valueSpan */, undefined /* valueTokens */, undefined /* i18n */)],
         expansionResult.nodes, c.sourceSpan, c.sourceSpan, c.sourceSpan);
   });
   const switchAttr = new html.Attribute(
       '[ngSwitch]', ast.switchValue, ast.switchValueSourceSpan, undefined /* keySpan */,
-      undefined /* valueSpan */, undefined /* i18n */);
+      undefined /* valueSpan */, undefined /* valueTokens */, undefined /* i18n */);
   return new html.Element(
       'ng-container', [switchAttr], children, ast.sourceSpan, ast.sourceSpan, ast.sourceSpan);
 }

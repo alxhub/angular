@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {absoluteFrom} from '../../file_system';
 import {TestFile} from '../../file_system/testing';
@@ -58,7 +58,18 @@ export function owningModuleOf(ref: Reference): string|null {
 }
 
 export function firstArgFfr(
-    node: Reference<ts.FunctionDeclaration|ts.MethodDeclaration|ts.FunctionExpression>,
-    args: ReadonlyArray<ts.Expression>): ts.Expression {
-  return args[0];
+    fn: Reference<ts.FunctionDeclaration|ts.MethodDeclaration|ts.FunctionExpression>,
+    expr: ts.CallExpression, resolve: (expr: ts.Expression) => ResolvedValue): ResolvedValue {
+  return resolve(expr.arguments[0]);
 }
+
+export const arrowReturnValueFfr: ForeignFunctionResolver = (_fn, node, resolve) => {
+  // Extracts the `Foo` from `() => Foo`.
+  return resolve((node.arguments[0] as ts.ArrowFunction).body as ts.Expression);
+};
+
+export const returnTypeFfr: ForeignFunctionResolver = (fn, node, resolve) => {
+  // Extract the `Foo` from the return type of the `external` function declaration.
+  return resolve(
+      ((fn.node as ts.FunctionDeclaration).type as ts.TypeReferenceNode).typeName as ts.Identifier);
+};

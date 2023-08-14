@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Adapter, Context} from './adapter';
+import {Adapter} from './adapter';
 import {CacheState, NormalizedUrl, UpdateCacheStatus, UpdateSource} from './api';
 import {AssetGroup, LazyAssetGroup, PrefetchAssetGroup} from './assets';
 import {DataGroup} from './data';
@@ -55,7 +55,7 @@ export class AppVersion implements UpdateSource {
    * The normalized URL to the file that serves as the index page to satisfy navigation requests.
    * Usually this is `/index.html`.
    */
-  private indexUrl = this.adapter.normalizeUrl(this.manifest.index);
+  private indexUrl: NormalizedUrl;
 
   /**
    * Tracks whether the manifest has encountered any inconsistencies.
@@ -68,28 +68,26 @@ export class AppVersion implements UpdateSource {
 
   constructor(
       private scope: ServiceWorkerGlobalScope, private adapter: Adapter, private database: Database,
-      private idle: IdleScheduler, private debugHandler: DebugHandler, readonly manifest: Manifest,
+      idle: IdleScheduler, private debugHandler: DebugHandler, readonly manifest: Manifest,
       readonly manifestHash: string) {
+    this.indexUrl = this.adapter.normalizeUrl(this.manifest.index);
     // The hashTable within the manifest is an Object - convert it to a Map for easier lookups.
-    Object.keys(this.manifest.hashTable).forEach(url => {
-      this.hashTable.set(adapter.normalizeUrl(url), this.manifest.hashTable[url]);
+    Object.keys(manifest.hashTable).forEach(url => {
+      this.hashTable.set(adapter.normalizeUrl(url), manifest.hashTable[url]);
     });
 
     // Process each `AssetGroup` declared in the manifest. Each declared group gets an `AssetGroup`
-    // instance
-    // created for it, of a type that depends on the configuration mode.
+    // instance created for it, of a type that depends on the configuration mode.
+    const assetCacheNamePrefix = `${manifestHash}:assets`;
     this.assetGroups = (manifest.assetGroups || []).map(config => {
-      // Every asset group has a cache that's prefixed by the manifest hash and the name of the
-      // group.
-      const prefix = `${adapter.cacheNamePrefix}:${this.manifestHash}:assets`;
       // Check the caching mode, which determines when resources will be fetched/updated.
       switch (config.installMode) {
         case 'prefetch':
           return new PrefetchAssetGroup(
-              this.scope, this.adapter, this.idle, config, this.hashTable, this.database, prefix);
+              scope, adapter, idle, config, this.hashTable, database, assetCacheNamePrefix);
         case 'lazy':
           return new LazyAssetGroup(
-              this.scope, this.adapter, this.idle, config, this.hashTable, this.database, prefix);
+              scope, adapter, idle, config, this.hashTable, database, assetCacheNamePrefix);
       }
     });
 
@@ -98,8 +96,7 @@ export class AppVersion implements UpdateSource {
         (manifest.dataGroups || [])
             .map(
                 config => new DataGroup(
-                    this.scope, this.adapter, config, this.database, this.debugHandler,
-                    `${adapter.cacheNamePrefix}:${config.version}:data`));
+                    scope, adapter, config, database, debugHandler, `${config.version}:data`));
 
     // This keeps backwards compatibility with app versions without navigation urls.
     // Fix: https://github.com/angular/angular/issues/27209
@@ -139,7 +136,7 @@ export class AppVersion implements UpdateSource {
     }
   }
 
-  async handleFetch(req: Request, context: Context): Promise<Response|null> {
+  async handleFetch(req: Request, event: ExtendableEvent): Promise<Response|null> {
     // Check the request against each `AssetGroup` in sequence. If an `AssetGroup` can't handle the
     // request,
     // it will return `null`. Thus, the first non-null response is the SW's answer to the request.
@@ -156,7 +153,7 @@ export class AppVersion implements UpdateSource {
       }
 
       // No response has been found yet. Maybe this group will have one.
-      return group.handleFetch(req, context);
+      return group.handleFetch(req, event);
     }, Promise.resolve<Response|null>(null));
 
     // The result of the above is the asset response, if there is any, or null otherwise. Return the
@@ -174,7 +171,7 @@ export class AppVersion implements UpdateSource {
         return resp;
       }
 
-      return group.handleFetch(req, context);
+      return group.handleFetch(req, event);
     }, Promise.resolve<Response|null>(null));
 
     // If the data caching group returned a response, go with it.
@@ -198,8 +195,8 @@ export class AppVersion implements UpdateSource {
       }
 
       // This was a navigation request. Re-enter `handleFetch` with a request for
-      // the URL.
-      return this.handleFetch(this.adapter.newRequest(this.indexUrl), context);
+      // the index URL.
+      return this.handleFetch(this.adapter.newRequest(this.indexUrl), event);
     }
 
     return null;
@@ -207,10 +204,10 @@ export class AppVersion implements UpdateSource {
 
   /**
    * Determine whether the request is a navigation request.
-   * Takes into account: Request mode, `Accept` header, `navigationUrls` patterns.
+   * Takes into account: Request method and mode, `Accept` header, `navigationUrls` patterns.
    */
   isNavigationRequest(req: Request): boolean {
-    if (req.mode !== 'navigate') {
+    if (req.method !== 'GET' || req.mode !== 'navigate') {
       return false;
     }
 
@@ -219,7 +216,7 @@ export class AppVersion implements UpdateSource {
     }
 
     const urlPrefix = this.scope.registration.scope.replace(/\/$/, '');
-    const url = req.url.startsWith(urlPrefix) ? req.url.substr(urlPrefix.length) : req.url;
+    const url = req.url.startsWith(urlPrefix) ? req.url.slice(urlPrefix.length) : req.url;
     const urlWithoutQueryOrHash = url.replace(/[?#].*$/, '');
 
     return this.navigationUrls.include.some(regex => regex.test(urlWithoutQueryOrHash)) &&
@@ -288,11 +285,14 @@ export class AppVersion implements UpdateSource {
   }
 
   /**
-   * Erase this application version, by cleaning up all the caches.
+   * Return a list of the names of all caches used by this version.
    */
-  async cleanup(): Promise<void> {
-    await Promise.all(this.assetGroups.map(group => group.cleanup()));
-    await Promise.all(this.dataGroups.map(group => group.cleanup()));
+  async getCacheNames(): Promise<string[]> {
+    const allGroupCacheNames = await Promise.all([
+      ...this.assetGroups.map(group => group.getCacheNames()),
+      ...this.dataGroups.map(group => group.getCacheNames()),
+    ]);
+    return ([] as string[]).concat(...allGroupCacheNames);
   }
 
   /**

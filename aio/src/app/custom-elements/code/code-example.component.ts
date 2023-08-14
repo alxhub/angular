@@ -1,5 +1,6 @@
-/* tslint:disable component-selector */
+/* eslint-disable  @angular-eslint/component-selector */
 import { Component, HostBinding, ElementRef, ViewChild, Input, AfterViewInit } from '@angular/core';
+import { fromInnerHTML } from 'app/shared/security';
 import { CodeComponent } from './code.component';
 
 /**
@@ -21,7 +22,8 @@ import { CodeComponent } from './code.component';
 
     <header *ngIf="header">{{header}}</header>
 
-    <aio-code [ngClass]="classes"
+    <aio-code [class.headed-code]="!!this.header"
+              [class.simple-code]="!this.header"
               [language]="language"
               [linenums]="linenums"
               [path]="path"
@@ -32,7 +34,7 @@ import { CodeComponent } from './code.component';
   `,
 })
 export class CodeExampleComponent implements AfterViewInit {
-  classes: {};
+  classes: { 'headed-code': boolean, 'simple-code': boolean };
 
   @Input() language: string;
 
@@ -40,16 +42,7 @@ export class CodeExampleComponent implements AfterViewInit {
 
   @Input() region: string;
 
-  @Input()
-  set header(header: string) {
-    this._header = header;
-    this.classes = {
-      'headed-code': !!this.header,
-      'simple-code': !this.header,
-    };
-  }
-  get header(): string { return this._header; }
-  private _header: string;
+  @Input() header: string;
 
   @Input()
   set path(path: string) {
@@ -67,11 +60,13 @@ export class CodeExampleComponent implements AfterViewInit {
   get hidecopy(): boolean { return this._hidecopy; }
   private _hidecopy: boolean;
 
+  /* eslint-disable-next-line @angular-eslint/no-input-rename */
   @Input('hide-copy')
   set hyphenatedHideCopy(hidecopy: boolean) {
     this.hidecopy = hidecopy;
   }
 
+  /* eslint-disable-next-line @angular-eslint/no-input-rename */
   @Input('hideCopy')
   set capitalizedHideCopy(hidecopy: boolean) {
     this.hidecopy = hidecopy;
@@ -85,7 +80,7 @@ export class CodeExampleComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     const contentElem = this.content.nativeElement;
-    this.aioCode.code = contentElem.innerHTML;
-    contentElem.innerHTML = '';  // Remove DOM nodes that are no longer needed.
+    this.aioCode.code = fromInnerHTML(contentElem);
+    contentElem.textContent = '';  // Remove DOM nodes that are no longer needed.
   }
 }

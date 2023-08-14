@@ -6,10 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {AbsoluteFsPath} from '../../../file_system';
-import {FactoryTracker} from '../../../shims/api';
 
 import {ExtendedTsCompilerHost, UnifiedModulesHost} from './interfaces';
 
@@ -28,7 +27,7 @@ export type ExtendedCompilerHostMethods =
     'getCurrentDirectory'|
     // Additional methods of `ExtendedTsCompilerHost` related to resource files (e.g. HTML
     // templates). These are optional.
-    'getModifiedResourceFiles'|'readResource'|'resourceNameToFileName';
+    'getModifiedResourceFiles'|'readResource'|'resourceNameToFileName'|'transformResource';
 
 /**
  * Adapter for `NgCompiler` that allows it to be used in various circumstances, such as
@@ -43,7 +42,8 @@ export interface NgCompilerAdapter extends
     // incompatible with the `ts.CompilerHost` version which isn't. The combination of these two
     // still satisfies `ts.ModuleResolutionHost`.
         Omit<ts.ModuleResolutionHost, 'getCurrentDirectory'>,
-    Pick<ExtendedTsCompilerHost, 'getCurrentDirectory'|ExtendedCompilerHostMethods> {
+    Pick<ExtendedTsCompilerHost, 'getCurrentDirectory'|ExtendedCompilerHostMethods>,
+    SourceFileTypeIdentifier {
   /**
    * A path to a single file which represents the entrypoint of an Angular Package Format library,
    * if the current program is one.
@@ -68,13 +68,6 @@ export interface NgCompilerAdapter extends
   readonly ignoreForEmit: Set<ts.SourceFile>;
 
   /**
-   * A tracker for usage of symbols in `.ngfactory` shims.
-   *
-   * This can be left `null` if such shims are not a part of the `ts.Program`.
-   */
-  readonly factoryTracker: FactoryTracker|null;
-
-  /**
    * A specialized interface provided in some environments (such as Bazel) which overrides how
    * import specifiers are generated.
    *
@@ -86,7 +79,9 @@ export interface NgCompilerAdapter extends
    * Resolved list of root directories explicitly set in, or inferred from, the tsconfig.
    */
   readonly rootDirs: ReadonlyArray<AbsoluteFsPath>;
+}
 
+export interface SourceFileTypeIdentifier {
   /**
    * Distinguishes between shim files added by Angular to the compilation process (both those
    * intended for output, like ngfactory files, as well as internal shims like ngtypecheck files)
@@ -96,4 +91,14 @@ export interface NgCompilerAdapter extends
    * `true` if a file was written by the user, and `false` if a file was added by the compiler.
    */
   isShim(sf: ts.SourceFile): boolean;
+
+  /**
+   * Distinguishes between resource files added by Angular to the project and original files in the
+   * user's program.
+   *
+   * This is necessary only for the language service because it adds resource files as root files
+   * when they are read. This is done to indicate to TS Server that these resources are part of the
+   * project and ensures that projects are retained properly when navigating around the workspace.
+   */
+  isResource(sf: ts.SourceFile): boolean;
 }

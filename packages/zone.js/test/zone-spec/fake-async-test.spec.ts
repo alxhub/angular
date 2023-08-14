@@ -18,15 +18,13 @@ function supportNode() {
   return isNode;
 }
 
-(supportNode as any).message = 'support node';
-
-function supportClock() {
-  const _global: any = typeof window === 'undefined' ? global : window;
-  return typeof jasmine.clock === 'function' &&
-      _global[zoneSymbol('fakeAsyncAutoFakeAsyncWhenClockPatched')];
+function emptyRun() {
+  // Jasmine will throw if there are no tests.
+  it('should pass', () => {});
 }
 
-(supportClock as any).message = 'support patch clock';
+(supportNode as any).message = 'support node';
+
 
 describe('FakeAsyncTestZoneSpec', () => {
   let FakeAsyncTestZoneSpec = (Zone as any)['FakeAsyncTestZoneSpec'];
@@ -743,90 +741,105 @@ describe('FakeAsyncTestZoneSpec', () => {
     });
   });
 
-  describe('requestAnimationFrame', () => {
-    const functions =
-        ['requestAnimationFrame', 'webkitRequestAnimationFrame', 'mozRequestAnimationFrame'];
-    functions.forEach((fnName) => {
-      describe(fnName, ifEnvSupports(fnName, () => {
-                 it('should schedule a requestAnimationFrame with timeout of 16ms', () => {
-                   fakeAsyncTestZone.run(() => {
-                     let ran = false;
-                     requestAnimationFrame(() => {
-                       ran = true;
-                     });
+  const animationFrameFns = [
+    ['requestAnimationFrame', 'cancelAnimationFrame'],
+    ['webkitRequestAnimationFrame', 'webkitCancelAnimationFrame'],
+    ['mozRequestAnimationFrame', 'mozCancelAnimationFrame'],
+  ];
 
-                     testZoneSpec.tick(6);
-                     expect(ran).toEqual(false);
+  const availableAnimationFrameFns =
+      animationFrameFns
+          .map(([fnName,
+                 cancelFnName]) => [fnName, (global as any)[fnName], (global as any)[cancelFnName]])
+          .filter(
+              ([_, fn]) => fn !==
+                  undefined) as [string, typeof requestAnimationFrame, typeof cancelAnimationFrame][];
 
-                     testZoneSpec.tick(10);
-                     expect(ran).toEqual(true);
-                   });
-                 });
-                 it('does not count as a pending timer', () => {
-                   fakeAsyncTestZone.run(() => {
-                     requestAnimationFrame(() => {});
-                   });
-                   expect(testZoneSpec.pendingTimers.length).toBe(0);
-                   expect(testZoneSpec.pendingPeriodicTimers.length).toBe(0);
-                 });
-                 it('should cancel a scheduled requestAnimatiomFrame', () => {
-                   fakeAsyncTestZone.run(() => {
-                     let ran = false;
-                     const id = requestAnimationFrame(() => {
-                       ran = true;
-                     });
+  if (availableAnimationFrameFns.length > 0) {
+    describe('requestAnimationFrame', () => {
+      availableAnimationFrameFns.forEach(
+          ([name, requestAnimationFrameFn, cancelAnimationFrameFn]) => {
+            describe(name, () => {
+              it('should schedule a requestAnimationFrame with timeout of 16ms', () => {
+                fakeAsyncTestZone.run(() => {
+                  let ran = false;
+                  requestAnimationFrameFn(() => {
+                    ran = true;
+                  });
 
-                     testZoneSpec.tick(6);
-                     expect(ran).toEqual(false);
+                  testZoneSpec.tick(6);
+                  expect(ran).toEqual(false);
 
-                     cancelAnimationFrame(id);
+                  testZoneSpec.tick(10);
+                  expect(ran).toEqual(true);
+                });
+              });
+              it('does not count as a pending timer', () => {
+                fakeAsyncTestZone.run(() => {
+                  requestAnimationFrameFn(() => {});
+                });
+                expect(testZoneSpec.pendingTimers.length).toBe(0);
+                expect(testZoneSpec.pendingPeriodicTimers.length).toBe(0);
+              });
+              it('should cancel a scheduled requestAnimationFrame', () => {
+                fakeAsyncTestZone.run(() => {
+                  let ran = false;
+                  const id = requestAnimationFrameFn(() => {
+                    ran = true;
+                  });
 
-                     testZoneSpec.tick(10);
-                     expect(ran).toEqual(false);
-                   });
-                 });
-                 it('is not flushed when flushPeriodic is false', () => {
-                   let ran = false;
-                   fakeAsyncTestZone.run(() => {
-                     requestAnimationFrame(() => {
-                       ran = true;
-                     });
-                     testZoneSpec.flush(20);
-                     expect(ran).toEqual(false);
-                   });
-                 });
-                 it('is flushed when flushPeriodic is true', () => {
-                   let ran = false;
-                   fakeAsyncTestZone.run(() => {
-                     requestAnimationFrame(() => {
-                       ran = true;
-                     });
-                     const elapsed = testZoneSpec.flush(20, true);
-                     expect(elapsed).toEqual(16);
-                     expect(ran).toEqual(true);
-                   });
-                 });
-                 it('should pass timestamp as parameter', () => {
-                   let timestamp = 0;
-                   let timestamp1 = 0;
-                   fakeAsyncTestZone.run(() => {
-                     requestAnimationFrame((ts) => {
-                       timestamp = ts;
-                       requestAnimationFrame(ts1 => {
-                         timestamp1 = ts1;
-                       });
-                     });
-                     const elapsed = testZoneSpec.flush(20, true);
-                     const elapsed1 = testZoneSpec.flush(20, true);
-                     expect(elapsed).toEqual(16);
-                     expect(elapsed1).toEqual(16);
-                     expect(timestamp).toEqual(16);
-                     expect(timestamp1).toEqual(32);
-                   });
-                 });
-               }));
+                  testZoneSpec.tick(6);
+                  expect(ran).toEqual(false);
+
+                  cancelAnimationFrameFn(id);
+
+                  testZoneSpec.tick(10);
+                  expect(ran).toEqual(false);
+                });
+              });
+              it('is not flushed when flushPeriodic is false', () => {
+                let ran = false;
+                fakeAsyncTestZone.run(() => {
+                  requestAnimationFrameFn(() => {
+                    ran = true;
+                  });
+                  testZoneSpec.flush(20);
+                  expect(ran).toEqual(false);
+                });
+              });
+              it('is flushed when flushPeriodic is true', () => {
+                let ran = false;
+                fakeAsyncTestZone.run(() => {
+                  requestAnimationFrameFn(() => {
+                    ran = true;
+                  });
+                  const elapsed = testZoneSpec.flush(20, true);
+                  expect(elapsed).toEqual(16);
+                  expect(ran).toEqual(true);
+                });
+              });
+              it('should pass timestamp as parameter', () => {
+                let timestamp = 0;
+                let timestamp1 = 0;
+                fakeAsyncTestZone.run(() => {
+                  requestAnimationFrameFn((ts) => {
+                    timestamp = ts;
+                    requestAnimationFrameFn(ts1 => {
+                      timestamp1 = ts1;
+                    });
+                  });
+                  const elapsed = testZoneSpec.flush(20, true);
+                  const elapsed1 = testZoneSpec.flush(20, true);
+                  expect(elapsed).toEqual(16);
+                  expect(elapsed1).toEqual(16);
+                  expect(timestamp).toEqual(16);
+                  expect(timestamp1).toEqual(32);
+                });
+              });
+            });
+          });
     });
-  });
+  }
 
   describe(
       'XHRs', ifEnvSupports('XMLHttpRequest', () => {
@@ -847,7 +860,7 @@ describe('FakeAsyncTestZoneSpec', () => {
             });
           }).toThrowError('Cannot make XHRs from within a fake async test. Request URL: /test');
         });
-      }));
+      }, emptyRun));
 
   describe('node process', ifEnvSupports(supportNode, () => {
              it('should be able to schedule microTask with additional arguments', () => {
@@ -877,7 +890,7 @@ describe('FakeAsyncTestZoneSpec', () => {
                  expect(cbArgRun).toEqual(true);
                });
              });
-           }));
+           }, emptyRun));
 
   describe('should allow user define which macroTask fakeAsyncTest', () => {
     let FakeAsyncTestZoneSpec = (Zone as any)['FakeAsyncTestZoneSpec'];
@@ -1047,172 +1060,7 @@ describe('FakeAsyncTestZoneSpec', () => {
     });
   });
 
-  describe(
-      'fakeAsyncTest should work without patch jasmine.clock',
-      ifEnvSupports(
-          () => {
-            return !supportClock() && supportNode();
-          },
-          () => {
-            const fakeAsync = (Zone as any)[Zone.__symbol__('fakeAsyncTest')].fakeAsync;
-            let spy: any;
-            beforeEach(() => {
-              spy = jasmine.createSpy('timer');
-              jasmine.clock().install();
-            });
-
-            afterEach(() => {
-              jasmine.clock().uninstall();
-            });
-
-            it('should check date type correctly', fakeAsync(() => {
-                 const d: any = new Date();
-                 expect(d instanceof Date).toBe(true);
-               }));
-
-            it('should check date type correctly without fakeAsync', () => {
-              const d: any = new Date();
-              expect(d instanceof Date).toBe(true);
-            });
-
-            it('should tick correctly', fakeAsync(() => {
-                 jasmine.clock().mockDate();
-                 const start = Date.now();
-                 jasmine.clock().tick(100);
-                 const end = Date.now();
-                 expect(end - start).toBe(100);
-               }));
-
-            it('should tick correctly without fakeAsync', () => {
-              jasmine.clock().mockDate();
-              const start = Date.now();
-              jasmine.clock().tick(100);
-              const end = Date.now();
-              expect(end - start).toBe(100);
-            });
-
-            it('should mock date correctly', fakeAsync(() => {
-                 const baseTime = new Date(2013, 9, 23);
-                 jasmine.clock().mockDate(baseTime);
-                 const start = Date.now();
-                 expect(start).toBe(baseTime.getTime());
-                 jasmine.clock().tick(100);
-                 const end = Date.now();
-                 expect(end - start).toBe(100);
-                 expect(end).toBe(baseTime.getTime() + 100);
-                 expect(new Date().getFullYear()).toEqual(2013);
-               }));
-
-            it('should mock date correctly without fakeAsync', () => {
-              const baseTime = new Date(2013, 9, 23);
-              jasmine.clock().mockDate(baseTime);
-              const start = Date.now();
-              expect(start).toBe(baseTime.getTime());
-              jasmine.clock().tick(100);
-              const end = Date.now();
-              expect(end - start).toBe(100);
-              expect(end).toBe(baseTime.getTime() + 100);
-              expect(new Date().getFullYear()).toEqual(2013);
-            });
-
-            it('should handle new Date correctly', fakeAsync(() => {
-                 const baseTime = new Date(2013, 9, 23);
-                 jasmine.clock().mockDate(baseTime);
-                 const start = new Date();
-                 expect(start.getTime()).toBe(baseTime.getTime());
-                 jasmine.clock().tick(100);
-                 const end = new Date();
-                 expect(end.getTime() - start.getTime()).toBe(100);
-                 expect(end.getTime()).toBe(baseTime.getTime() + 100);
-               }));
-
-            it('should handle new Date correctly without fakeAsync', () => {
-              const baseTime = new Date(2013, 9, 23);
-              jasmine.clock().mockDate(baseTime);
-              const start = new Date();
-              expect(start.getTime()).toBe(baseTime.getTime());
-              jasmine.clock().tick(100);
-              const end = new Date();
-              expect(end.getTime() - start.getTime()).toBe(100);
-              expect(end.getTime()).toBe(baseTime.getTime() + 100);
-            });
-
-            it('should handle setTimeout correctly', fakeAsync(() => {
-                 setTimeout(spy, 100);
-                 expect(spy).not.toHaveBeenCalled();
-                 jasmine.clock().tick(100);
-                 expect(spy).toHaveBeenCalled();
-               }));
-
-            it('should handle setTimeout correctly without fakeAsync', () => {
-              setTimeout(spy, 100);
-              expect(spy).not.toHaveBeenCalled();
-              jasmine.clock().tick(100);
-              expect(spy).toHaveBeenCalled();
-            });
-          }));
-
-  describe('fakeAsyncTest should patch jasmine.clock', ifEnvSupports(supportClock, () => {
-             let spy: any;
-             beforeEach(() => {
-               spy = jasmine.createSpy('timer');
-               jasmine.clock().install();
-             });
-
-             afterEach(() => {
-               jasmine.clock().uninstall();
-             });
-
-             it('should check date type correctly', () => {
-               const d: any = new Date();
-               expect(d instanceof Date).toBe(true);
-             });
-
-             it('should get date diff correctly', () => {
-               const start = Date.now();
-               jasmine.clock().tick(100);
-               const end = Date.now();
-               expect(end - start).toBe(100);
-             });
-
-             it('should tick correctly', () => {
-               const start = Date.now();
-               jasmine.clock().tick(100);
-               const end = Date.now();
-               expect(end - start).toBe(100);
-             });
-
-             it('should mock date correctly', () => {
-               const baseTime = new Date(2013, 9, 23);
-               jasmine.clock().mockDate(baseTime);
-               const start = Date.now();
-               expect(start).toBe(baseTime.getTime());
-               jasmine.clock().tick(100);
-               const end = Date.now();
-               expect(end - start).toBe(100);
-               expect(end).toBe(baseTime.getTime() + 100);
-             });
-
-             it('should handle new Date correctly', () => {
-               const baseTime = new Date(2013, 9, 23);
-               jasmine.clock().mockDate(baseTime);
-               const start = new Date();
-               expect(start.getTime()).toBe(baseTime.getTime());
-               jasmine.clock().tick(100);
-               const end = new Date();
-               expect(end.getTime() - start.getTime()).toBe(100);
-               expect(end.getTime()).toBe(baseTime.getTime() + 100);
-             });
-
-             it('should handle setTimeout correctly', () => {
-               setTimeout(spy, 100);
-               expect(spy).not.toHaveBeenCalled();
-               jasmine.clock().tick(100);
-               expect(spy).toHaveBeenCalled();
-             });
-           }));
-
-  describe('fakeAsyncTest should patch rxjs scheduler', ifEnvSupports(supportClock, () => {
+  describe('fakeAsyncTest should patch rxjs scheduler', ifEnvSupports(() => isNode, () => {
              let FakeAsyncTestZoneSpec = (Zone as any)['FakeAsyncTestZoneSpec'];
              let testZoneSpec: any;
              let fakeAsyncTestZone: Zone;
@@ -1238,24 +1086,18 @@ describe('FakeAsyncTestZoneSpec', () => {
                  done();
                });
              });
-           }));
+           }, emptyRun));
 });
 
-class Log {
-  logItems: any[];
+class Log<T> {
+  logItems: T[];
 
   constructor() {
     this.logItems = [];
   }
 
-  add(value: any /** TODO #9100 */): void {
+  add(value: T): void {
     this.logItems.push(value);
-  }
-
-  fn(value: any /** TODO #9100 */) {
-    return (a1: any = null, a2: any = null, a3: any = null, a4: any = null, a5: any = null) => {
-      this.logItems.push(value);
-    };
   }
 
   clear(): void {
@@ -1284,7 +1126,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
     });
 
     it('should pass arguments to the wrapped function', () => {
-      fakeAsync((foo: any /** TODO #9100 */, bar: any /** TODO #9100 */) => {
+      fakeAsync((foo: string, bar: string) => {
         expect(foo).toEqual('foo');
         expect(bar).toEqual('bar');
       })('foo', 'bar');
@@ -1294,7 +1136,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
     it('should throw on nested calls', () => {
       expect(() => {
         fakeAsync(() => {
-          fakeAsync((): any /** TODO #9100 */ => null)();
+          fakeAsync((): null => null)();
         })();
       }).toThrowError('fakeAsync() calls can not be nested');
     });
@@ -1330,7 +1172,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
          }));
 
       it('should run chained thens', fakeAsync(() => {
-           const log = new Log();
+           const log = new Log<number>();
 
            resolvedPromise.then((_) => log.add(1)).then((_) => log.add(2));
 
@@ -1341,7 +1183,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
          }));
 
       it('should run Promise created in Promise', fakeAsync(() => {
-           const log = new Log();
+           const log = new Log<number>();
 
            resolvedPromise.then((_) => {
              log.add(1);
@@ -1474,7 +1316,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
 
       it('should be able to cancel periodic timers from a callback', fakeAsync(() => {
            let cycles = 0;
-           let id: any /** TODO #9100 */;
+           let id: NodeJS.Timer;
 
            id = setInterval(() => {
              cycles++;
@@ -1509,7 +1351,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
          }));
 
       it('should process microtasks before timers', fakeAsync(() => {
-           const log = new Log();
+           const log = new Log<string>();
 
            resolvedPromise.then((_) => log.add('microtask'));
 
@@ -1525,7 +1367,7 @@ const {fakeAsync, tick, discardPeriodicTasks, flush, flushMicrotasks} = fakeAsyn
          }));
 
       it('should process micro-tasks created in timers before next timers', fakeAsync(() => {
-           const log = new Log();
+           const log = new Log<string>();
 
            resolvedPromise.then((_) => log.add('microtask'));
 

@@ -1,4 +1,4 @@
-load("//tools:defaults.bzl", "ng_module")
+load("//tools:defaults.bzl", "ng_module", "tsec_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -19,4 +19,18 @@ ng_module(
         "//packages/core",
         "//packages/platform-browser",
     ],
+)
+
+tsec_test(
+    name = "tsec_test",
+    target = "animations",
+    tsconfig = "//packages:tsec_config",
+)
+
+filegroup(
+    name = "files_for_docgen",
+    srcs = glob([
+        "*.ts",
+        "src/**/*.ts",
+    ]) + ["PACKAGE.md"],
 )

@@ -8,6 +8,7 @@
 
 import {ChangeDetectorRef} from '../change_detection/change_detection';
 import {Injector} from '../di/injector';
+import {EnvironmentInjector} from '../di/r3_injector';
 import {Type} from '../interface/type';
 
 import {ElementRef} from './element_ref';
@@ -22,6 +23,16 @@ import {ViewRef} from './view_ref';
  * @publicApi
  */
 export abstract class ComponentRef<C> {
+  /**
+   * Updates a specified input name to a new value. Using this method will properly mark for check
+   * component using the `OnPush` change detection strategy. It will also assure that the
+   * `OnChanges` lifecycle hook runs when a dynamically created component is change-detected.
+   *
+   * @param name The name of an input.
+   * @param value The new value of an input.
+   */
+  abstract setInput(name: string, value: unknown): void;
+
   /**
    * The host or anchor [element](guide/glossary#element) for this component instance.
    */
@@ -38,7 +49,7 @@ export abstract class ComponentRef<C> {
   abstract get instance(): C;
 
   /**
-   * The [host view](guide/glossary#view-tree) defined by the template
+   * The [host view](guide/glossary#view-hierarchy) defined by the template
    * for this component instance.
    */
   abstract get hostView(): ViewRef;
@@ -75,6 +86,9 @@ export abstract class ComponentRef<C> {
  * @see [Dynamic Components](guide/dynamic-component-loader)
  *
  * @publicApi
+ *
+ * @deprecated Angular no longer requires Component factories. Please use other APIs where
+ *     Component class can be used directly.
  */
 export abstract class ComponentFactory<C> {
   /**
@@ -92,7 +106,11 @@ export abstract class ComponentFactory<C> {
   /**
    * The inputs of the component.
    */
-  abstract get inputs(): {propName: string, templateName: string}[];
+  abstract get inputs(): {
+    propName: string,
+    templateName: string,
+    transform?: (value: any) => any,
+  }[];
   /**
    * The outputs of the component.
    */
@@ -102,5 +120,5 @@ export abstract class ComponentFactory<C> {
    */
   abstract create(
       injector: Injector, projectableNodes?: any[][], rootSelectorOrNode?: string|any,
-      ngModule?: NgModuleRef<any>): ComponentRef<C>;
+      environmentInjector?: EnvironmentInjector|NgModuleRef<any>): ComponentRef<C>;
 }

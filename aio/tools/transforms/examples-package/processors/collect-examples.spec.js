@@ -98,7 +98,6 @@ describe('collectExampleRegions processor', () => {
         expect(regionParser).toHaveBeenCalledWith('Example C', 'js');
       });
 
-
     it('should attach parsed content as renderedContent to the example file docs', () => {
       const docs = [
         createDoc('A', 'examples-1/x/app.js'),
@@ -189,23 +188,12 @@ describe('collectExampleRegions processor', () => {
       });
     });
   });
-
-  describe('filtered examples', () => {
-    it('should indicate if an example was filtered', () => {
-      processor.registerIgnoredExamples(['c/d/e', 'e/f/g'], 'path/to/gitignore');
-      processor.registerIgnoredExamples(['x/y/z'], 'path/to/other/gitignore');
-      expect(processor.isExampleIgnored('a/b/c')).toBeFalsy();
-      expect(processor.isExampleIgnored('c/d/e')).toEqual('path/to/gitignore');
-      expect(processor.isExampleIgnored('e/f/g')).toEqual('path/to/gitignore');
-      expect(processor.isExampleIgnored('x/y/z')).toEqual('path/to/other/gitignore');
-    });
-  });
 });
 
 
 function createDoc(content, relativePath, docType) {
   return {
-    fileInfo: {relativePath: relativePath, extension: path.extname(relativePath).substr(1)},
+    fileInfo: {relativePath: relativePath, baseName: path.basename(relativePath), extension: path.extname(relativePath).slice(1)},
     content: content,
     docType: docType || 'example-file',
     startingLine: 1

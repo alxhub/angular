@@ -7,7 +7,7 @@
  */
 
 import {AST} from '../../expression_parser/ast';
-import {BoundAttribute, BoundEvent, Element, Node, Reference, Template, TextAttribute, Variable} from '../r3_ast';
+import {BoundAttribute, BoundEvent, DeferredBlock, Element, Node, Reference, Template, TextAttribute, Variable} from '../r3_ast';
 
 
 /*
@@ -34,6 +34,15 @@ export interface Target {
  */
 export interface InputOutputPropertySet {
   hasBindingPropertyName(propertyName: string): boolean;
+}
+
+/**
+ * A data structure which captures the animation trigger names that are statically resolvable
+ * and whether some names could not be statically evaluated.
+ */
+export interface AnimationTriggerNames {
+  includesDynamicAnimations: boolean;
+  staticTriggerNames: string[];
 }
 
 /**
@@ -76,6 +85,12 @@ export interface DirectiveMeta {
   exportAs: string[]|null;
 
   isStructural: boolean;
+
+  /**
+   * The name of animations that the user defines in the component.
+   * Only includes the animation names.
+   */
+  animationTriggerNames: AnimationTriggerNames|null;
 }
 
 /**
@@ -158,12 +173,31 @@ export interface BoundTarget<DirectiveT extends DirectiveMeta> {
   getEntitiesInTemplateScope(template: Template|null): ReadonlySet<Reference|Variable>;
 
   /**
-   * Get a list of all the directives used by the target.
+   * Get a list of all the directives used by the target,
+   * including directives from `{#defer}` blocks.
    */
   getUsedDirectives(): DirectiveT[];
 
   /**
-   * Get a list of all the pipes used by the target.
+   * Get a list of eagerly used directives from the target.
+   * Note: this list *excludes* directives from `{#defer}` blocks.
+   */
+  getEagerlyUsedDirectives(): DirectiveT[];
+
+  /**
+   * Get a list of all the pipes used by the target,
+   * including pipes from `{#defer}` blocks.
    */
   getUsedPipes(): string[];
+
+  /**
+   * Get a list of eagerly used pipes from the target.
+   * Note: this list *excludes* pipes from `{#defer}` blocks.
+   */
+  getEagerlyUsedPipes(): string[];
+
+  /**
+   * Get a list of all {#defer} blocks used by the target.
+   */
+  getDeferBlocks(): DeferredBlock[];
 }

@@ -7,6 +7,7 @@
  */
 
 import {ChangeDetectorRef, ComponentRef, DebugElement, ElementRef, getDebugNode, NgZone, RendererFactory2} from '@angular/core';
+import {Subscription} from 'rxjs';
 
 
 /**
@@ -43,12 +44,12 @@ export class ComponentFixture<T> {
   private _renderer: RendererFactory2|null|undefined;
   private _isStable: boolean = true;
   private _isDestroyed: boolean = false;
-  private _resolve: ((result: any) => void)|null = null;
-  private _promise: Promise<any>|null = null;
-  private _onUnstableSubscription: any /** TODO #9100 */ = null;
-  private _onStableSubscription: any /** TODO #9100 */ = null;
-  private _onMicrotaskEmptySubscription: any /** TODO #9100 */ = null;
-  private _onErrorSubscription: any /** TODO #9100 */ = null;
+  private _resolve: ((result: boolean) => void)|null = null;
+  private _promise: Promise<boolean>|null = null;
+  private _onUnstableSubscription: Subscription|null = null;
+  private _onStableSubscription: Subscription|null = null;
+  private _onMicrotaskEmptySubscription: Subscription|null = null;
+  private _onErrorSubscription: Subscription|null = null;
 
   constructor(
       public componentRef: ComponentRef<T>, public ngZone: NgZone|null,
@@ -87,7 +88,7 @@ export class ComponentFixture<T> {
               // If so check whether there are no pending macrotasks before resolving.
               // Do this check in the next tick so that ngZone gets a chance to update the state of
               // pending macrotasks.
-              scheduleMicroTask(() => {
+              queueMicrotask(() => {
                 if (!ngZone.hasPendingMacrotasks) {
                   if (this._promise !== null) {
                     this._resolve!(true);
@@ -223,8 +224,4 @@ export class ComponentFixture<T> {
       this._isDestroyed = true;
     }
   }
-}
-
-function scheduleMicroTask(fn: Function) {
-  Zone.current.scheduleMicroTask('scheduleMicrotask', fn);
 }

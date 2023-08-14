@@ -6,24 +6,17 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {global} from '../../util/global';
+import {PLATFORM_ID} from '../../application_tokens';
+import {Injector} from '../../di';
+import {inject} from '../../di/injector_compatibility';
 import {RElement} from '../interfaces/renderer_dom';
-
-
-export const defaultScheduler =
-    (() => (
-               typeof requestAnimationFrame !== 'undefined' &&
-                   requestAnimationFrame ||  // browser only
-               setTimeout                    // everything else
-               )
-               .bind(global))();
 
 /**
  *
  * @codeGenApi
  */
 export function ɵɵresolveWindow(element: RElement&{ownerDocument: Document}) {
-  return {name: 'window', target: element.ownerDocument.defaultView};
+  return element.ownerDocument.defaultView;
 }
 
 /**
@@ -31,7 +24,7 @@ export function ɵɵresolveWindow(element: RElement&{ownerDocument: Document}) {
  * @codeGenApi
  */
 export function ɵɵresolveDocument(element: RElement&{ownerDocument: Document}) {
-  return {name: 'document', target: element.ownerDocument};
+  return element.ownerDocument;
 }
 
 /**
@@ -39,7 +32,7 @@ export function ɵɵresolveDocument(element: RElement&{ownerDocument: Document})
  * @codeGenApi
  */
 export function ɵɵresolveBody(element: RElement&{ownerDocument: Document}) {
-  return {name: 'body', target: element.ownerDocument.body};
+  return element.ownerDocument.body;
 }
 
 /**
@@ -67,4 +60,13 @@ export function maybeUnwrapFn<T>(value: T|(() => T)): T {
   } else {
     return value;
   }
+}
+
+/**
+ * Detects whether the code is invoked in a browser.
+ * Later on, this check should be replaced with a tree-shakable
+ * flag (e.g. `!isServer`).
+ */
+export function isPlatformBrowser(injector?: Injector): boolean {
+  return (injector ?? inject(Injector)).get(PLATFORM_ID) === 'browser';
 }

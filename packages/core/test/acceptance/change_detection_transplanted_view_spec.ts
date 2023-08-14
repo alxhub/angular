@@ -10,8 +10,6 @@ import {CommonModule} from '@angular/common';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, DoCheck, Input, TemplateRef, Type, ViewChild, ViewContainerRef} from '@angular/core';
 import {AfterViewChecked} from '@angular/core/src/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
-import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {onlyInIvy} from '@angular/private/testing';
 
 describe('change detection for transplanted views', () => {
   describe('when declaration appears before insertion', () => {
@@ -54,11 +52,11 @@ describe('change detection for transplanted views', () => {
       template: insertCompTemplate,
     })
     class InsertForOnPushDeclareComp extends InsertComp {
-      constructor(public changeDetectorRef: ChangeDetectorRef) {
+      constructor(changeDetectorRef: ChangeDetectorRef) {
         super(changeDetectorRef);
         insertForOnPushDeclareComp = this;
       }
-      get template(): TemplateRef<any> {
+      override get template(): TemplateRef<any> {
         return onPushDeclareComp.myTmpl;
       }
     }
@@ -105,7 +103,7 @@ describe('change detection for transplanted views', () => {
       changeDetection: ChangeDetectionStrategy.OnPush
     })
     class OnPushDeclareComp extends DeclareComp {
-      constructor(readonly changeDetector: ChangeDetectorRef) {
+      constructor(changeDetector: ChangeDetectorRef) {
         super(changeDetector);
         onPushDeclareComp = this;
       }
@@ -324,7 +322,7 @@ describe('change detection for transplanted views', () => {
       changeDetection: ChangeDetectionStrategy.OnPush
     })
     class Insertion {
-      @Input() template !: TemplateRef<{}>;
+      @Input() template!: TemplateRef<{}>;
       name = 'initial';
       constructor(readonly changeDetectorRef: ChangeDetectorRef) {}
     }
@@ -479,7 +477,7 @@ describe('change detection for transplanted views', () => {
       template: `<ng-container [ngTemplateOutlet]="template"></ng-container>`
     })
     class CheckAlwaysInsertion {
-      @Input() template !: TemplateRef<{}>;
+      @Input() template!: TemplateRef<{}>;
     }
 
     @Component({
@@ -488,7 +486,7 @@ describe('change detection for transplanted views', () => {
       changeDetection: ChangeDetectionStrategy.OnPush
     })
     class OnPushInsertionHost {
-      @Input() template !: TemplateRef<{}>;
+      @Input() template!: TemplateRef<{}>;
       constructor(readonly cdr: ChangeDetectorRef) {}
     }
     @Component({
@@ -542,7 +540,7 @@ describe('change detection for transplanted views', () => {
       expect(fixture.nativeElement.textContent).toEqual('new');
     });
 
-    onlyInIvy('behavior is inconsistent in VE').describe('when insertion is detached', () => {
+    describe('when insertion is detached', () => {
       it('does not refresh CheckAlways transplants', () => {
         const fixture = getFixture(CheckAlwaysDeclaration);
         fixture.detectChanges();
@@ -570,7 +568,7 @@ describe('change detection for transplanted views', () => {
       changeDetection: ChangeDetectionStrategy.OnPush
     })
     class TripleTemplate {
-      @Input() template !: TemplateRef<{}>;
+      @Input() template!: TemplateRef<{}>;
     }
 
     @Component({
@@ -627,6 +625,124 @@ describe('change detection for transplanted views', () => {
     component.rootVref.detach();
     viewRef.detectChanges();
     expect(component.checks).toEqual(1);
+  });
+
+  describe('when detached', () => {
+    @Component({
+      selector: 'on-push-component',
+      template: `
+          <ng-container #vc></ng-container>
+        `,
+      changeDetection: ChangeDetectionStrategy.OnPush
+    })
+    class OnPushComponent {
+      @ViewChild('vc', {read: ViewContainerRef}) viewContainer!: ViewContainerRef;
+      @Input() template!: TemplateRef<{}>;
+
+      createTemplate() {
+        return this.viewContainer.createEmbeddedView(this.template);
+      }
+    }
+
+    @Component({
+      selector: 'check-always-component',
+      template: `
+          <ng-container #vc></ng-container>
+        `,
+    })
+    class CheckAlwaysComponent {
+      @ViewChild('vc', {read: ViewContainerRef}) viewContainer!: ViewContainerRef;
+      @Input() template!: TemplateRef<{}>;
+
+      createTemplate() {
+        return this.viewContainer.createEmbeddedView(this.template);
+      }
+    }
+    let fixture: ComponentFixture<App>;
+    let appComponent: App;
+    let onPushComponent: OnPushComponent;
+    let checkAlwaysComponent: CheckAlwaysComponent;
+
+    @Component({
+      template: `
+      <ng-template #transplantedTemplate>{{ incrementChecks() }}</ng-template>
+      <on-push-component [template]="transplantedTemplate"></on-push-component>
+      <check-always-component [template]="transplantedTemplate"></check-always-component>
+        `
+    })
+    class App {
+      @ViewChild(OnPushComponent) onPushComponent!: OnPushComponent;
+      @ViewChild(CheckAlwaysComponent) checkAlwaysComponent!: CheckAlwaysComponent;
+      transplantedViewRefreshCount = 0;
+      incrementChecks() {
+        this.transplantedViewRefreshCount++;
+      }
+    }
+    beforeEach(() => {
+      TestBed.configureTestingModule({declarations: [App, OnPushComponent, CheckAlwaysComponent]});
+      fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      appComponent = fixture.componentInstance;
+      onPushComponent = appComponent.onPushComponent;
+      checkAlwaysComponent = appComponent.checkAlwaysComponent;
+    });
+    describe('inside OnPush components', () => {
+      it('should detect changes when attached', () => {
+        onPushComponent.createTemplate();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(1);
+      });
+
+      it('should not detect changes', () => {
+        const viewRef = onPushComponent.createTemplate();
+        viewRef.detach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(0);
+        viewRef.reattach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(1);
+      });
+
+      it('should not detect changes on mixed detached/attached refs', () => {
+        onPushComponent.createTemplate();
+        const viewRef = onPushComponent.createTemplate();
+        viewRef.detach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(1);
+        viewRef.reattach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(3);
+      });
+    });
+
+    describe('inside CheckAlways component', () => {
+      it('should detect changes when attached', () => {
+        checkAlwaysComponent.createTemplate();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(1);
+      });
+
+      it('should not detect changes', () => {
+        const viewRef = checkAlwaysComponent.createTemplate();
+        viewRef.detach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(0);
+        viewRef.reattach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(1);
+      });
+
+      it('should not detect changes on mixed detached/attached refs', () => {
+        checkAlwaysComponent.createTemplate();
+        const viewRef = checkAlwaysComponent.createTemplate();
+        viewRef.detach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(1);
+        viewRef.reattach();
+        fixture.detectChanges(false);
+        expect(appComponent.transplantedViewRefreshCount).toEqual(3);
+      });
+    });
   });
 });
 

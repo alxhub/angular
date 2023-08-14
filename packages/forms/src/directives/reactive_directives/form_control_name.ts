@@ -6,15 +6,15 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, EventEmitter, forwardRef, Host, Inject, Input, OnChanges, OnDestroy, Optional, Output, Self, SimpleChanges, SkipSelf} from '@angular/core';
+import {Directive, EventEmitter, forwardRef, Host, Inject, Input, OnChanges, OnDestroy, Optional, Output, Provider, Self, SimpleChanges, SkipSelf} from '@angular/core';
 
-import {FormControl} from '../../model';
+import {FormControl} from '../../model/form_control';
 import {NG_ASYNC_VALIDATORS, NG_VALIDATORS} from '../../validators';
 import {AbstractFormGroupDirective} from '../abstract_form_group_directive';
 import {ControlContainer} from '../control_container';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '../control_value_accessor';
 import {NgControl} from '../ng_control';
-import {ReactiveErrors} from '../reactive_errors';
+import {controlParentException, disabledAttrWarning, ngModelGroupException} from '../reactive_errors';
 import {_ngModelWarning, controlPath, isPropertyUpdated, selectValueAccessor} from '../shared';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from '../validators';
 
@@ -22,7 +22,7 @@ import {NG_MODEL_WITH_FORM_CONTROL_WARNING} from './form_control_directive';
 import {FormGroupDirective} from './form_group_directive';
 import {FormArrayName, FormGroupName} from './form_group_name';
 
-export const controlNameBinding: any = {
+const controlNameBinding: Provider = {
   provide: NgControl,
   useExisting: forwardRef(() => FormControlName)
 };
@@ -33,8 +33,8 @@ export const controlNameBinding: any = {
  * element by name.
  *
  * @see [Reactive Forms Guide](guide/reactive-forms)
- * @see `FormControl`
- * @see `AbstractControl`
+ * @see {@link FormControl}
+ * @see {@link AbstractControl}
  *
  * @usageNotes
  *
@@ -75,7 +75,7 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
    * Tracks the `FormControl` instance bound to the directive.
    */
   // TODO(issue/24571): remove '!'.
-  readonly control!: FormControl;
+  override readonly control!: FormControl;
 
   /**
    * @description
@@ -86,8 +86,7 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
    * while the numerical form allows for form controls to be bound
    * to indices when iterating over controls in a `FormArray`.
    */
-  // TODO(issue/24571): remove '!'.
-  @Input('formControlName') name!: string|number|null;
+  @Input('formControlName') override name: string|number|null = null;
 
   /**
    * @description
@@ -96,7 +95,7 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
   @Input('disabled')
   set isDisabled(isDisabled: boolean) {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      ReactiveErrors.disabledAttrWarning();
+      console.warn(disabledAttrWarning);
     }
   }
 
@@ -166,7 +165,7 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
    *
    * @param newValue The new value for the view model.
    */
-  viewToModelUpdate(newValue: any): void {
+  override viewToModelUpdate(newValue: any): void {
     this.viewModel = newValue;
     this.update.emit(newValue);
   }
@@ -176,7 +175,7 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
    * Returns an array that represents the path from the top-level form to this control.
    * Each index is the string name of the control on that level.
    */
-  get path(): string[] {
+  override get path(): string[] {
     return controlPath(this.name == null ? this.name : this.name.toString(), this._parent!);
   }
 
@@ -192,12 +191,12 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
       if (!(this._parent instanceof FormGroupName) &&
           this._parent instanceof AbstractFormGroupDirective) {
-        ReactiveErrors.ngModelGroupException();
+        throw ngModelGroupException();
       } else if (
           !(this._parent instanceof FormGroupName) &&
           !(this._parent instanceof FormGroupDirective) &&
           !(this._parent instanceof FormArrayName)) {
-        ReactiveErrors.controlParentException();
+        throw controlParentException();
       }
     }
   }
@@ -205,9 +204,6 @@ export class FormControlName extends NgControl implements OnChanges, OnDestroy {
   private _setUpControl() {
     this._checkParentType();
     (this as {control: FormControl}).control = this.formDirective.addControl(this);
-    if (this.control.disabled && this.valueAccessor!.setDisabledState) {
-      this.valueAccessor!.setDisabledState!(true);
-    }
     this._added = true;
   }
 }

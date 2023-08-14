@@ -1,5 +1,6 @@
-const node = require('rollup-plugin-node-resolve');
-const commonjs = require('rollup-plugin-commonjs');
+const node = require('@rollup/plugin-node-resolve').default;
+const commonjs = require('@rollup/plugin-commonjs');
+const MagicString = require('magic-string');
 
 // Parse the stamp file produced by Bazel from the version control system
 let version = '<unknown>';
@@ -7,12 +8,35 @@ if (bazel_version_file) {
   const versionTag = require('fs')
                          .readFileSync(bazel_version_file, {encoding: 'utf-8'})
                          .split('\n')
-                         .find(s => s.startsWith('BUILD_SCM_VERSION'));
-  // Don't assume BUILD_SCM_VERSION exists
+                         .find((s) => s.startsWith('STABLE_PROJECT_VERSION'));
+  // Don't assume STABLE_PROJECT_VERSION exists
   if (versionTag) {
     version = versionTag.split(' ')[1].trim();
   }
 }
+
+/** Removed license banners from input files. */
+const stripBannerPlugin = {
+  name: 'strip-license-banner',
+  transform(code, _filePath) {
+    const banner = /(\/\**\s+\*\s@license.*?\*\/)/s.exec(code);
+    if (!banner) {
+      return;
+    }
+
+    const [bannerContent] = banner;
+    const magicString = new MagicString(code);
+    const pos = code.indexOf(bannerContent);
+    magicString.remove(pos, pos + bannerContent.length).trimStart();
+
+    return {
+      code: magicString.toString(),
+      map: magicString.generateMap({
+        hires: true,
+      }),
+    };
+  },
+};
 
 // Add 'use strict' to the bundle, https://github.com/angular/angular/pull/40456
 // When rollup build esm bundle of zone.js, there will be no 'use strict'
@@ -25,7 +49,7 @@ if (bazel_version_file) {
 const banner = `'use strict';
 /**
  * @license Angular v${version}
- * (c) 2010-2021 Google LLC. https://angular.io/
+ * (c) 2010-2022 Google LLC. https://angular.io/
  * License: MIT
  */`;
 
@@ -35,12 +59,14 @@ module.exports = {
       mainFields: ['es2015', 'module', 'jsnext:main', 'main'],
     }),
     commonjs(),
+    stripBannerPlugin,
   ],
-  external: id => {
-    if (/build-esm/.test(id)) {
+  external: (id) => {
+    if (/zone\.js[\\/]lib/.test(id)) {
       return false;
     }
-    return /rxjs/.test(id) || /electron/.test(id);
+
+    return /rxjs|electron/.test(id);
   },
   output: {
     globals: {
@@ -51,8 +77,8 @@ module.exports = {
       'rxjs/Scheduler': 'Rx.Scheduler',
       'rxjs/scheduler/asap': 'Rx.Scheduler',
       'rxjs/scheduler/async': 'Rx.Scheduler',
-      'rxjs/symbol/rxSubscriber': 'Rx.Symbol'
+      'rxjs/symbol/rxSubscriber': 'Rx.Symbol',
     },
-    banner
+    banner,
   },
-}
+};

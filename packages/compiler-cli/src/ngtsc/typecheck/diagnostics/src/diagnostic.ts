@@ -7,25 +7,10 @@
  */
 
 import {ParseSourceSpan} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {ExternalTemplateSourceMapping, TemplateId, TemplateSourceMapping} from '../../api';
-
-/**
- * A `ts.Diagnostic` with additional information about the diagnostic related to template
- * type-checking.
- */
-export interface TemplateDiagnostic extends ts.Diagnostic {
-  /**
-   * The component with the template that resulted in this diagnostic.
-   */
-  componentFile: ts.SourceFile;
-
-  /**
-   * The template id of the component that resulted in this diagnostic.
-   */
-  templateId: TemplateId;
-}
+import {addDiagnosticChain, makeDiagnosticChain} from '../../../diagnostics';
+import {ExternalTemplateSourceMapping, IndirectTemplateSourceMapping, TemplateDiagnostic, TemplateId, TemplateSourceMapping} from '../../api';
 
 /**
  * Constructs a `ts.Diagnostic` for a given `ParseSourceSpan` within a template.
@@ -33,21 +18,26 @@ export interface TemplateDiagnostic extends ts.Diagnostic {
 export function makeTemplateDiagnostic(
     templateId: TemplateId, mapping: TemplateSourceMapping, span: ParseSourceSpan,
     category: ts.DiagnosticCategory, code: number, messageText: string|ts.DiagnosticMessageChain,
-    relatedMessage?: {
+    relatedMessages?: {
       text: string,
-      span: ParseSourceSpan,
-    }): TemplateDiagnostic {
+      start: number,
+      end: number,
+      sourceFile: ts.SourceFile,
+    }[]): TemplateDiagnostic {
   if (mapping.type === 'direct') {
     let relatedInformation: ts.DiagnosticRelatedInformation[]|undefined = undefined;
-    if (relatedMessage !== undefined) {
-      relatedInformation = [{
-        category: ts.DiagnosticCategory.Message,
-        code: 0,
-        file: mapping.node.getSourceFile(),
-        start: relatedMessage.span.start.offset,
-        length: relatedMessage.span.end.offset - relatedMessage.span.start.offset,
-        messageText: relatedMessage.text,
-      }];
+    if (relatedMessages !== undefined) {
+      relatedInformation = [];
+      for (const relatedMessage of relatedMessages) {
+        relatedInformation.push({
+          category: ts.DiagnosticCategory.Message,
+          code: 0,
+          file: relatedMessage.sourceFile,
+          start: relatedMessage.start,
+          length: relatedMessage.end - relatedMessage.start,
+          messageText: relatedMessage.text,
+        });
+      }
     }
     // For direct mappings, the error is shown inline as ngtsc was able to pinpoint a string
     // constant within the `@Component` decorator for the template. This allows us to map the error
@@ -71,26 +61,48 @@ export function makeTemplateDiagnostic(
     // For external temoplates, the HTML filename is used.
     const componentSf = mapping.componentClass.getSourceFile();
     const componentName = mapping.componentClass.name.text;
-    // TODO(alxhub): remove cast when TS in g3 supports this narrowing.
     const fileName = mapping.type === 'indirect' ?
         `${componentSf.fileName} (${componentName} template)` :
-        (mapping as ExternalTemplateSourceMapping).templateUrl;
-    // TODO(alxhub): investigate creating a fake `ts.SourceFile` here instead of invoking the TS
-    // parser against the template (HTML is just really syntactically invalid TypeScript code ;).
-    // Also investigate caching the file to avoid running the parser multiple times.
-    const sf = ts.createSourceFile(
-        fileName, mapping.template, ts.ScriptTarget.Latest, false, ts.ScriptKind.JSX);
+        mapping.templateUrl;
 
     let relatedInformation: ts.DiagnosticRelatedInformation[] = [];
-    if (relatedMessage !== undefined) {
-      relatedInformation.push({
-        category: ts.DiagnosticCategory.Message,
-        code: 0,
-        file: sf,
-        start: relatedMessage.span.start.offset,
-        length: relatedMessage.span.end.offset - relatedMessage.span.start.offset,
-        messageText: relatedMessage.text,
-      });
+    if (relatedMessages !== undefined) {
+      for (const relatedMessage of relatedMessages) {
+        relatedInformation.push({
+          category: ts.DiagnosticCategory.Message,
+          code: 0,
+          file: relatedMessage.sourceFile,
+          start: relatedMessage.start,
+          length: relatedMessage.end - relatedMessage.start,
+          messageText: relatedMessage.text,
+        });
+      }
+    }
+
+    let sf: ts.SourceFile;
+    try {
+      sf = getParsedTemplateSourceFile(fileName, mapping);
+    } catch (e) {
+      const failureChain = makeDiagnosticChain(
+          `Failed to report an error in '${fileName}' at ${span.start.line + 1}:${
+              span.start.col + 1}`,
+          [
+            makeDiagnosticChain((e as Error)?.stack ?? `${e}`),
+          ]);
+      return {
+        source: 'ngtsc',
+        category,
+        code,
+        messageText: addDiagnosticChain(messageText, [failureChain]),
+        file: componentSf,
+        componentFile: componentSf,
+        templateId,
+        // mapping.node represents either the 'template' or 'templateUrl' expression. getStart()
+        // and getEnd() are used because they don't include surrounding whitespace.
+        start: mapping.node.getStart(),
+        length: mapping.node.getEnd() - mapping.node.getStart(),
+        relatedInformation,
+      };
     }
 
     relatedInformation.push({
@@ -120,6 +132,43 @@ export function makeTemplateDiagnostic(
   } else {
     throw new Error(`Unexpected source mapping type: ${(mapping as {type: string}).type}`);
   }
+}
+
+const TemplateSourceFile = Symbol('TemplateSourceFile');
+
+type TemplateSourceMappingWithSourceFile =
+    (ExternalTemplateSourceMapping|IndirectTemplateSourceMapping)&{
+  [TemplateSourceFile]?: ts.SourceFile;
+};
+
+function getParsedTemplateSourceFile(
+    fileName: string, mapping: TemplateSourceMappingWithSourceFile): ts.SourceFile {
+  if (mapping[TemplateSourceFile] === undefined) {
+    mapping[TemplateSourceFile] = parseTemplateAsSourceFile(fileName, mapping.template);
+  }
+
+  return mapping[TemplateSourceFile];
+}
+
+let parseTemplateAsSourceFileForTest: typeof parseTemplateAsSourceFile|null = null;
+
+export function setParseTemplateAsSourceFileForTest(fn: typeof parseTemplateAsSourceFile): void {
+  parseTemplateAsSourceFileForTest = fn;
+}
+
+export function resetParseTemplateAsSourceFileForTest(): void {
+  parseTemplateAsSourceFileForTest = null;
+}
+
+function parseTemplateAsSourceFile(fileName: string, template: string): ts.SourceFile {
+  if (parseTemplateAsSourceFileForTest !== null) {
+    return parseTemplateAsSourceFileForTest(fileName, template);
+  }
+
+  // TODO(alxhub): investigate creating a fake `ts.SourceFile` here instead of invoking the TS
+  // parser against the template (HTML is just really syntactically invalid TypeScript code ;).
+  return ts.createSourceFile(
+      fileName, template, ts.ScriptTarget.Latest, /* setParentNodes */ false, ts.ScriptKind.JSX);
 }
 
 export function isTemplateDiagnostic(diagnostic: ts.Diagnostic): diagnostic is TemplateDiagnostic {

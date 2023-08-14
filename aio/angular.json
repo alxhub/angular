@@ -6,21 +6,29 @@
     "warnings": {
       "typescriptMismatch": false
     },
-    "analytics": false
+    "analytics": false,
+    "cache": {
+      // Disable build caching as the cache folder will just be dropped
+      // when run under Bazel sandboxed execution.
+      "enabled": false
+    }
   },
   "newProjectRoot": "projects",
   "projects": {
     "site": {
-      "root": "",
-      "sourceRoot": "src",
       "projectType": "application",
-      "prefix": "aio",
       "schematics": {
+        "@schematics/angular:application": {
+          "strict": true
+        },
         "@schematics/angular:component": {
           "inlineStyle": true,
           "style": "scss"
         }
       },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "aio",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
@@ -28,49 +36,96 @@
             "outputPath": "dist",
             "index": "src/index.html",
             "main": "src/main.ts",
-            "polyfills": "src/polyfills.ts",
+            "polyfills": ["zone.js"],
+            "ngswConfigPath": "src/generated/ngsw-config.json",
             "tsConfig": "tsconfig.app.json",
             "webWorkerTsConfig": "tsconfig.worker.json",
-            "aot": true,
-            "optimization": true,
-            "buildOptimizer": true,
+            "optimization": {
+              "fonts": {
+                "inline": false
+              },
+              "scripts": true,
+              "styles": {
+                "inlineCritical": false,
+                "minify": true
+              }
+            },
             "outputHashing": "all",
             "sourceMap": true,
-            "statsJson": true,
-            "extractLicenses": true,
             "namedChunks": true,
-            "vendorChunk": false,
             "assets": [
-              "src/assets",
-              "src/generated",
-              "src/pwa-manifest.json",
-              "src/google385281288605d160.html",
+              // Architect on Windows has difficulty service assets files within a
+              // Bazel runfiles symlink forest. Using "followSymlinks" seems to
+              // fix this. Note that the assets below don't need this workaround as
+              // symlinked tree artifacts pointing to the output tree don't appear
+              // to have the same issue.
               {
-                "glob": "custom-elements.min.js",
-                "input": "node_modules/@webcomponents/custom-elements",
-                "output": "/assets/js"
+                "followSymlinks": true,
+                "input": "src/assets",
+                "glob": "**/*",
+                "output": "/assets/"
               },
               {
-                "glob": "native-shim.js",
-                "input": "node_modules/@webcomponents/custom-elements/src",
-                "output": "/assets/js"
+                "followSymlinks": true,
+                "input": "src/",
+                "glob": "**/pwa-manifest.json",
+                "output": "/"
+              },
+              {
+                "followSymlinks": true,
+                "input": "src/",
+                "glob": "**/google385281288605d160.html",
+                "output": "/"
+              },
+              {
+                "input": "stackblitz/generated",
+                "output": "generated",
+                "glob": "**"
+              },
+              {
+                "input": "example-zips/generated",
+                "output": "generated",
+                "glob": "**"
+              },
+              {
+                "input": "dgeni/generated",
+                "output": "generated",
+                "glob": "**"
+              },
+              {
+                "input": "dgeni-fast/generated",
+                "output": "generated",
+                "glob": "**"
               }
             ],
             "styles": [
-              "src/styles/main.scss"
+              "src/styles/main.scss",
+              {
+                "inject": false,
+                "input": "src/styles/custom-themes/dark-theme.scss",
+                "bundleName": "dark-theme"
+              },
+              {
+                "inject": false,
+                "input": "src/styles/custom-themes/light-theme.scss",
+                "bundleName": "light-theme"
+              }
             ],
             "scripts": [],
             "budgets": [
               {
+                "type": "initial",
+                "maximumWarning": "850kb",
+                "maximumError": "1mb"
+              },
+              {
                 "type": "anyComponentStyle",
-                "maximumWarning": "6kb"
+                "maximumWarning": "2kb",
+                "maximumError": "4kb"
               }
             ]
           },
           "configurations": {
-            "fast": {
-              "optimization": false
-            },
             "next": {
               "fileReplacements": [
                 {
@@ -109,18 +164,27 @@
             },
             "ci": {
               "progress": false
+            },
+            "development": {
+              "buildOptimizer": false,
+              "optimization": false,
+              "outputHashing": "none",
+              "vendorChunk": true,
+              "extractLicenses": false
             }
-          }
+          },
+          "defaultConfiguration": "stable"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "site:build"
+            "headers": {
+              // Keep in sync with the `firebase.json` file.
+              // Note: Unlike in `firebase.json` we omit the `report-uri` for development.
+              "Content-Security-Policy": "require-trusted-types-for 'script'; trusted-types angular angular#bundler angular#unsafe-bypass aio#analytics google#safe goog#html"
+            }
           },
           "configurations": {
-            "fast": {
-              "browserTarget": "site:build:fast"
-            },
             "next": {
               "browserTarget": "site:build:next"
             },
@@ -135,8 +199,12 @@
             },
             "ci": {
               "browserTarget": "site:build:ci"
+            },
+            "development": {
+              "browserTarget": "site:build:development"
             }
-          }
+          },
+          "defaultConfiguration": "development"
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
@@ -148,43 +216,34 @@
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
             "main": "src/test.ts",
-            "polyfills": "src/polyfills.ts",
+            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
             "webWorkerTsConfig": "tsconfig.worker.json",
             "karmaConfig": "karma.conf.js",
-            "assets": [
-              "src/assets",
-              "src/generated",
-              "src/pwa-manifest.json",
-              "src/google385281288605d160.html",
+            "assets": ["src/assets", "src/pwa-manifest.json", "src/google385281288605d160.html"],
+            "styles": [
+              "src/styles/main.scss",
               {
-                "glob": "custom-elements.min.js",
-                "input": "node_modules/@webcomponents/custom-elements",
-                "output": "/assets/js"
+                "inject": false,
+                "input": "src/styles/custom-themes/dark-theme.scss",
+                "bundleName": "dark-theme"
               },
               {
-                "glob": "native-shim.js",
-                "input": "node_modules/@webcomponents/custom-elements/src",
-                "output": "/assets/js"
+                "inject": false,
+                "input": "src/styles/custom-themes/light-theme.scss",
+                "bundleName": "light-theme"
               }
-            ],
-            "styles": [
-              "src/styles/main.scss"
             ],
             "scripts": []
           }
         },
         "lint": {
-          "builder": "@angular-devkit/build-angular:tslint",
+          "builder": "@angular-eslint/builder:lint",
           "options": {
-            "tsConfig": [
-              "tsconfig.app.json",
-              "tsconfig.spec.json",
-              "tsconfig.worker.json",
-              "tests/e2e/tsconfig.json"
-            ],
-            "exclude": [
-              "**/node_modules/**"
+            "lintFilePatterns": [
+              "src/!(generated)/**/*.ts",
+              "src/!(generated)/**/*.html",
+              "tests/**/*.ts"
             ]
           }
         },
@@ -202,6 +261,5 @@
         }
       }
     }
-  },
-  "defaultProject": "site"
+  }
 }

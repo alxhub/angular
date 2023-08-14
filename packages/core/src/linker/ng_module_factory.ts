@@ -7,6 +7,7 @@
  */
 
 import {Injector} from '../di/injector';
+import {EnvironmentInjector} from '../di/r3_injector';
 import {Type} from '../interface/type';
 
 import {ComponentFactoryResolver} from './component_factory_resolver';
@@ -22,11 +23,17 @@ export abstract class NgModuleRef<T> {
   /**
    * The injector that contains all of the providers of the `NgModule`.
    */
-  abstract get injector(): Injector;
+  abstract get injector(): EnvironmentInjector;
 
   /**
-   * The resolver that can retrieve the component factories
-   * declared in the `entryComponents` property of the module.
+   * The resolver that can retrieve component factories in a context of this module.
+   *
+   * Note: since v13, dynamic component creation via
+   * [`ViewContainerRef.createComponent`](api/core/ViewContainerRef#createComponent)
+   * does **not** require resolving component factory: component class can be used directly.
+   *
+   * @deprecated Angular no longer requires Component factories. Please use other APIs where
+   *     Component class can be used directly.
    */
   abstract get componentFactoryResolver(): ComponentFactoryResolver;
 
@@ -54,6 +61,14 @@ export interface InternalNgModuleRef<T> extends NgModuleRef<T> {
 
 /**
  * @publicApi
+ *
+ * @deprecated
+ * This class was mostly used as a part of ViewEngine-based JIT API and is no longer needed in Ivy
+ * JIT mode. See [JIT API changes due to ViewEngine deprecation](guide/deprecations#jit-api-changes)
+ * for additional context. Angular provides APIs that accept NgModule classes directly (such as
+ * [PlatformRef.bootstrapModule](api/core/PlatformRef#bootstrapModule) and
+ * [createNgModule](api/core/createNgModule)), consider switching to those APIs instead of
+ * using factory-based ones.
  */
 export abstract class NgModuleFactory<T> {
   abstract get moduleType(): Type<T>;

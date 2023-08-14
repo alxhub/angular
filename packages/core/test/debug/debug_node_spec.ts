@@ -8,13 +8,11 @@
 
 
 import {CommonModule, NgIfContext, ɵgetDOM as getDOM} from '@angular/common';
-import {Component, DebugElement, DebugNode, Directive, ElementRef, EmbeddedViewRef, EventEmitter, HostBinding, Injectable, Input, NO_ERRORS_SCHEMA, OnInit, Output, Renderer2, TemplateRef, ViewChild, ViewContainerRef} from '@angular/core';
-import {NgZone} from '@angular/core/src/zone';
+import {Component, DebugElement, DebugNode, Directive, ElementRef, EmbeddedViewRef, EventEmitter, HostBinding, Injectable, Input, NgZone, NO_ERRORS_SCHEMA, OnInit, Output, Renderer2, TemplateRef, ViewChild, ViewContainerRef} from '@angular/core';
 import {ComponentFixture, TestBed, waitForAsync} from '@angular/core/testing';
 import {By} from '@angular/platform-browser/src/dom/debug/by';
 import {createMouseEvent, hasClass} from '@angular/platform-browser/testing/src/browser_util';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {ivyEnabled, onlyInIvy} from '@angular/private/testing';
 
 @Injectable()
 class Logger {
@@ -175,13 +173,10 @@ class LocalsComp {
   },
 })
 class BankAccount {
-  // TODO(issue/24571): remove '!'.
-  @Input() bank!: string;
-  // TODO(issue/24571): remove '!'.
-  @Input('account') id!: string;
+  @Input() bank: string|undefined;
+  @Input('account') id: string|undefined;
 
-  // TODO(issue/24571): remove '!'.
-  normalizedBankName!: string;
+  normalizedBankName: string|undefined;
 }
 
 @Component({
@@ -208,6 +203,7 @@ class TestApp {
   width = 200;
   color = 'red';
   isClosed = true;
+  constructor(public renderer: Renderer2) {}
 }
 
 @Component({selector: 'test-cmpt', template: ``})
@@ -618,6 +614,22 @@ class TestCmptWithPropInterpolation {
       expect(fixture.debugElement.query(By.css('.myclass'))).toBeTruthy();
     });
 
+    it('should not throw when calling DebugRenderer2.destroyNode twice in a row', () => {
+      const fixture = TestBed.createComponent(TestApp);
+      fixture.detectChanges();
+      const firstChild = fixture.debugElement.children[0];
+      const renderer = fixture.componentInstance.renderer;
+
+      expect(firstChild).toBeTruthy();
+      expect(() => {
+        // `destroyNode` needs to be null checked, because only ViewEngine provides a
+        // `DebugRenderer2` which has the behavior we're testing for. Ivy provides
+        // `BaseAnimationRenderer` which doesn't have the issue.
+        renderer.destroyNode?.(firstChild);
+        renderer.destroyNode?.(firstChild);
+      }).not.toThrow();
+    });
+
     describe('DebugElement.query with dynamically created descendant elements', () => {
       let fixture: ComponentFixture<{}>;
       beforeEach(() => {
@@ -728,12 +740,11 @@ class TestCmptWithPropInterpolation {
         expect(() => el.query(e => e.injector === null)).not.toThrow();
       });
 
-      onlyInIvy('VE does not match elements created outside Angular context')
-          .it('when using the out-of-context element as the DebugElement query root', () => {
-            const debugElOutsideAngularContext = el.query(By.css('ul'));
-            expect(debugElOutsideAngularContext.queryAll(By.css('li')).length).toBe(1);
-            expect(debugElOutsideAngularContext.query(By.css('li'))).toBeDefined();
-          });
+      it('when using the out-of-context element as the DebugElement query root', () => {
+        const debugElOutsideAngularContext = el.query(By.css('ul'));
+        expect(debugElOutsideAngularContext.queryAll(By.css('li')).length).toBe(1);
+        expect(debugElOutsideAngularContext.query(By.css('li'))).toBeDefined();
+      });
     });
 
     it('DebugElement.queryAll should pick up both elements inserted via the view and through Renderer2',
@@ -778,7 +789,7 @@ class TestCmptWithPropInterpolation {
       fixture = TestBed.createComponent(LocalsComp);
       fixture.detectChanges();
 
-      expect(fixture.debugElement.children[0].references!['alice']).toBeAnInstanceOf(MyDir);
+      expect(fixture.debugElement.children[0].references['alice']).toBeInstanceOf(MyDir);
     });
 
     it('should allow injecting from the element injector', () => {
@@ -895,18 +906,17 @@ class TestCmptWithPropInterpolation {
         expect(Object.keys(button.properties).filter(key => key.startsWith('on'))).toEqual([]);
       });
 
-      onlyInIvy('Show difference in behavior')
-          .it('should pickup all of the element properties', () => {
-            TestBed.overrideTemplate(
-                TestCmptWithPropInterpolation, `<button title="myTitle"></button>`);
-            const fixture = TestBed.createComponent(TestCmptWithPropInterpolation);
-            fixture.detectChanges();
+      it('should pickup all of the element properties', () => {
+        TestBed.overrideTemplate(
+            TestCmptWithPropInterpolation, `<button title="myTitle"></button>`);
+        const fixture = TestBed.createComponent(TestCmptWithPropInterpolation);
+        fixture.detectChanges();
 
-            const host = fixture.debugElement;
-            const button = fixture.debugElement.query(By.css('button'));
+        const host = fixture.debugElement;
+        const button = fixture.debugElement.query(By.css('button'));
 
-            expect(button.properties.title).toEqual('myTitle');
-          });
+        expect(button.properties.title).toEqual('myTitle');
+      });
     });
 
     it('should trigger events registered via Renderer2', () => {
@@ -938,7 +948,7 @@ class TestCmptWithPropInterpolation {
       // Ivy depends on `eventListeners` to pick up events that haven't been registered through
       // Angular templates. At the time of writing Zone.js doesn't add `eventListeners` in Node
       // environments so we have to skip the test.
-      if (!ivyEnabled || typeof fixture.debugElement.nativeElement.eventListeners === 'function') {
+      if (typeof fixture.debugElement.nativeElement.eventListeners === 'function') {
         const event = {value: true};
         fixture.detectChanges();
         fixture.debugElement.triggerEventHandler('click', event);
@@ -965,11 +975,11 @@ class TestCmptWithPropInterpolation {
       const button = fixture.debugElement.query(By.css('button'));
 
       expect(() => {
-        button.triggerEventHandler('click', null);
+        button.triggerEventHandler('click');
         fixture.detectChanges();
       }).not.toThrow();
 
-      expect(value).toBeNull();
+      expect(value).toBeUndefined();
     });
 
     describe('componentInstance on DebugNode', () => {
@@ -978,7 +988,7 @@ class TestCmptWithPropInterpolation {
         fixture = TestBed.createComponent(TestCmpt);
 
         const debugEl = fixture.debugElement.children[0];
-        expect(debugEl.componentInstance).toBeAnInstanceOf(ParentComp);
+        expect(debugEl.componentInstance).toBeInstanceOf(ParentComp);
       });
 
       it('should return component associated with a node if a node is a component host (content projection)',
@@ -988,7 +998,7 @@ class TestCmptWithPropInterpolation {
            fixture = TestBed.createComponent(TestCmpt);
 
            const debugEl = fixture.debugElement.query(By.directive(ChildComp));
-           expect(debugEl.componentInstance).toBeAnInstanceOf(ChildComp);
+           expect(debugEl.componentInstance).toBeInstanceOf(ChildComp);
          });
 
       it('should return host component instance if a node has no associated component and there is no component projecting this node',
@@ -997,7 +1007,7 @@ class TestCmptWithPropInterpolation {
            fixture = TestBed.createComponent(TestCmpt);
 
            const debugEl = fixture.debugElement.children[0];
-           expect(debugEl.componentInstance).toBeAnInstanceOf(TestCmpt);
+           expect(debugEl.componentInstance).toBeInstanceOf(TestCmpt);
          });
 
       it('should return host component instance if a node has no associated component and there is no component projecting this node (nested embedded views)',
@@ -1012,7 +1022,7 @@ class TestCmptWithPropInterpolation {
            fixture.detectChanges();
 
            const debugEl = fixture.debugElement.query(By.directive(MyDir));
-           expect(debugEl.componentInstance).toBeAnInstanceOf(TestCmpt);
+           expect(debugEl.componentInstance).toBeInstanceOf(TestCmpt);
          });
 
       it('should return component instance that projects a given node if a node has no associated component',
@@ -1022,7 +1032,7 @@ class TestCmptWithPropInterpolation {
            fixture = TestBed.createComponent(TestCmpt);
 
            const debugEl = fixture.debugElement.children[0].children[0].children[0];  // <div>
-           expect(debugEl.componentInstance).toBeAnInstanceOf(ParentComp);
+           expect(debugEl.componentInstance).toBeInstanceOf(ParentComp);
          });
     });
 
@@ -1107,7 +1117,7 @@ class TestCmptWithPropInterpolation {
     it('should be an instance of DebugNode', () => {
       fixture = TestBed.createComponent(ParentComp);
       fixture.detectChanges();
-      expect(fixture.debugElement).toBeAnInstanceOf(DebugNode);
+      expect(fixture.debugElement).toBeInstanceOf(DebugNode);
     });
 
     it('should return the same element when queried twice', () => {

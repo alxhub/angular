@@ -6,6 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {ExtendedTemplateDiagnosticName} from '../../../../ngtsc/diagnostics';
+
 /**
  * Options supported by the legacy View Engine compiler, which are still consumed by the Angular Ivy
  * compiler for backwards compatibility.
@@ -15,7 +17,10 @@
  * @publicApi
  */
 export interface LegacyNgcOptions {
-  /** generate all possible generated files  */
+  /**
+   * generate all possible generated files
+   *  @deprecated This option is not used anymore.
+   */
   allowEmptyCodegenFiles?: boolean;
 
   /**
@@ -27,6 +32,10 @@ export interface LegacyNgcOptions {
    * For maximum type-checking, set this to `true`, and set `strictTemplates` to `true`.
    *
    * It is an error for this flag to be `false`, while `strictTemplates` is set to `true`.
+   *
+   * @deprecated The `fullTemplateTypeCheck` option has been superseded by the more granular
+   * `strictTemplates` family of compiler options. Usage of `fullTemplateTypeCheck` is therefore
+   * deprecated, `strictTemplates` and its related options should be used instead.
    */
   fullTemplateTypeCheck?: boolean;
 
@@ -39,7 +48,7 @@ export interface LegacyNgcOptions {
    * option only one .metadata.json file is produced that contains all the metadata
    * necessary for symbols exported from the library index.
    * In the generated .ngfactory.ts files flat module index is used to import symbols
-   * including both the public API from the library index as well as shrowded internal
+   * including both the public API from the library index as well as shrouded internal
    * symbols.
    * By default the .ts file supplied in the `files` field is assumed to be the
    * library index. If more than one is specified, uses `libraryIndex` to select the
@@ -80,45 +89,6 @@ export interface LegacyNgcOptions {
 }
 
 /**
- * Options which were added to the Angular Ivy compiler to support backwards compatibility with
- * existing View Engine applications.
- *
- * These are expected to be removed at some point in the future.
- *
- * @publicApi
- */
-export interface NgcCompatibilityOptions {
-  /**
-   * Controls whether ngtsc will emit `.ngfactory.js` shims for each compiled `.ts` file.
-   *
-   * These shims support legacy imports from `ngfactory` files, by exporting a factory shim
-   * for each component or NgModule in the original `.ts` file.
-   */
-  generateNgFactoryShims?: boolean;
-
-  /**
-   * Controls whether ngtsc will emit `.ngsummary.js` shims for each compiled `.ts` file.
-   *
-   * These shims support legacy imports from `ngsummary` files, by exporting an empty object
-   * for each NgModule in the original `.ts` file. The only purpose of summaries is to feed them to
-   * `TestBed`, which is a no-op in Ivy.
-   */
-  generateNgSummaryShims?: boolean;
-
-  /**
-   * Tells the compiler to generate definitions using the Render3 style code generation.
-   * This option defaults to `true`.
-   *
-   * Acceptable values are as follows:
-   *
-   * `false` - run ngc normally
-   * `true` - run the ngtsc compiler instead of the normal ngc compiler
-   * `ngtsc` - alias for `true`
-   */
-  enableIvy?: boolean|'ngtsc';
-}
-
-/**
  * Options related to template type-checking and its strictness.
  *
  * @publicApi
@@ -127,7 +97,7 @@ export interface StrictTemplateOptions {
   /**
    * If `true`, implies all template strictness flags below (unless individually disabled).
    *
-   * This flag is a superset of `fullTemplateTypeCheck`.
+   * This flag is a superset of the deprecated `fullTemplateTypeCheck` option.
    *
    * Defaults to `false`, even if "fullTemplateTypeCheck" is `true`.
    */
@@ -255,6 +225,46 @@ export interface StrictTemplateOptions {
 }
 
 /**
+ * A label referring to a `ts.DiagnosticCategory` or `'suppress'`, meaning the associated diagnostic
+ * should not be displayed at all.
+ *
+ * @publicApi
+ */
+export enum DiagnosticCategoryLabel {
+  /** Treat the diagnostic as a warning, don't fail the compilation. */
+  Warning = 'warning',
+
+  /** Treat the diagnostic as a hard error, fail the compilation. */
+  Error = 'error',
+
+  /** Ignore the diagnostic altogether. */
+  Suppress = 'suppress',
+}
+
+/**
+ * Options which control how diagnostics are emitted from the compiler.
+ *
+ * @publicApi
+ */
+export interface DiagnosticOptions {
+  /** Options which control how diagnostics are emitted from the compiler. */
+  extendedDiagnostics?: {
+    /**
+     * The category to use for configurable diagnostics which are not overridden by `checks`. Uses
+     * `warning` by default.
+     */
+    defaultCategory?: DiagnosticCategoryLabel;
+
+    /**
+     * A map of each extended template diagnostic's name to its category. This can be expanded in
+     * the future with more information for each check or for additional diagnostics not part of the
+     * extended template diagnostics system.
+     */
+    checks?: {[Name in ExtendedTemplateDiagnosticName]?: DiagnosticCategoryLabel};
+  };
+}
+
+/**
  * Options which control behavior useful for "monorepo" build cases using Bazel (such as the
  * internal Google monorepo, g3).
  *
@@ -293,6 +303,17 @@ export interface BazelAndG3Options {
   generateDeepReexports?: boolean;
 
   /**
+   * The `.d.ts` file for NgModules contain type pointers to their declarations, imports, and
+   * exports. Without this flag, the generated type definition will include
+   * components/directives/pipes/NgModules that are declared or imported locally in the NgModule and
+   * not necessarily exported to consumers.
+   *
+   * With this flag set, the type definition generated in the `.d.ts` for an NgModule will be
+   * filtered to only list those types which are publicly exported by the NgModule.
+   */
+  onlyPublishPublicTypingsForNgModules?: boolean;
+
+  /**
    * Insert JSDoc type annotations needed by Closure Compiler
    */
   annotateForClosureCompiler?: boolean;
@@ -310,9 +331,24 @@ export interface I18nOptions {
   i18nInLocale?: string;
 
   /**
+   * Export format (xlf, xlf2 or xmb) when the xi18n operation is requested.
+   */
+  i18nOutFormat?: string;
+
+  /**
+   * Path to the extracted message file to emit when the xi18n operation is requested.
+   */
+  i18nOutFile?: string;
+
+
+  /**
+   * Locale of the application (used when xi18n is requested).
+   */
+  i18nOutLocale?: string;
+
+  /**
    * Render `$localize` messages with legacy format ids.
    *
-   * This is only active if we are building with `enableIvy: true`.
    * The default value for now is `true`.
    *
    * Use this option when use are using the `$localize` based localization messages but
@@ -341,6 +377,25 @@ export interface I18nOptions {
 }
 
 /**
+ * Options that specify compilation target.
+ *
+ * @publicApi
+ */
+export interface TargetOptions {
+  /**
+   * Specifies the compilation mode to use. The following modes are available:
+   * - 'full': generates fully AOT compiled code using Ivy instructions.
+   * - 'partial': generates code in a stable, but intermediate form suitable for publication to NPM.
+   * - 'experimental-local': generates code based on each individual source file without using its
+   * dependencies. This mode is suitable only for fast edit/refresh during development. It will be
+   * eventually replaced by the value `local` once the feature is ready to be public.
+   *
+   * The default value is 'full'.
+   */
+  compilationMode?: 'full'|'partial'|'experimental-local';
+}
+
+/**
  * Miscellaneous options that don't fall into any other category
  *
  * @publicApi
@@ -348,7 +403,7 @@ export interface I18nOptions {
 export interface MiscOptions {
   /**
    * Whether the compiler should avoid generating code for classes that haven't been exported.
-   * This is only active when building with `enableIvy: true`. Defaults to `true`.
+   * Defaults to `true`.
    */
   compileNonExportedClasses?: boolean;
 

@@ -6,7 +6,16 @@
     "name": "EMPTY_ARRAY"
   },
   {
-    "name": "INJECTOR"
+    "name": "ENVIRONMENT_INITIALIZER"
+  },
+  {
+    "name": "EnvironmentInjector"
+  },
+  {
+    "name": "INJECTOR2"
+  },
+  {
+    "name": "INJECTOR_DEF_TYPES"
   },
   {
     "name": "INJECTOR_SCOPE"
@@ -19,6 +28,12 @@
   },
   {
     "name": "NEW_LINE"
+  },
+  {
+    "name": "NG_COMP_DEF"
+  },
+  {
+    "name": "NG_ENV_ID"
   },
   {
     "name": "NG_FACTORY_DEF"
@@ -66,7 +81,19 @@
     "name": "_currentInjector"
   },
   {
+    "name": "_injectImplementation"
+  },
+  {
+    "name": "createInjector"
+  },
+  {
     "name": "deepForEach"
+  },
+  {
+    "name": "deepForEachProvider"
+  },
+  {
+    "name": "forEachSingleProvider"
   },
   {
     "name": "forwardRef"
@@ -90,10 +117,22 @@
     "name": "getOwnDefinition"
   },
   {
+    "name": "importProvidersFrom"
+  },
+  {
     "name": "injectArgs"
   },
   {
+    "name": "injectInjectorOnly"
+  },
+  {
     "name": "injectableDefOrInjectorDefFactory"
+  },
+  {
+    "name": "internalImportProvidersFrom"
+  },
+  {
+    "name": "isEnvironmentProviders"
   },
   {
     "name": "isTypeProvider"
@@ -105,13 +144,22 @@
     "name": "makeRecord"
   },
   {
+    "name": "processInjectorTypesWithProviders"
+  },
+  {
     "name": "resolveForwardRef"
   },
   {
     "name": "setCurrentInjector"
   },
   {
+    "name": "setInjectImplementation"
+  },
+  {
     "name": "stringify"
+  },
+  {
+    "name": "walkProviderTree"
   },
   {
     "name": "ɵɵdefineInjectable"

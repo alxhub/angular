@@ -1,4 +1,5 @@
-load("//tools:defaults.bzl", "ng_package", "ts_api_guardian_test_npm_package", "ts_library")
+load("//tools:defaults.bzl", "api_golden_test_npm_package", "ng_package", "ts_library")
+load("//packages/bazel:index.bzl", "types_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -17,16 +18,33 @@ ts_library(
     ],
 )
 
+types_bundle(
+    name = "api_type_definitions",
+    entry_point = "localize.d.ts",
+    output_name = "localize/index.d.ts",
+    deps = [":localize"],
+)
+
 ng_package(
     name = "npm_package",
+    package_name = "@angular/localize",
     srcs = [
         "package.json",
-        "//packages/localize/init:package.json",
+        ":api_type_definitions",
     ],
-    entry_point = ":index.ts",
     nested_packages = [
         "//packages/localize/schematics:npm_package",
-        "//packages/localize/src/tools:npm_package",
+        "//packages/localize/tools:npm_package",
+    ],
+    skip_type_bundling = [
+        # For the primary entry-point we disable automatic type bundling because API extractor
+        # does not properly handle module augmentation.
+        # To workaround this issue, type bundling is done as a separate step for all types
+        # except the main `index.d.ts` file which contains the module augmentation. The main
+        # file is reference in the package.json and also imports the bundle types. The bundled
+        # types are created via `api_type_definitions` above.
+        # TODO: Remove once https://github.com/microsoft/rushstack/issues/2090 is solved.
+        "",
     ],
     tags = [
         "release-with-framework",
@@ -37,12 +55,26 @@ ng_package(
     ],
 )
 
-ts_api_guardian_test_npm_package(
+api_golden_test_npm_package(
     name = "localize_api",
-    actualDir = "angular/packages/localize/npm_package",
     data = [
         ":npm_package",
         "//goldens:public-api",
     ],
-    goldenDir = "angular/goldens/public-api/localize",
+    golden_dir = "angular/goldens/public-api/localize",
+    npm_package = "angular/packages/localize/npm_package",
+    # The logic for the localize function is exported in the primary entry-point, but users
+    # are not supposed to import it from there. We still want to guard these exports though.
+    strip_export_pattern = "^ɵ(?!.localize|LocalizeFn|TranslateFn)",
+    # The tool entry-point uses namespace aliases and API extractor needs to be
+    # able to resolve `@babel/core` to fully understand the `types` re-export/alias.
+    types = ["@npm//@types/babel__core"],
+)
+
+filegroup(
+    name = "files_for_docgen",
+    srcs = glob([
+        "*.ts",
+        "src/**/*.ts",
+    ]) + ["PACKAGE.md"],
 )

@@ -5,10 +5,15 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+import {runfiles} from '@bazel/runfiles';
+
 import {AbsoluteFsPath, NodeJSFileSystem, PathSegment, ReadonlyFileSystem} from '../../../src/ngtsc/file_system';
 
-const fs = new NodeJSFileSystem();
-const basePath = fs.resolve(__dirname, '../test_cases');
+export const fs = new NodeJSFileSystem();
+
+/** Path to the test case sources. */
+const basePath = fs.resolve(
+    runfiles.resolveWorkspaceRelative('packages/compiler-cli/test/compliance/test_cases'));
 
 /**
  * Search the `test_cases` directory, in the real file-system, for all the compliance tests.
@@ -25,11 +30,10 @@ export function* getAllComplianceTests(): Generator<ComplianceTest> {
 /**
  * Extract all the compliance tests from the TEST_CASES.json file at the `testConfigPath`.
  *
- * @param testConfigPath The path, relative to the `test_cases` basePath, of the `TEST_CASES.json`
- *     config file.
+ * @param testConfigPath Absolute disk path of the `TEST_CASES.json` file that describes the tests.
+
  */
-export function* getComplianceTests(testConfigPath: string): Generator<ComplianceTest> {
-  const absTestConfigPath = fs.resolve(basePath, testConfigPath);
+export function* getComplianceTests(absTestConfigPath: AbsoluteFsPath): Generator<ComplianceTest> {
   const realTestPath = fs.dirname(absTestConfigPath);
   const testConfigJSON = loadTestCasesFile(fs, absTestConfigPath, basePath).cases;
   const testConfig = Array.isArray(testConfigJSON) ? testConfigJSON : [testConfigJSON];
@@ -48,6 +52,8 @@ export function* getComplianceTests(testConfigPath: string): Generator<Complianc
       expectations: parseExpectations(test.expectations, realTestPath, inputFiles),
       compilerOptions: getConfigOptions(test, 'compilerOptions', realTestPath),
       angularCompilerOptions: getConfigOptions(test, 'angularCompilerOptions', realTestPath),
+      onlyForTemplatePipeline: test.onlyForTemplatePipeline,
+      skipForTemplatePipeline: test.skipForTemplatePipeline,
       focusTest: test.focusTest,
       excludeTest: test.excludeTest,
     };
@@ -59,8 +65,8 @@ function loadTestCasesFile(
   try {
     return JSON.parse(fs.readFile(testCasesPath)) as {cases: TestCaseJson | TestCaseJson[]};
   } catch (e) {
-    throw new Error(
-        `Failed to load test-cases at "${fs.relative(basePath, testCasesPath)}":\n ${e.message}`);
+    throw new Error(`Failed to load test-cases at "${fs.relative(basePath, testCasesPath)}":\n ${
+        (e as Error).message}`);
   }
 }
 
@@ -89,20 +95,6 @@ function getStringOrFail(container: any, property: string, testPath: AbsoluteFsP
   const value = container[property];
   if (typeof value !== 'string') {
     throw new Error(`Test is missing "${property}" property in TEST_CASES.json: ` + testPath);
-  }
-  return value;
-}
-
-function getBooleanOrDefault(
-    container: any, property: string, testPath: AbsoluteFsPath, defaultValue: boolean): boolean {
-  const value = container[property];
-  if (typeof value === 'undefined') {
-    return defaultValue;
-  }
-  if (typeof value !== 'boolean') {
-    throw new Error(
-        `Test has invalid "${property}" property in TEST_CASES.json - expected boolean: ` +
-        testPath);
   }
   return value;
 }
@@ -253,13 +245,17 @@ export interface ComplianceTest {
   compilationModeFilter: CompilationMode[];
   /** A list of expectations to check for this test case. */
   expectations: Expectation[];
+  /** If set to `true` this test is skipped when testing with use_template_pipeline */
+  skipForTemplatePipeline?: boolean;
+  /** If set to `true`, this test will only execute when the template pipeline is used. */
+  onlyForTemplatePipeline?: boolean;
   /** If set to `true`, then focus on this test (equivalent to jasmine's 'fit()`). */
   focusTest?: boolean;
   /** If set to `true`, then exclude this test (equivalent to jasmine's 'xit()`). */
   excludeTest?: boolean;
 }
 
-export type CompilationMode = 'linked compile'|'full compile';
+export type CompilationMode = 'linked compile'|'full compile'|'local compile';
 
 export interface Expectation {
   /** The message to display if this expectation fails. */
@@ -278,6 +274,8 @@ export interface Expectation {
 export interface ExpectedFile {
   expected: string;
   generated: string;
+  /** Alternate expected file when compiling with the template pipeline. */
+  templatePipelineExpected?: string;
 }
 
 /**
@@ -316,6 +314,8 @@ export interface TestCaseJson {
   };
   compilerOptions?: ConfigOptions;
   angularCompilerOptions?: ConfigOptions;
+  onlyForTemplatePipeline?: boolean;
+  skipForTemplatePipeline?: boolean;
   focusTest?: boolean;
   excludeTest?: boolean;
 }

@@ -6,13 +6,13 @@ import { OnChangesComponent } from './on-changes.component';
 @Component({
   selector: 'on-changes-parent',
   templateUrl: './on-changes-parent.component.html',
-  styles: ['.parent {background: Lavender;}']
+  styles: ['']
 })
 export class OnChangesParentComponent {
-  hero: Hero;
-  power: string;
+  hero!: Hero;
+  power = '';
   title = 'OnChanges';
-  @ViewChild(OnChangesComponent) childView: OnChangesComponent;
+  @ViewChild(OnChangesComponent) childView!: OnChangesComponent;
 
   constructor() {
     this.reset();

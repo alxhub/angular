@@ -1,46 +1,14 @@
-load("//dev-infra/benchmark/ng_rollup_bundle:ng_rollup_bundle.bzl", "ng_rollup_bundle")
+load("@npm//@bazel/rollup:index.bzl", "rollup_bundle")
 
-ng_rollup_bundle(
+rollup_bundle(
     name = "language-service",
-    build_optimizer = False,
-    entry_point = "//packages/language-service:src/ts_plugin.ts",
+    config_file = "rollup.config.js",
+    entry_point = "//packages/language-service/src:ts_plugin.ts",
     format = "amd",
-    globals = {
-        "fs": "fs",
-        "path": "path",
-        "typescript": "ts",
-        "typescript/lib/tsserverlibrary": "tss",
-    },
-    license_banner = ":banner",
+    silent = True,
     visibility = ["//packages/language-service:__pkg__"],
     deps = [
-        "//packages/language-service",
-        "@npm//rxjs",
-        "@npm//tslib",
+        "//packages/language-service/src",
+        "@npm//@rollup/plugin-node-resolve",
     ],
-)
-
-ng_rollup_bundle(
-    name = "ivy",
-    build_optimizer = False,
-    entry_point = "//packages/language-service/ivy:ts_plugin.ts",
-    format = "amd",
-    globals = {
-        "fs": "fs",
-        "path": "path",
-        "typescript": "ts",
-        "typescript/lib/tsserverlibrary": "tss",
-    },
-    license_banner = ":banner",
-    visibility = ["//packages/language-service:__pkg__"],
-    deps = [
-        "//packages/language-service/ivy",
-    ],
-)
-
-genrule(
-    name = "banner",
-    srcs = ["banner.js"],
-    outs = ["banner.txt"],
-    cmd = "cp $< $@",
 )

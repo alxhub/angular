@@ -1,4 +1,3 @@
-/* tslint:disable: member-ordering forin */
 // #docregion
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
@@ -17,7 +16,7 @@ export class HeroFormReactiveComponent implements OnInit {
 
   hero = { name: 'Dr.', alterEgo: 'Dr. What', power: this.powers[0] };
 
-  heroForm: FormGroup;
+  heroForm!: FormGroup;
 
   ngOnInit(): void {
     this.heroForm = new FormGroup({
@@ -34,11 +33,11 @@ export class HeroFormReactiveComponent implements OnInit {
     },  { validators: identityRevealedValidator }); // <-- add custom validator at the FormGroup level
   }
 
-  get name() { return this.heroForm.get('name'); }
+  get name() { return this.heroForm.get('name')!; }
 
-  get power() { return this.heroForm.get('power'); }
+  get power() { return this.heroForm.get('power')!; }
 
-  get alterEgo() { return this.heroForm.get('alterEgo'); }
+  get alterEgo() { return this.heroForm.get('alterEgo')!; }
 
   constructor(private alterEgoValidator: UniqueAlterEgoValidator) { }
 }

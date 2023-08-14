@@ -9,7 +9,7 @@
 import {BehaviorSubject} from 'rxjs';
 
 import {ActivatedRoute, ActivatedRouteSnapshot, advanceActivatedRoute, equalParamsAndUrlSegments, RouterState, RouterStateSnapshot} from '../src/router_state';
-import {Params} from '../src/shared';
+import {Params, RouteTitleKey} from '../src/shared';
 import {UrlSegment} from '../src/url_tree';
 import {TreeNode} from '../src/utils/tree';
 
@@ -71,7 +71,7 @@ describe('RouterState & Snapshot', () => {
 
       const root = new TreeNode(a, [new TreeNode(b, []), new TreeNode(c, [])]);
 
-      state = new (RouterState as any)(root, <any>null);
+      state = new (RouterState as any)(root, null);
     });
 
     it('should return first child', () => {
@@ -105,8 +105,7 @@ describe('RouterState & Snapshot', () => {
   describe('equalParamsAndUrlSegments', () => {
     function createSnapshot(params: Params, url: UrlSegment[]): ActivatedRouteSnapshot {
       const snapshot = new (ActivatedRouteSnapshot as any)(
-          url, params, <any>null, <any>null, <any>null, <any>null, <any>null, <any>null, <any>null,
-          -1, null!);
+          url, params, null, null, null, null, null, null, null, -1, null);
       snapshot._routerState = new (RouterStateSnapshot as any)('', new TreeNode(snapshot, []));
       return snapshot;
     }
@@ -181,8 +180,7 @@ describe('RouterState & Snapshot', () => {
       const fragment = '';
       const data = {};
       const snapshot = new (ActivatedRouteSnapshot as any)(
-          url, params, queryParams, fragment, data, <any>null, <any>null, <any>null, <any>null, -1,
-          null!);
+          url, params, queryParams, fragment, data, null, null, null, null, -1, null);
       const state = new (RouterStateSnapshot as any)('', new TreeNode(snapshot, []));
       snapshot._routerState = state;
       return snapshot;
@@ -202,16 +200,34 @@ describe('RouterState & Snapshot', () => {
       expect(hasSeenDataChange).toEqual(true);
     });
   });
+
+  describe('ActivatedRoute', () => {
+    it('should get resolved route title', () => {
+      const data = {[RouteTitleKey]: 'resolved title'};
+      const route = createActivatedRoute('a');
+      const snapshot = new (ActivatedRouteSnapshot as any)(
+          [], null, null, null, data, null, 'test', null, null, -1, null!);
+      let resolvedTitle: string|undefined;
+
+      route.data.next(data);
+
+      route.title.forEach((title: string|undefined) => {
+        resolvedTitle = title;
+      });
+
+      expect(resolvedTitle).toEqual('resolved title');
+      expect(snapshot.title).toEqual('resolved title');
+    });
+  });
 });
 
 function createActivatedRouteSnapshot(cmp: string) {
   return new (ActivatedRouteSnapshot as any)(
-      <any>[], <any>null, <any>null, <any>null, <any>null, <any>null, <any>cmp, <any>null,
-      <any>null, -1, null!);
+      [], null, null, null, null, null, cmp, null, null, -1, null!);
 }
 
 function createActivatedRoute(cmp: string) {
   return new (ActivatedRoute as any)(
-      new BehaviorSubject([new UrlSegment('', {})]), new BehaviorSubject({}), <any>null, <any>null,
-      new BehaviorSubject({}), <any>null, <any>cmp, <any>null);
+      new BehaviorSubject([new UrlSegment('', {})]), new BehaviorSubject({}), null, null,
+      new BehaviorSubject({}), null, cmp, null);
 }

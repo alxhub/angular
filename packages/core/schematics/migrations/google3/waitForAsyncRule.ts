@@ -7,11 +7,13 @@
  */
 
 import {Replacement, RuleFailure, Rules} from 'tslint';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {findAsyncReferences} from '../../migrations/wait-for-async/util';
 import {getImportSpecifier, replaceImport} from '../../utils/typescript/imports';
 import {closestNode} from '../../utils/typescript/nodes';
+import {isReferenceToImport} from '../../utils/typescript/symbol';
+
+// This rule is also used inside of Google by Typescript linting.
 
 /** Name of the deprecated function that we're removing. */
 const deprecatedFunction = 'async';
@@ -21,21 +23,20 @@ const newFunction = 'waitForAsync';
 
 /** TSLint rule that migrates from `async` to `waitForAsync`. */
 export class Rule extends Rules.TypedRule {
-  applyWithProgram(sourceFile: ts.SourceFile, program: ts.Program): RuleFailure[] {
+  override applyWithProgram(sourceFile: ts.SourceFile, program: ts.Program): RuleFailure[] {
     const failures: RuleFailure[] = [];
     const asyncImportSpecifier =
         getImportSpecifier(sourceFile, '@angular/core/testing', deprecatedFunction);
-    const asyncImport = asyncImportSpecifier ?
-        closestNode<ts.NamedImports>(asyncImportSpecifier, ts.SyntaxKind.NamedImports) :
-        null;
+    const asyncImport =
+        asyncImportSpecifier ? closestNode(asyncImportSpecifier, ts.isNamedImports) : null;
 
     // If there are no imports of `async`, we can exit early.
     if (asyncImportSpecifier && asyncImport) {
       const typeChecker = program.getTypeChecker();
       const printer = ts.createPrinter();
       failures.push(this._getNamedImportsFailure(asyncImport, sourceFile, printer));
-      findAsyncReferences(sourceFile, typeChecker, asyncImportSpecifier)
-          .forEach(node => failures.push(this._getIdentifierNodeFailure(node, sourceFile)));
+      this.findAsyncReferences(sourceFile, typeChecker, asyncImportSpecifier)
+          .forEach((node) => failures.push(this._getIdentifierNodeFailure(node, sourceFile)));
     }
 
     return failures;
@@ -61,5 +62,23 @@ export class Rule extends Rules.TypedRule {
         `References to the deprecated ${deprecatedFunction} function are not allowed. Use ${
             newFunction} instead.`,
         this.ruleName, new Replacement(node.getStart(), node.getWidth(), newFunction));
+  }
+
+  /** Finds calls to the `async` function. */
+  private findAsyncReferences(
+      sourceFile: ts.SourceFile, typeChecker: ts.TypeChecker,
+      asyncImportSpecifier: ts.ImportSpecifier) {
+    const results = new Set<ts.Identifier>();
+    ts.forEachChild(sourceFile, function visitNode(node: ts.Node) {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) &&
+          node.expression.text === deprecatedFunction &&
+          isReferenceToImport(typeChecker, node.expression, asyncImportSpecifier)) {
+        results.add(node.expression);
+      }
+
+      ts.forEachChild(node, visitNode);
+    });
+
+    return results;
   }
 }

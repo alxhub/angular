@@ -7,7 +7,6 @@
  */
 
 import {fakeAsync, tick, waitForAsync} from '@angular/core/testing';
-import {AsyncTestCompleter, beforeEach, describe, inject, it} from '@angular/core/testing/src/testing_internal';
 import {AbstractControl, FormArray, FormControl, FormGroup, ValidationErrors, Validators} from '@angular/forms';
 import {of} from 'rxjs';
 
@@ -71,7 +70,8 @@ describe('FormGroup', () => {
         'c1': new FormControl('v1'),
         'group': new FormGroup({'c2': new FormControl('v2'), 'c3': new FormControl('v3')}),
         'array': new FormArray([
-          new FormControl('v4'), new FormControl('v5'), new FormGroup({'c4': new FormControl('v4')})
+          new FormControl('v4') as any, new FormControl('v5'),
+          new FormGroup({'c4': new FormControl('v4')})
         ])
       });
 
@@ -133,7 +133,7 @@ describe('FormGroup', () => {
     });
 
     it('should update value and validity when control is added', () => {
-      const g = new FormGroup({'one': new FormControl('1')});
+      const g: FormGroup = new FormGroup({'one': new FormControl('1')});
       expect(g.value).toEqual({'one': '1'});
       expect(g.valid).toBe(true);
 
@@ -144,7 +144,7 @@ describe('FormGroup', () => {
     });
 
     it('should update value and validity when control is removed', () => {
-      const g = new FormGroup(
+      const g: FormGroup = new FormGroup(
           {'one': new FormControl('1'), 'two': new FormControl('2', Validators.minLength(10))});
       expect(g.value).toEqual({'one': '1', 'two': '2'});
       expect(g.valid).toBe(false);
@@ -157,7 +157,7 @@ describe('FormGroup', () => {
 
     it('should not emit events when `FormGroup.addControl` is called with `emitEvent: false`',
        () => {
-         const g = new FormGroup({'one': new FormControl('1')});
+         const g: FormGroup = new FormGroup({'one': new FormControl('1')});
          expect(g.value).toEqual({'one': '1'});
 
          g.valueChanges.subscribe(() => logger.push('value change'));
@@ -171,7 +171,7 @@ describe('FormGroup', () => {
 
     it('should not emit events when `FormGroup.removeControl` is called with `emitEvent: false`',
        () => {
-         const g = new FormGroup(
+         const g: FormGroup = new FormGroup(
              {'one': new FormControl('1'), 'two': new FormControl('2', Validators.minLength(10))});
          expect(g.value).toEqual({'one': '1', 'two': '2'});
          expect(g.valid).toBe(false);
@@ -191,7 +191,7 @@ describe('FormGroup', () => {
          const validatorFn = (value: any) =>
              value.controls.invalidCtrl ? {invalidCtrl: true} : null;
          const asyncValidatorFn = (value: any) => of(validatorFn(value));
-         const g = new FormGroup({}, validatorFn, asyncValidatorFn);
+         const g: FormGroup = new FormGroup({}, validatorFn, asyncValidatorFn);
          expect(g.valid).toBe(true);
 
          g.statusChanges.subscribe(() => logger.push('status change'));
@@ -294,21 +294,21 @@ describe('FormGroup', () => {
     });
 
     it('should throw if fields are missing from supplied value (subset)', () => {
-      expect(() => g.setValue({
-        'one': 'one'
-      })).toThrowError(new RegExp(`Must supply a value for form control with name: 'two'`));
+      expect(() => g.setValue({'one': 'one'}))
+          .toThrowError(
+              new RegExp(`NG01002: Must supply a value for form control with name: 'two'`));
     });
 
     it('should throw if a value is provided for a missing control (superset)', () => {
       expect(() => g.setValue({'one': 'one', 'two': 'two', 'three': 'three'}))
-          .toThrowError(new RegExp(`Cannot find form control with name: three`));
+          .toThrowError(new RegExp(`NG01001: Cannot find form control with name: 'three'`));
     });
 
     it('should throw if a value is not provided for a disabled control', () => {
       c2.disable();
-      expect(() => g.setValue({
-        'one': 'one'
-      })).toThrowError(new RegExp(`Must supply a value for form control with name: 'two'`));
+      expect(() => g.setValue({'one': 'one'}))
+          .toThrowError(
+              new RegExp(`NG01002: Must supply a value for form control with name: 'two'`));
     });
 
     it('should throw if no controls are set yet', () => {
@@ -816,25 +816,33 @@ describe('FormGroup', () => {
     let group: FormGroup;
 
     beforeEach(waitForAsync(() => {
-      control = new FormControl('', asyncValidatorReturningObservable);
+      control = new FormControl('', null, asyncValidatorReturningObservable);
       group = new FormGroup({'one': control});
     }));
 
+    it('should fire statusChanges events for async validators added via options object',
+       fakeAsync(() => {
+         // The behavior can be tested for each of the model types.
+         let statuses: string[] = [];
 
-    // TODO(kara): update these tests to use fake Async
-    it('should fire a statusChange if child has async validation change',
-       inject([AsyncTestCompleter], (async: AsyncTestCompleter) => {
+         // Create a form control with an async validator added via options object.
+         const asc = new FormGroup({}, {asyncValidators: [() => Promise.resolve(null)]});
+
+         // Subscribe to status changes.
+         asc.statusChanges.subscribe((status: any) => statuses.push(status));
+
+         // After a tick, the async validator should change status PENDING -> VALID.
+         tick();
+         expect(statuses).toEqual(['VALID']);
+       }));
+
+    it('should fire a statusChange if child has async validation change', fakeAsync(() => {
          const loggedValues: string[] = [];
-         group.statusChanges.subscribe({
-           next: (status: string) => {
-             loggedValues.push(status);
-             if (loggedValues.length === 2) {
-               expect(loggedValues).toEqual(['PENDING', 'INVALID']);
-             }
-             async.done();
-           }
-         });
+         group.statusChanges.subscribe((status) => loggedValues.push(status));
+
          control.setValue('');
+         tick();
+         expect(loggedValues).toEqual(['PENDING', 'INVALID']);
        }));
   });
 
@@ -926,7 +934,7 @@ describe('FormGroup', () => {
     }
 
     it('should run a single validator when the value changes', () => {
-      const c = new FormControl(null);
+      const c: FormControl = new FormControl(null);
       const g = new FormGroup({'one': c}, simpleValidator);
 
       c.setValue('correct');
@@ -1139,14 +1147,14 @@ describe('FormGroup', () => {
        fakeAsync(() => {
          const c = new FormControl(
              'fcValue', null!, simpleAsyncValidator({timeout: 0, shouldFail: false}));
-         const g = new FormGroup(
+         const g: FormGroup = new FormGroup(
              {'one': c}, null!, simpleAsyncValidator({timeout: 0, shouldFail: false}));
 
          const c2 =
              new FormControl('fcVal', null!, simpleAsyncValidator({timeout: 0, shouldFail: false}));
 
-         const a =
-             new FormArray([g, c2], null!, simpleAsyncValidator({timeout: 0, shouldFail: true}));
+         const a = new FormArray(
+             [g as any, c2], null!, simpleAsyncValidator({timeout: 0, shouldFail: true}));
 
          expect(currentStateOf([a, a.at(0)!, a.at(1)!])).toEqual([
            {errors: {async: true}, pending: false, status: 'INVALID'},  // Array
@@ -1253,8 +1261,8 @@ describe('FormGroup', () => {
          const c2 =
              new FormControl('fcVal', null!, simpleAsyncValidator({timeout: 3, shouldFail: false}));
 
-         const a =
-             new FormArray([g, c2], null!, simpleAsyncValidator({timeout: 4, shouldFail: false}));
+         const a = new FormArray(
+             [g as any, c2], null!, simpleAsyncValidator({timeout: 4, shouldFail: false}));
 
          // Initially, the form array and the tested form group and form control c2 are in pending
          // state
@@ -1301,8 +1309,8 @@ describe('FormGroup', () => {
          const c2 =
              new FormControl('fcVal', null!, simpleAsyncValidator({timeout: 3, shouldFail: false}));
 
-         const a =
-             new FormArray([g, c2], null!, simpleAsyncValidator({timeout: 4, shouldFail: true}));
+         const a = new FormArray(
+             [g as any, c2], null!, simpleAsyncValidator({timeout: 4, shouldFail: true}));
 
          // Initially, the form array and the tested form group and form control c2 are in pending
          // state
@@ -1698,7 +1706,7 @@ describe('FormGroup', () => {
     });
 
     it('should keep empty, disabled groups disabled when updating validity', () => {
-      const group = new FormGroup({});
+      const group: FormGroup = new FormGroup({});
       expect(group.status).toEqual('VALID');
 
       group.disable();
@@ -1751,7 +1759,7 @@ describe('FormGroup', () => {
       });
 
       it('should re-populate group errors when enabled from a child', () => {
-        const g = new FormGroup({'one': new FormControl()}, () => ({'expected': true}));
+        const g: FormGroup = new FormGroup({'one': new FormControl()}, () => ({'expected': true}));
         g.disable();
         expect(g.errors).toEqual(null);
 
@@ -1773,7 +1781,8 @@ describe('FormGroup', () => {
          }));
 
       it('should re-populate async group errors when enabled from a child', fakeAsync(() => {
-           const g = new FormGroup({'one': new FormControl()}, null!, asyncValidator('expected'));
+           const g: FormGroup =
+               new FormGroup({'one': new FormControl()}, null!, asyncValidator('expected'));
            tick();
            expect(g.errors).toEqual({'async': true});
 
@@ -2358,6 +2367,34 @@ describe('FormGroup', () => {
         g.markAsPending();
         expect(logger).toEqual(['PENDING']);
       });
+    });
+  });
+
+  describe('can be extended', () => {
+    it('by a group with string keys', () => {
+      abstract class StringKeyGroup extends FormGroup {
+        override registerControl(name: string, value: AbstractControl): AbstractControl {
+          return new FormControl('');
+        }
+      }
+    });
+
+    it('by a group with generic keys', () => {
+      abstract class SpecialGroup<T extends {[key: string]: AbstractControl}> extends FormGroup {
+        override registerControl<K extends keyof T>(
+            name: K, value: AbstractControl): AbstractControl {
+          return new FormControl('');
+        }
+      }
+    });
+
+    it('by a group with unconstrained generic keys', () => {
+      abstract class SpecialGroup<T> extends FormGroup {
+        override registerControl<K extends keyof T>(
+            name: K, value: AbstractControl): AbstractControl {
+          return new FormControl('');
+        }
+      }
     });
   });
 });

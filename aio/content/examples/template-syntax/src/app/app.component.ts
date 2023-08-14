@@ -1,5 +1,3 @@
-/* tslint:disable:forin member-ordering */
-
 import { AfterViewInit, Component, ElementRef, OnInit, QueryList, ViewChildren } from '@angular/core';
 
 import { Hero } from './hero';
@@ -28,8 +26,8 @@ export class AppComponent implements AfterViewInit, OnInit {
     trackChanges(this.heroesWithTrackBy, () => this.heroesWithTrackByCount++);
   }
 
-  @ViewChildren('noTrackBy')   heroesNoTrackBy: QueryList<ElementRef>;
-  @ViewChildren('withTrackBy') heroesWithTrackBy: QueryList<ElementRef>;
+  @ViewChildren('noTrackBy')   heroesNoTrackBy!: QueryList<ElementRef>;
+  @ViewChildren('withTrackBy') heroesWithTrackBy!: QueryList<ElementRef>;
 
   actionName = 'Go for it';
   badCurly = 'bad curly';
@@ -63,7 +61,7 @@ export class AppComponent implements AfterViewInit, OnInit {
   color = Color.Red;
   colorToggle() {this.color = (this.color === Color.Red) ? Color.Blue : Color.Red; }
 
-  currentHero: Hero;
+  currentHero!: Hero;
 
   updateCurrentHeroName(event: Event) {
     this.currentHero.name = (event.target as any).value;
@@ -81,9 +79,9 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   getVal(): number { return 2; }
 
-  name: string = Hero.heroes[0].name;
-  hero: Hero; // defined to demonstrate template context precedence
-  heroes: Hero[];
+  name: string = Hero.heroes[0].name || '';
+  hero!: Hero; // defined to demonstrate template context precedence
+  heroes: Hero[] = [];
 
   // trackBy change counting
   heroesNoTrackByCount   = 0;
@@ -92,19 +90,19 @@ export class AppComponent implements AfterViewInit, OnInit {
 
   heroIdIncrement = 1;
 
-  // heroImageUrl = 'https://wpclipart.com/cartoon/people/hero/hero_silhoutte_T.png';
+  // heroImageUrl = 'https://wpclipart.com/dl.php?img=/cartoon/people/hero/hero_silhoutte.svg';
   // Public Domain terms of use: https://wpclipart.com/terms.html
-  heroImageUrl = 'assets/images/hero.png';
-  // villainImageUrl = 'https://www.clker.com/cliparts/u/s/y/L/x/9/villain-man-hi.png'
+  heroImageUrl = 'assets/images/hero.svg';
+  // villainImageUrl = 'http://www.clker.com/cliparts/u/s/y/L/x/9/villain-man.svg'
   // Public Domain terms of use https://www.clker.com/disclaimer.html
-  villainImageUrl = 'assets/images/villain.png';
+  villainImageUrl = 'assets/images/villain.svg';
 
-  iconUrl = 'assets/images/ng-logo.png';
+  iconUrl = 'assets/images/ng-logo.svg';
   isActive = false;
   isSpecial = true;
   isUnchanged = true;
 
-  get nullHero(): Hero { return null; }
+  get nullHero(): Hero | null { return null; }
 
   onClickMe(event?: MouseEvent) {
     const evtMsg = event ? ' Event target class is ' + (event.target as HTMLElement).className  : '';
@@ -136,7 +134,7 @@ export class AppComponent implements AfterViewInit, OnInit {
     this.currentHero.name = name.toUpperCase();
   }
 
-  currentClasses: {};
+  currentClasses: Record<string, boolean> = {};
   setCurrentClasses() {
     // CSS classes: added/removed per current state of component properties
     this.currentClasses =  {
@@ -146,7 +144,7 @@ export class AppComponent implements AfterViewInit, OnInit {
     };
   }
 
-  currentStyles: {};
+  currentStyles: Record<string, string> = {};
   setCurrentStyles() {
     // CSS styles: set per current state of component properties
     this.currentStyles = {

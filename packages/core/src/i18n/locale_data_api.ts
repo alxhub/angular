@@ -5,6 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {global} from '../util/global';
 
 import localeEn from './locale_en';
@@ -16,7 +17,8 @@ let LOCALE_DATA: {[localeId: string]: any} = {};
 
 /**
  * Register locale data to be used internally by Angular. See the
- * ["I18n guide"](guide/i18n#i18n-pipes) to know how to import additional locale data.
+ * ["I18n guide"](guide/i18n-common-format-data-locale) to know how to import additional locale
+ * data.
  *
  * The signature `registerLocaleData(data: any, extraData?: any)` is deprecated since v5.1
  */
@@ -40,7 +42,7 @@ export function registerLocaleData(data: any, localeId?: string|any, extraData?:
  *
  * @param locale The locale code.
  * @returns The locale data.
- * @see [Internationalization (i18n) Guide](https://angular.io/guide/i18n)
+ * @see [Internationalization (i18n) Guide](https://angular.io/guide/i18n-overview)
  */
 export function findLocaleData(locale: string): any {
   const normalizedLocale = normalizeLocale(locale);
@@ -61,7 +63,9 @@ export function findLocaleData(locale: string): any {
     return localeEn;
   }
 
-  throw new Error(`Missing locale data for the locale "${locale}".`);
+  throw new RuntimeError(
+      RuntimeErrorCode.MISSING_LOCALE_DATA,
+      ngDevMode && `Missing locale data for the locale "${locale}".`);
 }
 
 /**
@@ -83,8 +87,8 @@ export function getLocaleCurrencyCode(locale: string): string|null {
  * for a given locale.
  * @param locale A locale code for the locale format rules to use.
  * @returns The plural function for the locale.
- * @see `NgPlural`
- * @see [Internationalization (i18n) Guide](https://angular.io/guide/i18n)
+ * @see {@link NgPlural}
+ * @see [Internationalization (i18n) Guide](/guide/i18n-overview)
  */
 export function getLocalePluralCase(locale: string): (value: number) => number {
   const data = findLocaleData(locale);

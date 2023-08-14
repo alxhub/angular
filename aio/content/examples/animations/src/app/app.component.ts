@@ -11,7 +11,7 @@ import {
 } from '@angular/animations';
 
 // #enddocregion imports
-import { RouterOutlet } from '@angular/router';
+import { ChildrenOutletContexts, RouterOutlet } from '@angular/router';
 import { slideInAnimation } from './animations';
 
 // #docregion decorator, toggle-app-animations, define
@@ -23,7 +23,9 @@ import { slideInAnimation } from './animations';
 // #enddocregion decorator
     slideInAnimation
 // #docregion decorator
+// #enddocregion toggle-app-animations, define
     // animation triggers go here
+// #docregion toggle-app-animations, define
   ]
 })
 // #enddocregion decorator, define
@@ -32,12 +34,13 @@ export class AppComponent {
   public animationsDisabled = false;
 // #enddocregion toggle-app-animations
 
-// #docregion prepare-router-outlet
-  prepareRoute(outlet: RouterOutlet) {
-    return outlet && outlet.activatedRouteData && outlet.activatedRouteData.animation;
-  }
+// #docregion get-route-animations-data
+  constructor(private contexts: ChildrenOutletContexts) {}
 
-// #enddocregion prepare-router-outlet
+  getRouteAnimationData() {
+    return this.contexts.getContext('primary')?.route?.snapshot?.data?.['animation'];
+  }
+// #enddocregion get-route-animations-data
 
   toggleAnimations() {
     this.animationsDisabled = !this.animationsDisabled;

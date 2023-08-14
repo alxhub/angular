@@ -56,44 +56,33 @@ enum _VisitorMode {
  * @internal
  */
 class _Visitor implements html.Visitor {
-  // TODO(issue/24571): remove '!'.
+  // Using non-null assertions because all variables are (re)set in init()
+
   private _depth!: number;
 
   // <el i18n>...</el>
-  // TODO(issue/24571): remove '!'.
   private _inI18nNode!: boolean;
-  // TODO(issue/24571): remove '!'.
   private _inImplicitNode!: boolean;
 
   // <!--i18n-->...<!--/i18n-->
-  // TODO(issue/24571): remove '!'.
   private _inI18nBlock!: boolean;
-  // TODO(issue/24571): remove '!'.
   private _blockMeaningAndDesc!: string;
-  // TODO(issue/24571): remove '!'.
   private _blockChildren!: html.Node[];
-  // TODO(issue/24571): remove '!'.
   private _blockStartDepth!: number;
 
   // {<icu message>}
-  // TODO(issue/24571): remove '!'.
   private _inIcu!: boolean;
 
   // set to void 0 when not in a section
   private _msgCountAtSectionStart: number|undefined;
-  // TODO(issue/24571): remove '!'.
   private _errors!: I18nError[];
-  // TODO(issue/24571): remove '!'.
   private _mode!: _VisitorMode;
 
   // _VisitorMode.Extract only
-  // TODO(issue/24571): remove '!'.
   private _messages!: i18n.Message[];
 
   // _VisitorMode.Merge only
-  // TODO(issue/24571): remove '!'.
   private _translations!: TranslationBundle;
-  // TODO(issue/24571): remove '!'.
   private _createI18nMessage!: I18nMessageFactory;
 
 
@@ -303,6 +292,16 @@ class _Visitor implements html.Visitor {
     throw new Error('unreachable code');
   }
 
+  visitBlockGroup(group: html.BlockGroup, context: any) {
+    html.visitAll(this, group.blocks, context);
+  }
+
+  visitBlock(block: html.Block, context: any) {
+    html.visitAll(this, block.children, context);
+  }
+
+  visitBlockParameter(parameter: html.BlockParameter, context: any) {}
+
   private _init(mode: _VisitorMode, interpolationConfig: InterpolationConfig): void {
     this._mode = mode;
     this._inI18nBlock = false;
@@ -396,12 +395,12 @@ class _Visitor implements html.Visitor {
           if (nodes.length == 0) {
             translatedAttributes.push(new html.Attribute(
                 attr.name, '', attr.sourceSpan, undefined /* keySpan */, undefined /* valueSpan */,
-                undefined /* i18n */));
+                undefined /* valueTokens */, undefined /* i18n */));
           } else if (nodes[0] instanceof html.Text) {
             const value = (nodes[0] as html.Text).value;
             translatedAttributes.push(new html.Attribute(
                 attr.name, value, attr.sourceSpan, undefined /* keySpan */,
-                undefined /* valueSpan */, undefined /* i18n */));
+                undefined /* valueSpan */, undefined /* valueTokens */, undefined /* i18n */));
           } else {
             this._reportError(
                 el,

@@ -135,7 +135,31 @@ export class Identifiers {
 
   static nextContext: o.ExternalReference = {name: 'ɵɵnextContext', moduleName: CORE};
 
+  static resetView: o.ExternalReference = {name: 'ɵɵresetView', moduleName: CORE};
+
   static templateCreate: o.ExternalReference = {name: 'ɵɵtemplate', moduleName: CORE};
+
+  static defer: o.ExternalReference = {name: 'ɵɵdefer', moduleName: CORE};
+  static deferWhen: o.ExternalReference = {name: 'ɵɵdeferWhen', moduleName: CORE};
+  static deferOnIdle: o.ExternalReference = {name: 'ɵɵdeferOnIdle', moduleName: CORE};
+  static deferOnImmediate: o.ExternalReference = {name: 'ɵɵdeferOnImmediate', moduleName: CORE};
+  static deferOnTimer: o.ExternalReference = {name: 'ɵɵdeferOnTimer', moduleName: CORE};
+  static deferOnHover: o.ExternalReference = {name: 'ɵɵdeferOnHover', moduleName: CORE};
+  static deferOnInteraction: o.ExternalReference = {name: 'ɵɵdeferOnInteraction', moduleName: CORE};
+  static deferOnViewport: o.ExternalReference = {name: 'ɵɵdeferOnViewport', moduleName: CORE};
+  static deferPrefetchWhen: o.ExternalReference = {name: 'ɵɵdeferPrefetchWhen', moduleName: CORE};
+  static deferPrefetchOnIdle:
+      o.ExternalReference = {name: 'ɵɵdeferPrefetchOnIdle', moduleName: CORE};
+  static deferPrefetchOnImmediate:
+      o.ExternalReference = {name: 'ɵɵdeferPrefetchOnImmediate', moduleName: CORE};
+  static deferPrefetchOnTimer:
+      o.ExternalReference = {name: 'ɵɵdeferPrefetchOnTimer', moduleName: CORE};
+  static deferPrefetchOnHover:
+      o.ExternalReference = {name: 'ɵɵdeferPrefetchOnHover', moduleName: CORE};
+  static deferPrefetchOnInteraction:
+      o.ExternalReference = {name: 'ɵɵdeferPrefetchOnInteraction', moduleName: CORE};
+  static deferPrefetchOnViewport:
+      o.ExternalReference = {name: 'ɵɵdeferPrefetchOnViewport', moduleName: CORE};
 
   static text: o.ExternalReference = {name: 'ɵɵtext', moduleName: CORE};
 
@@ -219,9 +243,6 @@ export class Identifiers {
 
   static injectAttribute: o.ExternalReference = {name: 'ɵɵinjectAttribute', moduleName: CORE};
 
-  static injectPipeChangeDetectorRef:
-      o.ExternalReference = {name: 'ɵɵinjectPipeChangeDetectorRef', moduleName: CORE};
-
   static directiveInject: o.ExternalReference = {name: 'ɵɵdirectiveInject', moduleName: CORE};
   static invalidFactory: o.ExternalReference = {name: 'ɵɵinvalidFactory', moduleName: CORE};
   static invalidFactoryDep: o.ExternalReference = {name: 'ɵɵinvalidFactoryDep', moduleName: CORE};
@@ -232,9 +253,17 @@ export class Identifiers {
   static forwardRef: o.ExternalReference = {name: 'forwardRef', moduleName: CORE};
   static resolveForwardRef: o.ExternalReference = {name: 'resolveForwardRef', moduleName: CORE};
 
+  static ɵɵdefineInjectable: o.ExternalReference = {name: 'ɵɵdefineInjectable', moduleName: CORE};
+  static declareInjectable: o.ExternalReference = {name: 'ɵɵngDeclareInjectable', moduleName: CORE};
+  static InjectableDeclaration:
+      o.ExternalReference = {name: 'ɵɵInjectableDeclaration', moduleName: CORE};
+
   static resolveWindow: o.ExternalReference = {name: 'ɵɵresolveWindow', moduleName: CORE};
   static resolveDocument: o.ExternalReference = {name: 'ɵɵresolveDocument', moduleName: CORE};
   static resolveBody: o.ExternalReference = {name: 'ɵɵresolveBody', moduleName: CORE};
+
+  static getComponentDepsFactory:
+      o.ExternalReference = {name: 'ɵɵgetComponentDepsFactory', moduleName: CORE};
 
   static defineComponent: o.ExternalReference = {name: 'ɵɵdefineComponent', moduleName: CORE};
   static declareComponent: o.ExternalReference = {name: 'ɵɵngDeclareComponent', moduleName: CORE};
@@ -250,36 +279,35 @@ export class Identifiers {
     moduleName: CORE,
   };
 
-  static ComponentDefWithMeta: o.ExternalReference = {
-    name: 'ɵɵComponentDefWithMeta',
+  static ComponentDeclaration: o.ExternalReference = {
+    name: 'ɵɵComponentDeclaration',
     moduleName: CORE,
   };
 
-  static FactoryDef: o.ExternalReference = {
-    name: 'ɵɵFactoryDef',
+  static FactoryDeclaration: o.ExternalReference = {
+    name: 'ɵɵFactoryDeclaration',
     moduleName: CORE,
   };
+  static declareFactory: o.ExternalReference = {name: 'ɵɵngDeclareFactory', moduleName: CORE};
+  static FactoryTarget: o.ExternalReference = {name: 'ɵɵFactoryTarget', moduleName: CORE};
 
   static defineDirective: o.ExternalReference = {name: 'ɵɵdefineDirective', moduleName: CORE};
   static declareDirective: o.ExternalReference = {name: 'ɵɵngDeclareDirective', moduleName: CORE};
 
-  static DirectiveDefWithMeta: o.ExternalReference = {
-    name: 'ɵɵDirectiveDefWithMeta',
+  static DirectiveDeclaration: o.ExternalReference = {
+    name: 'ɵɵDirectiveDeclaration',
     moduleName: CORE,
   };
 
-  static InjectorDef: o.ExternalReference = {
-    name: 'ɵɵInjectorDef',
-    moduleName: CORE,
-  };
+  static InjectorDef: o.ExternalReference = {name: 'ɵɵInjectorDef', moduleName: CORE};
+  static InjectorDeclaration:
+      o.ExternalReference = {name: 'ɵɵInjectorDeclaration', moduleName: CORE};
 
-  static defineInjector: o.ExternalReference = {
-    name: 'ɵɵdefineInjector',
-    moduleName: CORE,
-  };
+  static defineInjector: o.ExternalReference = {name: 'ɵɵdefineInjector', moduleName: CORE};
+  static declareInjector: o.ExternalReference = {name: 'ɵɵngDeclareInjector', moduleName: CORE};
 
-  static NgModuleDefWithMeta: o.ExternalReference = {
-    name: 'ɵɵNgModuleDefWithMeta',
+  static NgModuleDeclaration: o.ExternalReference = {
+    name: 'ɵɵNgModuleDeclaration',
     moduleName: CORE,
   };
 
@@ -289,12 +317,20 @@ export class Identifiers {
   };
 
   static defineNgModule: o.ExternalReference = {name: 'ɵɵdefineNgModule', moduleName: CORE};
+  static declareNgModule: o.ExternalReference = {name: 'ɵɵngDeclareNgModule', moduleName: CORE};
   static setNgModuleScope: o.ExternalReference = {name: 'ɵɵsetNgModuleScope', moduleName: CORE};
+  static registerNgModuleType:
+      o.ExternalReference = {name: 'ɵɵregisterNgModuleType', moduleName: CORE};
 
-  static PipeDefWithMeta: o.ExternalReference = {name: 'ɵɵPipeDefWithMeta', moduleName: CORE};
+
+  static PipeDeclaration: o.ExternalReference = {name: 'ɵɵPipeDeclaration', moduleName: CORE};
 
   static definePipe: o.ExternalReference = {name: 'ɵɵdefinePipe', moduleName: CORE};
   static declarePipe: o.ExternalReference = {name: 'ɵɵngDeclarePipe', moduleName: CORE};
+
+  static declareClassMetadata:
+      o.ExternalReference = {name: 'ɵɵngDeclareClassMetadata', moduleName: CORE};
+  static setClassMetadata: o.ExternalReference = {name: 'ɵsetClassMetadata', moduleName: CORE};
 
   static queryRefresh: o.ExternalReference = {name: 'ɵɵqueryRefresh', moduleName: CORE};
   static viewQuery: o.ExternalReference = {name: 'ɵɵviewQuery', moduleName: CORE};
@@ -309,7 +345,15 @@ export class Identifiers {
   static CopyDefinitionFeature:
       o.ExternalReference = {name: 'ɵɵCopyDefinitionFeature', moduleName: CORE};
 
+  static StandaloneFeature: o.ExternalReference = {name: 'ɵɵStandaloneFeature', moduleName: CORE};
+
   static ProvidersFeature: o.ExternalReference = {name: 'ɵɵProvidersFeature', moduleName: CORE};
+
+  static HostDirectivesFeature:
+      o.ExternalReference = {name: 'ɵɵHostDirectivesFeature', moduleName: CORE};
+
+  static InputTransformsFeatureFeature:
+      o.ExternalReference = {name: 'ɵɵInputTransformsFeature', moduleName: CORE};
 
   static listener: o.ExternalReference = {name: 'ɵɵlistener', moduleName: CORE};
 
@@ -330,4 +374,6 @@ export class Identifiers {
   static trustConstantHtml: o.ExternalReference = {name: 'ɵɵtrustConstantHtml', moduleName: CORE};
   static trustConstantResourceUrl:
       o.ExternalReference = {name: 'ɵɵtrustConstantResourceUrl', moduleName: CORE};
+  static validateIframeAttribute:
+      o.ExternalReference = {name: 'ɵɵvalidateIframeAttribute', moduleName: CORE};
 }

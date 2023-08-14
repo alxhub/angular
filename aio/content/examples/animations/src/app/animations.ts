@@ -1,10 +1,9 @@
-// #docregion reusable
 import {
   animation, trigger, animateChild, group,
   transition, animate, style, query
 } from '@angular/animations';
 
-export const transAnimation = animation([
+export const transitionAnimation = animation([
   style({
     height: '{{ height }}',
     opacity: '{{ opacity }}',
@@ -12,7 +11,6 @@ export const transAnimation = animation([
   }),
   animate('{{ time }}')
 ]);
-// #enddocregion reusable
 
 // Routable animations
 // #docregion route-animations
@@ -41,11 +39,10 @@ export const slideInAnimation =
         ]),
         query(':enter', [
           animate('300ms ease-out', style({ left: '0%' }))
-        ])
+        ]),
       ]),
-      query(':enter', animateChild()),
     ]),
-    transition('* <=> FilterPage', [
+    transition('* <=> *', [
       style({ position: 'relative' }),
       query(':enter, :leave', [
         style({
@@ -61,13 +58,13 @@ export const slideInAnimation =
       query(':leave', animateChild()),
       group([
         query(':leave', [
-          animate('200ms ease-out', style({ left: '100%' }))
+          animate('200ms ease-out', style({ left: '100%', opacity: 0 }))
         ]),
         query(':enter', [
           animate('300ms ease-out', style({ left: '0%' }))
-        ])
+        ]),
+        query('@*', animateChild())
       ]),
-      query(':enter', animateChild()),
     ])
     // #enddocregion query
   ]);

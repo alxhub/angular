@@ -1,4 +1,4 @@
-import { getSwNavigationUrlChecker, loadLegacyUrls, loadLocalSitemapUrls } from '../shared/helpers';
+import {getSwNavigationUrlChecker, loadLegacyUrls, loadLocalSitemapUrls} from '../shared/helpers';
 
 describe('ServiceWorker navigation URLs', () => {
   const isNavigationUrl = getSwNavigationUrlChecker();
@@ -28,9 +28,15 @@ describe('ServiceWorker navigation URLs', () => {
     expect(isNavigationUrl('/generated/docs/guide/animations.json')).toBeFalsy();
   });
 
-  it('should treat `/docs*` URLs correctly', () => {
+  it('should treat `/docs/*` URLs correctly', () => {
     const navigationUrls = ['/docs', '/docs/'];
-    const nonNavigationUrls = ['/docs/foo', '/docs/foo/', '/docs/foo/bar'];
+    const nonNavigationUrls = [
+      '/docs/js/latest',
+      '/docs/ts/latest/foo',
+      '/docs/latest/foo/bar',
+      '/docs/styleguide',
+      '/docs/styleguide/',
+    ];
 
     navigationUrls.forEach(url => expect(isNavigationUrl(url)).toBeTruthy(url));
     nonNavigationUrls.forEach(url => expect(isNavigationUrl(url)).toBeFalsy(url));

@@ -8,5 +8,6 @@
 
 
 export {ɵEmptyOutletComponent} from './components/empty_outlet';
-export {assignExtraOptionsToRouter as ɵassignExtraOptionsToRouter, ROUTER_PROVIDERS as ɵROUTER_PROVIDERS} from './router_module';
-export {flatten as ɵflatten} from './utils/collection';
+export {RestoredState as ɵRestoredState} from './navigation_transition';
+export {ROUTER_PROVIDERS as ɵROUTER_PROVIDERS} from './router_module';
+export {afterNextNavigation as ɵafterNextNavigation} from './utils/navigations';

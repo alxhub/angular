@@ -6,10 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {AttributeMarker} from '../../core';
-import {AST, ASTWithSource, BindingPipe, BindingType, Interpolation} from '../../expression_parser/ast';
+import {AST, ASTWithSource, BindingPipe, BindingType, EmptyExpr, Interpolation} from '../../expression_parser/ast';
 import * as o from '../../output/output_ast';
 import {ParseSourceSpan} from '../../parse_util';
-import {isEmptyExpression} from '../../template_parser/template_parser';
 import * as t from '../r3_ast';
 import {Identifiers as R3} from '../r3_identifiers';
 
@@ -202,8 +201,8 @@ export class StylingBuilder {
     const isStyle = name === 'style' || prefix === 'style.' || prefix === 'style!';
     const isClass = !isStyle && (name === 'class' || prefix === 'class.' || prefix === 'class!');
     if (isStyle || isClass) {
-      const isMapBased = name.charAt(5) !== '.';         // style.prop or class.prop makes this a no
-      const property = name.substr(isMapBased ? 5 : 6);  // the dot explains why there's a +1
+      const isMapBased = name.charAt(5) !== '.';        // style.prop or class.prop makes this a no
+      const property = name.slice(isMapBased ? 5 : 6);  // the dot explains why there's a +1
       if (isStyle) {
         binding = this.registerStyleInput(property, isMapBased, expression, sourceSpan);
       } else {
@@ -219,7 +218,11 @@ export class StylingBuilder {
     if (isEmptyExpression(value)) {
       return null;
     }
-    name = normalizePropName(name);
+    // CSS custom properties are case-sensitive so we shouldn't normalize them.
+    // See: https://www.w3.org/TR/css-variables-1/#defining-variables
+    if (!isCssCustomProperty(name)) {
+      name = hyphenate(name);
+    }
     const {property, hasOverrideFlag, suffix: bindingSuffix} = parseProperty(name);
     suffix = typeof suffix === 'string' && suffix.length !== 0 ? suffix : bindingSuffix;
     const entry:
@@ -246,10 +249,6 @@ export class StylingBuilder {
     const entry:
         BoundStylingEntry = {name: property, value, sourceSpan, hasOverrideFlag, suffix: null};
     if (isMapBased) {
-      if (this._classMapInput) {
-        throw new Error(
-            '[class] and [className] bindings cannot be used on the same element simultaneously');
-      }
       this._classMapInput = entry;
     } else {
       (this._singleClassInputs = this._singleClassInputs || []).push(entry);
@@ -517,7 +516,7 @@ export function parseProperty(name: string):
   let property = name;
   const unitIndex = name.lastIndexOf('.');
   if (unitIndex > 0) {
-    suffix = name.substr(unitIndex + 1);
+    suffix = name.slice(unitIndex + 1);
     property = name.substring(0, unitIndex);
   }
 
@@ -611,6 +610,17 @@ function getStylePropInterpolationExpression(interpolation: Interpolation) {
   }
 }
 
-function normalizePropName(prop: string): string {
-  return hyphenate(prop);
+/**
+ * Checks whether property name is a custom CSS property.
+ * See: https://www.w3.org/TR/css-variables-1
+ */
+function isCssCustomProperty(name: string): boolean {
+  return name.startsWith('--');
+}
+
+function isEmptyExpression(ast: AST): boolean {
+  if (ast instanceof ASTWithSource) {
+    ast = ast.ast;
+  }
+  return ast instanceof EmptyExpr;
 }

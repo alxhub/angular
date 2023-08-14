@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ProcessProvidersFunction} from '../../di/interface/provider';
+import {ModuleWithProviders, ProcessProvidersFunction} from '../../di/interface/provider';
+import {EnvironmentInjector} from '../../di/r3_injector';
 import {Type} from '../../interface/type';
 import {SchemaMetadata} from '../../metadata/schema';
 import {ViewEncapsulation} from '../../metadata/view';
@@ -79,48 +80,7 @@ export interface PipeType<T> extends Type<T> {
   ɵpipe: unknown;
 }
 
-/**
- * An object literal of this type is used to represent the metadata of a constructor dependency.
- * The type itself is never referred to from generated code.
- */
-export type CtorDependency = {
-  /**
-   * If an `@Attribute` decorator is used, this represents the injected attribute's name. If the
-   * attribute name is a dynamic expression instead of a string literal, this will be the unknown
-   * type.
-   */
-  attribute?: string|unknown;
 
-  /**
-   * If `@Optional()` is used, this key is set to true.
-   */
-  optional?: true;
-
-  /**
-   * If `@Host` is used, this key is set to true.
-   */
-  host?: true;
-
-  /**
-   * If `@Self` is used, this key is set to true.
-   */
-  self?: true;
-
-  /**
-   * If `@SkipSelf` is used, this key is set to true.
-   */
-  skipSelf?: true;
-}|null;
-
-/**
- * @codeGenApi
- */
-export type ɵɵDirectiveDefWithMeta<
-    T, Selector extends string, ExportAs extends
-        string[], InputMap extends {[key: string]: string},
-                                   OutputMap extends {[key: string]: string},
-                                                     QueryFields extends string[]> =
-    DirectiveDef<T>;
 
 /**
  * Runtime link information for Directives.
@@ -143,6 +103,20 @@ export interface DirectiveDef<T> {
    * (as in `@Input('alias') propertyName: any;`).
    */
   readonly inputs: {[P in keyof T]: string};
+
+  /**
+   * A dictionary mapping the private names of inputs to their transformation functions.
+   * Note: the private names are used for the keys, rather than the public ones, because public
+   * names can be re-aliased in host directives which would invalidate the lookup.
+   */
+  readonly inputTransforms: {[classPropertyName: string]: InputTransformFunction}|null;
+
+  /**
+   * Contains the raw input information produced by the compiler. Can be
+   * used to do further processing after the `inputs` have been inverted.
+   */
+  readonly inputConfig:
+      {[classPropertyName: string]: string|[string, string, InputTransformFunction?]};
 
   /**
    * @deprecated This is only here because `NgOnChanges` incorrectly uses declared name instead of
@@ -231,6 +205,16 @@ export interface DirectiveDef<T> {
   readonly exportAs: string[]|null;
 
   /**
+   * Whether this directive (or component) is standalone.
+   */
+  readonly standalone: boolean;
+
+  /**
+   * Whether this directive (or component) uses the signals authoring experience.
+   */
+  readonly signals: boolean;
+
+  /**
    * Factory function used to create a new directive instance. Will be null initially.
    * Populated when the factory is first requested by directive instantiation logic.
    */
@@ -241,25 +225,27 @@ export interface DirectiveDef<T> {
    */
   readonly features: DirectiveDefFeature[]|null;
 
+  /**
+   * Function that will add the host directives to the list of matches during directive matching.
+   * Patched onto the definition by the `HostDirectivesFeature`.
+   * @param currentDef Definition that has been matched.
+   * @param matchedDefs List of all matches for a specified node. Will be mutated to include the
+   * host directives.
+   * @param hostDirectiveDefs Mapping of directive definitions to their host directive
+   * configuration. Host directives will be added to the map as they're being matched to the node.
+   */
+  findHostDirectiveDefs:
+      ((currentDef: DirectiveDef<unknown>, matchedDefs: DirectiveDef<unknown>[],
+        hostDirectiveDefs: HostDirectiveDefs) => void)|null;
+
+  /** Additional directives to be applied whenever the directive has been matched. */
+  hostDirectives: HostDirectiveDef[]|null;
+
   setInput:
       (<U extends T>(
            this: DirectiveDef<U>, instance: U, value: any, publicName: string,
            privateName: string) => void)|null;
 }
-
-/**
- * @codeGenApi
- */
-export type ɵɵComponentDefWithMeta<
-    T, Selector extends String, ExportAs extends
-        string[], InputMap extends {[key: string]: string},
-                                   OutputMap extends {[key: string]: string}, QueryFields extends
-            string[], NgContentSelectors extends string[]> = ComponentDef<T>;
-
-/**
- * @codeGenApi
- */
-export type ɵɵFactoryDef<T, CtorDependencies extends CtorDependency[]> = () => T;
 
 /**
  * Runtime link information for Components.
@@ -275,7 +261,8 @@ export type ɵɵFactoryDef<T, CtorDependencies extends CtorDependency[]> = () =>
  */
 export interface ComponentDef<T> extends DirectiveDef<T> {
   /**
-   * Runtime unique component ID.
+   * Unique ID for the component. Used in view encapsulation and
+   * to keep track of the injector in standalone components.
    */
   readonly id: string;
 
@@ -339,6 +326,9 @@ export interface ComponentDef<T> extends DirectiveDef<T> {
   /** Whether or not this component's ChangeDetectionStrategy is OnPush */
   readonly onPush: boolean;
 
+  /** Whether or not this component is signal-based. */
+  readonly signals: boolean;
+
   /**
    * Registry of directives and components that may be found in this view.
    *
@@ -356,6 +346,11 @@ export interface ComponentDef<T> extends DirectiveDef<T> {
   pipeDefs: PipeDefListOrFactory|null;
 
   /**
+   * Unfiltered list of all dependencies of a component, or `null` if none.
+   */
+  dependencies: TypeOrFactory<DependencyTypeList>|null;
+
+  /**
    * The set of schemas that declare elements to be allowed in the component's template.
    */
   schemas: SchemaMetadata[]|null;
@@ -365,6 +360,12 @@ export interface ComponentDef<T> extends DirectiveDef<T> {
    * the first run of component.
    */
   tView: TView|null;
+
+  /**
+   * A function added by the {@link ɵɵStandaloneFeature} and used by the framework to create
+   * standalone injectors.
+   */
+  getStandaloneInjector: ((parentInjector: EnvironmentInjector) => EnvironmentInjector | null)|null;
 
   /**
    * Used to store the result of `noSideEffects` function so that it is not removed by closure
@@ -410,14 +411,14 @@ export interface PipeDef<T> {
    */
   readonly pure: boolean;
 
+  /**
+   * Whether this pipe is standalone.
+   */
+  readonly standalone: boolean;
+
   /* The following are lifecycle hooks for this pipe */
   onDestroy: (() => void)|null;
 }
-
-/**
- * @codeGenApi
- */
-export type ɵɵPipeDefWithMeta<T, Name extends string> = PipeDef<T>;
 
 export interface DirectiveDefFeature {
   <T>(directiveDef: DirectiveDef<T>): void;
@@ -432,6 +433,33 @@ export interface DirectiveDefFeature {
   ngInherit?: true;
 }
 
+/** Runtime information used to configure a host directive. */
+export interface HostDirectiveDef<T = unknown> {
+  /** Class representing the host directive. */
+  directive: Type<T>;
+
+  /** Directive inputs that have been exposed. */
+  inputs: HostDirectiveBindingMap;
+
+  /** Directive outputs that have been exposed. */
+  outputs: HostDirectiveBindingMap;
+}
+
+/**
+ * Mapping between the public aliases of directive bindings and the underlying inputs/outputs that
+ * they represent. Also serves as an allowlist of the inputs/outputs from the host directive that
+ * the author has decided to expose.
+ */
+export type HostDirectiveBindingMap = {
+  [publicName: string]: string
+};
+
+/**
+ * Mapping between a directive that was used as a host directive
+ * and the configuration that was used to define it as such.
+ */
+export type HostDirectiveDefs = Map<DirectiveDef<unknown>, HostDirectiveDef>;
+
 export interface ComponentDefFeature {
   <T>(componentDef: ComponentDef<T>): void;
   /**
@@ -445,6 +473,8 @@ export interface ComponentDefFeature {
   ngInherit?: true;
 }
 
+/** Function that can be used to transform incoming input values. */
+export type InputTransformFunction = (value: any) => any;
 
 /**
  * Type used for directiveDefs on component definition.
@@ -460,6 +490,10 @@ export type DirectiveTypesOrFactory = (() => DirectiveTypeList)|DirectiveTypeLis
 export type DirectiveTypeList =
     (DirectiveType<any>|ComponentType<any>|
      Type<any>/* Type as workaround for: Microsoft/TypeScript/issues/4881 */)[];
+
+export type DependencyTypeList = (DirectiveType<any>|ComponentType<any>|PipeType<any>|Type<any>)[];
+
+export type TypeOrFactory<T> = T|(() => T);
 
 export type HostBindingsFunction<T> = <U extends T>(rf: RenderFlags, ctx: U) => void;
 
@@ -481,3 +515,23 @@ export type PipeTypeList =
 // Note: This hack is necessary so we don't erroneously get a circular dependency
 // failure based on types.
 export const unusedValueExportToPlacateAjd = 1;
+
+/**
+ * NgModule scope info as provided by NgModule decorator.
+ */
+export interface NgModuleScopeInfoFromDecorator {
+  /** List of components, directives, and pipes declared by this module. */
+  declarations?: Type<any>[]|(() => Type<any>[]);
+
+  /** List of modules or `ModuleWithProviders` imported by this module. */
+  imports?: Type<any>[]|(() => Type<any>[]);
+
+  /**
+   * List of modules, `ModuleWithProviders`, components, directives, or pipes exported by this
+   * module.
+   */
+  exports?: Type<any>[]|(() => Type<any>[]);
+}
+
+export type RawScopeInfoFromDecorator =
+    Type<any>|ModuleWithProviders<any>|(() => Type<any>)|(() => ModuleWithProviders<any>);

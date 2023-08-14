@@ -2,23 +2,22 @@ import { browser, element, by, ElementFinder } from 'protractor';
 
 const expectedH1 = 'Tour of Heroes';
 const expectedTitle = `${expectedH1}`;
-const targetHero = { id: 15, name: 'Magneta' };
+const targetHero = { id: 16, name: 'RubberMan' };
 const targetHeroDashboardIndex = 3;
 const nameSuffix = 'X';
 const newHeroName = targetHero.name + nameSuffix;
 
 class Hero {
-  id: number;
-  name: string;
+  constructor(public id: number, public name: string) {}
 
   // Factory methods
 
   // Get hero from s formatted as '<id> <name>'.
   static fromString(s: string): Hero {
-    return {
-      id: +s.substr(0, s.indexOf(' ')),
-      name: s.substr(s.indexOf(' ') + 1),
-    };
+    return new Hero(
+      +s.substring(0, s.indexOf(' ')),
+      s.slice(s.indexOf(' ') + 1),
+    );
   }
 
   // Get hero id and name from the given detail element.
@@ -28,8 +27,8 @@ class Hero {
     // Get name from the h2
     const name = await detail.element(by.css('h2')).getText();
     return {
-      id: +id.substr(id.indexOf(' ') + 1),
-      name: name.substr(0, name.lastIndexOf(' '))
+      id: +id.slice(id.indexOf(' ') + 1),
+      name: name.substring(0, name.lastIndexOf(' '))
     };
   }
 }
@@ -67,7 +66,7 @@ describe('Tutorial part 5', () => {
 
     const expectedViewNames = ['Dashboard', 'Heroes'];
     it(`has views ${expectedViewNames}`, async () => {
-      const viewNames = await getPageElts().navElts.map(el => el.getText());
+      const viewNames = await getPageElts().navElts.map(el => el!.getText());
       expect(viewNames).toEqual(expectedViewNames);
     });
 
@@ -107,7 +106,7 @@ describe('Tutorial part 5', () => {
       await getPageElts().appHeroesHref.click();
       const page = getPageElts();
       expect(await page.appHeroes.isPresent()).toBeTruthy();
-      expect(await page.allHeroes.count()).toEqual(10, 'number of heroes');
+      expect(await page.allHeroes.count()).toEqual(9, 'number of heroes');
     });
 
     it('can route to hero details', async () => {

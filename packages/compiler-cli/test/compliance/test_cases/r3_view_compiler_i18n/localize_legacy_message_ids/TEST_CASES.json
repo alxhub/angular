@@ -9,6 +9,9 @@
       "angularCompilerOptions": {
         "enableI18nLegacyMessageIdFormat": true
       },
+      "compilationModeFilter": [
+        "full compile"
+      ],
       "expectations": [
         {
           "extraChecks": [
@@ -16,7 +19,8 @@
             "verifyUniqueConsts"
           ]
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     },
     {
       "description": "should not add legacy message ids if `enableI18nLegacyMessageIdFormat` is false",
@@ -33,7 +37,8 @@
             "verifyUniqueConsts"
           ]
         }
-      ]
+      ],
+      "skipForTemplatePipeline": true
     }
   ]
 }

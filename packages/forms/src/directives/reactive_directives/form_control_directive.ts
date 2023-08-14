@@ -6,14 +6,14 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, EventEmitter, forwardRef, Inject, InjectionToken, Input, OnChanges, OnDestroy, Optional, Output, Self, SimpleChanges} from '@angular/core';
+import {Directive, EventEmitter, forwardRef, Inject, InjectionToken, Input, OnChanges, OnDestroy, Optional, Output, Provider, Self, SimpleChanges} from '@angular/core';
 
-import {FormControl} from '../../model';
+import {FormControl} from '../../model/form_control';
 import {NG_ASYNC_VALIDATORS, NG_VALIDATORS} from '../../validators';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '../control_value_accessor';
 import {NgControl} from '../ng_control';
-import {ReactiveErrors} from '../reactive_errors';
-import {_ngModelWarning, cleanUpControl, isPropertyUpdated, selectValueAccessor, setUpControl} from '../shared';
+import {disabledAttrWarning} from '../reactive_errors';
+import {_ngModelWarning, CALL_SET_DISABLED_STATE, cleanUpControl, isPropertyUpdated, selectValueAccessor, SetDisabledStateOption, setUpControl} from '../shared';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from '../validators';
 
 
@@ -23,7 +23,7 @@ import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from '../valid
 export const NG_MODEL_WITH_FORM_CONTROL_WARNING =
     new InjectionToken('NgModelWithFormControlWarning');
 
-export const formControlBinding: any = {
+const formControlBinding: Provider = {
   provide: NgControl,
   useExisting: forwardRef(() => FormControlDirective)
 };
@@ -38,8 +38,8 @@ export const formControlBinding: any = {
  * For details, see [Deprecated features](guide/deprecations#ngmodel-with-reactive-forms).
  *
  * @see [Reactive Forms Guide](guide/reactive-forms)
- * @see `FormControl`
- * @see `AbstractControl`
+ * @see {@link FormControl}
+ * @see {@link AbstractControl}
  *
  * @usageNotes
  *
@@ -72,7 +72,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
   @Input('disabled')
   set isDisabled(isDisabled: boolean) {
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      ReactiveErrors.disabledAttrWarning();
+      console.warn(disabledAttrWarning);
     }
   }
 
@@ -108,7 +108,9 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
           (AsyncValidator|AsyncValidatorFn)[],
       @Optional() @Self() @Inject(NG_VALUE_ACCESSOR) valueAccessors: ControlValueAccessor[],
       @Optional() @Inject(NG_MODEL_WITH_FORM_CONTROL_WARNING) private _ngModelWarningConfig: string|
-      null) {
+      null,
+      @Optional() @Inject(CALL_SET_DISABLED_STATE) private callSetDisabledState?:
+          SetDisabledStateOption) {
     super();
     this._setValidators(validators);
     this._setAsyncValidators(asyncValidators);
@@ -122,10 +124,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
       if (previousForm) {
         cleanUpControl(previousForm, this, /* validateControlPresenceOnChange */ false);
       }
-      setUpControl(this.form, this);
-      if (this.control.disabled && this.valueAccessor!.setDisabledState) {
-        this.valueAccessor!.setDisabledState!(true);
-      }
+      setUpControl(this.form, this, this.callSetDisabledState);
       this.form.updateValueAndValidity({emitEvent: false});
     }
     if (isPropertyUpdated(changes, this.viewModel)) {
@@ -149,7 +148,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
    * Returns an array that represents the path from the top-level form to this control.
    * Each index is the string name of the control on that level.
    */
-  get path(): string[] {
+  override get path(): string[] {
     return [];
   }
 
@@ -157,7 +156,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
    * @description
    * The `FormControl` bound to this directive.
    */
-  get control(): FormControl {
+  override get control(): FormControl {
     return this.form;
   }
 
@@ -167,7 +166,7 @@ export class FormControlDirective extends NgControl implements OnChanges, OnDest
    *
    * @param newValue The new value for the view model.
    */
-  viewToModelUpdate(newValue: any): void {
+  override viewToModelUpdate(newValue: any): void {
     this.viewModel = newValue;
     this.update.emit(newValue);
   }

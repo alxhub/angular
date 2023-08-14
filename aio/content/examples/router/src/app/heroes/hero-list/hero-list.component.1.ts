@@ -1,6 +1,5 @@
 // TODO: Feature Componetized like HeroCenter
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { HeroService } from '../hero.service';
@@ -12,10 +11,9 @@ import { Hero } from '../hero';
   styleUrls: ['./hero-list.component.css']
 })
 export class HeroListComponent implements OnInit {
-  heroes$: Observable<Hero[]>;
+  heroes$!: Observable<Hero[]>;
 
   constructor(
-    private router: Router,
     private service: HeroService
   ) {}
 

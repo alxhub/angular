@@ -7,8 +7,12 @@
  */
 import {assertDefined} from '../../util/assert';
 import {global} from '../../util/global';
+import {setupFrameworkInjectorProfiler} from '../debug/framework_injector_profiler';
+import {setProfiler} from '../profiler';
+
 import {applyChanges} from './change_detection_utils';
-import {getComponent, getContext, getDirectives, getHostElement, getInjector, getListeners, getOwningComponent, getRootComponents} from './discovery_utils';
+import {getComponent, getContext, getDirectiveMetadata, getDirectives, getHostElement, getInjector, getListeners, getOwningComponent, getRootComponents} from './discovery_utils';
+import {getDependenciesFromInjectable, getInjectorProviders, getInjectorResolutionPath} from './injector_discovery_utils';
 
 
 
@@ -18,8 +22,7 @@ import {getComponent, getContext, getDirectives, getHostElement, getInjector, ge
  *
  * To see this in action run the following command:
  *
- *   bazel run --config=ivy
- *   //packages/core/test/bundling/todo:devserver
+ *   bazel run //packages/core/test/bundling/todo:devserver
  *
  *  Then load `localhost:5432` and start using the console tools.
  */
@@ -40,6 +43,18 @@ let _published = false;
 export function publishDefaultGlobalUtils() {
   if (!_published) {
     _published = true;
+
+    setupFrameworkInjectorProfiler();
+    publishGlobalUtil('ɵgetDependenciesFromInjectable', getDependenciesFromInjectable);
+    publishGlobalUtil('ɵgetInjectorProviders', getInjectorProviders);
+    publishGlobalUtil('ɵgetInjectorResolutionPath', getInjectorResolutionPath);
+    /**
+     * Warning: this function is *INTERNAL* and should not be relied upon in application's code.
+     * The contract of the function might be changed in any release and/or the function can be
+     * removed completely.
+     */
+    publishGlobalUtil('ɵsetProfiler', setProfiler);
+    publishGlobalUtil('getDirectiveMetadata', getDirectiveMetadata);
     publishGlobalUtil('getComponent', getComponent);
     publishGlobalUtil('getContext', getContext);
     publishGlobalUtil('getListeners', getListeners);

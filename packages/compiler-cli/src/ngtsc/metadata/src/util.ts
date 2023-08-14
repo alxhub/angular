@@ -6,18 +6,18 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {Reference} from '../../imports';
+import {OwningModule, Reference} from '../../imports';
 import {ClassDeclaration, ClassMember, ClassMemberKind, isNamedClassDeclaration, ReflectionHost, reflectTypeEntityToDeclaration} from '../../reflection';
 import {nodeDebugInfo} from '../../util/src/typescript';
 
-import {DirectiveMeta, DirectiveTypeCheckMeta, MetadataReader, NgModuleMeta, PipeMeta, TemplateGuardMeta} from './api';
+import {DirectiveMeta, DirectiveTypeCheckMeta, InputMapping, MetadataReader, NgModuleMeta, PipeMeta, TemplateGuardMeta} from './api';
 import {ClassPropertyMapping, ClassPropertyName} from './property_mapping';
 
 export function extractReferencesFromType(
-    checker: ts.TypeChecker, def: ts.TypeNode, ngModuleImportedFrom: string|null,
-    resolutionContext: string): Reference<ClassDeclaration>[] {
+    checker: ts.TypeChecker, def: ts.TypeNode,
+    bestGuessOwningModule: OwningModule|null): Reference<ClassDeclaration>[] {
   if (!ts.isTupleTypeNode(def)) {
     return [];
   }
@@ -26,18 +26,43 @@ export function extractReferencesFromType(
     if (!ts.isTypeQueryNode(element)) {
       throw new Error(`Expected TypeQueryNode: ${nodeDebugInfo(element)}`);
     }
-    const type = element.exprName;
-    const {node, from} = reflectTypeEntityToDeclaration(type, checker);
-    if (!isNamedClassDeclaration(node)) {
-      throw new Error(`Expected named ClassDeclaration: ${nodeDebugInfo(node)}`);
-    }
-    const specifier = (from !== null && !from.startsWith('.') ? from : ngModuleImportedFrom);
-    if (specifier !== null) {
-      return new Reference(node, {specifier, resolutionContext});
-    } else {
-      return new Reference(node);
-    }
+
+    return extraReferenceFromTypeQuery(checker, element, def, bestGuessOwningModule);
   });
+}
+
+export function extraReferenceFromTypeQuery(
+    checker: ts.TypeChecker, typeNode: ts.TypeQueryNode, origin: ts.TypeNode,
+    bestGuessOwningModule: OwningModule|null) {
+  const type = typeNode.exprName;
+  const {node, from} = reflectTypeEntityToDeclaration(type, checker);
+  if (!isNamedClassDeclaration(node)) {
+    throw new Error(`Expected named ClassDeclaration: ${nodeDebugInfo(node)}`);
+  }
+  if (from !== null && !from.startsWith('.')) {
+    // The symbol was imported using an absolute module specifier so return a reference that
+    // uses that absolute module specifier as its best guess owning module.
+    return new Reference(
+        node, {specifier: from, resolutionContext: origin.getSourceFile().fileName});
+  }
+  // For local symbols or symbols that were imported using a relative module import it is
+  // assumed that the symbol is exported from the provided best guess owning module.
+  return new Reference(node, bestGuessOwningModule);
+}
+
+export function readBooleanType(type: ts.TypeNode): boolean|null {
+  if (!ts.isLiteralTypeNode(type)) {
+    return null;
+  }
+
+  switch (type.literal.kind) {
+    case ts.SyntaxKind.TrueKeyword:
+      return true;
+    case ts.SyntaxKind.FalseKeyword:
+      return false;
+    default:
+      return null;
+  }
 }
 
 export function readStringType(type: ts.TypeNode): string|null {
@@ -47,17 +72,18 @@ export function readStringType(type: ts.TypeNode): string|null {
   return type.literal.text;
 }
 
-export function readStringMapType(type: ts.TypeNode): {[key: string]: string} {
+export function readMapType<T>(
+    type: ts.TypeNode, valueTransform: (type: ts.TypeNode) => T | null): {[key: string]: T} {
   if (!ts.isTypeLiteralNode(type)) {
     return {};
   }
-  const obj: {[key: string]: string} = {};
+  const obj: {[key: string]: T} = {};
   type.members.forEach(member => {
     if (!ts.isPropertySignature(member) || member.type === undefined || member.name === undefined ||
-        !ts.isStringLiteral(member.name)) {
+        (!ts.isStringLiteral(member.name) && !ts.isIdentifier(member.name))) {
       return;
     }
-    const value = readStringType(member.type);
+    const value = valueTransform(member.type);
     if (value === null) {
       return null;
     }
@@ -86,7 +112,7 @@ export function readStringArrayType(type: ts.TypeNode): string[] {
  * making this metadata invariant to changes of inherited classes.
  */
 export function extractDirectiveTypeCheckMeta(
-    node: ClassDeclaration, inputs: ClassPropertyMapping,
+    node: ClassDeclaration, inputs: ClassPropertyMapping<InputMapping>,
     reflector: ReflectionHost): DirectiveTypeCheckMeta {
   const members = reflector.getMembersOfClass(node);
   const staticMembers = members.filter(member => member.isStatic);
@@ -103,7 +129,7 @@ export function extractDirectiveTypeCheckMeta(
   const stringLiteralInputFields = new Set<ClassPropertyName>();
   const undeclaredInputFields = new Set<ClassPropertyName>();
 
-  for (const classPropertyName of inputs.classPropertyNames) {
+  for (const {classPropertyName, transform} of inputs) {
     const field = members.find(member => member.name === classPropertyName);
     if (field === undefined || field.node === null) {
       undeclaredInputFields.add(classPropertyName);
@@ -114,6 +140,9 @@ export function extractDirectiveTypeCheckMeta(
     }
     if (field.nameNode !== null && ts.isStringLiteral(field.nameNode)) {
       stringLiteralInputFields.add(classPropertyName);
+    }
+    if (transform !== null) {
+      coercedInputFields.add(classPropertyName);
     }
   }
 
@@ -131,14 +160,12 @@ export function extractDirectiveTypeCheckMeta(
 }
 
 function isRestricted(node: ts.Node): boolean {
-  if (node.modifiers === undefined) {
-    return false;
-  }
+  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
 
-  return node.modifiers.some(
-      modifier => modifier.kind === ts.SyntaxKind.PrivateKeyword ||
-          modifier.kind === ts.SyntaxKind.ProtectedKeyword ||
-          modifier.kind === ts.SyntaxKind.ReadonlyKeyword);
+  return modifiers !== undefined && modifiers.some(({kind}) => {
+    return kind === ts.SyntaxKind.PrivateKeyword || kind === ts.SyntaxKind.ProtectedKeyword ||
+        kind === ts.SyntaxKind.ReadonlyKeyword;
+  });
 }
 
 function extractTemplateGuard(member: ClassMember): TemplateGuardMeta|null {
@@ -217,12 +244,11 @@ function afterUnderscore(str: string): string {
   if (pos === -1) {
     throw new Error(`Expected '${str}' to contain '_'`);
   }
-  return str.substr(pos + 1);
+  return str.slice(pos + 1);
 }
 
 /** Returns whether a class declaration has the necessary class fields to make it injectable. */
 export function hasInjectableFields(clazz: ClassDeclaration, host: ReflectionHost): boolean {
   const members = host.getMembersOfClass(clazz);
-  return members.some(
-      ({isStatic, name}) => isStatic && (name === 'ɵprov' || name === 'ɵfac' || name === 'ɵinj'));
+  return members.some(({isStatic, name}) => isStatic && (name === 'ɵprov' || name === 'ɵfac'));
 }

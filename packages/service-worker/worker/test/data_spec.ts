@@ -13,10 +13,11 @@ import {MockCache} from '../testing/cache';
 import {MockRequest} from '../testing/fetch';
 import {MockFileSystemBuilder, MockServerStateBuilder, tmpHashTableForFs} from '../testing/mock';
 import {SwTestHarness, SwTestHarnessBuilder} from '../testing/scope';
+import {envIsSupported} from '../testing/utils';
 
 (function() {
 // Skip environments that don't support the minimum APIs needed to run the SW tests.
-if (!SwTestHarness.envIsSupported()) {
+if (!envIsSupported()) {
   return;
 }
 
@@ -31,6 +32,8 @@ const dist = new MockFileSystemBuilder()
                  .addFile('/api/e', 'version E')
                  .addFile('/fresh/data', 'this is fresh data')
                  .addFile('/refresh/data', 'this is some data')
+                 .addFile('/fresh-opaque/data', 'this is some fresh data')
+                 .addFile('/perf-opaque/data', 'this is some perf data')
                  .build();
 
 
@@ -91,6 +94,28 @@ const manifest: Manifest = {
       version: 1,
       cacheQueryOptions: {ignoreVary: true},
     },
+    {
+      name: 'testFreshOpaque',
+      maxSize: 3,
+      strategy: 'freshness',
+      patterns: ['^/fresh-opaque/.*$'],
+      timeoutMs: 1000,
+      maxAge: 5000,
+      version: 1,
+      cacheOpaqueResponses: false,
+      cacheQueryOptions: {ignoreVary: true},
+    },
+    {
+      name: 'testPerfOpaque',
+      maxSize: 3,
+      strategy: 'performance',
+      patterns: ['^/perf-opaque/.*$'],
+      timeoutMs: 1000,
+      maxAge: 5000,
+      version: 1,
+      cacheOpaqueResponses: true,
+      cacheQueryOptions: {ignoreVary: true},
+    },
   ],
   navigationUrls: [],
   navigationRequestStrategy: 'performance',
@@ -126,7 +151,7 @@ describe('data cache', () => {
   let driver: Driver;
   beforeEach(async () => {
     scope = new SwTestHarnessBuilder().withServerState(server).build();
-    driver = new Driver(scope, scope, new CacheDatabase(scope, scope));
+    driver = new Driver(scope, scope, new CacheDatabase(scope));
 
     // Initialize.
     expect(await makeRequest(scope, '/foo.txt')).toEqual('this is foo');
@@ -144,7 +169,7 @@ describe('data cache', () => {
   describe('in performance mode', () => {
     it('names the caches correctly', async () => {
       expect(await makeRequest(scope, '/api/test')).toEqual('version 1');
-      const keys = await scope.caches.keys();
+      const keys = await scope.caches.original.keys();
       expect(keys.every(key => key.startsWith('ngsw:/:'))).toEqual(true);
     });
 
@@ -156,12 +181,20 @@ describe('data cache', () => {
       server.assertNoOtherRequests();
     });
 
-    it('does not cache opaque responses', async () => {
+    it('does not cache opaque responses by default', async () => {
       expect(await makeNoCorsRequest(scope, '/api/test')).toBe('');
       server.assertSawRequestFor('/api/test');
 
       expect(await makeNoCorsRequest(scope, '/api/test')).toBe('');
       server.assertSawRequestFor('/api/test');
+    });
+
+    it('caches opaque responses when configured to do so', async () => {
+      expect(await makeNoCorsRequest(scope, '/perf-opaque/data')).toBe('');
+      server.assertSawRequestFor('/perf-opaque/data');
+
+      expect(await makeNoCorsRequest(scope, '/perf-opaque/data')).toBe('');
+      server.assertNoOtherRequests();
     });
 
     it('refreshes after awhile', async () => {
@@ -288,7 +321,7 @@ describe('data cache', () => {
       serverUpdate.assertNoOtherRequests();
     });
 
-    it('caches opaque responses on refresh', async () => {
+    it('caches opaque responses on refresh by default', async () => {
       // Make the initial request and populate the cache.
       expect(await makeRequest(scope, '/fresh/data')).toBe('this is fresh data');
       server.assertSawRequestFor('/fresh/data');
@@ -316,6 +349,32 @@ describe('data cache', () => {
       scope.advance(2000);
 
       expect(await res2).toBe('');
+    });
+
+    it('does not cache opaque responses when configured not to do so', async () => {
+      // Make an initial no-cors request.
+      expect(await makeNoCorsRequest(scope, '/fresh-opaque/data')).toBe('');
+      server.assertSawRequestFor('/fresh-opaque/data');
+
+      // Pause the server, so the next request times out.
+      server.pause();
+      const [res] = makePendingRequest(scope, '/fresh-opaque/data');
+
+      // The network request should time out after 1,000ms and thus return a cached response if
+      // available. Since there is no cached response, however, the promise will not be resolved
+      // until the server returns a response.
+      let resolved = false;
+      res.then(() => resolved = true);
+
+      await server.nextRequest;
+      scope.advance(2000);
+      await new Promise(resolve => setTimeout(resolve));  // Drain the microtask queue.
+      expect(resolved).toBe(false);
+
+      // Unpause the server, to allow the network request to complete.
+      server.unpause();
+      await new Promise(resolve => setTimeout(resolve));  // Drain the microtask queue.
+      expect(resolved).toBe(true);
     });
 
     it('CacheQueryOptions are passed through when falling back to cache', async () => {

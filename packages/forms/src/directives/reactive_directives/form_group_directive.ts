@@ -6,20 +6,22 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, EventEmitter, forwardRef, Inject, Input, OnChanges, OnDestroy, Optional, Output, Self, SimpleChanges} from '@angular/core';
+import {Directive, EventEmitter, forwardRef, Inject, Input, OnChanges, OnDestroy, Optional, Output, Provider, Self, SimpleChanges} from '@angular/core';
 
-import {FormArray, FormControl, FormGroup} from '../../model';
+import {FormArray} from '../../model/form_array';
+import {FormControl, isFormControl} from '../../model/form_control';
+import {FormGroup} from '../../model/form_group';
 import {NG_ASYNC_VALIDATORS, NG_VALIDATORS} from '../../validators';
 import {ControlContainer} from '../control_container';
 import {Form} from '../form_interface';
-import {ReactiveErrors} from '../reactive_errors';
-import {cleanUpControl, cleanUpFormContainer, cleanUpValidators, removeListItem, setUpControl, setUpFormContainer, setUpValidators, syncPendingControls} from '../shared';
+import {missingFormException} from '../reactive_errors';
+import {CALL_SET_DISABLED_STATE, cleanUpControl, cleanUpFormContainer, cleanUpValidators, removeListItem, SetDisabledStateOption, setUpControl, setUpFormContainer, setUpValidators, syncPendingControls} from '../shared';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from '../validators';
 
 import {FormControlName} from './form_control_name';
 import {FormArrayName, FormGroupName} from './form_group_name';
 
-export const formDirectiveProvider: any = {
+const formDirectiveProvider: Provider = {
   provide: ControlContainer,
   useExisting: forwardRef(() => FormGroupDirective)
 };
@@ -27,15 +29,15 @@ export const formDirectiveProvider: any = {
 /**
  * @description
  *
- * Binds an existing `FormGroup` to a DOM element.
+ * Binds an existing `FormGroup` or `FormRecord` to a DOM element.
  *
  * This directive accepts an existing `FormGroup` instance. It will then use this
- * `FormGroup` instance to match any child `FormControl`, `FormGroup`,
+ * `FormGroup` instance to match any child `FormControl`, `FormGroup`/`FormRecord`,
  * and `FormArray` instances to child `FormControlName`, `FormGroupName`,
  * and `FormArrayName` directives.
  *
  * @see [Reactive Forms Guide](guide/reactive-forms)
- * @see `AbstractControl`
+ * @see {@link AbstractControl}
  *
  * @usageNotes
  * ### Register Form Group
@@ -92,9 +94,11 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
   @Output() ngSubmit = new EventEmitter();
 
   constructor(
-      @Optional() @Self() @Inject(NG_VALIDATORS) private validators: (Validator|ValidatorFn)[],
-      @Optional() @Self() @Inject(NG_ASYNC_VALIDATORS) private asyncValidators:
-          (AsyncValidator|AsyncValidatorFn)[]) {
+      @Optional() @Self() @Inject(NG_VALIDATORS) validators: (Validator|ValidatorFn)[],
+      @Optional() @Self() @Inject(NG_ASYNC_VALIDATORS) asyncValidators:
+          (AsyncValidator|AsyncValidatorFn)[],
+      @Optional() @Inject(CALL_SET_DISABLED_STATE) private callSetDisabledState?:
+          SetDisabledStateOption) {
     super();
     this._setValidators(validators);
     this._setAsyncValidators(asyncValidators);
@@ -114,7 +118,7 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
   /** @nodoc */
   ngOnDestroy() {
     if (this.form) {
-      cleanUpValidators(this.form, this, /* handleOnValidatorChange */ false);
+      cleanUpValidators(this.form, this);
 
       // Currently the `onCollectionChange` callback is rewritten each time the
       // `_registerOnCollectionChange` function is invoked. The implication is that cleanup should
@@ -132,7 +136,7 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
    * @description
    * Returns this directive's instance.
    */
-  get formDirective(): Form {
+  override get formDirective(): Form {
     return this;
   }
 
@@ -140,7 +144,7 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
    * @description
    * Returns the `FormGroup` bound to this directive.
    */
-  get control(): FormGroup {
+  override get control(): FormGroup {
     return this.form;
   }
 
@@ -149,7 +153,7 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
    * Returns an array representing the path to this group. Because this directive
    * always lives at the top level of a form, it always an empty array.
    */
-  get path(): string[] {
+  override get path(): string[] {
     return [];
   }
 
@@ -162,7 +166,7 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
    */
   addControl(dir: FormControlName): FormControl {
     const ctrl: any = this.form.get(dir.path);
-    setUpControl(ctrl, dir);
+    setUpControl(ctrl, dir, this.callSetDisabledState);
     ctrl.updateValueAndValidity({emitEvent: false});
     this.directives.push(dir);
     return ctrl;
@@ -254,7 +258,7 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
    * @param value The new value for the directive's control.
    */
   updateModel(dir: FormControlName, value: any): void {
-    const ctrl  = <FormControl>this.form.get(dir.path);
+    const ctrl = <FormControl>this.form.get(dir.path);
     ctrl.setValue(value);
   }
 
@@ -269,7 +273,10 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
     (this as {submitted: boolean}).submitted = true;
     syncPendingControls(this.form, this.directives);
     this.ngSubmit.emit($event);
-    return false;
+    // Forms with `method="dialog"` have some special behavior that won't reload the page and that
+    // shouldn't be prevented. Note that we need to null check the `event` and the `target`, because
+    // some internal apps call this method directly with the wrong arguments.
+    return ($event?.target as HTMLFormElement | null)?.method === 'dialog';
   }
 
   /**
@@ -291,17 +298,25 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
     (this as {submitted: boolean}).submitted = false;
   }
 
-
   /** @internal */
   _updateDomValue() {
     this.directives.forEach(dir => {
-      const newCtrl: any = this.form.get(dir.path);
-      if (dir.control !== newCtrl) {
+      const oldCtrl = dir.control;
+      const newCtrl = this.form.get(dir.path);
+      if (oldCtrl !== newCtrl) {
         // Note: the value of the `dir.control` may not be defined, for example when it's a first
         // `FormControl` that is added to a `FormGroup` instance (via `addControl` call).
-        cleanUpControl(dir.control || null, dir);
-        if (newCtrl) setUpControl(newCtrl, dir);
-        (dir as {control: FormControl}).control = newCtrl;
+        cleanUpControl(oldCtrl || null, dir);
+
+        // Check whether new control at the same location inside the corresponding `FormGroup` is an
+        // instance of `FormControl` and perform control setup only if that's the case.
+        // Note: we don't need to clear the list of directives (`this.directives`) here, it would be
+        // taken care of in the `removeControl` method invoked when corresponding `formControlName`
+        // directive instance is being removed (invoked from `FormControlName.ngOnDestroy`).
+        if (isFormControl(newCtrl)) {
+          setUpControl(newCtrl, dir, this.callSetDisabledState);
+          (dir as {control: FormControl}).control = newCtrl;
+        }
       }
     });
 
@@ -339,15 +354,15 @@ export class FormGroupDirective extends ControlContainer implements Form, OnChan
   }
 
   private _updateValidators() {
-    setUpValidators(this.form, this, /* handleOnValidatorChange */ false);
+    setUpValidators(this.form, this);
     if (this._oldForm) {
-      cleanUpValidators(this._oldForm, this, /* handleOnValidatorChange */ false);
+      cleanUpValidators(this._oldForm, this);
     }
   }
 
   private _checkFormPresent() {
     if (!this.form && (typeof ngDevMode === 'undefined' || ngDevMode)) {
-      ReactiveErrors.missingFormException();
+      throw missingFormException();
     }
   }
 }

@@ -32,7 +32,7 @@ describe('WelcomeComponent (class only)', () => {
 
   // #docregion class-only-tests
   it('should not have welcome message after construction', () => {
-    expect(comp.welcome).toBeUndefined();
+    expect(comp.welcome).toBe('');
   });
 
   it('should welcome logged in user after Angular calls ngOnInit', () => {
@@ -105,8 +105,12 @@ describe('WelcomeComponent', () => {
   it('should welcome the user', () => {
     fixture.detectChanges();
     const content = el.textContent;
-    expect(content).toContain('Welcome', '"Welcome ..."');
-    expect(content).toContain('Test User', 'expected name');
+    expect(content)
+      .withContext('"Welcome ..."')
+      .toContain('Welcome');
+    expect(content)
+      .withContext('expected name')
+      .toContain('Test User');
   });
 
   it('should welcome "Bubba"', () => {
@@ -119,17 +123,21 @@ describe('WelcomeComponent', () => {
     userService.isLoggedIn = false; // welcome message hasn't been shown yet
     fixture.detectChanges();
     const content = el.textContent;
-    expect(content).not.toContain('Welcome', 'not welcomed');
-    expect(content).toMatch(/log in/i, '"log in"');
+    expect(content)
+      .withContext('not welcomed')
+      .not.toContain('Welcome');
+    expect(content)
+      .withContext('"log in"')
+      .toMatch(/log in/i);
   });
   // #enddocregion tests
 
-  it('should inject the component\'s UserService instance',
+  it("should inject the component's UserService instance",
     inject([UserService], (service: UserService) => {
     expect(service).toBe(componentUserService);
   }));
 
   it('TestBed and Component UserService should be the same', () => {
-    expect(userService === componentUserService).toBe(true);
+    expect(userService).toBe(componentUserService);
   });
 });

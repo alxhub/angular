@@ -11,12 +11,15 @@ import * as i18n from '../i18n/i18n_ast';
 import * as html from '../ml_parser/ast';
 import {replaceNgsp} from '../ml_parser/html_whitespaces';
 import {isNgTemplate} from '../ml_parser/tags';
+import {InterpolatedAttributeToken, InterpolatedTextToken} from '../ml_parser/tokens';
 import {ParseError, ParseErrorLevel, ParseSourceSpan} from '../parse_util';
 import {isStyleUrlResolvable} from '../style_url_resolver';
 import {BindingParser} from '../template_parser/binding_parser';
 import {PreparsedElementType, preparseElement} from '../template_parser/template_preparser';
 
 import * as t from './r3_ast';
+import {createForLoop, createIfBlock, createSwitchBlock} from './r3_control_flow';
+import {createDeferredBlock} from './r3_deferred_blocks';
 import {I18N_ICU_VAR_PREFIX, isI18nRootNode} from './view/i18n/util';
 
 const BIND_NAME_REGEXP = /^(?:(bind-)|(let-)|(ref-|#)|(on-)|(bindon-)|(@))(.*)$/;
@@ -51,23 +54,35 @@ export interface Render3ParseResult {
   styles: string[];
   styleUrls: string[];
   ngContentSelectors: string[];
+  // Will be defined if `Render3ParseOptions['collectCommentNodes']` is true
+  commentNodes?: t.Comment[];
+}
+
+interface Render3ParseOptions {
+  collectCommentNodes: boolean;
+  enabledBlockTypes: Set<string>;
 }
 
 export function htmlAstToRender3Ast(
-    htmlNodes: html.Node[], bindingParser: BindingParser): Render3ParseResult {
-  const transformer = new HtmlAstToIvyAst(bindingParser);
+    htmlNodes: html.Node[], bindingParser: BindingParser,
+    options: Render3ParseOptions): Render3ParseResult {
+  const transformer = new HtmlAstToIvyAst(bindingParser, options);
   const ivyNodes = html.visitAll(transformer, htmlNodes);
 
   // Errors might originate in either the binding parser or the html to ivy transformer
   const allErrors = bindingParser.errors.concat(transformer.errors);
 
-  return {
+  const result: Render3ParseResult = {
     nodes: ivyNodes,
     errors: allErrors,
     styleUrls: transformer.styleUrls,
     styles: transformer.styles,
-    ngContentSelectors: transformer.ngContentSelectors,
+    ngContentSelectors: transformer.ngContentSelectors
   };
+  if (options.collectCommentNodes) {
+    result.commentNodes = transformer.commentNodes;
+  }
+  return result;
 }
 
 class HtmlAstToIvyAst implements html.Visitor {
@@ -75,9 +90,11 @@ class HtmlAstToIvyAst implements html.Visitor {
   styles: string[] = [];
   styleUrls: string[] = [];
   ngContentSelectors: string[] = [];
+  // This array will be populated if `Render3ParseOptions['collectCommentNodes']` is true
+  commentNodes: t.Comment[] = [];
   private inI18nBlock: boolean = false;
 
-  constructor(private bindingParser: BindingParser) {}
+  constructor(private bindingParser: BindingParser, private options: Render3ParseOptions) {}
 
   // HTML visitor
   visitElement(element: html.Element): t.Node|null {
@@ -170,10 +187,18 @@ class HtmlAstToIvyAst implements html.Visitor {
       }
     }
 
-    const children: t.Node[] =
-        html.visitAll(preparsedElement.nonBindable ? NON_BINDABLE_VISITOR : this, element.children);
+    let children: t.Node[];
 
-    let parsedElement: t.Node|undefined;
+    if (preparsedElement.nonBindable) {
+      // The `NonBindableVisitor` may need to return an array of nodes for block groups so we need
+      // to flatten the array here. Avoid doing this for the `HtmlAstToIvyAst` since `flat` creates
+      // a new array.
+      children = html.visitAll(NON_BINDABLE_VISITOR, element.children).flat(Infinity);
+    } else {
+      children = html.visitAll(this, element.children);
+    }
+
+    let parsedElement: t.Content|t.Template|t.Element|undefined;
     if (preparsedElement.type === PreparsedElementType.NG_CONTENT) {
       // `<ng-content>`
       if (element.children &&
@@ -222,13 +247,12 @@ class HtmlAstToIvyAst implements html.Visitor {
       // the wrapping template to prevent unnecessary i18n instructions from being generated. The
       // necessary i18n meta information will be extracted from child elements.
       const i18n = isTemplateElement && isI18nRootElement ? undefined : element.i18n;
+      const name = parsedElement instanceof t.Template ? null : parsedElement.name;
 
-      // TODO(pk): test for this case
       parsedElement = new t.Template(
-          (parsedElement as t.Element | t.Content).name, hoistedAttrs.attributes,
-          hoistedAttrs.inputs, hoistedAttrs.outputs, templateAttrs, [parsedElement],
-          [/* no references */], templateVariables, element.sourceSpan, element.startSourceSpan,
-          element.endSourceSpan, i18n);
+          name, hoistedAttrs.attributes, hoistedAttrs.inputs, hoistedAttrs.outputs, templateAttrs,
+          [parsedElement], [/* no references */], templateVariables, element.sourceSpan,
+          element.startSourceSpan, element.endSourceSpan, i18n);
     }
     if (isI18nRootElement) {
       this.inI18nBlock = false;
@@ -243,7 +267,7 @@ class HtmlAstToIvyAst implements html.Visitor {
   }
 
   visitText(text: html.Text): t.Node {
-    return this._visitTextWithInterpolation(text.value, text.sourceSpan, text.i18n);
+    return this._visitTextWithInterpolation(text.value, text.sourceSpan, text.tokens, text.i18n);
   }
 
   visitExpansion(expansion: html.Expansion): t.Icu|null {
@@ -276,7 +300,7 @@ class HtmlAstToIvyAst implements html.Visitor {
 
         vars[formattedKey] = new t.BoundText(ast, value.sourceSpan);
       } else {
-        placeholders[key] = this._visitTextWithInterpolation(value.text, value.sourceSpan);
+        placeholders[key] = this._visitTextWithInterpolation(value.text, value.sourceSpan, null);
       }
     });
     return new t.Icu(vars, placeholders, expansion.sourceSpan, message);
@@ -287,8 +311,61 @@ class HtmlAstToIvyAst implements html.Visitor {
   }
 
   visitComment(comment: html.Comment): null {
+    if (this.options.collectCommentNodes) {
+      this.commentNodes.push(new t.Comment(comment.value || '', comment.sourceSpan));
+    }
     return null;
   }
+
+  visitBlockGroup(group: html.BlockGroup, context: any): t.Node|null {
+    const primaryBlock = group.blocks[0];
+
+    // The HTML parser ensures that we don't hit this case, but we have an assertion just in case.
+    if (!primaryBlock) {
+      this.reportError('Block group must have at least one block.', group.sourceSpan);
+      return null;
+    }
+
+    if (!this.options.enabledBlockTypes.has(primaryBlock.name)) {
+      this.reportError(`Unrecognized block "${primaryBlock.name}".`, primaryBlock.sourceSpan);
+      return null;
+    }
+
+    let result: {node: t.Node|null, errors: ParseError[]}|null = null;
+
+    switch (primaryBlock.name) {
+      case 'defer':
+        result = createDeferredBlock(group, this, this.bindingParser);
+        break;
+
+      case 'switch':
+        result = createSwitchBlock(group, this, this.bindingParser);
+        break;
+
+      case 'for':
+        result = createForLoop(group, this, this.bindingParser);
+        break;
+
+      case 'if':
+        result = createIfBlock(group, this, this.bindingParser);
+        break;
+
+      default:
+        result = {
+          node: null,
+          errors: [new ParseError(
+              primaryBlock.sourceSpan, `Unrecognized block "${primaryBlock.name}".`)]
+        };
+        break;
+    }
+
+    this.errors.push(...result.errors);
+    return result.node;
+  }
+
+  visitBlock(block: html.Block, context: any) {}
+
+  visitBlockParameter(parameter: html.BlockParameter, context: any) {}
 
   // convert view engine `ParsedProperty` to a format suitable for IVY
   private extractAttributes(
@@ -364,8 +441,8 @@ class HtmlAstToIvyAst implements html.Visitor {
         const identifier = bindParts[IDENT_KW_IDX];
         const keySpan = createKeySpan(srcSpan, bindParts[KW_ON_IDX], identifier);
         this.bindingParser.parseEvent(
-            identifier, value, srcSpan, attribute.valueSpan || srcSpan, matchableAttributes, events,
-            keySpan);
+            identifier, value, /* isAssignmentEvent */ false, srcSpan,
+            attribute.valueSpan || srcSpan, matchableAttributes, events, keySpan);
         addEvents(events, boundEvents);
       } else if (bindParts[KW_BINDON_IDX]) {
         const identifier = bindParts[IDENT_KW_IDX];
@@ -417,8 +494,8 @@ class HtmlAstToIvyAst implements html.Visitor {
       } else {
         const events: ParsedEvent[] = [];
         this.bindingParser.parseEvent(
-            identifier, value, srcSpan, attribute.valueSpan || srcSpan, matchableAttributes, events,
-            keySpan);
+            identifier, value, /* isAssignmentEvent */ false, srcSpan,
+            attribute.valueSpan || srcSpan, matchableAttributes, events, keySpan);
         addEvents(events, boundEvents);
       }
 
@@ -428,14 +505,17 @@ class HtmlAstToIvyAst implements html.Visitor {
     // No explicit binding found.
     const keySpan = createKeySpan(srcSpan, '' /* prefix */, name);
     const hasBinding = this.bindingParser.parsePropertyInterpolation(
-        name, value, srcSpan, attribute.valueSpan, matchableAttributes, parsedProperties, keySpan);
+        name, value, srcSpan, attribute.valueSpan, matchableAttributes, parsedProperties, keySpan,
+        attribute.valueTokens ?? null);
     return hasBinding;
   }
 
   private _visitTextWithInterpolation(
-      value: string, sourceSpan: ParseSourceSpan, i18n?: i18n.I18nMeta): t.Text|t.BoundText {
+      value: string, sourceSpan: ParseSourceSpan,
+      interpolatedTokens: InterpolatedAttributeToken[]|InterpolatedTextToken[]|null,
+      i18n?: i18n.I18nMeta): t.Text|t.BoundText {
     const valueNoNgsp = replaceNgsp(value);
-    const expr = this.bindingParser.parseInterpolation(valueNoNgsp, sourceSpan);
+    const expr = this.bindingParser.parseInterpolation(valueNoNgsp, sourceSpan, interpolatedTokens);
     return expr ? new t.BoundText(expr, sourceSpan, i18n) : new t.Text(valueNoNgsp, sourceSpan);
   }
 
@@ -471,8 +551,8 @@ class HtmlAstToIvyAst implements html.Visitor {
       boundEvents: t.BoundEvent[], keySpan: ParseSourceSpan) {
     const events: ParsedEvent[] = [];
     this.bindingParser.parseEvent(
-        `${name}Change`, `${expression}=$event`, sourceSpan, valueSpan || sourceSpan,
-        targetMatchableAttrs, events, keySpan);
+        `${name}Change`, `${expression} =$event`, /* isAssignmentEvent */ true, sourceSpan,
+        valueSpan || sourceSpan, targetMatchableAttrs, events, keySpan);
     addEvents(events, boundEvents);
   }
 
@@ -498,7 +578,7 @@ class NonBindableVisitor implements html.Visitor {
     const children: t.Node[] = html.visitAll(this, ast.children, null);
     return new t.Element(
         ast.name, html.visitAll(this, ast.attrs) as t.TextAttribute[],
-        /* inputs */[], /* outputs */[], children,  /* references */[], ast.sourceSpan,
+        /* inputs */[], /* outputs */[], children, /* references */[], ast.sourceSpan,
         ast.startSourceSpan, ast.endSourceSpan);
   }
 
@@ -521,6 +601,30 @@ class NonBindableVisitor implements html.Visitor {
   }
 
   visitExpansionCase(expansionCase: html.ExpansionCase): any {
+    return null;
+  }
+
+  visitBlockGroup(group: html.BlockGroup, context: any) {
+    const nodes = html.visitAll(this, group.blocks);
+
+    // We only need to do the end tag since the start will be added as a part of the primary block.
+    if (group.endSourceSpan !== null) {
+      nodes.push(new t.Text(group.endSourceSpan.toString(), group.endSourceSpan));
+    }
+
+    return nodes;
+  }
+
+  visitBlock(block: html.Block, context: any) {
+    return [
+      // In an ngNonBindable context we treat the opening/closing tags of block as plain text.
+      // This is the as if the `tokenizeBlocks` option was disabled.
+      new t.Text(block.startSourceSpan.toString(), block.startSourceSpan),
+      ...html.visitAll(this, block.children)
+    ];
+  }
+
+  visitBlockParameter(parameter: html.BlockParameter, context: any) {
     return null;
   }
 }

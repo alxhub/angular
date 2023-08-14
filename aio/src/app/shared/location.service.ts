@@ -4,7 +4,7 @@ import { Location, PlatformLocation } from '@angular/common';
 import { ReplaySubject } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 
-import { GaService } from 'app/shared/ga.service';
+import { AnalyticsService } from 'app/shared/analytics.service';
 import { ScrollService } from './scroll.service';
 
 @Injectable()
@@ -18,21 +18,19 @@ export class LocationService {
     .pipe(map(url => this.stripSlashes(url)));
 
   currentPath = this.currentUrl.pipe(
-    map(url => (url.match(/[^?#]*/) || [])[0]),  // strip query and hash
-    tap(path => this.gaService.locationChanged(path)),
+    map(url => (url.match(/[^?#]*/) || [''])[0]),  // strip query and hash
+    tap(path => this.analyticsService.locationChanged(path)),
   );
 
   constructor(
-    private gaService: GaService,
+    private analyticsService: AnalyticsService,
     private location: Location,
     private scrollService: ScrollService,
     private platformLocation: PlatformLocation) {
 
     this.urlSubject.next(location.path(true));
 
-    this.location.subscribe(state => {
-      return this.urlSubject.next(state.url || '');
-    });
+    this.location.subscribe(state => this.urlSubject.next(state.url || ''));
   }
 
   /**
@@ -79,12 +77,12 @@ export class LocationService {
   }
 
   search() {
-    const search: { [index: string]: string|undefined; } = {};
+    const search: { [index: string]: string|undefined } = {};
     const path = this.location.path();
     const q = path.indexOf('?');
     if (q > -1) {
       try {
-          const params = path.substr(q + 1).split('&');
+          const params = path.slice(q + 1).split('&');
           params.forEach(p => {
             const pair = p.split('=');
             if (pair[0]) {
@@ -147,11 +145,16 @@ export class LocationService {
     }
 
     const { pathname, search, hash } = anchor;
-    const relativeUrl = pathname + search + hash;
+    // Fix in-page anchors that are supposed to point to fragments inside the page, but are resolved
+    // relative the root path (`/`), due to the base URL being set to `/`.
+    // (See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base#in-page_anchors.)
+    const isInPageAnchor = anchor.getAttribute('href')?.startsWith('#') ?? false;
+    const correctPathname = isInPageAnchor ? this.location.path() : pathname;
+    const relativeUrl = correctPathname + search + hash;
     this.urlParser.href = relativeUrl;
 
     // don't navigate if external link or has extension
-    if ( anchor.href !== this.urlParser.href ||
+    if ( (!isInPageAnchor && anchor.href !== this.urlParser.href) ||
          !/\/[^/.]*$/.test(pathname) ) {
       return true;
     }

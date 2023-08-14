@@ -54,7 +54,7 @@ describe('Http Tests', () => {
   describe('Heroes', () => {
     it('retrieves the list of heroes at startup', async () => {
       expect(await page.heroesListItems.count()).toBe(4);
-      expect(await page.heroesListItems.get(0).getText()).toContain('Dr Nice');
+      expect(await page.heroesListItems.get(0).getText()).toContain('Dr. Nice');
       await checkLogForMessage('GET "api/heroes"');
     });
 
@@ -93,7 +93,7 @@ describe('Http Tests', () => {
       await page.configGetResponseButton.click();
       await checkLogForMessage('GET "assets/config.json"');
       expect(await page.configSpan.getText()).toContain('Response headers:');
-      expect(await page.configSpan.getText()).toContain('content-type: application/json; charset=UTF-8');
+      expect(await page.configSpan.getText()).toContain('content-type: application/json; charset=utf-8');
     });
 
     it('can clear the configuration log', async () => {
@@ -138,11 +138,11 @@ describe('Http Tests', () => {
   });
 
   describe('PackageSearch', () => {
-    it('can search for npm package and find in cache', async () => {
+    it('can search for package and find in cache', async () => {
       const packageName = 'angular';
       await page.searchInput.sendKeys(packageName);
       await checkLogForMessage(
-        'Caching response from "https://npmsearch.com/query?q=angular"');
+        'Caching response from "/packages/query?name=angular".');
       expect(await page.searchListItems.count()).toBeGreaterThan(1, 'angular items');
 
       await page.searchInput.clear();
@@ -152,7 +152,7 @@ describe('Http Tests', () => {
       await page.searchInput.clear();
       await page.searchInput.sendKeys(packageName);
       await checkLogForMessage(
-        'Found cached response for "https://npmsearch.com/query?q=angular"');
+        'Found cached response for "/packages/query?name=angular"');
     });
   });
 });

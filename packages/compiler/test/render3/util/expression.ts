@@ -7,6 +7,7 @@
  */
 
 import {AbsoluteSourceSpan} from '@angular/compiler';
+
 import * as e from '../../../src/expression_parser/ast';
 import * as t from '../../../src/render3/r3_ast';
 import {unparse} from '../../expression_parser/utils/unparser';
@@ -22,7 +23,7 @@ class ExpressionSourceHumanizer extends e.RecursiveAstVisitor implements t.Visit
   // This method is defined to reconcile the type of ExpressionSourceHumanizer
   // since both RecursiveAstVisitor and Visitor define the visit() method in
   // their interfaces.
-  visit(node: e.AST|t.Node, context?: any) {
+  override visit(node: e.AST|t.Node, context?: any) {
     if (node instanceof e.AST) {
       node.visit(this, context);
     } else {
@@ -34,85 +35,81 @@ class ExpressionSourceHumanizer extends e.RecursiveAstVisitor implements t.Visit
     this.recordAst(ast);
     this.visitAll([ast.ast], null);
   }
-  visitBinary(ast: e.Binary) {
+  override visitBinary(ast: e.Binary) {
     this.recordAst(ast);
     super.visitBinary(ast, null);
   }
-  visitChain(ast: e.Chain) {
+  override visitChain(ast: e.Chain) {
     this.recordAst(ast);
     super.visitChain(ast, null);
   }
-  visitConditional(ast: e.Conditional) {
+  override visitConditional(ast: e.Conditional) {
     this.recordAst(ast);
     super.visitConditional(ast, null);
   }
-  visitFunctionCall(ast: e.FunctionCall) {
-    this.recordAst(ast);
-    super.visitFunctionCall(ast, null);
-  }
-  visitImplicitReceiver(ast: e.ImplicitReceiver) {
+  override visitImplicitReceiver(ast: e.ImplicitReceiver) {
     this.recordAst(ast);
     super.visitImplicitReceiver(ast, null);
   }
-  visitInterpolation(ast: e.Interpolation) {
+  override visitInterpolation(ast: e.Interpolation) {
     this.recordAst(ast);
     super.visitInterpolation(ast, null);
   }
-  visitKeyedRead(ast: e.KeyedRead) {
+  override visitKeyedRead(ast: e.KeyedRead) {
     this.recordAst(ast);
     super.visitKeyedRead(ast, null);
   }
-  visitKeyedWrite(ast: e.KeyedWrite) {
+  override visitKeyedWrite(ast: e.KeyedWrite) {
     this.recordAst(ast);
     super.visitKeyedWrite(ast, null);
   }
-  visitLiteralPrimitive(ast: e.LiteralPrimitive) {
+  override visitLiteralPrimitive(ast: e.LiteralPrimitive) {
     this.recordAst(ast);
     super.visitLiteralPrimitive(ast, null);
   }
-  visitLiteralArray(ast: e.LiteralArray) {
+  override visitLiteralArray(ast: e.LiteralArray) {
     this.recordAst(ast);
     super.visitLiteralArray(ast, null);
   }
-  visitLiteralMap(ast: e.LiteralMap) {
+  override visitLiteralMap(ast: e.LiteralMap) {
     this.recordAst(ast);
     super.visitLiteralMap(ast, null);
   }
-  visitMethodCall(ast: e.MethodCall) {
-    this.recordAst(ast);
-    super.visitMethodCall(ast, null);
-  }
-  visitNonNullAssert(ast: e.NonNullAssert) {
+  override visitNonNullAssert(ast: e.NonNullAssert) {
     this.recordAst(ast);
     super.visitNonNullAssert(ast, null);
   }
-  visitPipe(ast: e.BindingPipe) {
+  override visitPipe(ast: e.BindingPipe) {
     this.recordAst(ast);
     super.visitPipe(ast, null);
   }
-  visitPrefixNot(ast: e.PrefixNot) {
+  override visitPrefixNot(ast: e.PrefixNot) {
     this.recordAst(ast);
     super.visitPrefixNot(ast, null);
   }
-  visitPropertyRead(ast: e.PropertyRead) {
+  override visitPropertyRead(ast: e.PropertyRead) {
     this.recordAst(ast);
     super.visitPropertyRead(ast, null);
   }
-  visitPropertyWrite(ast: e.PropertyWrite) {
+  override visitPropertyWrite(ast: e.PropertyWrite) {
     this.recordAst(ast);
     super.visitPropertyWrite(ast, null);
   }
-  visitSafeMethodCall(ast: e.SafeMethodCall) {
-    this.recordAst(ast);
-    super.visitSafeMethodCall(ast, null);
-  }
-  visitSafePropertyRead(ast: e.SafePropertyRead) {
+  override visitSafePropertyRead(ast: e.SafePropertyRead) {
     this.recordAst(ast);
     super.visitSafePropertyRead(ast, null);
   }
-  visitQuote(ast: e.Quote) {
+  override visitSafeKeyedRead(ast: e.SafeKeyedRead) {
     this.recordAst(ast);
-    super.visitQuote(ast, null);
+    super.visitSafeKeyedRead(ast, null);
+  }
+  override visitCall(ast: e.Call) {
+    this.recordAst(ast);
+    super.visitCall(ast, null);
+  }
+  override visitSafeCall(ast: e.SafeCall) {
+    this.recordAst(ast);
+    super.visitSafeCall(ast, null);
   }
 
   visitTemplate(ast: t.Template) {
@@ -148,6 +145,57 @@ class ExpressionSourceHumanizer extends e.RecursiveAstVisitor implements t.Visit
     for (const key of Object.keys(ast.placeholders)) {
       ast.placeholders[key].visit(this);
     }
+  }
+
+  visitDeferredBlock(deferred: t.DeferredBlock) {
+    deferred.visitAll(this);
+  }
+
+  visitDeferredTrigger(trigger: t.DeferredTrigger): void {
+    if (trigger instanceof t.BoundDeferredTrigger) {
+      this.recordAst(trigger.value);
+    }
+  }
+
+  visitDeferredBlockPlaceholder(block: t.DeferredBlockPlaceholder) {
+    t.visitAll(this, block.children);
+  }
+
+  visitDeferredBlockError(block: t.DeferredBlockError) {
+    t.visitAll(this, block.children);
+  }
+
+  visitDeferredBlockLoading(block: t.DeferredBlockLoading) {
+    t.visitAll(this, block.children);
+  }
+
+  visitSwitchBlock(block: t.SwitchBlock) {
+    block.expression.visit(this);
+    t.visitAll(this, block.cases);
+  }
+
+  visitSwitchBlockCase(block: t.SwitchBlockCase) {
+    block.expression?.visit(this);
+    t.visitAll(this, block.children);
+  }
+
+  visitForLoopBlock(block: t.ForLoopBlock) {
+    block.expression.visit(this);
+    t.visitAll(this, block.children);
+    block.empty?.visit(this);
+  }
+
+  visitForLoopBlockEmpty(block: t.ForLoopBlockEmpty) {
+    t.visitAll(this, block.children);
+  }
+
+  visitIfBlock(block: t.IfBlock) {
+    t.visitAll(this, block.branches);
+  }
+
+  visitIfBlockBranch(block: t.IfBlockBranch) {
+    block.expression?.visit(this);
+    t.visitAll(this, block.children);
   }
 }
 

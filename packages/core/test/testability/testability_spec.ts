@@ -8,29 +8,36 @@
 
 import {EventEmitter} from '@angular/core';
 import {Injectable} from '@angular/core/src/di';
-import {PendingMacrotask, Testability, TestabilityRegistry} from '@angular/core/src/testability/testability';
+import {GetTestability, PendingMacrotask, Testability, TestabilityRegistry} from '@angular/core/src/testability/testability';
 import {NgZone} from '@angular/core/src/zone/ng_zone';
-import {fakeAsync, flush, tick, waitForAsync} from '@angular/core/testing';
-import {beforeEach, describe, expect, it, SpyObject} from '@angular/core/testing/src/testing_internal';
+import {fakeAsync, tick, waitForAsync} from '@angular/core/testing';
 
-import {scheduleMicroTask} from '../../src/util/microtask';
+import {setTestabilityGetter} from '../../src/testability/testability';
 
-// Schedules a microtasks (using a resolved promise .then())
+// Schedules a microtasks (using queueMicrotask)
 function microTask(fn: Function): void {
-  scheduleMicroTask(() => {
-    // We do double dispatch so that we  can wait for scheduleMicrotask in the Testability when
+  queueMicrotask(() => {
+    // We do double dispatch so that we can wait for queueMicrotask in the Testability when
     // NgZone becomes stable.
-    scheduleMicroTask(fn);
+    queueMicrotask(() => fn());
   });
+}
+
+class NoopGetTestability implements GetTestability {
+  addToWindow(registry: TestabilityRegistry): void {}
+  findTestabilityInTree(registry: TestabilityRegistry, elem: any, findInAncestors: boolean):
+      Testability|null {
+    return null;
+  }
 }
 
 @Injectable()
 class MockNgZone extends NgZone {
   /** @internal */
-  onUnstable: EventEmitter<any>;
+  override onUnstable: EventEmitter<any>;
 
   /** @internal */
-  onStable: EventEmitter<any>;
+  override onStable: EventEmitter<any>;
 
   constructor() {
     super({enableLongStackTrace: false});
@@ -57,12 +64,20 @@ class MockNgZone extends NgZone {
 
     beforeEach(waitForAsync(() => {
       ngZone = new MockNgZone();
-      testability = new Testability(ngZone);
-      execute = new SpyObject().spy('execute');
-      execute2 = new SpyObject().spy('execute');
-      updateCallback = new SpyObject().spy('execute');
+      testability = new Testability(ngZone, new TestabilityRegistry(), new NoopGetTestability());
+      execute = jasmine.createSpy('execute');
+      execute2 = jasmine.createSpy('execute');
+      updateCallback = jasmine.createSpy('execute');
     }));
-
+    afterEach(() => {
+      // Instantiating the Testability (via `new Testability` above) has a side
+      // effect of defining the testability getter globally to a specified value.
+      // This call resets that reference after each test to make sure it does not
+      // get leaked between tests. In real scenarios this is not a problem, since
+      // the `Testability` is created via DI and uses the same testability getter
+      // (injected into a constructor) across all instances.
+      setTestabilityGetter(null! as GetTestability);
+    });
     describe('Pending count logic', () => {
       it('should start with a pending count of 0', () => {
         expect(testability.getPendingRequestCount()).toEqual(0);
@@ -367,10 +382,19 @@ class MockNgZone extends NgZone {
 
     beforeEach(waitForAsync(() => {
       ngZone = new MockNgZone();
-      testability1 = new Testability(ngZone);
-      testability2 = new Testability(ngZone);
       registry = new TestabilityRegistry();
+      testability1 = new Testability(ngZone, registry, new NoopGetTestability());
+      testability2 = new Testability(ngZone, registry, new NoopGetTestability());
     }));
+    afterEach(() => {
+      // Instantiating the Testability (via `new Testability` above) has a side
+      // effect of defining the testability getter globally to a specified value.
+      // This call resets that reference after each test to make sure it does not
+      // get leaked between tests. In real scenarios this is not a problem, since
+      // the `Testability` is created via DI and uses the same testability getter
+      // (injected into a constructor) across all instances.
+      setTestabilityGetter(null! as GetTestability);
+    });
     describe('unregister testability', () => {
       it('should remove the testability when unregistering an existing testability', () => {
         registry.registerApplication('testability1', testability1);

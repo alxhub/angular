@@ -5,27 +5,26 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {absoluteFrom, AbsoluteFsPath, getFileSystem, getSourceFileOrError, LogicalFileSystem, NgtscCompilerHost} from '../../file_system';
+import {absoluteFrom, getFileSystem, getSourceFileOrError, LogicalFileSystem, NgtscCompilerHost} from '../../file_system';
 import {runInEachFileSystem, TestFile} from '../../file_system/testing';
 import {AbsoluteModuleStrategy, LocalIdentifierStrategy, LogicalProjectStrategy, ModuleResolver, Reference, ReferenceEmitter} from '../../imports';
+import {ClassPropertyMapping, InputMapping} from '../../metadata';
+import {NOOP_PERF_RECORDER} from '../../perf';
+import {TsCreateProgramDriver, UpdateMode} from '../../program_driver';
 import {isNamedClassDeclaration, TypeScriptReflectionHost} from '../../reflection';
 import {getDeclaration, makeProgram} from '../../testing';
 import {getRootDirs} from '../../util/src/typescript';
-import {ComponentToShimMappingStrategy, UpdateMode} from '../api';
-import {ReusedProgramStrategy} from '../src/augmented_program';
 import {InliningMode, PendingFileTypeCheckingData, TypeCheckContextImpl, TypeCheckingHost} from '../src/context';
 import {TemplateSourceManager} from '../src/source';
 import {TypeCheckFile} from '../src/type_check_file';
-
-import {ALL_ENABLED_CONFIG} from './test_utils';
+import {ALL_ENABLED_CONFIG} from '../testing';
 
 runInEachFileSystem(() => {
   describe('ngtsc typechecking', () => {
     let _: typeof absoluteFrom;
     let LIB_D_TS: TestFile;
-    let TYPE_CHECK_TS: TestFile;
 
     beforeEach(() => {
       _ = absoluteFrom;
@@ -43,7 +42,7 @@ runInEachFileSystem(() => {
       const file = new TypeCheckFile(
           _('/_typecheck_.ts'), ALL_ENABLED_CONFIG, new ReferenceEmitter([]),
           /* reflector */ null!, host);
-      const sf = file.render();
+      const sf = file.render(false /* removeComments */);
       expect(sf).toContain('export const IS_A_MODULE = true;');
     });
 
@@ -73,8 +72,8 @@ TestClass.ngTypeCtor({value: 'test'});
           new LogicalProjectStrategy(reflectionHost, logicalFs),
         ]);
         const ctx = new TypeCheckContextImpl(
-            ALL_ENABLED_CONFIG, host, new TestMappingStrategy(), emitter, reflectionHost,
-            new TestTypeCheckingHost(), InliningMode.InlineOps);
+            ALL_ENABLED_CONFIG, host, emitter, reflectionHost, new TestTypeCheckingHost(),
+            InliningMode.InlineOps, NOOP_PERF_RECORDER);
         const TestClass =
             getDeclaration(program, _('/main.ts'), 'TestClass', isNamedClassDeclaration);
         const pendingFile = makePendingFile();
@@ -83,8 +82,7 @@ TestClass.ngTypeCtor({value: 'test'});
               fnName: 'ngTypeCtor',
               body: true,
               fields: {
-                inputs: ['value'],
-                outputs: [],
+                inputs: ClassPropertyMapping.fromMappedObject<InputMapping>({value: 'value'}),
                 queries: [],
               },
               coercedInputFields: new Set(),
@@ -112,8 +110,8 @@ TestClass.ngTypeCtor({value: 'test'});
         ]);
         const pendingFile = makePendingFile();
         const ctx = new TypeCheckContextImpl(
-            ALL_ENABLED_CONFIG, host, new TestMappingStrategy(), emitter, reflectionHost,
-            new TestTypeCheckingHost(), InliningMode.InlineOps);
+            ALL_ENABLED_CONFIG, host, emitter, reflectionHost, new TestTypeCheckingHost(),
+            InliningMode.InlineOps, NOOP_PERF_RECORDER);
         const TestClass =
             getDeclaration(program, _('/main.ts'), 'TestClass', isNamedClassDeclaration);
         ctx.addInlineTypeCtor(
@@ -121,13 +119,12 @@ TestClass.ngTypeCtor({value: 'test'});
               fnName: 'ngTypeCtor',
               body: true,
               fields: {
-                inputs: ['value'],
-                outputs: [],
+                inputs: ClassPropertyMapping.fromMappedObject<InputMapping>({value: 'value'}),
                 queries: ['queryField'],
               },
               coercedInputFields: new Set(),
             });
-        const programStrategy = new ReusedProgramStrategy(program, host, options, []);
+        const programStrategy = new TsCreateProgramDriver(program, host, options, []);
         programStrategy.updateFiles(ctx.finalize(), UpdateMode.Complete);
         const TestClassWithCtor = getDeclaration(
             programStrategy.getProgram(), _('/main.ts'), 'TestClass', isNamedClassDeclaration);
@@ -157,8 +154,8 @@ TestClass.ngTypeCtor({value: 'test'});
         ]);
         const pendingFile = makePendingFile();
         const ctx = new TypeCheckContextImpl(
-            ALL_ENABLED_CONFIG, host, new TestMappingStrategy(), emitter, reflectionHost,
-            new TestTypeCheckingHost(), InliningMode.InlineOps);
+            ALL_ENABLED_CONFIG, host, emitter, reflectionHost, new TestTypeCheckingHost(),
+            InliningMode.InlineOps, NOOP_PERF_RECORDER);
         const TestClass =
             getDeclaration(program, _('/main.ts'), 'TestClass', isNamedClassDeclaration);
         ctx.addInlineTypeCtor(
@@ -166,20 +163,35 @@ TestClass.ngTypeCtor({value: 'test'});
               fnName: 'ngTypeCtor',
               body: true,
               fields: {
-                inputs: ['foo', 'bar'],
-                outputs: [],
+                inputs: ClassPropertyMapping.fromMappedObject<InputMapping>({
+                  foo: 'foo',
+                  bar: 'bar',
+                  baz: {
+                    classPropertyName: 'baz',
+                    bindingPropertyName: 'baz',
+                    required: false,
+                    transform: {
+                      type: ts.factory.createUnionTypeNode([
+                        ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword),
+                        ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+                      ]),
+                      node: ts.factory.createFunctionDeclaration(
+                          undefined, undefined, undefined, undefined, [], undefined, undefined)
+                    }
+                  }
+                }),
                 queries: [],
               },
-              coercedInputFields: new Set(['bar']),
+              coercedInputFields: new Set(['bar', 'baz']),
             });
-        const programStrategy = new ReusedProgramStrategy(program, host, options, []);
+        const programStrategy = new TsCreateProgramDriver(program, host, options, []);
         programStrategy.updateFiles(ctx.finalize(), UpdateMode.Complete);
         const TestClassWithCtor = getDeclaration(
             programStrategy.getProgram(), _('/main.ts'), 'TestClass', isNamedClassDeclaration);
         const typeCtor = TestClassWithCtor.members.find(isTypeCtor)!;
         const ctorText = typeCtor.getText().replace(/[ \r\n]+/g, ' ');
         expect(ctorText).toContain(
-            'init: Pick<TestClass, "foo"> & { bar: typeof TestClass.ngAcceptInputType_bar; }');
+            'init: Pick<TestClass, "foo"> & { bar: typeof TestClass.ngAcceptInputType_bar; baz: boolean | string; }');
       });
     });
   });
@@ -214,10 +226,4 @@ class TestTypeCheckingHost implements TypeCheckingHost {
   recordShimData(): void {}
 
   recordComplete(): void {}
-}
-
-class TestMappingStrategy implements ComponentToShimMappingStrategy {
-  shimPathForComponent(): AbsoluteFsPath {
-    return absoluteFrom('/typecheck.ts');
-  }
 }

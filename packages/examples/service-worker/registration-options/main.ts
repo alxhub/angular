@@ -6,7 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
-import {AppModuleNgFactory} from './module.ngfactory';
+import 'zone.js/lib/browser/rollup-main';
 
-platformBrowserDynamic().bootstrapModuleFactory(AppModuleNgFactory);
+import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+
+import {AppModule} from './module';
+
+platformBrowserDynamic().bootstrapModule(AppModule);

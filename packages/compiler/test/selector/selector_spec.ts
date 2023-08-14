@@ -6,7 +6,6 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ɵgetDOM as getDOM} from '@angular/common';
 import {CssSelector, SelectorMatcher} from '@angular/compiler/src/selector';
 import {el} from '@angular/platform-browser/testing/src/browser_util';
 
@@ -124,6 +123,67 @@ import {el} from '@angular/platform-browser/testing/src/browser_util';
       expect(matcher.match(getSelectorFor({attrs: [['foo.bar', '']]}), selectableCollector))
           .toEqual(true);
       expect(matched).toEqual([s1[0], 1]);
+    });
+
+    it('should support "$" in attribute names', () => {
+      matcher.addSelectables(s1 = CssSelector.parse('[someAttr\\$]'), 1);
+
+      expect(matcher.match(getSelectorFor({attrs: [['someAttr', '']]}), selectableCollector))
+          .toEqual(false);
+      expect(matched).toEqual([]);
+      reset();
+
+      expect(matcher.match(getSelectorFor({attrs: [['someAttr$', '']]}), selectableCollector))
+          .toEqual(true);
+      expect(matched).toEqual([s1[0], 1]);
+      reset();
+
+      matcher.addSelectables(s1 = CssSelector.parse('[some\\$attr]'), 1);
+
+      expect(matcher.match(getSelectorFor({attrs: [['someattr', '']]}), selectableCollector))
+          .toEqual(false);
+      expect(matched).toEqual([]);
+
+      expect(matcher.match(getSelectorFor({attrs: [['some$attr', '']]}), selectableCollector))
+          .toEqual(true);
+      expect(matched).toEqual([s1[0], 1]);
+      reset();
+
+      matcher.addSelectables(s1 = CssSelector.parse('[\\$someAttr]'), 1);
+
+      expect(matcher.match(getSelectorFor({attrs: [['someAttr', '']]}), selectableCollector))
+          .toEqual(false);
+      expect(matched).toEqual([]);
+
+      expect(matcher.match(getSelectorFor({attrs: [['$someAttr', '']]}), selectableCollector))
+          .toEqual(true);
+      expect(matched).toEqual([s1[0], 1]);
+      reset();
+
+      matcher.addSelectables(s1 = CssSelector.parse('[some-\\$Attr]'), 1);
+      matcher.addSelectables(s2 = CssSelector.parse('[some-\\$Attr][some-\\$-attr]'), 2);
+
+      expect(matcher.match(getSelectorFor({attrs: [['some\\$Attr', '']]}), selectableCollector))
+          .toEqual(false);
+      expect(matched).toEqual([]);
+
+      expect(matcher.match(
+                 getSelectorFor({attrs: [['some-$-attr', 'someValue'], ['some-$Attr', '']]}),
+                 selectableCollector))
+          .toEqual(true);
+      expect(matched).toEqual([s1[0], 1, s2[0], 2]);
+      reset();
+
+
+      expect(matcher.match(getSelectorFor({attrs: [['someattr$', '']]}), selectableCollector))
+          .toEqual(false);
+      expect(matched).toEqual([]);
+
+      expect(matcher.match(
+                 getSelectorFor({attrs: [['some-simple-attr', '']]}), selectableCollector))
+          .toEqual(false);
+      expect(matched).toEqual([]);
+      reset();
     });
 
     it('should select by attr name only once if the value is from the DOM', () => {
@@ -307,6 +367,35 @@ import {el} from '@angular/platform-browser/testing/src/browser_util';
       expect(cssSelector.toString()).toEqual('sometag');
     });
 
+    it('should detect attr names with escaped $', () => {
+      let cssSelector = CssSelector.parse('[attrname\\$]')[0];
+      expect(cssSelector.attrs).toEqual(['attrname$', '']);
+      expect(cssSelector.toString()).toEqual('[attrname\\$]');
+
+      cssSelector = CssSelector.parse('[\\$attrname]')[0];
+      expect(cssSelector.attrs).toEqual(['$attrname', '']);
+      expect(cssSelector.toString()).toEqual('[\\$attrname]');
+
+      cssSelector = CssSelector.parse('[foo\\$bar]')[0];
+      expect(cssSelector.attrs).toEqual(['foo$bar', '']);
+      expect(cssSelector.toString()).toEqual('[foo\\$bar]');
+    });
+
+    it('should error on attr names with unescaped $', () => {
+      expect(() => CssSelector.parse('[attrname$]'))
+          .toThrowError(
+              'Error in attribute selector "attrname$". Unescaped "$" is not supported. Please escape with "\\$".');
+      expect(() => CssSelector.parse('[$attrname]'))
+          .toThrowError(
+              'Error in attribute selector "$attrname". Unescaped "$" is not supported. Please escape with "\\$".');
+      expect(() => CssSelector.parse('[foo$bar]'))
+          .toThrowError(
+              'Error in attribute selector "foo$bar". Unescaped "$" is not supported. Please escape with "\\$".');
+      expect(() => CssSelector.parse('[foo\\$bar$]'))
+          .toThrowError(
+              'Error in attribute selector "foo\\$bar$". Unescaped "$" is not supported. Please escape with "\\$".');
+    });
+
     it('should detect class names', () => {
       const cssSelector = CssSelector.parse('.someClass')[0];
       expect(cssSelector.classNames).toEqual(['someclass']);
@@ -421,36 +510,6 @@ import {el} from '@angular/platform-browser/testing/src/browser_util';
 
       expect(cssSelectors[2].element).toEqual('textbox');
       expect(cssSelectors[2].notSelectors[0].classNames).toEqual(['special']);
-    });
-  });
-
-  describe('CssSelector.getMatchingElementTemplate', () => {
-    it('should create an element with a tagName, classes, and attributes with the correct casing',
-       () => {
-         const selector = CssSelector.parse('Blink.neon.hotpink[Sweet][Dismissable=false]')[0];
-         const template = selector.getMatchingElementTemplate();
-
-         expect(template).toEqual('<Blink class="neon hotpink" Sweet Dismissable="false"></Blink>');
-       });
-
-    it('should create an element without a tag name', () => {
-      const selector = CssSelector.parse('[fancy]')[0];
-      const template = selector.getMatchingElementTemplate();
-
-      expect(template).toEqual('<div fancy></div>');
-    });
-
-    it('should ignore :not selectors', () => {
-      const selector = CssSelector.parse('grape:not(.red)')[0];
-      const template = selector.getMatchingElementTemplate();
-
-      expect(template).toEqual('<grape></grape>');
-    });
-
-    it('should support void tags', () => {
-      const selector = CssSelector.parse('input[fancy]')[0];
-      const template = selector.getMatchingElementTemplate();
-      expect(template).toEqual('<input fancy/>');
     });
   });
 }

@@ -8,7 +8,7 @@
 
 /// <reference types="node" />
 import * as os from 'os';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {absoluteFrom} from './helpers';
 import {FileSystem} from './types';
@@ -73,5 +73,9 @@ export class NgtscCompilerHost implements ts.CompilerHost {
       return undefined;
     }
     return this.fs.readFile(absPath);
+  }
+
+  realpath(path: string): string {
+    return this.fs.realpath(this.fs.resolve(path));
   }
 }

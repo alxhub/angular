@@ -12,8 +12,10 @@ import {AbstractControlDirective} from './abstract_control_directive';
 import {ControlContainer} from './control_container';
 import {NgControl} from './ng_control';
 
-type AnyControlStatus = 'untouched'|'touched'|'pristine'|'dirty'|'valid'|'invalid'|'pending';
-
+// DO NOT REFACTOR!
+// Each status is represented by a separate function to make sure that
+// advanced Closure Compiler optimizations related to property renaming
+// can work correctly.
 export class AbstractControlStatus {
   private _cd: AbstractControlDirective|null;
 
@@ -21,19 +23,54 @@ export class AbstractControlStatus {
     this._cd = cd;
   }
 
-  is(status: AnyControlStatus): boolean {
-    return !!this._cd?.control?.[status];
+  protected get isTouched() {
+    return !!this._cd?.control?.touched;
+  }
+
+  protected get isUntouched() {
+    return !!this._cd?.control?.untouched;
+  }
+
+  protected get isPristine() {
+    return !!this._cd?.control?.pristine;
+  }
+
+  protected get isDirty() {
+    return !!this._cd?.control?.dirty;
+  }
+
+  protected get isValid() {
+    return !!this._cd?.control?.valid;
+  }
+
+  protected get isInvalid() {
+    return !!this._cd?.control?.invalid;
+  }
+
+  protected get isPending() {
+    return !!this._cd?.control?.pending;
+  }
+
+  protected get isSubmitted() {
+    // We check for the `submitted` field from `NgForm` and `FormGroupDirective` classes, but
+    // we avoid instanceof checks to prevent non-tree-shakable references to those types.
+    return !!(this._cd as unknown as {submitted: boolean} | null)?.submitted;
   }
 }
 
 export const ngControlStatusHost = {
-  '[class.ng-untouched]': 'is("untouched")',
-  '[class.ng-touched]': 'is("touched")',
-  '[class.ng-pristine]': 'is("pristine")',
-  '[class.ng-dirty]': 'is("dirty")',
-  '[class.ng-valid]': 'is("valid")',
-  '[class.ng-invalid]': 'is("invalid")',
-  '[class.ng-pending]': 'is("pending")',
+  '[class.ng-untouched]': 'isUntouched',
+  '[class.ng-touched]': 'isTouched',
+  '[class.ng-pristine]': 'isPristine',
+  '[class.ng-dirty]': 'isDirty',
+  '[class.ng-valid]': 'isValid',
+  '[class.ng-invalid]': 'isInvalid',
+  '[class.ng-pending]': 'isPending',
+};
+
+export const ngGroupStatusHost = {
+  ...ngControlStatusHost,
+  '[class.ng-submitted]': 'isSubmitted',
 };
 
 /**
@@ -69,9 +106,10 @@ export class NgControlStatus extends AbstractControlStatus {
 /**
  * @description
  * Directive automatically applied to Angular form groups that sets CSS classes
- * based on control status (valid/invalid/dirty/etc).
+ * based on control status (valid/invalid/dirty/etc). On groups, this includes the additional
+ * class ng-submitted.
  *
- * @see `NgControlStatus`
+ * @see {@link NgControlStatus}
  *
  * @ngModule ReactiveFormsModule
  * @ngModule FormsModule
@@ -80,7 +118,7 @@ export class NgControlStatus extends AbstractControlStatus {
 @Directive({
   selector:
       '[formGroupName],[formArrayName],[ngModelGroup],[formGroup],form:not([ngNoForm]),[ngForm]',
-  host: ngControlStatusHost
+  host: ngGroupStatusHost
 })
 export class NgControlStatusGroup extends AbstractControlStatus {
   constructor(@Optional() @Self() cd: ControlContainer) {

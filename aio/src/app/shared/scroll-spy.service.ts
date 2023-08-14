@@ -118,7 +118,7 @@ export class ScrollSpiedElementGroup {
 @Injectable()
 export class ScrollSpyService {
   private spiedElementGroups: ScrollSpiedElementGroup[] = [];
-  private onStopListening = new Subject();
+  private onStopListening = new Subject<void>();
   private resizeEvents = fromEvent(window, 'resize').pipe(auditTime(300), takeUntil(this.onStopListening));
   private scrollEvents = fromEvent(window, 'scroll').pipe(auditTime(10), takeUntil(this.onStopListening));
   private lastContentHeight: number;
@@ -166,7 +166,7 @@ export class ScrollSpyService {
   }
 
   private getScrollTop() {
-    return window && window.pageYOffset || 0;
+    return window && window.scrollY || 0;
   }
 
   private getTopOffset() {

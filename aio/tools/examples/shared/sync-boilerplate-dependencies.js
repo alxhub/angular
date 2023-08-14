@@ -7,21 +7,27 @@
  * ```
  *
  * Updates the dependency versions of the top-level `package.json` files in each sub-folder of
- * `./boilerplate/` and `./boilerplate/viewengine/` to match the ones in `./package.json`.
+ * `./boilerplate/` to match the ones in `./package.json`.
  */
+
+// !!! WARNING !!!
+//
+// This script is run as a [post-upgrade Renovate task][1]. Therefore, it needs to be able to run
+// even when dependencies are not installed (i.e. only rely on Node.js built-in modules).
+// See [here][2] for more info on why dependencies may not have been installed.
+//
+// [1]: https://docs.renovatebot.com/configuration-options/#postupgradetasks
+// [2]: https://docs.renovatebot.com/self-hosted-configuration/#skipinstalls
+
 const fs = require('fs');
 const path = require('path');
 
 
 const BOILERPLATE_DIR = `${__dirname}/boilerplate`;
-const VIEWENGINE_DIR = `${BOILERPLATE_DIR}/viewengine`;
 const SHARED_PACKAGE_JSON_PATH = `${__dirname}/package.json`;
 
 const sharedPkgJson = loadJsonFile(SHARED_PACKAGE_JSON_PATH);
-const boilerplatePkgJsonPaths = [
-  ...collectPackageJsonFiles(BOILERPLATE_DIR),
-  ...collectPackageJsonFiles(VIEWENGINE_DIR),
-];
+const boilerplatePkgJsonPaths = collectPackageJsonFiles(BOILERPLATE_DIR);
 
 boilerplatePkgJsonPaths.forEach(syncDependencies);
 

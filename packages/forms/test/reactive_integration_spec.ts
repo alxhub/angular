@@ -7,10 +7,9 @@
  */
 
 import {ɵgetDOM as getDOM} from '@angular/common';
-import {Component, Directive, forwardRef, Input, NgModule, OnDestroy, Type} from '@angular/core';
+import {Component, Directive, ElementRef, forwardRef, Input, NgModule, OnDestroy, Type, ViewChild} from '@angular/core';
 import {ComponentFixture, fakeAsync, TestBed, tick} from '@angular/core/testing';
-import {expect} from '@angular/core/testing/src/testing_internal';
-import {AbstractControl, AsyncValidator, AsyncValidatorFn, COMPOSITION_BUFFER_MODE, ControlValueAccessor, DefaultValueAccessor, FormArray, FormControl, FormControlDirective, FormControlName, FormGroup, FormGroupDirective, FormsModule, MaxValidator, MinValidator, NG_ASYNC_VALIDATORS, NG_VALIDATORS, NG_VALUE_ACCESSOR, ReactiveFormsModule, Validator, Validators} from '@angular/forms';
+import {AbstractControl, AsyncValidator, AsyncValidatorFn, COMPOSITION_BUFFER_MODE, ControlValueAccessor, DefaultValueAccessor, FormArray, FormBuilder, FormControl, FormControlDirective, FormControlName, FormGroup, FormGroupDirective, FormsModule, MaxValidator, MinLengthValidator, MinValidator, NG_ASYNC_VALIDATORS, NG_VALIDATORS, NG_VALUE_ACCESSOR, ReactiveFormsModule, Validator, Validators} from '@angular/forms';
 import {By} from '@angular/platform-browser/src/dom/debug/by';
 import {dispatchEvent, sortedClassList} from '@angular/platform-browser/testing/src/browser_util';
 import {merge, NEVER, of, Subscription, timer} from 'rxjs';
@@ -191,7 +190,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
       });
 
       it('should update nested form group model when UI changes', () => {
-        const fixture = initTest(NestedFormGroupComp);
+        const fixture = initTest(NestedFormGroupNameComp);
         fixture.componentInstance.form = new FormGroup(
             {'signin': new FormGroup({'login': new FormControl(), 'password': new FormControl()})});
         fixture.detectChanges();
@@ -243,7 +242,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
       });
 
       it('should pick up dir validators from nested form groups', () => {
-        const fixture = initTest(NestedFormGroupComp, LoginIsEmptyValidator);
+        const fixture = initTest(NestedFormGroupNameComp, LoginIsEmptyValidator);
         const form = new FormGroup({
           'signin': new FormGroup({'login': new FormControl(''), 'password': new FormControl('')})
         });
@@ -261,8 +260,8 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
       });
 
       it('should strip named controls that are not found', () => {
-        const fixture = initTest(NestedFormGroupComp, LoginIsEmptyValidator);
-        const form = new FormGroup({
+        const fixture = initTest(NestedFormGroupNameComp, LoginIsEmptyValidator);
+        const form: FormGroup = new FormGroup({
           'signin': new FormGroup({'login': new FormControl(''), 'password': new FormControl('')})
         });
         fixture.componentInstance.form = form;
@@ -281,7 +280,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         fixture.detectChanges();
 
         emailInput = fixture.debugElement.query(By.css('[formControlName="email"]'));
-        expect(emailInput as any).toBe(null);  // TODO: Review use of `any` here (#19904)
+        expect(emailInput as any).toBe(null);  // TODO: remove `any` after #22449 is closed.
       });
 
       it('should strip array controls that are not found', () => {
@@ -310,9 +309,45 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         expect(inputs[2]).not.toBeDefined();
       });
 
+      it('should sync the disabled state if it changes right after a group is re-bound', () => {
+        @Component({
+          template: `
+            <form [formGroup]="form">
+              <input formControlName="input">
+            </form>
+          `
+        })
+        class App {
+          form: FormGroup;
+
+          constructor(private _fb: FormBuilder) {
+            this.form = this._getForm();
+          }
+
+          private _getForm() {
+            return this._fb.group({'input': 'value'});
+          }
+
+          recreateAndDisable() {
+            this.form = this._getForm();
+            this.form.disable();
+          }
+        }
+
+        const fixture = initTest(App);
+        fixture.detectChanges();
+
+        const input = fixture.nativeElement.querySelector('input');
+        expect(input.disabled).toBe(false);
+
+        fixture.componentInstance.recreateAndDisable();
+        fixture.detectChanges();
+        expect(input.disabled).toBe(true);
+      });
+
       describe('nested control rebinding', () => {
         it('should attach dir to control when leaf control changes', () => {
-          const form = new FormGroup({'login': new FormControl('oldValue')});
+          const form: FormGroup = new FormGroup({'login': new FormControl('oldValue')});
           const fixture = initTest(FormGroupComp);
           fixture.componentInstance.form = form;
           fixture.detectChanges();
@@ -336,8 +371,8 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         });
 
         it('should attach dirs to all child controls when group control changes', () => {
-          const fixture = initTest(NestedFormGroupComp, LoginIsEmptyValidator);
-          const form = new FormGroup({
+          const fixture = initTest(NestedFormGroupNameComp, LoginIsEmptyValidator);
+          const form: FormGroup = new FormGroup({
             signin: new FormGroup(
                 {login: new FormControl('oldLogin'), password: new FormControl('oldPassword')})
           });
@@ -370,7 +405,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         it('should attach dirs to all present child controls when array control changes', () => {
           const fixture = initTest(FormArrayComp);
           const cityArray = new FormArray([new FormControl('SF'), new FormControl('NY')]);
-          const form = new FormGroup({cities: cityArray});
+          const form: FormGroup = new FormGroup({cities: cityArray});
           fixture.componentInstance.form = form;
           fixture.componentInstance.cityArray = cityArray;
           fixture.detectChanges();
@@ -663,6 +698,189 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           expect(input.nativeElement.getAttribute('disabled')).toBe(null);
         });
       });
+
+      describe('dynamic change of FormGroup and FormArray shapes', () => {
+        it('should handle FormControl and FormGroup swap', () => {
+          @Component({
+            template: `
+              <form [formGroup]="form">
+                <input formControlName="name" id="standalone-id" *ngIf="!showAsGroup">
+                <ng-container formGroupName="name" *ngIf="showAsGroup">
+                  <input formControlName="control" id="inside-group-id">
+                </ng-container>
+              </form>
+            `
+          })
+          class App {
+            showAsGroup = false;
+            form!: FormGroup;
+
+            useStandaloneControl() {
+              this.showAsGroup = false;
+              this.form = new FormGroup({
+                name: new FormControl('standalone'),
+              });
+            }
+
+            useControlInsideGroup() {
+              this.showAsGroup = true;
+              this.form = new FormGroup({
+                name: new FormGroup({
+                  control: new FormControl('inside-group'),
+                })
+              });
+            }
+          }
+
+          const fixture = initTest(App);
+          fixture.componentInstance.useStandaloneControl();
+          fixture.detectChanges();
+
+          let input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('standalone-id');
+          expect(input.value).toBe('standalone');
+
+          // Replace `FormControl` with `FormGroup` at the same location
+          // in data model and trigger change detection.
+          fixture.componentInstance.useControlInsideGroup();
+          fixture.detectChanges();
+
+          input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('inside-group-id');
+          expect(input.value).toBe('inside-group');
+
+          // Swap `FormGroup` with `FormControl` back at the same location
+          // in data model and trigger change detection.
+          fixture.componentInstance.useStandaloneControl();
+          fixture.detectChanges();
+
+          input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('standalone-id');
+          expect(input.value).toBe('standalone');
+        });
+
+        it('should handle FormControl and FormArray swap', () => {
+          @Component({
+            template: `
+              <form [formGroup]="form">
+                <input formControlName="name" id="standalone-id" *ngIf="!showAsArray">
+                <ng-container formArrayName="name" *ngIf="showAsArray">
+                  <input formControlName="0" id="inside-array-id">
+                </ng-container>
+              </form>
+            `
+          })
+          class App {
+            showAsArray = false;
+            form!: FormGroup;
+
+            useStandaloneControl() {
+              this.showAsArray = false;
+              this.form = new FormGroup({
+                name: new FormControl('standalone'),
+              });
+            }
+
+            useControlInsideArray() {
+              this.showAsArray = true;
+              this.form = new FormGroup({
+                name: new FormArray([
+                  new FormControl('inside-array')  //
+                ])
+              });
+            }
+          }
+
+          const fixture = initTest(App);
+          fixture.componentInstance.useStandaloneControl();
+          fixture.detectChanges();
+
+          let input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('standalone-id');
+          expect(input.value).toBe('standalone');
+
+          // Replace `FormControl` with `FormArray` at the same location
+          // in data model and trigger change detection.
+          fixture.componentInstance.useControlInsideArray();
+          fixture.detectChanges();
+
+          input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('inside-array-id');
+          expect(input.value).toBe('inside-array');
+
+          // Swap `FormArray` with `FormControl` back at the same location
+          // in data model and trigger change detection.
+          fixture.componentInstance.useStandaloneControl();
+          fixture.detectChanges();
+
+          input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('standalone-id');
+          expect(input.value).toBe('standalone');
+        });
+
+        it('should handle FormGroup and FormArray swap', () => {
+          @Component({
+            template: `
+              <form [formGroup]="form">
+                <ng-container formGroupName="name" *ngIf="!showAsArray">
+                  <input formControlName="control" id="inside-group-id">
+                </ng-container>
+                <ng-container formArrayName="name" *ngIf="showAsArray">
+                  <input formControlName="0" id="inside-array-id">
+                </ng-container>
+              </form>
+            `
+          })
+          class App {
+            showAsArray = false;
+            form!: FormGroup;
+
+            useControlInsideGroup() {
+              this.showAsArray = false;
+              this.form = new FormGroup({
+                name: new FormGroup({
+                  control: new FormControl('inside-group'),
+                })
+              });
+            }
+
+            useControlInsideArray() {
+              this.showAsArray = true;
+              this.form = new FormGroup({
+                name: new FormArray([
+                  new FormControl('inside-array')  //
+                ])
+              });
+            }
+          }
+
+          const fixture = initTest(App);
+          fixture.componentInstance.useControlInsideGroup();
+          fixture.detectChanges();
+
+          let input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('inside-group-id');
+          expect(input.value).toBe('inside-group');
+
+          // Replace `FormGroup` with `FormArray` at the same location
+          // in data model and trigger change detection.
+          fixture.componentInstance.useControlInsideArray();
+          fixture.detectChanges();
+
+          input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('inside-array-id');
+          expect(input.value).toBe('inside-array');
+
+          // Swap `FormArray` with `FormGroup` back at the same location
+          // in data model and trigger change detection.
+          fixture.componentInstance.useControlInsideGroup();
+          fixture.detectChanges();
+
+          input = fixture.nativeElement.querySelector('input');
+          expect(input.id).toBe('inside-group-id');
+          expect(input.value).toBe('inside-group');
+        });
+      });
     });
 
     describe('user input', () => {
@@ -905,6 +1123,8 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         fixture.detectChanges();
 
         const input = fixture.debugElement.query(By.css('input')).nativeElement;
+        const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+
         expect(sortedClassList(input)).toEqual(['ng-invalid', 'ng-pristine', 'ng-untouched']);
 
         dispatchEvent(input, 'blur');
@@ -917,6 +1137,19 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         fixture.detectChanges();
 
         expect(sortedClassList(input)).toEqual(['ng-dirty', 'ng-touched', 'ng-valid']);
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'submit');
+        fixture.detectChanges();
+
+        expect(sortedClassList(input)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'reset');
+        fixture.detectChanges();
+
+        expect(sortedClassList(input)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
       });
 
       it('should work with formGroup', () => {
@@ -940,6 +1173,126 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         fixture.detectChanges();
 
         expect(sortedClassList(formEl)).toEqual(['ng-dirty', 'ng-touched', 'ng-valid']);
+
+        dispatchEvent(formEl, 'submit');
+        fixture.detectChanges();
+
+        expect(sortedClassList(formEl)).toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'reset');
+        fixture.detectChanges();
+
+        expect(sortedClassList(input)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+      });
+
+      it('should not assign `ng-submitted` class to elements with `formArrayName`', () => {
+        // Since element with the `formArrayName` can not represent top-level forms (can only be
+        // inside other elements), this test verifies that these elements never receive
+        // `ng-submitted` CSS class even when they are located inside submitted form.
+        const fixture = initTest(FormArrayComp);
+        const cityArray = new FormArray([new FormControl('SF'), new FormControl('NY')]);
+        const form = new FormGroup({cities: cityArray});
+        fixture.componentInstance.form = form;
+        fixture.componentInstance.cityArray = cityArray;
+        fixture.detectChanges();
+
+        const [loginInput, passwordInput] =
+            fixture.debugElement.queryAll(By.css('input')).map(el => el.nativeElement);
+        const arrEl = fixture.debugElement.query(By.css('div')).nativeElement;
+        const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+
+        expect(passwordInput).toBeDefined();
+        expect(sortedClassList(loginInput)).not.toContain('ng-submitted');
+        expect(sortedClassList(arrEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'submit');
+        fixture.detectChanges();
+
+        expect(sortedClassList(loginInput)).not.toContain('ng-submitted');
+        expect(sortedClassList(arrEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'reset');
+        fixture.detectChanges();
+
+        expect(sortedClassList(loginInput)).not.toContain('ng-submitted');
+        expect(sortedClassList(arrEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+      });
+
+      it('should apply submitted status with nested formArrayName', () => {
+        const fixture = initTest(NestedFormArrayNameComp);
+        const ic = new FormControl('foo');
+        const arr = new FormArray([ic]);
+        const form = new FormGroup({arr});
+        fixture.componentInstance.form = form;
+        fixture.detectChanges();
+
+        const input = fixture.debugElement.query(By.css('input')).nativeElement;
+        const arrEl = fixture.debugElement.query(By.css('div')).nativeElement;
+        const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+
+        expect(sortedClassList(input)).not.toContain('ng-submitted');
+        expect(sortedClassList(arrEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'submit');
+        fixture.detectChanges();
+
+        expect(sortedClassList(input)).not.toContain('ng-submitted');
+        expect(sortedClassList(arrEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'reset');
+        fixture.detectChanges();
+
+        expect(sortedClassList(input)).not.toContain('ng-submitted');
+        expect(sortedClassList(arrEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+      });
+
+      it('should apply submitted status with nested formGroupName', () => {
+        const fixture = initTest(NestedFormGroupNameComp);
+        const loginControl =
+            new FormControl('', {validators: Validators.required, updateOn: 'change'});
+        const passwordControl = new FormControl('', Validators.required);
+        const formGroup = new FormGroup(
+            {signin: new FormGroup({login: loginControl, password: passwordControl})},
+            {updateOn: 'blur'});
+        fixture.componentInstance.form = formGroup;
+        fixture.detectChanges();
+
+        const [loginInput, passwordInput] =
+            fixture.debugElement.queryAll(By.css('input')).map(el => el.nativeElement);
+
+        const formEl = fixture.debugElement.query(By.css('form')).nativeElement;
+        const groupEl = fixture.debugElement.query(By.css('div')).nativeElement;
+        loginInput.value = 'Nancy';
+        // Input and blur events, as in a real interaction, cause the form to be touched and
+        // dirtied.
+        dispatchEvent(loginInput, 'input');
+        dispatchEvent(loginInput, 'blur');
+        fixture.detectChanges();
+
+        expect(sortedClassList(loginInput)).not.toContain('ng-submitted');
+        expect(sortedClassList(groupEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'submit');
+        fixture.detectChanges();
+
+        expect(sortedClassList(loginInput)).not.toContain('ng-submitted');
+        expect(sortedClassList(groupEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).toContain('ng-submitted');
+
+        dispatchEvent(formEl, 'reset');
+        fixture.detectChanges();
+
+        expect(sortedClassList(loginInput)).not.toContain('ng-submitted');
+        expect(sortedClassList(groupEl)).not.toContain('ng-submitted');
+        expect(sortedClassList(formEl)).not.toContain('ng-submitted');
       });
     });
 
@@ -956,15 +1309,22 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to remain unchanged until blur.');
-          expect(control.valid).toBe(false, 'Expected no validation to occur until blur.');
+          expect(control.value)
+              .withContext('Expected value to remain unchanged until blur.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected no validation to occur until blur.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
           expect(control.value)
-              .toEqual('Nancy', 'Expected value to change once control is blurred.');
-          expect(control.valid).toBe(true, 'Expected validation to run once control is blurred.');
+              .withContext('Expected value to change once control is blurred.')
+              .toEqual('Nancy');
+          expect(control.valid)
+              .withContext('Expected validation to run once control is blurred.')
+              .toBe(true);
         });
 
         it('should not update parent group value/validity from child until blur', () => {
@@ -980,15 +1340,21 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           expect(form.value)
-              .toEqual({login: ''}, 'Expected group value to remain unchanged until blur.');
-          expect(form.valid).toBe(false, 'Expected no validation to occur on group until blur.');
+              .withContext('Expected group value to remain unchanged until blur.')
+              .toEqual({login: ''});
+          expect(form.valid)
+              .withContext('Expected no validation to occur on group until blur.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
           expect(form.value)
-              .toEqual({login: 'Nancy'}, 'Expected group value to change once input blurred.');
-          expect(form.valid).toBe(true, 'Expected validation to run once input blurred.');
+              .withContext('Expected group value to change once input blurred.')
+              .toEqual({login: 'Nancy'});
+          expect(form.valid)
+              .withContext('Expected validation to run once input blurred.')
+              .toBe(true);
         });
 
         it('should not wait for blur event to update if value is set programmatically', () => {
@@ -1001,9 +1367,13 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
-          expect(input.value).toEqual('Nancy', 'Expected value to propagate to view immediately.');
-          expect(control.value).toEqual('Nancy', 'Expected model value to update immediately.');
-          expect(control.valid).toBe(true, 'Expected validation to run immediately.');
+          expect(input.value)
+              .withContext('Expected value to propagate to view immediately.')
+              .toEqual('Nancy');
+          expect(control.value)
+              .withContext('Expected model value to update immediately.')
+              .toEqual('Nancy');
+          expect(control.valid).withContext('Expected validation to run immediately.').toBe(true);
         });
 
         it('should not update dirty state until control is blurred', () => {
@@ -1012,19 +1382,23 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.componentInstance.control = control;
           fixture.detectChanges();
 
-          expect(control.dirty).toBe(false, 'Expected control to start out pristine.');
+          expect(control.dirty).withContext('Expected control to start out pristine.').toBe(false);
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
           input.value = 'Nancy';
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(control.dirty).toBe(false, 'Expected control to stay pristine until blurred.');
+          expect(control.dirty)
+              .withContext('Expected control to stay pristine until blurred.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(control.dirty).toBe(true, 'Expected control to update dirty state when blurred.');
+          expect(control.dirty)
+              .withContext('Expected control to update dirty state when blurred.')
+              .toBe(true);
         });
 
         it('should update touched when control is blurred', () => {
@@ -1033,14 +1407,17 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.componentInstance.control = control;
           fixture.detectChanges();
 
-          expect(control.touched).toBe(false, 'Expected control to start out untouched.');
+          expect(control.touched)
+              .withContext('Expected control to start out untouched.')
+              .toBe(false);
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
           expect(control.touched)
-              .toBe(true, 'Expected control to update touched state when blurred.');
+              .withContext('Expected control to update touched state when blurred.')
+              .toBe(true);
         });
 
         it('should continue waiting for blur to update if previously blurred', () => {
@@ -1060,14 +1437,21 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           expect(control.value)
-              .toEqual('Nancy', 'Expected value to remain unchanged until second blur.');
-          expect(control.valid).toBe(true, 'Expected validation not to run until second blur.');
+              .withContext('Expected value to remain unchanged until second blur.')
+              .toEqual('Nancy');
+          expect(control.valid)
+              .withContext('Expected validation not to run until second blur.')
+              .toBe(true);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to update when blur occurs again.');
-          expect(control.valid).toBe(false, 'Expected validation to run when blur occurs again.');
+          expect(control.value)
+              .withContext('Expected value to update when blur occurs again.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected validation to run when blur occurs again.')
+              .toBe(false);
         });
 
         it('should not use stale pending value if value set programmatically', () => {
@@ -1087,7 +1471,9 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(input.value).toEqual('Nancy', 'Expected programmatic value to stick after blur.');
+          expect(input.value)
+              .withContext('Expected programmatic value to stick after blur.')
+              .toEqual('Nancy');
         });
 
         it('should set initial value and validity on init', () => {
@@ -1099,9 +1485,13 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
 
-          expect(input.value).toEqual('Nancy', 'Expected value to be set in the view.');
-          expect(control.value).toEqual('Nancy', 'Expected initial model value to be set.');
-          expect(control.valid).toBe(false, 'Expected validation to run on initial value.');
+          expect(input.value).withContext('Expected value to be set in the view.').toEqual('Nancy');
+          expect(control.value)
+              .withContext('Expected initial model value to be set.')
+              .toEqual('Nancy');
+          expect(control.valid)
+              .withContext('Expected validation to run on initial value.')
+              .toBe(false);
         });
 
         it('should reset properly', () => {
@@ -1117,16 +1507,16 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
-          expect(control.dirty).toBe(true, 'Expected control to be dirty on blur.');
+          expect(control.dirty).withContext('Expected control to be dirty on blur.').toBe(true);
 
           control.reset();
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(input.value).toEqual('', 'Expected view value to reset');
-          expect(control.value).toBe(null, 'Expected pending value to reset.');
-          expect(control.dirty).toBe(false, 'Expected pending dirty value to reset.');
+          expect(input.value).withContext('Expected view value to reset').toEqual('');
+          expect(control.value).withContext('Expected pending value to reset.').toBe(null);
+          expect(control.dirty).withContext('Expected pending dirty value to reset.').toBe(false);
         });
 
         it('should be able to remove a control as a result of another control being reset', () => {
@@ -1141,7 +1531,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           class App implements OnDestroy {
             private _subscription: Subscription;
 
-            form = new FormGroup({
+            form: FormGroup = new FormGroup({
               name: new FormControl('Frodo'),
               surname: new FormControl('Baggins'),
             });
@@ -1173,7 +1563,8 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
         it('should not emit valueChanges or statusChanges until blur', () => {
           const fixture = initTest(FormControlComp);
-          const control = new FormControl('', {validators: Validators.required, updateOn: 'blur'});
+          const control: FormControl =
+              new FormControl('', {validators: Validators.required, updateOn: 'blur'});
           fixture.componentInstance.control = control;
           fixture.detectChanges();
           const values: string[] = [];
@@ -1186,20 +1577,24 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(values).toEqual([], 'Expected no valueChanges or statusChanges on input.');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges on input.')
+              .toEqual([]);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(values).toEqual(
-              ['Nancy', 'VALID'], 'Expected valueChanges and statusChanges on blur.');
+          expect(values).withContext('Expected valueChanges and statusChanges on blur.').toEqual([
+            'Nancy', 'VALID'
+          ]);
 
           sub.unsubscribe();
         });
 
         it('should not emit valueChanges or statusChanges on blur if value unchanged', () => {
           const fixture = initTest(FormControlComp);
-          const control = new FormControl('', {validators: Validators.required, updateOn: 'blur'});
+          const control: FormControl =
+              new FormControl('', {validators: Validators.required, updateOn: 'blur'});
           fixture.componentInstance.control = control;
           fixture.detectChanges();
           const values: string[] = [];
@@ -1210,13 +1605,16 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
-          expect(values).toEqual(
-              [], 'Expected no valueChanges or statusChanges if value unchanged.');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges if value unchanged.')
+              .toEqual([]);
 
           input.value = 'Nancy';
           dispatchEvent(input, 'input');
           fixture.detectChanges();
-          expect(values).toEqual([], 'Expected no valueChanges or statusChanges on input.');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges on input.')
+              .toEqual([]);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
@@ -1261,12 +1659,12 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           control.markAsPristine();
-          expect(control.dirty).toBe(false, 'Expected control to become pristine.');
+          expect(control.dirty).withContext('Expected control to become pristine.').toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(control.dirty).toBe(false, 'Expected pending dirty value to reset.');
+          expect(control.dirty).withContext('Expected pending dirty value to reset.').toBe(false);
         });
 
         it('should update on blur with group updateOn', () => {
@@ -1281,15 +1679,22 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to remain unchanged until blur.');
-          expect(control.valid).toBe(false, 'Expected no validation to occur until blur.');
+          expect(control.value)
+              .withContext('Expected value to remain unchanged until blur.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected no validation to occur until blur.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
           expect(control.value)
-              .toEqual('Nancy', 'Expected value to change once control is blurred.');
-          expect(control.valid).toBe(true, 'Expected validation to run once control is blurred.');
+              .withContext('Expected value to change once control is blurred.')
+              .toEqual('Nancy');
+          expect(control.valid)
+              .withContext('Expected validation to run once control is blurred.')
+              .toBe(true);
         });
 
         it('should update on blur with array updateOn', () => {
@@ -1306,20 +1711,27 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to remain unchanged until blur.');
-          expect(control.valid).toBe(false, 'Expected no validation to occur until blur.');
+          expect(control.value)
+              .withContext('Expected value to remain unchanged until blur.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected no validation to occur until blur.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
           expect(control.value)
-              .toEqual('Nancy', 'Expected value to change once control is blurred.');
-          expect(control.valid).toBe(true, 'Expected validation to run once control is blurred.');
+              .withContext('Expected value to change once control is blurred.')
+              .toEqual('Nancy');
+          expect(control.valid)
+              .withContext('Expected validation to run once control is blurred.')
+              .toBe(true);
         });
 
 
         it('should allow child control updateOn blur to override group updateOn', () => {
-          const fixture = initTest(NestedFormGroupComp);
+          const fixture = initTest(NestedFormGroupNameComp);
           const loginControl =
               new FormControl('', {validators: Validators.required, updateOn: 'change'});
           const passwordControl = new FormControl('', Validators.required);
@@ -1334,24 +1746,31 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(loginInput.nativeElement, 'input');
           fixture.detectChanges();
 
-          expect(loginControl.value).toEqual('Nancy', 'Expected value change on input.');
-          expect(loginControl.valid).toBe(true, 'Expected validation to run on input.');
+          expect(loginControl.value)
+              .withContext('Expected value change on input.')
+              .toEqual('Nancy');
+          expect(loginControl.valid).withContext('Expected validation to run on input.').toBe(true);
 
           passwordInput.nativeElement.value = 'Carson';
           dispatchEvent(passwordInput.nativeElement, 'input');
           fixture.detectChanges();
 
           expect(passwordControl.value)
-              .toEqual('', 'Expected value to remain unchanged until blur.');
-          expect(passwordControl.valid).toBe(false, 'Expected no validation to occur until blur.');
+              .withContext('Expected value to remain unchanged until blur.')
+              .toEqual('');
+          expect(passwordControl.valid)
+              .withContext('Expected no validation to occur until blur.')
+              .toBe(false);
 
           dispatchEvent(passwordInput.nativeElement, 'blur');
           fixture.detectChanges();
 
           expect(passwordControl.value)
-              .toEqual('Carson', 'Expected value to change once control is blurred.');
+              .withContext('Expected value to change once control is blurred.')
+              .toEqual('Carson');
           expect(passwordControl.valid)
-              .toBe(true, 'Expected validation to run once control is blurred.');
+              .withContext('Expected validation to run once control is blurred.')
+              .toBe(true);
         });
       });
 
@@ -1365,9 +1784,15 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
-          expect(input.value).toEqual('Nancy', 'Expected initial value to propagate to view.');
-          expect(form.value).toEqual({login: 'Nancy'}, 'Expected initial value to be set.');
-          expect(form.valid).toBe(true, 'Expected form to run validation on initial value.');
+          expect(input.value)
+              .withContext('Expected initial value to propagate to view.')
+              .toEqual('Nancy');
+          expect(form.value).withContext('Expected initial value to be set.').toEqual({
+            login: 'Nancy'
+          });
+          expect(form.valid)
+              .withContext('Expected form to run validation on initial value.')
+              .toBe(true);
         });
 
         it('should not update value or validity until submit', () => {
@@ -1383,23 +1808,32 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           expect(formGroup.value)
-              .toEqual({login: ''}, 'Expected form value to remain unchanged on input.');
-          expect(formGroup.valid).toBe(false, 'Expected form validation not to run on input.');
+              .withContext('Expected form value to remain unchanged on input.')
+              .toEqual({login: ''});
+          expect(formGroup.valid)
+              .withContext('Expected form validation not to run on input.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
           expect(formGroup.value)
-              .toEqual({login: ''}, 'Expected form value to remain unchanged on blur.');
-          expect(formGroup.valid).toBe(false, 'Expected form validation not to run on blur.');
+              .withContext('Expected form value to remain unchanged on blur.')
+              .toEqual({login: ''});
+          expect(formGroup.valid)
+              .withContext('Expected form validation not to run on blur.')
+              .toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(formGroup.value)
-              .toEqual({login: 'Nancy'}, 'Expected form value to update on submit.');
-          expect(formGroup.valid).toBe(true, 'Expected form validation to run on submit.');
+          expect(formGroup.value).withContext('Expected form value to update on submit.').toEqual({
+            login: 'Nancy'
+          });
+          expect(formGroup.valid)
+              .withContext('Expected form validation to run on submit.')
+              .toBe(true);
         });
 
         it('should not update after submit until a second submit', () => {
@@ -1423,16 +1857,21 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           expect(formGroup.value)
-              .toEqual({login: 'Nancy'}, 'Expected value not to change until a second submit.');
+              .withContext('Expected value not to change until a second submit.')
+              .toEqual({login: 'Nancy'});
           expect(formGroup.valid)
-              .toBe(true, 'Expected validation not to run until a second submit.');
+              .withContext('Expected validation not to run until a second submit.')
+              .toBe(true);
 
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
           expect(formGroup.value)
-              .toEqual({login: ''}, 'Expected value to update on the second submit.');
-          expect(formGroup.valid).toBe(false, 'Expected validation to run on a second submit.');
+              .withContext('Expected value to update on the second submit.')
+              .toEqual({login: ''});
+          expect(formGroup.valid)
+              .withContext('Expected validation to run on a second submit.')
+              .toBe(false);
         });
 
         it('should not wait for submit to set value programmatically', () => {
@@ -1446,10 +1885,15 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.detectChanges();
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
-          expect(input.value).toEqual('Nancy', 'Expected view value to update immediately.');
+          expect(input.value)
+              .withContext('Expected view value to update immediately.')
+              .toEqual('Nancy');
           expect(formGroup.value)
-              .toEqual({login: 'Nancy'}, 'Expected form value to update immediately.');
-          expect(formGroup.valid).toBe(true, 'Expected form validation to run immediately.');
+              .withContext('Expected form value to update immediately.')
+              .toEqual({login: 'Nancy'});
+          expect(formGroup.valid)
+              .withContext('Expected form validation to run immediately.')
+              .toBe(true);
         });
 
         it('should not update dirty until submit', () => {
@@ -1462,18 +1906,18 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(formGroup.dirty).toBe(false, 'Expected dirty not to change on input.');
+          expect(formGroup.dirty).withContext('Expected dirty not to change on input.').toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(formGroup.dirty).toBe(false, 'Expected dirty not to change on blur.');
+          expect(formGroup.dirty).withContext('Expected dirty not to change on blur.').toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(formGroup.dirty).toBe(true, 'Expected dirty to update on submit.');
+          expect(formGroup.dirty).withContext('Expected dirty to update on submit.').toBe(true);
         });
 
         it('should not update touched until submit', () => {
@@ -1486,13 +1930,15 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(formGroup.touched).toBe(false, 'Expected touched not to change until submit.');
+          expect(formGroup.touched)
+              .withContext('Expected touched not to change until submit.')
+              .toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(formGroup.touched).toBe(true, 'Expected touched to update on submit.');
+          expect(formGroup.touched).withContext('Expected touched to update on submit.').toBe(true);
         });
 
         it('should reset properly', () => {
@@ -1513,19 +1959,28 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           formGroup.reset();
           fixture.detectChanges();
 
-          expect(input.value).toEqual('', 'Expected view value to reset.');
-          expect(formGroup.value).toEqual({login: null}, 'Expected form value to reset');
-          expect(formGroup.dirty).toBe(false, 'Expected dirty to stay false on reset.');
-          expect(formGroup.touched).toBe(false, 'Expected touched to stay false on reset.');
+          expect(input.value).withContext('Expected view value to reset.').toEqual('');
+          expect(formGroup.value).withContext('Expected form value to reset').toEqual({
+            login: null
+          });
+          expect(formGroup.dirty).withContext('Expected dirty to stay false on reset.').toBe(false);
+          expect(formGroup.touched)
+              .withContext('Expected touched to stay false on reset.')
+              .toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
           expect(formGroup.value)
-              .toEqual({login: null}, 'Expected form value to stay empty on submit');
-          expect(formGroup.dirty).toBe(false, 'Expected dirty to stay false on submit.');
-          expect(formGroup.touched).toBe(false, 'Expected touched to stay false on submit.');
+              .withContext('Expected form value to stay empty on submit')
+              .toEqual({login: null});
+          expect(formGroup.dirty)
+              .withContext('Expected dirty to stay false on submit.')
+              .toBe(false);
+          expect(formGroup.touched)
+              .withContext('Expected touched to stay false on submit.')
+              .toBe(false);
         });
 
         it('should not emit valueChanges or statusChanges until submit', () => {
@@ -1547,12 +2002,16 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(values).toEqual([], 'Expected no valueChanges or statusChanges on input');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges on input')
+              .toEqual([]);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(values).toEqual([], 'Expected no valueChanges or statusChanges on blur');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges on blur')
+              .toEqual([]);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
@@ -1573,7 +2032,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           fixture.componentInstance.form = formGroup;
           fixture.detectChanges();
 
-          const values: (string|{[key: string]: string})[] = [];
+          const values: any[] = [];
           const streams = merge(
               control.valueChanges, control.statusChanges, formGroup.valueChanges,
               formGroup.statusChanges);
@@ -1582,14 +2041,17 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
-          expect(values).toEqual(
-              [], 'Expected no valueChanges or statusChanges if value unchanged.');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges if value unchanged.')
+              .toEqual([]);
 
           const input = fixture.debugElement.query(By.css('input')).nativeElement;
           input.value = 'Nancy';
           dispatchEvent(input, 'input');
           fixture.detectChanges();
-          expect(values).toEqual([], 'Expected no valueChanges or statusChanges on input.');
+          expect(values)
+              .withContext('Expected no valueChanges or statusChanges on input.')
+              .toEqual([]);
 
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
@@ -1628,7 +2090,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           const validatorSpy = jasmine.createSpy('validator');
           const groupValidatorSpy = jasmine.createSpy('groupValidatorSpy');
 
-          const fixture = initTest(NestedFormGroupComp);
+          const fixture = initTest(NestedFormGroupNameComp);
           const formGroup = new FormGroup({
             signin: new FormGroup({login: new FormControl(), password: new FormControl()}),
             email: new FormControl('', {updateOn: 'submit'})
@@ -1660,13 +2122,15 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           formGroup.markAsUntouched();
           fixture.detectChanges();
 
-          expect(formGroup.touched).toBe(false, 'Expected group to become untouched.');
+          expect(formGroup.touched).withContext('Expected group to become untouched.').toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(formGroup.touched).toBe(false, 'Expected touched to stay false on submit.');
+          expect(formGroup.touched)
+              .withContext('Expected touched to stay false on submit.')
+              .toBe(false);
         });
 
         it('should update on submit with group updateOn', () => {
@@ -1681,21 +2145,29 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to remain unchanged until submit.');
-          expect(control.valid).toBe(false, 'Expected no validation to occur until submit.');
+          expect(control.value)
+              .withContext('Expected value to remain unchanged until submit.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected no validation to occur until submit.')
+              .toBe(false);
 
           dispatchEvent(input, 'blur');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to remain unchanged until submit.');
-          expect(control.valid).toBe(false, 'Expected no validation to occur until submit.');
+          expect(control.value)
+              .withContext('Expected value to remain unchanged until submit.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected no validation to occur until submit.')
+              .toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('Nancy', 'Expected value to change on submit.');
-          expect(control.valid).toBe(true, 'Expected validation to run on submit.');
+          expect(control.value).withContext('Expected value to change on submit.').toEqual('Nancy');
+          expect(control.valid).withContext('Expected validation to run on submit.').toBe(true);
         });
 
         it('should update on submit with array updateOn', () => {
@@ -1712,20 +2184,26 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(input, 'input');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('', 'Expected value to remain unchanged until submit.');
-          expect(control.valid).toBe(false, 'Expected no validation to occur until submit.');
+          expect(control.value)
+              .withContext('Expected value to remain unchanged until submit.')
+              .toEqual('');
+          expect(control.valid)
+              .withContext('Expected no validation to occur until submit.')
+              .toBe(false);
 
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(control.value).toEqual('Nancy', 'Expected value to change once control on submit');
-          expect(control.valid).toBe(true, 'Expected validation to run on submit.');
+          expect(control.value)
+              .withContext('Expected value to change once control on submit')
+              .toEqual('Nancy');
+          expect(control.valid).withContext('Expected validation to run on submit.').toBe(true);
         });
 
         it('should allow child control updateOn submit to override group updateOn', () => {
-          const fixture = initTest(NestedFormGroupComp);
+          const fixture = initTest(NestedFormGroupNameComp);
           const loginControl =
               new FormControl('', {validators: Validators.required, updateOn: 'change'});
           const passwordControl = new FormControl('', Validators.required);
@@ -1740,25 +2218,47 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
           dispatchEvent(loginInput.nativeElement, 'input');
           fixture.detectChanges();
 
-          expect(loginControl.value).toEqual('Nancy', 'Expected value change on input.');
-          expect(loginControl.valid).toBe(true, 'Expected validation to run on input.');
+          expect(loginControl.value)
+              .withContext('Expected value change on input.')
+              .toEqual('Nancy');
+          expect(loginControl.valid).withContext('Expected validation to run on input.').toBe(true);
 
           passwordInput.nativeElement.value = 'Carson';
           dispatchEvent(passwordInput.nativeElement, 'input');
           fixture.detectChanges();
 
           expect(passwordControl.value)
-              .toEqual('', 'Expected value to remain unchanged until submit.');
+              .withContext('Expected value to remain unchanged until submit.')
+              .toEqual('');
           expect(passwordControl.valid)
-              .toBe(false, 'Expected no validation to occur until submit.');
+              .withContext('Expected no validation to occur until submit.')
+              .toBe(false);
 
           const form = fixture.debugElement.query(By.css('form')).nativeElement;
           dispatchEvent(form, 'submit');
           fixture.detectChanges();
 
-          expect(passwordControl.value).toEqual('Carson', 'Expected value to change on submit.');
-          expect(passwordControl.valid).toBe(true, 'Expected validation to run on submit.');
+          expect(passwordControl.value)
+              .withContext('Expected value to change on submit.')
+              .toEqual('Carson');
+          expect(passwordControl.valid)
+              .withContext('Expected validation to run on submit.')
+              .toBe(true);
         });
+
+        it('should not prevent the default action on forms with method="dialog"', fakeAsync(() => {
+             if (typeof HTMLDialogElement === 'undefined') {
+               return;
+             }
+
+             const fixture = initTest(NativeDialogForm);
+             fixture.detectChanges();
+             tick();
+             const event = dispatchEvent(fixture.componentInstance.form.nativeElement, 'submit');
+             fixture.detectChanges();
+
+             expect(event.defaultPrevented).toBe(false);
+           }));
       });
     });
 
@@ -1920,7 +2420,8 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
            tick();
 
            expect(fixture.componentInstance.login)
-               .toEqual('initial', 'Expected ngModel value to remain unchanged on input.');
+               .withContext('Expected ngModel value to remain unchanged on input.')
+               .toEqual('initial');
 
            const form = fixture.debugElement.query(By.css('form')).nativeElement;
            dispatchEvent(form, 'submit');
@@ -1928,7 +2429,8 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
            tick();
 
            expect(fixture.componentInstance.login)
-               .toEqual('Nancy', 'Expected ngModel value to update on submit.');
+               .withContext('Expected ngModel value to update on submit.')
+               .toEqual('Nancy');
          }));
     });
 
@@ -1949,6 +2451,21 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
         expect(checkbox.nativeElement.checked).toBe(true);
         expect(control.hasError('required')).toEqual(false);
+
+        checkbox.nativeElement.required = false;
+        dispatchEvent(checkbox.nativeElement, 'change');
+        fixture.detectChanges();
+
+        expect(checkbox.nativeElement.checked).toBe(true);
+        expect(control.hasError('required')).toEqual(false);
+
+        checkbox.nativeElement.checked = false;
+        checkbox.nativeElement.required = true;
+        dispatchEvent(checkbox.nativeElement, 'change');
+        fixture.detectChanges();
+
+        expect(checkbox.nativeElement.checked).toBe(false);
+        expect(control.hasError('required')).toEqual(true);
       });
 
       // Note: this scenario goes against validator function rules were `null` is the only
@@ -2331,7 +2848,9 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
            fixture.detectChanges();
            tick(100);
 
-           expect(resultArr.length).toEqual(1, `Expected source observable to emit once on init.`);
+           expect(resultArr.length)
+               .withContext(`Expected source observable to emit once on init.`)
+               .toEqual(1);
 
            const input = fixture.debugElement.query(By.css('input'));
            input.nativeElement.value = 'a';
@@ -2344,8 +2863,189 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
            tick(100);
            expect(resultArr.length)
-               .toEqual(2, `Expected original observable to be canceled on the next value change.`);
+               .withContext(`Expected original observable to be canceled on the next value change.`)
+               .toEqual(2);
          }));
+
+      describe('enabling validators conditionally', () => {
+        it('should not activate minlength and maxlength validators if input is null', () => {
+          @Component({
+            selector: 'min-max-length-null',
+            template: `
+                <form [formGroup]="form">
+                  <input [formControl]="control" name="control" [minlength]="minlen" [maxlength]="maxlen">
+                </form> `
+          })
+          class MinMaxLengthComponent {
+            control: FormControl = new FormControl();
+            form: FormGroup = new FormGroup({'control': this.control});
+            minlen: number|null = null;
+            maxlen: number|null = null;
+          }
+
+          const fixture = initTest(MinMaxLengthComponent);
+          const control = fixture.componentInstance.control;
+          fixture.detectChanges();
+
+          const form = fixture.componentInstance.form;
+          const input = fixture.debugElement.query(By.css('input')).nativeElement;
+
+          interface minmax {
+            minlength: number|null;
+            maxlength: number|null;
+          }
+
+          interface state {
+            isValid: boolean;
+            failedValidator?: string;
+          }
+
+          const setInputValue = (value: number) => {
+            input.value = value;
+            dispatchEvent(input, 'input');
+            fixture.detectChanges();
+          };
+          const setValidatorValues = (values: minmax) => {
+            fixture.componentInstance.minlen = values.minlength;
+            fixture.componentInstance.maxlen = values.maxlength;
+            fixture.detectChanges();
+          };
+          const verifyValidatorAttrValues = (values: {minlength: any, maxlength: any}) => {
+            expect(input.getAttribute('minlength')).toBe(values.minlength);
+            expect(input.getAttribute('maxlength')).toBe(values.maxlength);
+          };
+          const verifyFormState = (state: state) => {
+            expect(form.valid).toBe(state.isValid);
+            if (state.failedValidator) {
+              expect(control!.hasError('minlength')).toEqual(state.failedValidator === 'minlength');
+              expect(control!.hasError('maxlength')).toEqual(state.failedValidator === 'maxlength');
+            }
+          };
+
+          ////////// Actual test scenarios start below //////////
+          // 1. Verify that validators are disabled when input is `null`.
+          setValidatorValues({minlength: null, maxlength: null});
+          verifyValidatorAttrValues({minlength: null, maxlength: null});
+          verifyFormState({isValid: true});
+
+          // 2. Verify that setting validator inputs (to a value different from `null`) activate
+          // validators.
+          setInputValue(12345);
+          setValidatorValues({minlength: 2, maxlength: 4});
+          verifyValidatorAttrValues({minlength: '2', maxlength: '4'});
+          verifyFormState({isValid: false, failedValidator: 'maxlength'});
+
+          // 3. Changing value to the valid range should make the form valid.
+          setInputValue(123);
+          verifyFormState({isValid: true});
+
+          // 4. Changing value to trigger `minlength` validator.
+          setInputValue(1);
+          verifyFormState({isValid: false, failedValidator: 'minlength'});
+
+          // 5. Changing validator inputs to verify that attribute values are updated (and the form
+          // is now valid).
+          setInputValue(1);
+          setValidatorValues({minlength: 1, maxlength: 5});
+          verifyValidatorAttrValues({minlength: '1', maxlength: '5'});
+          verifyFormState({isValid: true});
+
+          // 6. Reset validator inputs back to `null` should deactivate validators.
+          setInputValue(123);
+          setValidatorValues({minlength: null, maxlength: null});
+          verifyValidatorAttrValues({minlength: null, maxlength: null});
+          verifyFormState({isValid: true});
+        });
+
+        it('should not activate min and max validators if input is null', () => {
+          @Component({
+            selector: 'min-max-null',
+            template: `
+                <form [formGroup]="form">
+                  <input type="number" [formControl]="control" name="minmaxinput" [min]="minlen" [max]="maxlen">
+                </form> `
+          })
+          class MinMaxComponent {
+            control: FormControl = new FormControl();
+            form: FormGroup = new FormGroup({'control': this.control});
+            minlen: number|null = null;
+            maxlen: number|null = null;
+          }
+
+          const fixture = initTest(MinMaxComponent);
+          const control = fixture.componentInstance.control;
+          fixture.detectChanges();
+
+          const form = fixture.componentInstance.form;
+          const input = fixture.debugElement.query(By.css('input')).nativeElement;
+
+          interface minmax {
+            min: number|null;
+            max: number|null;
+          }
+
+          interface state {
+            isValid: boolean;
+            failedValidator?: string;
+          }
+
+          const setInputValue = (value: number) => {
+            input.value = value;
+            dispatchEvent(input, 'input');
+            fixture.detectChanges();
+          };
+          const setValidatorValues = (values: minmax) => {
+            fixture.componentInstance.minlen = values.min;
+            fixture.componentInstance.maxlen = values.max;
+            fixture.detectChanges();
+          };
+          const verifyValidatorAttrValues = (values: {min: any, max: any}) => {
+            expect(input.getAttribute('min')).toBe(values.min);
+            expect(input.getAttribute('max')).toBe(values.max);
+          };
+          const verifyFormState = (state: state) => {
+            expect(form.valid).toBe(state.isValid);
+            if (state.failedValidator) {
+              expect(control!.hasError('min')).toEqual(state.failedValidator === 'min');
+              expect(control!.hasError('max')).toEqual(state.failedValidator === 'max');
+            }
+          };
+
+          ////////// Actual test scenarios start below //////////
+          // 1. Verify that validators are disabled when input is `null`.
+          setValidatorValues({min: null, max: null});
+          verifyValidatorAttrValues({min: null, max: null});
+          verifyFormState({isValid: true});
+
+          // 2. Verify that setting validator inputs (to a value different from `null`) activate
+          // validators.
+          setInputValue(12345);
+          setValidatorValues({min: 2, max: 4});
+          verifyValidatorAttrValues({min: '2', max: '4'});
+          verifyFormState({isValid: false, failedValidator: 'max'});
+
+          // 3. Changing value to the valid range should make the form valid.
+          setInputValue(3);
+          verifyFormState({isValid: true});
+
+          // 4. Changing value to trigger `minlength` validator.
+          setInputValue(1);
+          verifyFormState({isValid: false, failedValidator: 'min'});
+
+          // 5. Changing validator inputs to verify that attribute values are updated (and the form
+          // is now valid).
+          setInputValue(1);
+          setValidatorValues({min: 1, max: 5});
+          verifyValidatorAttrValues({min: '1', max: '5'});
+          verifyFormState({isValid: true});
+
+          // 6. Reset validator inputs back to `null` should deactivate validators.
+          setInputValue(123);
+          setValidatorValues({min: null, max: null});
+          verifyValidatorAttrValues({min: null, max: null});
+          verifyFormState({isValid: true});
+        });
+      });
 
       describe('min and max validators', () => {
         function getComponent(dir: string): Type<MinMaxFormControlComp|MinMaxFormControlNameComp> {
@@ -2376,8 +3076,59 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
             fixture.componentInstance.max = 1;
             fixture.detectChanges();
 
+            expect(input.getAttribute('max')).toEqual('1');
             expect(form.valid).toBeFalse();
             expect(form.controls.pin.errors).toEqual({max: {max: 1, actual: 2}});
+
+            fixture.componentInstance.min = 0;
+            fixture.componentInstance.max = 0;
+            fixture.detectChanges();
+            expect(input.getAttribute('min')).toEqual('0');
+            expect(input.getAttribute('max')).toEqual('0');
+            expect(form.valid).toBeFalse();
+            expect(form.controls.pin.errors).toEqual({max: {max: 0, actual: 2}});
+
+            input.value = 0;
+            dispatchEvent(input, 'input');
+            fixture.detectChanges();
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
+          });
+
+          it('should validate max for float number', () => {
+            const fixture = initTest(getComponent(dir));
+            const control = new FormControl(10.25);
+            fixture.componentInstance.control = control;
+            fixture.componentInstance.form = new FormGroup({'pin': control});
+            fixture.componentInstance.max = 10.35;
+            fixture.detectChanges();
+
+            const input = fixture.debugElement.query(By.css('input')).nativeElement;
+            const form = fixture.componentInstance.form;
+
+            expect(input.getAttribute('max')).toEqual('10.35');
+            expect(input.value).toEqual('10.25');
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
+
+            input.value = 10.15;
+            dispatchEvent(input, 'input');
+            expect(form.value).toEqual({pin: 10.15});
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
+
+            fixture.componentInstance.max = 10.05;
+            fixture.detectChanges();
+
+            expect(input.getAttribute('max')).toEqual('10.05');
+            expect(form.valid).toBeFalse();
+            expect(form.controls.pin.errors).toEqual({max: {max: 10.05, actual: 10.15}});
+
+            input.value = 10.01;
+            dispatchEvent(input, 'input');
+            expect(form.value).toEqual({pin: 10.01});
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
           });
 
           it('should apply max validation when control value is defined as a string', () => {
@@ -2402,6 +3153,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
             fixture.componentInstance.max = 1;
             fixture.detectChanges();
+            expect(input.getAttribute('max')).toEqual('1');
             expect(form.valid).toBeFalse();
             expect(form.controls.pin.errors).toEqual({max: {max: 1, actual: 2}});
           });
@@ -2428,8 +3180,60 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
             fixture.componentInstance.min = 5;
             fixture.detectChanges();
+            expect(input.getAttribute('min')).toEqual('5');
             expect(form.valid).toBeFalse();
             expect(form.controls.pin.errors).toEqual({min: {min: 5, actual: 2}});
+
+            fixture.componentInstance.min = 0;
+            input.value = -5;
+            dispatchEvent(input, 'input');
+            fixture.detectChanges();
+            expect(input.getAttribute('min')).toEqual('0');
+            expect(form.valid).toBeFalse();
+            expect(form.controls.pin.errors).toEqual({min: {min: 0, actual: -5}});
+
+            input.value = 0;
+            dispatchEvent(input, 'input');
+            fixture.detectChanges();
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
+          });
+
+          it('should validate min for float number', () => {
+            const fixture = initTest(getComponent(dir));
+            const control = new FormControl(10.25);
+            fixture.componentInstance.control = control;
+            fixture.componentInstance.form = new FormGroup({'pin': control});
+            fixture.componentInstance.max = 10.50;
+            fixture.componentInstance.min = 10.25;
+            fixture.detectChanges();
+
+            const input = fixture.debugElement.query(By.css('input')).nativeElement;
+            const form = fixture.componentInstance.form;
+
+            expect(input.getAttribute('min')).toEqual('10.25');
+            expect(input.getAttribute('max')).toEqual('10.5');
+            expect(input.value).toEqual('10.25');
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
+
+            input.value = 10.35;
+            dispatchEvent(input, 'input');
+            expect(form.value).toEqual({pin: 10.35});
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
+
+            fixture.componentInstance.min = 10.40;
+            fixture.detectChanges();
+            expect(input.getAttribute('min')).toEqual('10.4');
+            expect(form.valid).toBeFalse();
+            expect(form.controls.pin.errors).toEqual({min: {min: 10.40, actual: 10.35}});
+
+            input.value = 10.45;
+            dispatchEvent(input, 'input');
+            expect(form.value).toEqual({pin: 10.45});
+            expect(form.valid).toBeTruthy();
+            expect(form.controls.pin.errors).toBeNull();
           });
 
           it('should apply min validation when control value is defined as a string', () => {
@@ -2454,6 +3258,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
 
             fixture.componentInstance.min = 5;
             fixture.detectChanges();
+            expect(input.getAttribute('min')).toEqual('5');
             expect(form.valid).toBeFalse();
             expect(form.controls.pin.errors).toEqual({min: {min: 5, actual: 2}});
           });
@@ -2550,6 +3355,80 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
             expect(form.controls.pin.errors).toEqual({max: {max: -10, actual: 0}});
           });
         });
+
+        it('should fire registerOnValidatorChange for validators attached to the formGroups',
+           () => {
+             let registerOnValidatorChangeFired = 0;
+             let registerOnAsyncValidatorChangeFired = 0;
+
+             @Directive({
+               selector: '[ng-noop-validator]',
+               providers: [
+                 {provide: NG_VALIDATORS, useExisting: forwardRef(() => NoOpValidator), multi: true}
+               ]
+             })
+             class NoOpValidator implements Validator {
+               @Input() validatorInput = '';
+
+               validate(c: AbstractControl) {
+                 return null;
+               }
+
+               public registerOnValidatorChange(fn: () => void) {
+                 registerOnValidatorChangeFired++;
+               }
+             }
+
+             @Directive({
+               selector: '[ng-noop-async-validator]',
+               providers: [{
+                 provide: NG_ASYNC_VALIDATORS,
+                 useExisting: forwardRef(() => NoOpAsyncValidator),
+                 multi: true
+               }]
+             })
+             class NoOpAsyncValidator implements AsyncValidator {
+               @Input() validatorInput = '';
+
+               validate(c: AbstractControl) {
+                 return Promise.resolve(null);
+               }
+
+               public registerOnValidatorChange(fn: () => void) {
+                 registerOnAsyncValidatorChangeFired++;
+               }
+             }
+
+             @Component({
+               selector: 'ng-model-noop-validation',
+               template: `
+            <form [formGroup]="fooGroup" ng-noop-validator ng-noop-async-validator [validatorInput]="validatorInput">
+                <input type="text" formControlName="fooInput">
+            </form>
+           `
+             })
+             class NgModelNoOpValidation {
+               validatorInput = 'bar';
+
+               fooGroup = new FormGroup({
+                 fooInput: new FormControl(''),
+               });
+             }
+
+             const fixture = initTest(NgModelNoOpValidation, NoOpValidator, NoOpAsyncValidator);
+             fixture.detectChanges();
+
+             expect(registerOnValidatorChangeFired).toBe(1);
+             expect(registerOnAsyncValidatorChangeFired).toBe(1);
+
+             fixture.componentInstance.validatorInput = 'baz';
+             fixture.detectChanges();
+
+             // Changing the validator input should not cause the onValidatorChange to be called
+             // again.
+             expect(registerOnValidatorChangeFired).toBe(1);
+             expect(registerOnAsyncValidatorChangeFired).toBe(1);
+           });
       });
     });
 
@@ -2755,6 +3634,42 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
       });
     });
 
+    describe('radio groups', () => {
+      it('should respect the attr.disabled state as an initial value', () => {
+        const fixture = initTest(RadioForm);
+        const choice = new FormControl('one');
+        const form = new FormGroup({'choice': choice});
+        fixture.componentInstance.form = form;
+        fixture.detectChanges();
+
+        const oneInput = fixture.debugElement.query(By.css('input'));
+
+        // The 'one' input is initially disabled in the view with [attr.disabled].
+        // The model thinks it is enabled. This inconsistent state was retained for backwards
+        // compatibility. (See `RadioControlValueAccessor` for details.)
+        expect(oneInput.attributes.disabled).toBe('true');
+        expect(choice.disabled).toBe(false);
+
+        // Flipping the attribute back and forth does not change the model
+        // as expected. Once the initial `disabled` value is setup, the model
+        // becomes the source of truth.
+        oneInput.nativeElement.setAttribute('disabled', 'false');
+        fixture.detectChanges();
+        expect(oneInput.attributes.disabled).toBe('false');
+        expect(choice.disabled).toBe(false);
+
+        oneInput.nativeElement.setAttribute('disabled', 'true');
+        fixture.detectChanges();
+        expect(oneInput.attributes.disabled).toBe('true');
+        expect(choice.disabled).toBe(false);
+
+        oneInput.nativeElement.setAttribute('disabled', 'false');
+        fixture.detectChanges();
+        expect(oneInput.attributes.disabled).toBe('false');
+        expect(choice.disabled).toBe(false);
+      });
+    });
+
     describe('IME events', () => {
       it('should determine IME event handling depending on platform by default', () => {
         const fixture = initTest(FormControlComp);
@@ -2765,7 +3680,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         const inputNativeEl = inputEl.nativeElement;
         expect(inputNativeEl.value).toEqual('oldValue');
 
-        inputEl.triggerEventHandler('compositionstart', null);
+        inputEl.triggerEventHandler('compositionstart');
 
         inputNativeEl.value = 'updatedValue';
         dispatchEvent(inputNativeEl, 'input');
@@ -2796,7 +3711,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         const inputNativeEl = inputEl.nativeElement;
         expect(inputNativeEl.value).toEqual('oldValue');
 
-        inputEl.triggerEventHandler('compositionstart', null);
+        inputEl.triggerEventHandler('compositionstart');
 
         inputNativeEl.value = 'updatedValue';
         dispatchEvent(inputNativeEl, 'input');
@@ -2824,7 +3739,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         const inputNativeEl = inputEl.nativeElement;
         expect(inputNativeEl.value).toEqual('oldValue');
 
-        inputEl.triggerEventHandler('compositionstart', null);
+        inputEl.triggerEventHandler('compositionstart');
 
         inputNativeEl.value = 'updatedValue';
         dispatchEvent(inputNativeEl, 'input');
@@ -3272,7 +4187,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         // - FormControlDirective was destroyed and connection to a value accessor and view
         //   validators should also be destroyed.
         // - Since there is a second instance of the FormControlDirective directive present in the
-        //   template, we expect to see see calls to value accessor B (since it's applied to
+        //   template, we expect to see calls to value accessor B (since it's applied to
         //   that directive instance) and validators applied on a control instance itself (not a
         //   part of a view setup).
         expect(valueAccessorBSpy).toHaveBeenCalledWith('Updated Value');
@@ -3347,7 +4262,7 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         // - `FormControlName` was destroyed and connection to the value accessor A and
         //   validators should also be destroyed.
         // - Since there is a second instance of `FormControlName` directive present in the
-        //   template, we expect to see see calls to the value accessor B (since it's applied to
+        //   template, we expect to see calls to the value accessor B (since it's applied to
         //   that directive instance) and validators applied on a control instance itself (not a
         //   part of a view setup).
         expect(valueAccessorBSpy).toHaveBeenCalledWith('Updated value');
@@ -4350,7 +5265,9 @@ const ValueAccessorB = createControlValueAccessor('[cva-b]');
         const fixture = initTest(NoCVAComponent);
         expect(() => {
           fixture.detectChanges();
-        }).toThrowError('No value accessor for form control with name: \'control\'');
+        })
+            .toThrowError(
+                `NG01203: No value accessor for form control name: 'control'. Find more at https://angular.io/errors/NG01203`);
 
         // Making sure that cleanup between tests doesn't cause any issues
         // for not fully initialized controls.
@@ -4425,7 +5342,6 @@ class UniqLoginValidator implements AsyncValidator {
 
 @Component({selector: 'form-control-comp', template: `<input type="text" [formControl]="control">`})
 class FormControlComp {
-  // TODO(issue/24571): remove '!'.
   control!: FormControl;
 }
 
@@ -4437,16 +5353,13 @@ class FormControlComp {
     </form>`
 })
 class FormGroupComp {
-  // TODO(issue/24571): remove '!'.
   control!: FormControl;
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
-  // TODO(issue/24571): remove '!'.
   event!: Event;
 }
 
 @Component({
-  selector: 'nested-form-group-comp',
+  selector: 'nested-form-group-name-comp',
   template: `
     <form [formGroup]="form">
       <div formGroupName="signin" login-is-empty-validator>
@@ -4456,8 +5369,7 @@ class FormGroupComp {
       <input *ngIf="form.contains('email')" formControlName="email">
     </form>`
 })
-class NestedFormGroupComp {
-  // TODO(issue/24571): remove '!'.
+class NestedFormGroupNameComp {
   form!: FormGroup;
 }
 
@@ -4473,10 +5385,22 @@ class NestedFormGroupComp {
      </form>`
 })
 class FormArrayComp {
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
-  // TODO(issue/24571): remove '!'.
   cityArray!: FormArray;
+}
+
+@Component({
+  selector: 'nested-form-array-name-comp',
+  template: `
+    <form [formGroup]="form">
+      <div formArrayName="arr">
+        <input formControlName="0">
+      </div>
+    </form>
+  `
+})
+class NestedFormArrayNameComp {
+  form!: FormGroup;
 }
 
 @Component({
@@ -4492,9 +5416,7 @@ class FormArrayComp {
      </div>`
 })
 class FormArrayNestedGroup {
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
-  // TODO(issue/24571): remove '!'.
   cityArray!: FormArray;
 }
 
@@ -4507,11 +5429,8 @@ class FormArrayNestedGroup {
    </form>`
 })
 class FormGroupNgModel {
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
-  // TODO(issue/24571): remove '!'.
   login!: string;
-  // TODO(issue/24571): remove '!'.
   password!: string;
 }
 
@@ -4523,13 +5442,9 @@ class FormGroupNgModel {
   `
 })
 class FormControlNgModel {
-  // TODO(issue/24571): remove '!'.
   control!: FormControl;
-  // TODO(issue/24571): remove '!'.
   login!: string;
-  // TODO(issue/24571): remove '!'.
   passwordControl!: FormControl;
-  // TODO(issue/24571): remove '!'.
   password!: string;
 }
 
@@ -4544,7 +5459,6 @@ class FormControlNgModel {
    </div>`
 })
 class LoginIsEmptyWrapper {
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
 }
 
@@ -4559,15 +5473,10 @@ class LoginIsEmptyWrapper {
    </div>`
 })
 class ValidationBindingsForm {
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
-  // TODO(issue/24571): remove '!'.
   required!: boolean;
-  // TODO(issue/24571): remove '!'.
   minLen!: number;
-  // TODO(issue/24571): remove '!'.
   maxLen!: number;
-  // TODO(issue/24571): remove '!'.
   pattern!: string;
 }
 
@@ -4576,7 +5485,6 @@ class ValidationBindingsForm {
   template: `<input type="checkbox" [formControl]="control">`
 })
 class FormControlCheckboxRequiredValidator {
-  // TODO(issue/24571): remove '!'.
   control!: FormControl;
 }
 
@@ -4588,7 +5496,6 @@ class FormControlCheckboxRequiredValidator {
   </div>`
 })
 class UniqLoginWrapper {
-  // TODO(issue/24571): remove '!'.
   form!: FormGroup;
 }
 
@@ -4632,7 +5539,7 @@ class FormControlWithAsyncValidatorFn {
   `
 })
 class FormControlWithValidators {
-  form = new FormGroup({login: new FormControl('INITIAL')});
+  form: FormGroup = new FormGroup({login: new FormControl('INITIAL')});
 }
 
 @Component({
@@ -4663,7 +5570,7 @@ class MultipleFormControls {
   `
 })
 class NgForFormControlWithValidators {
-  form = new FormGroup({login: new FormControl('a')});
+  form: FormGroup = new FormGroup({login: new FormControl('a')});
   logins = ['a', 'b', 'c'];
 }
 
@@ -4693,4 +5600,33 @@ class MinMaxFormControlComp {
   form!: FormGroup;
   min: number|string = 1;
   max: number|string = 10;
+}
+
+@Component({
+  template: `
+    <dialog open>
+      <form #form method="dialog" [formGroup]="formGroup">
+        <button>Submit</button>
+      </form>
+    </dialog>
+  `
+})
+class NativeDialogForm {
+  @ViewChild('form') form!: ElementRef<HTMLFormElement>;
+  formGroup = new FormGroup({});
+}
+
+@Component({
+  selector: 'radio-form',
+  template: `
+  <form [formGroup]="form">
+    <input type="radio" formControlName="choice" value="one" [attr.disabled]="true"> One
+    <input type="radio" formControlName="choice" value="two"> Two
+  </form>
+  `,
+})
+export class RadioForm {
+  form = new FormGroup({
+    choice: new FormControl('one'),
+  });
 }

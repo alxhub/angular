@@ -7,14 +7,14 @@
  */
 
 import {platform} from 'os';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {absoluteFrom as _, absoluteFromSourceFile} from '../../file_system';
 import {runInEachFileSystem} from '../../file_system/testing';
 import {Reference} from '../../imports';
 import {TypeScriptReflectionHost} from '../../reflection';
 import {getDeclaration, makeProgram} from '../../testing';
-import {ObjectAssignBuiltinFn} from '../src/builtin';
+import {StringConcatBuiltinFn} from '../src/builtin';
 import {describeResolvedType, traceDynamicValue} from '../src/diagnostics';
 import {DynamicValue} from '../src/dynamic';
 import {PartialEvaluator} from '../src/interface';
@@ -48,8 +48,7 @@ runInEachFileSystem(os => {
       });
 
       it('should describe references', () => {
-        const namedFn = ts.createFunctionDeclaration(
-            /* decorators */ undefined,
+        const namedFn = ts.factory.createFunctionDeclaration(
             /* modifiers */ undefined,
             /* asteriskToken */ undefined,
             /* name */ 'test',
@@ -60,8 +59,7 @@ runInEachFileSystem(os => {
         );
         expect(describeResolvedType(new Reference(namedFn))).toBe('test');
 
-        const anonymousFn = ts.createFunctionDeclaration(
-            /* decorators */ undefined,
+        const anonymousFn = ts.factory.createFunctionDeclaration(
             /* modifiers */ undefined,
             /* asteriskToken */ undefined,
             /* name */ undefined,
@@ -74,24 +72,24 @@ runInEachFileSystem(os => {
       });
 
       it('should describe enum values', () => {
-        const decl = ts.createEnumDeclaration(
-            /* decorators */ undefined,
+        const decl = ts.factory.createEnumDeclaration(
             /* modifiers */ undefined,
             /* name */ 'MyEnum',
-            /* members */[ts.createEnumMember('member', ts.createNumericLiteral('1'))],
+            /* members */[ts.factory.createEnumMember(
+                'member', ts.factory.createNumericLiteral(1))],
         );
         const ref = new Reference(decl);
         expect(describeResolvedType(new EnumValue(ref, 'member', 1))).toBe('MyEnum');
       });
 
       it('should describe dynamic values', () => {
-        const node = ts.createObjectLiteral();
+        const node = ts.factory.createObjectLiteralExpression();
         expect(describeResolvedType(DynamicValue.fromUnsupportedSyntax(node)))
             .toBe('(not statically analyzable)');
       });
 
       it('should describe known functions', () => {
-        expect(describeResolvedType(new ObjectAssignBuiltinFn())).toBe('Function');
+        expect(describeResolvedType(new StringConcatBuiltinFn('foo'))).toBe('Function');
       });
 
       it('should describe external modules', () => {
@@ -269,7 +267,7 @@ runInEachFileSystem(os => {
 
 function getSourceCode(diag: ts.DiagnosticRelatedInformation): string {
   const text = diag.file!.text;
-  return text.substr(diag.start!, diag.length!);
+  return text.slice(diag.start!, diag.start! + diag.length!);
 }
 
 function traceExpression(code: string, expr: string): ts.DiagnosticRelatedInformation[] {

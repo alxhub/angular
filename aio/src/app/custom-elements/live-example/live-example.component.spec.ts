@@ -17,7 +17,7 @@ describe('LiveExampleComponent', () => {
 
   @Component({
     selector: 'aio-host-comp',
-    template: `<live-example></live-example>`
+    template: '<live-example></live-example>'
   })
   class HostComponent { }
 
@@ -65,12 +65,12 @@ describe('LiveExampleComponent', () => {
 
     it('should create LiveExampleComponent', () => {
       testComponent(() => {
-        expect(liveExampleComponent).toBeTruthy('LiveExampleComponent');
+        expect(liveExampleComponent).withContext('LiveExampleComponent').toBeTruthy();
       });
     });
 
     it('should have expected stackblitz & download hrefs', () => {
-      testPath = '/tutorial/toh-pt1';
+      testPath = '/tutorial/tour-of-heroes/toh-pt1';
       testComponent(() => {
         const hrefs = getHrefs();
         expect(hrefs[0]).toContain('/toh-pt1/stackblitz.html');
@@ -79,7 +79,7 @@ describe('LiveExampleComponent', () => {
     });
 
     it('should have expected stackblitz & download hrefs even when path has # frag', () => {
-      testPath = '/tutorial/toh-pt1#somewhere';
+      testPath = '/tutorial/tour-of-heroes/toh-pt1#somewhere';
       testComponent(() => {
         const hrefs = getHrefs();
         expect(hrefs[0]).toContain('/toh-pt1/stackblitz.html');
@@ -88,7 +88,7 @@ describe('LiveExampleComponent', () => {
     });
 
     it('should have expected stackblitz & download hrefs even when path has ? params', () => {
-      testPath = '/tutorial/toh-pt1?foo=1&bar="bar"';
+      testPath = '/tutorial/tour-of-heroes/toh-pt1?foo=1&bar="bar"';
       testComponent(() => {
         const hrefs = getHrefs();
         expect(hrefs[0]).toContain('/toh-pt1/stackblitz.html');
@@ -138,7 +138,7 @@ describe('LiveExampleComponent', () => {
       setHostTemplate('<live-example noDownload></live-example>');
       testComponent(() => {
         const hrefs = getHrefs();
-        expect(hrefs.length).toBe(1, 'only the stackblitz live-example anchor');
+        expect(hrefs.length).withContext('only the stackblitz live-example anchor').toBe(1);
         expect(hrefs[0]).toContain('stackblitz.html');
       });
     });
@@ -147,7 +147,7 @@ describe('LiveExampleComponent', () => {
       setHostTemplate('<live-example downloadOnly>download this</live-example>');
       testComponent(() => {
         const hrefs = getHrefs();
-        expect(hrefs.length).toBe(1, 'only the zip anchor');
+        expect(hrefs.length).withContext('only the zip anchor').toBe(1);
         expect(hrefs[0]).toContain('.zip');      });
     });
 
@@ -156,8 +156,8 @@ describe('LiveExampleComponent', () => {
       testComponent(() => {
         const expectedTitle = 'live example';
         const anchor = getLiveExampleAnchor();
-        expect(anchor.textContent).toBe(expectedTitle, 'anchor content');
-        expect(anchor.getAttribute('title')).toBe(expectedTitle, 'title');
+        expect(anchor.textContent).withContext('anchor content').toBe(expectedTitle);
+        expect(anchor.getAttribute('title')).withContext('title').toBe(expectedTitle);
       });
     });
 
@@ -166,8 +166,8 @@ describe('LiveExampleComponent', () => {
       setHostTemplate(`<live-example title="${expectedTitle}"></live-example>`);
       testComponent(() => {
         const anchor = getLiveExampleAnchor();
-        expect(anchor.textContent).toBe(expectedTitle, 'anchor content');
-        expect(anchor.getAttribute('title')).toBe(expectedTitle, 'title');
+        expect(anchor.textContent).withContext('anchor content').toBe(expectedTitle);
+        expect(anchor.getAttribute('title')).withContext('title').toBe(expectedTitle);
       });
     });
 
@@ -176,8 +176,8 @@ describe('LiveExampleComponent', () => {
       setHostTemplate(`<live-example title="ignore this title">${expectedTitle}</live-example>`);
       testComponent(() => {
         const anchor = getLiveExampleAnchor();
-        expect(anchor.textContent).toBe(expectedTitle, 'anchor content');
-        expect(anchor.getAttribute('title')).toBe(expectedTitle, 'title');
+        expect(anchor.textContent).withContext('anchor content').toBe(expectedTitle);
+        expect(anchor.getAttribute('title')).withContext('title').toBe(expectedTitle);
       });
     });
 
@@ -206,13 +206,13 @@ describe('LiveExampleComponent', () => {
     it('should have hidden, embedded stackblitz', () => {
       setHostTemplate('<live-example embedded></live-example>');
       testComponent(() => {
-        expect(liveExampleComponent.mode).toBe('embedded', 'component is embedded');
-        expect(getEmbeddedStackblitzComponent()).toBeTruthy('EmbeddedStackblitzComponent');
+        expect(liveExampleComponent.mode).withContext('component is embedded').toBe('embedded');
+        expect(getEmbeddedStackblitzComponent()).withContext('EmbeddedStackblitzComponent').toBeTruthy();
       });
     });
 
     it('should have download paragraph with expected anchor href', () => {
-      testPath = '/tutorial/toh-pt1';
+      testPath = '/tutorial/tour-of-heroes/toh-pt1';
       setHostTemplate('<live-example embedded></live-example>');
       testComponent(() => {
         expect(getDownloadAnchor().href).toContain('/toh-pt1/toh-pt1.zip');
@@ -220,7 +220,7 @@ describe('LiveExampleComponent', () => {
     });
 
     it('should not have download paragraph when has `nodownload`', () => {
-      testPath = '/tutorial/toh-pt1';
+      testPath = '/tutorial/tour-of-heroes/toh-pt1';
       setHostTemplate('<live-example embedded nodownload></live-example>');
       testComponent(() => {
         expect(getDownloadAnchor()).toBeNull();

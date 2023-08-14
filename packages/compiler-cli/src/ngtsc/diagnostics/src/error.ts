@@ -6,9 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {ErrorCode, ngErrorCode} from './error_code';
+import {ErrorCode} from './error_code';
+import {ngErrorCode} from './util';
 
 export class FatalDiagnosticError {
   constructor(
@@ -41,6 +42,16 @@ export function makeDiagnostic(
   };
 }
 
+export function makeDiagnosticChain(
+    messageText: string, next?: ts.DiagnosticMessageChain[]): ts.DiagnosticMessageChain {
+  return {
+    category: ts.DiagnosticCategory.Message,
+    code: 0,
+    messageText,
+    next,
+  };
+}
+
 export function makeRelatedInformation(
     node: ts.Node, messageText: string): ts.DiagnosticRelatedInformation {
   node = ts.getOriginalNode(node);
@@ -52,6 +63,22 @@ export function makeRelatedInformation(
     length: node.getWidth(),
     messageText,
   };
+}
+
+export function addDiagnosticChain(
+    messageText: string|ts.DiagnosticMessageChain,
+    add: ts.DiagnosticMessageChain[]): ts.DiagnosticMessageChain {
+  if (typeof messageText === 'string') {
+    return makeDiagnosticChain(messageText, add);
+  }
+
+  if (messageText.next === undefined) {
+    messageText.next = add;
+  } else {
+    messageText.next.push(...add);
+  }
+
+  return messageText;
 }
 
 export function isFatalDiagnosticError(err: any): err is FatalDiagnosticError {

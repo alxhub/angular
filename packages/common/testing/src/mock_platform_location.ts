@@ -105,6 +105,8 @@ export const MOCK_PLATFORM_LOCATION_CONFIG =
 export class MockPlatformLocation implements PlatformLocation {
   private baseHref: string = '';
   private hashUpdate = new Subject<LocationChangeEvent>();
+  private popStateSubject = new Subject<LocationChangeEvent>();
+  private urlChangeIndex: number = 0;
   private urlChanges: {
     hostname: string,
     protocol: string,
@@ -121,31 +123,31 @@ export class MockPlatformLocation implements PlatformLocation {
       this.baseHref = config.appBaseHref || '';
 
       const parsedChanges =
-          this.parseChanges(null, config.startUrl || 'http://<empty>/', this.baseHref);
+          this.parseChanges(null, config.startUrl || 'http://_empty_/', this.baseHref);
       this.urlChanges[0] = {...parsedChanges};
     }
   }
 
   get hostname() {
-    return this.urlChanges[0].hostname;
+    return this.urlChanges[this.urlChangeIndex].hostname;
   }
   get protocol() {
-    return this.urlChanges[0].protocol;
+    return this.urlChanges[this.urlChangeIndex].protocol;
   }
   get port() {
-    return this.urlChanges[0].port;
+    return this.urlChanges[this.urlChangeIndex].port;
   }
   get pathname() {
-    return this.urlChanges[0].pathname;
+    return this.urlChanges[this.urlChangeIndex].pathname;
   }
   get search() {
-    return this.urlChanges[0].search;
+    return this.urlChanges[this.urlChangeIndex].search;
   }
   get hash() {
-    return this.urlChanges[0].hash;
+    return this.urlChanges[this.urlChangeIndex].hash;
   }
   get state() {
-    return this.urlChanges[0].state;
+    return this.urlChanges[this.urlChangeIndex].state;
   }
 
 
@@ -154,9 +156,8 @@ export class MockPlatformLocation implements PlatformLocation {
   }
 
   onPopState(fn: LocationChangeListener): VoidFunction {
-    // No-op: a state stack is not implemented, so
-    // no events will ever come.
-    return () => {};
+    const subscription = this.popStateSubject.subscribe(fn);
+    return () => subscription.unsubscribe();
   }
 
   onHashChange(fn: LocationChangeListener): VoidFunction {
@@ -183,36 +184,69 @@ export class MockPlatformLocation implements PlatformLocation {
   replaceState(state: any, title: string, newUrl: string): void {
     const {pathname, search, state: parsedState, hash} = this.parseChanges(state, newUrl);
 
-    this.urlChanges[0] = {...this.urlChanges[0], pathname, search, hash, state: parsedState};
+    this.urlChanges[this.urlChangeIndex] =
+        {...this.urlChanges[this.urlChangeIndex], pathname, search, hash, state: parsedState};
   }
 
   pushState(state: any, title: string, newUrl: string): void {
     const {pathname, search, state: parsedState, hash} = this.parseChanges(state, newUrl);
-    this.urlChanges.unshift({...this.urlChanges[0], pathname, search, hash, state: parsedState});
+    if (this.urlChangeIndex > 0) {
+      this.urlChanges.splice(this.urlChangeIndex + 1);
+    }
+    this.urlChanges.push(
+        {...this.urlChanges[this.urlChangeIndex], pathname, search, hash, state: parsedState});
+    this.urlChangeIndex = this.urlChanges.length - 1;
   }
 
   forward(): void {
-    throw new Error('Not implemented');
+    const oldUrl = this.url;
+    const oldHash = this.hash;
+    if (this.urlChangeIndex < this.urlChanges.length) {
+      this.urlChangeIndex++;
+    }
+    this.emitEvents(oldHash, oldUrl);
   }
 
   back(): void {
     const oldUrl = this.url;
     const oldHash = this.hash;
-    this.urlChanges.shift();
-    const newHash = this.hash;
-
-    if (oldHash !== newHash) {
-      scheduleMicroTask(
-          () => this.hashUpdate.next(
-              {type: 'hashchange', state: null, oldUrl, newUrl: this.url} as LocationChangeEvent));
+    if (this.urlChangeIndex > 0) {
+      this.urlChangeIndex--;
     }
+    this.emitEvents(oldHash, oldUrl);
+  }
+
+  historyGo(relativePosition: number = 0): void {
+    const oldUrl = this.url;
+    const oldHash = this.hash;
+    const nextPageIndex = this.urlChangeIndex + relativePosition;
+    if (nextPageIndex >= 0 && nextPageIndex < this.urlChanges.length) {
+      this.urlChangeIndex = nextPageIndex;
+    }
+    this.emitEvents(oldHash, oldUrl);
   }
 
   getState(): unknown {
     return this.state;
   }
-}
 
-export function scheduleMicroTask(cb: () => any) {
-  Promise.resolve(null).then(cb);
+  /**
+   * Browsers are inconsistent in when they fire events and perform the state updates
+   * The most easiest thing to do in our mock is synchronous and that happens to match
+   * Firefox and Chrome, at least somewhat closely
+   *
+   * https://github.com/WICG/navigation-api#watching-for-navigations
+   * https://docs.google.com/document/d/1Pdve-DJ1JCGilj9Yqf5HxRJyBKSel5owgOvUJqTauwU/edit#heading=h.3ye4v71wsz94
+   * popstate is always sent before hashchange:
+   * https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event#when_popstate_is_sent
+   */
+  private emitEvents(oldHash: string, oldUrl: string) {
+    this.popStateSubject.next(
+        {type: 'popstate', state: this.getState(), oldUrl, newUrl: this.url} as
+        LocationChangeEvent);
+    if (oldHash !== this.hash) {
+      this.hashUpdate.next(
+          {type: 'hashchange', state: null, oldUrl, newUrl: this.url} as LocationChangeEvent);
+    }
+  }
 }

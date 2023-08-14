@@ -9,19 +9,21 @@
 import {AnimationEvent} from '@angular/animations';
 import {ɵAnimationEngine, ɵNoopAnimationStyleNormalizer} from '@angular/animations/browser';
 import {MockAnimationDriver, MockAnimationPlayer} from '@angular/animations/browser/testing';
-import {DOCUMENT} from '@angular/common';
-import {Component, DoCheck, NgZone, RendererFactory2, RendererType2} from '@angular/core';
+import {CommonModule, DOCUMENT} from '@angular/common';
+import {PLATFORM_BROWSER_ID, PLATFORM_SERVER_ID} from '@angular/common/src/platform_id';
+import {Component, DoCheck, NgZone, Renderer2, RendererFactory2, RendererStyleFlags2, RendererType2, ViewEncapsulation} from '@angular/core';
+import {RElement} from '@angular/core/src/render3/interfaces/renderer_dom';
 import {ngDevModeResetPerfCounters} from '@angular/core/src/util/ng_dev_mode';
 import {NoopNgZone} from '@angular/core/src/zone/ng_zone';
 import {TestBed} from '@angular/core/testing';
-import {EventManager, ɵDomSharedStylesHost} from '@angular/platform-browser';
+import {EventManager, ɵSharedStylesHost} from '@angular/platform-browser';
 import {ɵAnimationRendererFactory} from '@angular/platform-browser/animations';
+import {DomRendererFactory2} from '@angular/platform-browser/src/dom/dom_renderer';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {ServerRendererFactory2} from '@angular/platform-server/src/server_renderer';
-import {onlyInIvy} from '@angular/private/testing';
 
 describe('renderer factory lifecycle', () => {
   let logs: string[] = [];
+  let lastCapturedType: RendererType2|null = null;
 
   @Component({selector: 'some-component', template: `foo`})
   class SomeComponent implements DoCheck {
@@ -57,6 +59,7 @@ describe('renderer factory lifecycle', () => {
 
     rendererFactory.createRenderer = (hostElement: any, type: RendererType2|null) => {
       logs.push('create');
+      lastCapturedType = type;
       return createRender.apply(rendererFactory, [hostElement, type]);
     };
 
@@ -79,7 +82,7 @@ describe('renderer factory lifecycle', () => {
     });
   });
 
-  onlyInIvy('FW-1320: Ivy creates renderer twice.').it('should work with a component', () => {
+  it('should work with a component', () => {
     const fixture = TestBed.createComponent(SomeComponent);
     fixture.detectChanges();
     expect(logs).toEqual(
@@ -89,14 +92,144 @@ describe('renderer factory lifecycle', () => {
     expect(logs).toEqual(['begin', 'some_component update', 'end']);
   });
 
-  onlyInIvy('FW-1320: Ivy creates renderer twice.')
-      .it('should work with a component which throws', () => {
-        expect(() => {
-          const fixture = TestBed.createComponent(SomeComponentWhichThrows);
-          fixture.detectChanges();
-        }).toThrow();
-        expect(logs).toEqual(['create', 'create', 'begin', 'end']);
+  it('should work with a component which throws', () => {
+    expect(() => {
+      const fixture = TestBed.createComponent(SomeComponentWhichThrows);
+      fixture.detectChanges();
+    }).toThrow();
+    expect(logs).toEqual(['create', 'create', 'begin', 'end']);
+  });
+
+  it('should pass in the component styles directly into the underlying renderer', () => {
+    @Component({
+      standalone: true,
+      styles: ['.some-css-class { color: red; }'],
+      template: '...',
+      encapsulation: ViewEncapsulation.ShadowDom,
+    })
+    class StyledComp {
+    }
+
+    TestBed.createComponent(StyledComp);
+
+    expect(lastCapturedType!.styles).toEqual(['.some-css-class { color: red; }']);
+    expect(lastCapturedType!.encapsulation).toEqual(ViewEncapsulation.ShadowDom);
+  });
+
+  describe('component animations', () => {
+    it('should pass in the component styles directly into the underlying renderer', () => {
+      const animA = {name: 'a'};
+      const animB = {name: 'b'};
+
+      @Component({
+        standalone: true,
+        template: '',
+        animations: [
+          animA,
+          animB,
+        ],
+      })
+      class AnimComp {
+      }
+
+      TestBed.createComponent(AnimComp);
+
+      const capturedAnimations = lastCapturedType!.data!['animation'];
+      expect(Array.isArray(capturedAnimations)).toBeTruthy();
+      expect(capturedAnimations.length).toEqual(2);
+      expect(capturedAnimations).toContain(animA);
+      expect(capturedAnimations).toContain(animB);
+    });
+
+    it('should include animations in the renderType data array even if the array is empty', () => {
+      @Component({
+        standalone: true,
+        template: '...',
+        animations: [],
+      })
+      class AnimComp {
+      }
+
+      TestBed.createComponent(AnimComp);
+
+      const data = lastCapturedType!.data;
+      expect(data.animation).toEqual([]);
+    });
+
+    it('should allow [@trigger] bindings to be picked up by the underlying renderer', () => {
+      @Component({
+        standalone: true,
+        template: '<div @fooAnimation></div>',
+        animations: [],
+      })
+      class AnimComp {
+      }
+
+      const rendererFactory = new MockRendererFactory(['setProperty']);
+
+      TestBed.configureTestingModule({
+        providers: [{
+          provide: RendererFactory2,
+          useValue: rendererFactory,
+          deps: [DOCUMENT],
+        }]
       });
+
+      const fixture = TestBed.createComponent(AnimComp);
+      fixture.detectChanges();
+
+      const renderer = rendererFactory.lastRenderer!;
+      const spy = renderer.spies['setProperty'];
+      const [_, prop, __] = spy.calls.mostRecent().args;
+
+      expect(prop).toEqual('@fooAnimation');
+    });
+  });
+
+  it('should not invoke renderer destroy method for embedded views', () => {
+    @Component({
+      selector: 'comp',
+      standalone: true,
+      imports: [CommonModule],
+      template: `
+        <div>Root view</div>
+        <div *ngIf="visible">Child view</div>
+      `,
+    })
+    class Comp {
+      visible = true;
+    }
+
+    const rendererFactory = new MockRendererFactory(['destroy', 'createElement']);
+    TestBed.configureTestingModule({
+      providers: [{
+        provide: RendererFactory2,
+        useValue: rendererFactory,
+        deps: [DOCUMENT],
+      }]
+    });
+
+    const fixture = TestBed.createComponent(Comp);
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance;
+    comp!.visible = false;
+    fixture.detectChanges();
+
+    comp!.visible = true;
+    fixture.detectChanges();
+
+    const renderer = rendererFactory.lastRenderer!;
+    const destroySpy = renderer.spies['destroy'];
+    const createElementSpy = renderer.spies['createElement'];
+
+    // we should never see `destroy` method being called
+    // in case child views are created/removed.
+    expect(destroySpy.calls.count()).toBe(0);
+
+    // Make sure other methods on the renderer were invoked.
+    expect(createElementSpy.calls.count() > 0).toBe(true);
+  });
 });
 
 describe('animation renderer factory', () => {
@@ -174,8 +307,8 @@ describe('animation renderer factory', () => {
 
     const [player] = getAnimationLog();
     expect(player.keyframes).toEqual([
-      {opacity: '*', offset: 0},
-      {opacity: 1, offset: 1},
+      new Map<string, string|number>([['opacity', '*'], ['offset', 0]]),
+      new Map<string, string|number>([['opacity', 1], ['offset', 1]]),
     ]);
     player.finish();
 
@@ -189,8 +322,10 @@ describe('animation renderer factory', () => {
 function getRendererFactory2(document: any): RendererFactory2 {
   const fakeNgZone: NgZone = new NoopNgZone();
   const eventManager = new EventManager([], fakeNgZone);
-  const rendererFactory = new ServerRendererFactory2(
-      eventManager, fakeNgZone, document, new ɵDomSharedStylesHost(document));
+  const appId = 'app-id';
+  const rendererFactory = new DomRendererFactory2(
+      eventManager, new ɵSharedStylesHost(document, appId), appId, true, document,
+      isNode ? PLATFORM_SERVER_ID : PLATFORM_BROWSER_ID, fakeNgZone);
   const origCreateRenderer = rendererFactory.createRenderer;
   rendererFactory.createRenderer = function(element: any, type: RendererType2|null) {
     const renderer = origCreateRenderer.call(this, element, type);
@@ -255,7 +390,7 @@ describe('custom renderer', () => {
   });
 });
 
-onlyInIvy('access global ngDevMode').describe('Renderer2 destruction hooks', () => {
+describe('Renderer2 destruction hooks', () => {
   @Component({
     selector: 'some-component',
     template: `
@@ -330,3 +465,84 @@ onlyInIvy('access global ngDevMode').describe('Renderer2 destruction hooks', () 
     expect(ngDevMode!.rendererDestroyNode).toBe(3);
   });
 });
+
+export class MockRendererFactory implements RendererFactory2 {
+  lastRenderer: any;
+  private _spyOnMethods: string[];
+
+  constructor(spyOnMethods?: string[]) {
+    this._spyOnMethods = spyOnMethods || [];
+  }
+
+  createRenderer(hostElement: RElement|null, rendererType: RendererType2|null): Renderer2 {
+    const renderer = this.lastRenderer = new MockRenderer(this._spyOnMethods);
+    return renderer;
+  }
+}
+
+class MockRenderer implements Renderer2 {
+  public spies: {[methodName: string]: any} = {};
+  data = {};
+
+  destroyNode: ((node: any) => void)|null = null;
+
+  constructor(spyOnMethods: string[]) {
+    spyOnMethods.forEach(methodName => {
+      this.spies[methodName] = spyOn(this as any, methodName).and.callThrough();
+    });
+  }
+
+  destroy(): void {}
+  createComment(value: string): Comment {
+    return document.createComment(value);
+  }
+  createElement(name: string, namespace?: string|null): Element {
+    return namespace ? document.createElementNS(namespace, name) : document.createElement(name);
+  }
+  createText(value: string): Text {
+    return document.createTextNode(value);
+  }
+  appendChild(parent: RElement, newChild: Node): void {
+    parent.appendChild(newChild);
+  }
+  insertBefore(parent: Node, newChild: Node, refChild: Node|null): void {
+    parent.insertBefore(newChild, refChild);
+  }
+  removeChild(parent: RElement, oldChild: Node): void {
+    parent.removeChild(oldChild);
+  }
+  selectRootElement(selectorOrNode: string|any): RElement {
+    return typeof selectorOrNode === 'string' ? document.querySelector(selectorOrNode) :
+                                                selectorOrNode;
+  }
+  parentNode(node: Node): Element|null {
+    return node.parentNode as Element;
+  }
+  nextSibling(node: Node): Node|null {
+    return node.nextSibling;
+  }
+  setAttribute(el: RElement, name: string, value: string, namespace?: string|null): void {
+    // set all synthetic attributes as properties
+    if (name[0] === '@') {
+      this.setProperty(el, name, value);
+    } else {
+      el.setAttribute(name, value);
+    }
+  }
+  removeAttribute(el: RElement, name: string, namespace?: string|null): void {}
+  addClass(el: RElement, name: string): void {}
+  removeClass(el: RElement, name: string): void {}
+  setStyle(el: RElement, style: string, value: any, flags?: RendererStyleFlags2): void {}
+  removeStyle(el: RElement, style: string, flags?: RendererStyleFlags2): void {}
+  setProperty(el: RElement, name: string, value: any): void {
+    (el as any)[name] = value;
+  }
+  setValue(node: Text, value: string): void {
+    node.textContent = value;
+  }
+
+  // TODO: Deprecate in favor of addEventListener/removeEventListener
+  listen(target: Node, eventName: string, callback: (event: any) => boolean | void): () => void {
+    return () => {};
+  }
+}

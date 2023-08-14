@@ -7,6 +7,7 @@
  */
 import {KeyValueArray} from '../../util/array_utils';
 import {TStylingRange} from '../interfaces/styling';
+
 import {TIcu} from './i18n';
 import {CssSelector} from './projection';
 import {RNode} from './renderer_dom';
@@ -102,35 +103,33 @@ export const enum TNodeFlags {
   /** Bit #1 - This bit is set if the node is a host for any directive (including a component) */
   isDirectiveHost = 0x1,
 
-  /**
-   * Bit #2 - This bit is set if the node is a host for a component.
-   *
-   * Setting this bit implies that the `isDirectiveHost` bit is set as well.
-   * */
-  isComponentHost = 0x2,
+  /** Bit #2 - This bit is set if the node has been projected */
+  isProjected = 0x2,
 
-  /** Bit #3 - This bit is set if the node has been projected */
-  isProjected = 0x4,
+  /** Bit #3 - This bit is set if any directive on this node has content queries */
+  hasContentQuery = 0x4,
 
-  /** Bit #4 - This bit is set if any directive on this node has content queries */
-  hasContentQuery = 0x8,
+  /** Bit #4 - This bit is set if the node has any "class" inputs */
+  hasClassInput = 0x8,
 
-  /** Bit #5 - This bit is set if the node has any "class" inputs */
-  hasClassInput = 0x10,
+  /** Bit #5 - This bit is set if the node has any "style" inputs */
+  hasStyleInput = 0x10,
 
-  /** Bit #6 - This bit is set if the node has any "style" inputs */
-  hasStyleInput = 0x20,
-
-  /** Bit #7 This bit is set if the node has been detached by i18n */
-  isDetached = 0x40,
+  /** Bit #6 - This bit is set if the node has been detached by i18n */
+  isDetached = 0x20,
 
   /**
-   * Bit #8 - This bit is set if the node has directives with host bindings.
+   * Bit #7 - This bit is set if the node has directives with host bindings.
    *
    * This flags allows us to guard host-binding logic and invoke it only on nodes
    * that actually have directives with host bindings.
    */
-  hasHostBindings = 0x80,
+  hasHostBindings = 0x40,
+
+  /**
+   * Bit #8 - This bit is set if the node is a located inside skip hydration block.
+   */
+  inSkipHydrationBlock = 0x80,
 }
 
 /**
@@ -407,11 +406,7 @@ export interface TNode {
    */
   injectorIndex: number;
 
-  /**
-   * Stores starting index of the directives.
-   *
-   * NOTE: The first directive is always component (if present).
-   */
+  /** Stores starting index of the directives. */
   directiveStart: number;
 
   /**
@@ -422,6 +417,13 @@ export interface TNode {
    * `LFrame.bindingRootIndex` before `HostBindingFunction` is executed.
    */
   directiveEnd: number;
+
+  /**
+   * Offset from the `directiveStart` at which the component (one at most) of the node is stored.
+   * Set to -1 if no components have been applied to the node. Component index can be found using
+   * `directiveStart + componentOffset`.
+   */
+  componentOffset: number;
 
   /**
    * Stores the last directive which had a styling instruction.
@@ -535,32 +537,26 @@ export interface TNode {
   outputs: PropertyAliases|null;
 
   /**
-   * The TView or TViews attached to this node.
-   *
-   * If this TNode corresponds to an LContainer with inline views, the container will
-   * need to store separate static data for each of its view blocks (TView[]). Otherwise,
-   * nodes in inline views with the same index as nodes in their parent views will overwrite
-   * each other, as they are in the same template.
-   *
-   * Each index in this array corresponds to the static data for a certain
-   * view. So if you had V(0) and V(1) in a container, you might have:
-   *
-   * [
-   *   [{tagName: 'div', attrs: ...}, null],     // V(0) TView
-   *   [{tagName: 'button', attrs ...}, null]    // V(1) TView
+   * The TView attached to this node.
    *
    * If this TNode corresponds to an LContainer with a template (e.g. structural
    * directive), the template's TView will be stored here.
    *
-   * If this TNode corresponds to an element, tViews will be null .
+   * If this TNode corresponds to an element, tView will be `null`.
    */
-  tViews: TView|TView[]|null;
+  tView: TView|null;
 
   /**
    * The next sibling node. Necessary so we can propagate through the root nodes of a view
    * to insert them or remove them from the DOM.
    */
   next: TNode|null;
+
+  /**
+   * The previous sibling node.
+   * This simplifies operations when we need a pointer to the previous node.
+   */
+  prev: TNode|null;
 
   /**
    * The next projected sibling. Since in Angular content projection works on the node-by-node
@@ -771,7 +767,7 @@ export interface TElementNode extends TNode {
    * retrieved using viewData[HOST_NODE]).
    */
   parent: TElementNode|TElementContainerNode|null;
-  tViews: null;
+  tView: null;
 
   /**
    * If this is a component TNode with projection, this will be an array of projected
@@ -797,7 +793,7 @@ export interface TTextNode extends TNode {
    * retrieved using LView.node).
    */
   parent: TElementNode|TElementContainerNode|null;
-  tViews: null;
+  tView: null;
   projection: null;
 }
 
@@ -819,7 +815,7 @@ export interface TContainerNode extends TNode {
    * - They are dynamically created
    */
   parent: TElementNode|TElementContainerNode|null;
-  tViews: TView|TView[]|null;
+  tView: TView|null;
   projection: null;
   value: null;
 }
@@ -830,7 +826,7 @@ export interface TElementContainerNode extends TNode {
   index: number;
   child: TElementNode|TTextNode|TContainerNode|TElementContainerNode|TProjectionNode|null;
   parent: TElementNode|TElementContainerNode|null;
-  tViews: null;
+  tView: null;
   projection: null;
 }
 
@@ -840,7 +836,7 @@ export interface TIcuContainerNode extends TNode {
   index: number;
   child: null;
   parent: TElementNode|TElementContainerNode|null;
-  tViews: null;
+  tView: null;
   projection: null;
   value: TIcu;
 }
@@ -855,7 +851,7 @@ export interface TProjectionNode extends TNode {
    * retrieved using LView.node).
    */
   parent: TElementNode|TElementContainerNode|null;
-  tViews: null;
+  tView: null;
 
   /** Index of the projection node. (See TNode.projection for more info.) */
   projection: number;

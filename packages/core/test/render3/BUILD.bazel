@@ -25,6 +25,7 @@ ts_library(
         "//packages/common",
         "//packages/compiler",
         "//packages/core",
+        "//packages/core/rxjs-interop",
         "//packages/core/src/di/interface",
         "//packages/core/src/interface",
         "//packages/core/src/util",
@@ -53,13 +54,13 @@ ts_library(
     name = "domino",
     testonly = True,
     srcs = [
-        "domino.d.ts",
         "load_domino.ts",
     ],
     deps = [
         "//packages/common",
         "//packages/compiler",
         "//packages/platform-server",
+        "//packages/platform-server:bundled_domino_lib",
         "//packages/zone.js/lib:zone_d_ts",
     ],
 )
@@ -77,11 +78,8 @@ ts_library(
 jasmine_node_test(
     name = "render3",
     bootstrap = [
-        ":domino_es5",
-        "//tools/testing:node_es5",
-    ],
-    tags = [
-        "ivy-only",
+        ":domino",
+        "//tools/testing:node",
     ],
     deps = [
         ":render3_node_lib",
@@ -91,9 +89,6 @@ jasmine_node_test(
 
 karma_web_test_suite(
     name = "render3_web",
-    tags = [
-        "ivy-only",
-    ],
     deps = [
         ":render3_lib",
     ],

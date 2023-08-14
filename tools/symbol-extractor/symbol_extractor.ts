@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 
 export interface Symbol {
@@ -28,8 +28,10 @@ export class SymbolExtractor {
       // Left for easier debugging.
       // console.log('>>>', ts.SyntaxKind[child.kind]);
       switch (child.kind) {
+        case ts.SyntaxKind.ArrowFunction:
         case ts.SyntaxKind.FunctionExpression:
           fnRecurseDepth++;
+          // Handles IIFE function/arrow expressions.
           if (fnRecurseDepth <= 1) {
             ts.forEachChild(child, visitor);
           }
@@ -47,11 +49,11 @@ export class SymbolExtractor {
           break;
         case ts.SyntaxKind.VariableDeclaration:
           const varDecl = child as ts.VariableDeclaration;
-          if (varDecl.initializer && fnRecurseDepth !== 0) {
+          // Terser optimizes variable declarations with `undefined` as initializer
+          // by omitting the initializer completely. We capture such declarations as well.
+          // https://github.com/terser/terser/blob/86ea74d5c12ae51b64468/CHANGELOG.md#v540.
+          if (fnRecurseDepth !== 0) {
             symbols.push({name: stripSuffix(varDecl.name.getText())});
-          }
-          if (fnRecurseDepth == 0 && isRollupExportSymbol(varDecl)) {
-            ts.forEachChild(child, visitor);
           }
           break;
         case ts.SyntaxKind.FunctionDeclaration:
@@ -125,15 +127,4 @@ export class SymbolExtractor {
 function stripSuffix(text: string): string {
   const index = text.lastIndexOf('$');
   return index > -1 ? text.substring(0, index) : text;
-}
-
-/**
- * Detects if VariableDeclarationList is format `var ..., bundle = function(){}()`;
- *
- * Rollup produces this format when it wants to export symbols from a bundle.
- * @param child
- */
-function isRollupExportSymbol(decl: ts.VariableDeclaration): boolean {
-  return !!(decl.initializer && decl.initializer.kind == ts.SyntaxKind.CallExpression) &&
-      ts.isIdentifier(decl.name) && decl.name.text === 'bundle';
 }

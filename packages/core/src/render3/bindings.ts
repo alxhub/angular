@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {devModeEqual} from '../change_detection/change_detection_util';
 import {assertIndexInRange, assertLessThan, assertNotSame} from '../util/assert';
+import {devModeEqual} from '../util/comparison';
 
 import {getExpressionChangedErrorDetails, throwErrorIfNoChangesMode} from './errors';
 import {LView} from './interfaces/view';
@@ -60,7 +60,7 @@ export function bindingUpdated(lView: LView, bindingIndex: number, value: any): 
         const details =
             getExpressionChangedErrorDetails(lView, bindingIndex, oldValueToCompare, value);
         throwErrorIfNoChangesMode(
-            oldValue === NO_CHANGE, details.oldValue, details.newValue, details.propName);
+            oldValue === NO_CHANGE, details.oldValue, details.newValue, details.propName, lView);
       }
       // There was a change, but the `devModeEqual` decided that the change is exempt from an error.
       // For this reason we exit as if no change. The early exit is needed to prevent the changed

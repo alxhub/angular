@@ -5,28 +5,12 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {AnimationEvent, AnimationPlayer, AUTO_STYLE, NoopAnimationPlayer, ɵAnimationGroupPlayer, ɵPRE_STYLE as PRE_STYLE, ɵStyleData} from '@angular/animations';
+import {AnimationEvent, AnimationPlayer, AUTO_STYLE, NoopAnimationPlayer, ɵAnimationGroupPlayer, ɵPRE_STYLE as PRE_STYLE, ɵStyleDataMap} from '@angular/animations';
 
 import {AnimationStyleNormalizer} from '../../src/dsl/style_normalization/animation_style_normalizer';
-import {AnimationDriver} from '../../src/render/animation_driver';
+import {animationFailed} from '../error_helpers';
 
-// We don't include ambient node types here since @angular/animations/browser
-// is meant to target the browser so technically it should not depend on node
-// types. `process` is just declared locally here as a result.
-declare const process: any;
-
-export function isBrowser(): boolean {
-  return (typeof window !== 'undefined' && typeof window.document !== 'undefined');
-}
-
-export function isNode(): boolean {
-  // Checking only for `process` isn't enough to identify whether or not we're in a Node
-  // environment, because Webpack by default will polyfill the `process`. While we can discern
-  // that Webpack polyfilled it by looking at `process.browser`, it's very Webpack-specific and
-  // might not be future-proof. Instead we look at the stringified version of `process` which
-  // is `[object process]` in Node and `[object Object]` when polyfilled.
-  return typeof process !== 'undefined' && {}.toString.call(process) === '[object process]';
-}
+import {ANIMATABLE_PROP_SET} from './web_animations/animatable_props_set';
 
 export function optimizeGroupPlayer(players: AnimationPlayer[]): AnimationPlayer {
   switch (players.length) {
@@ -40,29 +24,29 @@ export function optimizeGroupPlayer(players: AnimationPlayer[]): AnimationPlayer
 }
 
 export function normalizeKeyframes(
-    driver: AnimationDriver, normalizer: AnimationStyleNormalizer, element: any,
-    keyframes: ɵStyleData[], preStyles: ɵStyleData = {},
-    postStyles: ɵStyleData = {}): ɵStyleData[] {
-  const errors: string[] = [];
-  const normalizedKeyframes: ɵStyleData[] = [];
+    normalizer: AnimationStyleNormalizer, keyframes: Array<ɵStyleDataMap>,
+    preStyles: ɵStyleDataMap = new Map(),
+    postStyles: ɵStyleDataMap = new Map()): Array<ɵStyleDataMap> {
+  const errors: Error[] = [];
+  const normalizedKeyframes: Array<ɵStyleDataMap> = [];
   let previousOffset = -1;
-  let previousKeyframe: ɵStyleData|null = null;
+  let previousKeyframe: ɵStyleDataMap|null = null;
   keyframes.forEach(kf => {
-    const offset = kf['offset'] as number;
+    const offset = kf.get('offset') as number;
     const isSameOffset = offset == previousOffset;
-    const normalizedKeyframe: ɵStyleData = (isSameOffset && previousKeyframe) || {};
-    Object.keys(kf).forEach(prop => {
+    const normalizedKeyframe: ɵStyleDataMap = (isSameOffset && previousKeyframe) || new Map();
+    kf.forEach((val, prop) => {
       let normalizedProp = prop;
-      let normalizedValue = kf[prop];
+      let normalizedValue = val;
       if (prop !== 'offset') {
         normalizedProp = normalizer.normalizePropertyName(normalizedProp, errors);
         switch (normalizedValue) {
           case PRE_STYLE:
-            normalizedValue = preStyles[prop];
+            normalizedValue = preStyles.get(prop)!;
             break;
 
           case AUTO_STYLE:
-            normalizedValue = postStyles[prop];
+            normalizedValue = postStyles.get(prop)!;
             break;
 
           default:
@@ -71,7 +55,7 @@ export function normalizeKeyframes(
             break;
         }
       }
-      normalizedKeyframe[normalizedProp] = normalizedValue;
+      normalizedKeyframe.set(normalizedProp, normalizedValue);
     });
     if (!isSameOffset) {
       normalizedKeyframes.push(normalizedKeyframe);
@@ -80,9 +64,7 @@ export function normalizeKeyframes(
     previousOffset = offset;
   });
   if (errors.length) {
-    const LINE_START = '\n - ';
-    throw new Error(
-        `Unable to animate due to the following errors:${LINE_START}${errors.join(LINE_START)}`);
+    throw animationFailed(errors);
   }
 
   return normalizedKeyframes;
@@ -124,19 +106,10 @@ export function makeAnimationEvent(
   return {element, triggerName, fromState, toState, phaseName, totalTime, disabled: !!disabled};
 }
 
-export function getOrSetAsInMap(
-    map: Map<any, any>|{[key: string]: any}, key: any, defaultValue: any) {
-  let value: any;
-  if (map instanceof Map) {
-    value = map.get(key);
-    if (!value) {
-      map.set(key, value = defaultValue);
-    }
-  } else {
-    value = map[key];
-    if (!value) {
-      value = map[key] = defaultValue;
-    }
+export function getOrSetDefaultValue<T, V>(map: Map<T, V>, key: T, defaultValue: V) {
+  let value = map.get(key);
+  if (!value) {
+    map.set(key, value = defaultValue);
   }
   return value;
 }
@@ -144,64 +117,19 @@ export function getOrSetAsInMap(
 export function parseTimelineCommand(command: string): [string, string] {
   const separatorPos = command.indexOf(':');
   const id = command.substring(1, separatorPos);
-  const action = command.substr(separatorPos + 1);
+  const action = command.slice(separatorPos + 1);
   return [id, action];
 }
 
-let _contains: (elm1: any, elm2: any) => boolean = (elm1: any, elm2: any) => false;
-let _matches: (element: any, selector: string) => boolean = (element: any, selector: string) =>
-    false;
-let _query: (element: any, selector: string, multi: boolean) => any[] =
-    (element: any, selector: string, multi: boolean) => {
-      return [];
-    };
+const documentElement: HTMLElement|null =
+    /* @__PURE__ */ (() => typeof document === 'undefined' ? null : document.documentElement)();
 
-// Define utility methods for browsers and platform-server(domino) where Element
-// and utility methods exist.
-const _isNode = isNode();
-if (_isNode || typeof Element !== 'undefined') {
-  // this is well supported in all browsers
-  _contains = (elm1: any, elm2: any) => {
-    return elm1.contains(elm2) as boolean;
-  };
-
-  _matches = (() => {
-    if (_isNode || Element.prototype.matches) {
-      return (element: any, selector: string) => element.matches(selector);
-    } else {
-      const proto = Element.prototype as any;
-      const fn = proto.matchesSelector || proto.mozMatchesSelector || proto.msMatchesSelector ||
-          proto.oMatchesSelector || proto.webkitMatchesSelector;
-      if (fn) {
-        return (element: any, selector: string) => fn.apply(element, [selector]);
-      } else {
-        return _matches;
-      }
-    }
-  })();
-
-  _query = (element: any, selector: string, multi: boolean): any[] => {
-    let results: any[] = [];
-    if (multi) {
-      // DO NOT REFACTOR TO USE SPREAD SYNTAX.
-      // For element queries that return sufficiently large NodeList objects,
-      // using spread syntax to populate the results array causes a RangeError
-      // due to the call stack limit being reached. `Array.from` can not be used
-      // as well, since NodeList is not iterable in IE 11, see
-      // https://developer.mozilla.org/en-US/docs/Web/API/NodeList
-      // More info is available in #38551.
-      const elems = element.querySelectorAll(selector);
-      for (let i = 0; i < elems.length; i++) {
-        results.push(elems[i]);
-      }
-    } else {
-      const elm = element.querySelector(selector);
-      if (elm) {
-        results.push(elm);
-      }
-    }
-    return results;
-  };
+export function getParentElement(element: any): unknown|null {
+  const parent = element.parentNode || element.host || null;  // consider host to support shadow DOM
+  if (parent === documentElement) {
+    return null;
+  }
+  return parent;
 }
 
 function containsVendorPrefix(prop: string): boolean {
@@ -222,12 +150,16 @@ export function validateStyleProperty(prop: string): boolean {
   if (_CACHED_BODY!.style && !containsVendorPrefix(prop)) {
     result = prop in _CACHED_BODY!.style;
     if (!result && _IS_WEBKIT) {
-      const camelProp = 'Webkit' + prop.charAt(0).toUpperCase() + prop.substr(1);
+      const camelProp = 'Webkit' + prop.charAt(0).toUpperCase() + prop.slice(1);
       result = camelProp in _CACHED_BODY!.style;
     }
   }
 
   return result;
+}
+
+export function validateWebAnimatableStyleProperty(prop: string): boolean {
+  return ANIMATABLE_PROP_SET.has(prop);
 }
 
 export function getBodyNode(): any|null {
@@ -237,15 +169,29 @@ export function getBodyNode(): any|null {
   return null;
 }
 
-export const matchesElement = _matches;
-export const containsElement = _contains;
-export const invokeQuery = _query;
+export function containsElement(elm1: any, elm2: any): boolean {
+  while (elm2) {
+    if (elm2 === elm1) {
+      return true;
+    }
+    elm2 = getParentElement(elm2);
+  }
+  return false;
+}
 
-export function hypenatePropsObject(object: {[key: string]: any}): {[key: string]: any} {
-  const newObj: {[key: string]: any} = {};
-  Object.keys(object).forEach(prop => {
+export function invokeQuery(element: any, selector: string, multi: boolean): any[] {
+  if (multi) {
+    return Array.from(element.querySelectorAll(selector));
+  }
+  const elem = element.querySelector(selector);
+  return elem ? [elem] : [];
+}
+
+export function hypenatePropsKeys(original: ɵStyleDataMap): ɵStyleDataMap {
+  const newMap: ɵStyleDataMap = new Map();
+  original.forEach((val, prop) => {
     const newProp = prop.replace(/([a-z])([A-Z])/g, '$1-$2');
-    newObj[newProp] = object[prop];
+    newMap.set(newProp, val);
   });
-  return newObj;
+  return newMap;
 }

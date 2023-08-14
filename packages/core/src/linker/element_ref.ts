@@ -11,7 +11,6 @@ import {RElement} from '../render3/interfaces/renderer_dom';
 import {LView} from '../render3/interfaces/view';
 import {getCurrentTNode, getLView} from '../render3/state';
 import {getNativeByTNode} from '../render3/util/view_utils';
-import {noop} from '../util/noop';
 
 /**
  * Creates an ElementRef from the most recent node.
@@ -33,10 +32,6 @@ export function createElementRef(tNode: TNode, lView: LView): ElementRef {
   return new ElementRef(getNativeByTNode(tNode, lView) as RElement);
 }
 
-export const SWITCH_ELEMENT_REF_FACTORY__POST_R3__ = injectElementRef;
-const SWITCH_ELEMENT_REF_FACTORY__PRE_R3__ = noop;
-const SWITCH_ELEMENT_REF_FACTORY: typeof injectElementRef = SWITCH_ELEMENT_REF_FACTORY__PRE_R3__;
-
 /**
  * A wrapper around a native element inside of a View.
  *
@@ -54,25 +49,14 @@ const SWITCH_ELEMENT_REF_FACTORY: typeof injectElementRef = SWITCH_ELEMENT_REF_F
 // and could do better codegen in the future.
 export class ElementRef<T = any> {
   /**
-   * The underlying native element or `null` if direct access to native elements is not supported
-   * (e.g. when the application runs in a web worker).
-   *
    * <div class="callout is-critical">
    *   <header>Use with caution</header>
    *   <p>
    *    Use this API as the last resort when direct access to DOM is needed. Use templating and
    *    data-binding provided by Angular instead. Alternatively you can take a look at {@link
-   * Renderer2}
-   *    which provides API that can safely be used even when direct access to native elements is not
-   *    supported.
-   *   </p>
-   *   <p>
-   *    Relying on direct DOM access creates tight coupling between your application and rendering
-   *    layers which will make it impossible to separate the two and deploy your application into a
-   *    web worker.
+   * Renderer2} which provides an API that can be safely used.
    *   </p>
    * </div>
-   *
    */
   public nativeElement: T;
 
@@ -84,7 +68,7 @@ export class ElementRef<T = any> {
    * @internal
    * @nocollapse
    */
-  static __NG_ELEMENT_ID__: () => ElementRef = SWITCH_ELEMENT_REF_FACTORY;
+  static __NG_ELEMENT_ID__: () => ElementRef = injectElementRef;
 }
 
 /**

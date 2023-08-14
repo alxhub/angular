@@ -6,11 +6,13 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, ElementRef, forwardRef, Host, Input, OnDestroy, Optional, Renderer2, StaticProvider} from '@angular/core';
+import {Directive, ElementRef, forwardRef, Host, Input, OnDestroy, Optional, Provider, Renderer2, ɵRuntimeError as RuntimeError} from '@angular/core';
 
-import {ControlValueAccessor, NG_VALUE_ACCESSOR} from './control_value_accessor';
+import {RuntimeErrorCode} from '../errors';
 
-export const SELECT_VALUE_ACCESSOR: StaticProvider = {
+import {BuiltInControlValueAccessor, ControlValueAccessor, NG_VALUE_ACCESSOR} from './control_value_accessor';
+
+const SELECT_VALUE_ACCESSOR: Provider = {
   provide: NG_VALUE_ACCESSOR,
   useExisting: forwardRef(() => SelectControlValueAccessor),
   multi: true
@@ -88,7 +90,8 @@ function _extractId(valueString: string): string {
   host: {'(change)': 'onChange($event.target.value)', '(blur)': 'onTouched()'},
   providers: [SELECT_VALUE_ACCESSOR]
 })
-export class SelectControlValueAccessor implements ControlValueAccessor {
+export class SelectControlValueAccessor extends BuiltInControlValueAccessor implements
+    ControlValueAccessor {
   /** @nodoc */
   value: any;
 
@@ -99,18 +102,6 @@ export class SelectControlValueAccessor implements ControlValueAccessor {
   _idCounter: number = 0;
 
   /**
-   * The registered callback function called when a change event occurs on the input element.
-   * @nodoc
-   */
-  onChange = (_: any) => {};
-
-  /**
-   * The registered callback function called when a blur event occurs on the input element.
-   * @nodoc
-   */
-  onTouched = () => {};
-
-  /**
    * @description
    * Tracks the option comparison algorithm for tracking identities when
    * checking for changes.
@@ -118,55 +109,35 @@ export class SelectControlValueAccessor implements ControlValueAccessor {
   @Input()
   set compareWith(fn: (o1: any, o2: any) => boolean) {
     if (typeof fn !== 'function' && (typeof ngDevMode === 'undefined' || ngDevMode)) {
-      throw new Error(`compareWith must be a function, but received ${JSON.stringify(fn)}`);
+      throw new RuntimeError(
+          RuntimeErrorCode.COMPAREWITH_NOT_A_FN,
+          `compareWith must be a function, but received ${JSON.stringify(fn)}`);
     }
     this._compareWith = fn;
   }
 
   private _compareWith: (o1: any, o2: any) => boolean = Object.is;
 
-  constructor(private _renderer: Renderer2, private _elementRef: ElementRef) {}
-
   /**
-   * Sets the "value" property on the input element. The "selectedIndex"
-   * property is also set if an ID is provided on the option element.
+   * Sets the "value" property on the select element.
    * @nodoc
    */
   writeValue(value: any): void {
     this.value = value;
     const id: string|null = this._getOptionId(value);
-    if (id == null) {
-      this._renderer.setProperty(this._elementRef.nativeElement, 'selectedIndex', -1);
-    }
     const valueString = _buildValueString(id, value);
-    this._renderer.setProperty(this._elementRef.nativeElement, 'value', valueString);
+    this.setProperty('value', valueString);
   }
 
   /**
    * Registers a function called when the control value changes.
    * @nodoc
    */
-  registerOnChange(fn: (value: any) => any): void {
+  override registerOnChange(fn: (value: any) => any): void {
     this.onChange = (valueString: string) => {
       this.value = this._getOptionValue(valueString);
       fn(this.value);
     };
-  }
-
-  /**
-   * Registers a function called when the control is touched.
-   * @nodoc
-   */
-  registerOnTouched(fn: () => any): void {
-    this.onTouched = fn;
-  }
-
-  /**
-   * Sets the "disabled" property on the select input element.
-   * @nodoc
-   */
-  setDisabledState(isDisabled: boolean): void {
-    this._renderer.setProperty(this._elementRef.nativeElement, 'disabled', isDisabled);
   }
 
   /** @internal */
@@ -176,7 +147,7 @@ export class SelectControlValueAccessor implements ControlValueAccessor {
 
   /** @internal */
   _getOptionId(value: any): string|null {
-    for (const id of Array.from(this._optionMap.keys())) {
+    for (const id of this._optionMap.keys()) {
       if (this._compareWith(this._optionMap.get(id), value)) return id;
     }
     return null;
@@ -193,7 +164,7 @@ export class SelectControlValueAccessor implements ControlValueAccessor {
  * @description
  * Marks `<option>` as dynamic, so Angular can be notified when options change.
  *
- * @see `SelectControlValueAccessor`
+ * @see {@link SelectControlValueAccessor}
  *
  * @ngModule ReactiveFormsModule
  * @ngModule FormsModule

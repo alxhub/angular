@@ -7,6 +7,8 @@ There are three different types of tests that are run based on file-based "test-
 * **Full compile** - in this test the source files defined by the test-case are fully compiled by Angular.
   The generated files are compared to "expected files" via a matching algorithm that is tolerant to
   whitespace and variable name changes.
+* **Local compile** - in this test the source files defined by the test-case are compiled in local mode by Angular.
+  The generated files are compared to "expected files" via a matching algorithm similar to the case of "full compile"
 * **Partial compile** - in this test the source files defined by the test-case are "partially" compiled by
   Angular to produce files that can be published. These partially compiled files are compared directly
   against "golden files" to ensure that we do not inadvertently break the public API of partial
@@ -96,9 +98,9 @@ and a path to an `expected` file (relative to the test case).
 The `generated` file is checked to see if it "matches" the `expected` file. The matching is
 resilient to whitespace and variable name changes.
 
-If no `files` property is provided, the default is a a collection of objects `{expected, generated}`,
+If no `files` property is provided, the default is a collection of objects `{expected, generated}`,
 where `expected` and `generated` are computed by taking each path in the `inputFiles` collection
-and replacing the `.ts` extension with `.js`.
+and replacing the `.ts` extension with `.js` for full compilation and with `.local.js` for local compilation, respectively.
 
 Each expected error must have a `message` property and, optionally, a `location` property. These are
 parsed as regular expressions (so `.` and `(` etc must be escaped) and tested against the errors that
@@ -131,7 +133,7 @@ are intelligently matched to check whether they are equivalent.
 To check a mapping, add a `// SOURCE:` comment to the end of a line in an expectation file:
 
 ```
-<generated code> // SOURCE: "<source-url>" <source code>
+<generated code> // SOURCE: "<source-url>" "<source code>"
 ```
 
 The generated code, stripped of the `// SOURCE: ` comment, will still be checked as normal by the
@@ -144,6 +146,7 @@ Note:
   to be `/`.
 * Whitespace is important and will be included when comparing the segments.
 * There is a single space character between each part of the line.
+* Double quotes in the mapping must be escaped.
 * Newlines within a mapping must be escaped since the mapping and comment must all appear on a
   single line of this file.
 
@@ -153,15 +156,15 @@ Note:
 The simplest way to run all the compliance tests is:
 
 ```sh
-yarn test-ivy-aot //packages/compiler-cli/test/compliance/...
+yarn test //packages/compiler-cli/test/compliance/...
 ```
 
 If you only want to run one of the three types of test you can be more specific:
 
 ```sh
-yarn test-ivy-aot //packages/compiler-cli/test/compliance/full
-yarn test-ivy-aot //packages/compiler-cli/test/compliance/linked
-yarn test-ivy-aot //packages/compiler-cli/test/compliance/test_cases/...
+yarn test //packages/compiler-cli/test/compliance/full
+yarn test //packages/compiler-cli/test/compliance/linked
+yarn test //packages/compiler-cli/test/compliance/test_cases/...
 ```
 
 (The last command runs the partial compilation tests.)
@@ -200,26 +203,26 @@ to the Bazel test command.
 For example:
 
 ```sg
-yarn test-ivy-aot //packages/compiler-cli/test/compliance/full --config=debug
-yarn test-ivy-aot //packages/compiler-cli/test/compliance/linked --config=debug
+yarn test //packages/compiler-cli/test/compliance/full --config=debug
+yarn test //packages/compiler-cli/test/compliance/linked --config=debug
 ```
 
 To debug generating the partial golden output use the following form of Bazel command:
 
 ```sh
-yarn bazel run //packages/compiler-cli/test/compliance/test_cases:generate_partial_for_<path/to/test_case>.debug
+yarn bazel run //packages/compiler-cli/test/compliance/test_cases:partial_<path/to/test_case>.debug
 ```
 
 The `path/to/test_case` is relative to the `test_cases` directory. So for this `TEST_CASES.json` file at:
 
 ```
-packages/compiler-cli/test/compliance/test_cases/r3_view_compiler_directives/directives/matching/TEST_CASES.json
+packages/compiler-cli/test/compliance/test_cases/r3_view_compiler_directives/matching/TEST_CASES.json
 ```
 
 The command to debug the test-cases would be:
 
 ```
-yarn bazel run //packages/compiler-cli/test/compliance/test_cases:generate_partial_for_r3_view_compiler_directives/directives/matching.debug
+yarn bazel run //packages/compiler-cli/test/compliance/test_cases:partial_r3_view_compiler_directives/matching.debug
 ```
 
 

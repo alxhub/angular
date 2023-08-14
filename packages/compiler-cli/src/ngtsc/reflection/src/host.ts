@@ -6,15 +6,12 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 /**
- * Metadata extracted from an instance of a decorator on another declaration, or synthesized from
- * other information about a class.
+ * Metadata extracted from an instance of a decorator on another declaration.
  */
-export type Decorator = ConcreteDecorator|SyntheticDecorator;
-
-export interface BaseDecorator {
+export interface Decorator {
   /**
    * Name by which the decorator was invoked in the user's code.
    *
@@ -26,19 +23,21 @@ export interface BaseDecorator {
   /**
    * Identifier which refers to the decorator in the user's code.
    */
-  identifier: DecoratorIdentifier|null;
-
-/**
- * `Import` by which the decorator was brought into the module in which it was invoked, or `null`
- * if the decorator was declared in the same module and not imported.
- */
-import: Import|null;
+  identifier: DecoratorIdentifier;
 
   /**
-   * TypeScript reference to the decorator itself, or `null` if the decorator is synthesized (e.g.
-   * in ngcc).
+   * `Import` by which the decorator was brought into the module in which it was invoked, or `null`
+   * if the decorator was declared in the same module and not imported.
+   *
+   * Note: this field is declared using computed property syntax to work around a clang-format bug
+   * that resulted in inconsistent indentation of this comment block.
    */
-  node: ts.Node|null;
+  ['import']: Import|null;
+
+  /**
+   * TypeScript reference to the decorator itself.
+   */
+  node: ts.Node;
 
   /**
    * Arguments of the invocation of the decorator, if the decorator is invoked, or `null`
@@ -46,42 +45,6 @@ import: Import|null;
    */
   args: ts.Expression[]|null;
 }
-
-/**
- * Metadata extracted from an instance of a decorator on another declaration, which was actually
- * present in a file.
- *
- * Concrete decorators always have an `identifier` and a `node`.
- */
-export interface ConcreteDecorator extends BaseDecorator {
-  identifier: DecoratorIdentifier;
-  node: ts.Node;
-}
-
-/**
- * Synthetic decorators never have an `identifier` or a `node`, but know the node for which they
- * were synthesized.
- */
-export interface SyntheticDecorator extends BaseDecorator {
-  identifier: null;
-  node: null;
-
-  /**
-   * The `ts.Node` for which this decorator was created.
-   */
-  synthesizedFor: ts.Node;
-}
-
-export const Decorator = {
-  nodeForError: (decorator: Decorator): ts.Node => {
-    if (decorator.node !== null) {
-      return decorator.node;
-    } else {
-      // TODO(alxhub): we can't rely on narrowing until TS 3.6 is in g3.
-      return (decorator as SyntheticDecorator).synthesizedFor;
-    }
-  },
-};
 
 /**
  * A decorator is identified by either a simple identifier (e.g. `Decorator`) or, in some cases,
@@ -342,7 +305,7 @@ export interface NoValueDeclaration {
 export interface TypeOnlyImport {
   kind: ValueUnavailableKind.TYPE_ONLY_IMPORT;
   typeNode: ts.TypeNode;
-  importClause: ts.ImportClause;
+  node: ts.ImportClause|ts.ImportSpecifier;
 }
 
 export interface NamespaceImport {
@@ -433,7 +396,8 @@ export interface FunctionDefinition {
   /**
    * A reference to the node which declares the function.
    */
-  node: ts.MethodDeclaration|ts.FunctionDeclaration|ts.FunctionExpression|ts.VariableDeclaration;
+  node: ts.MethodDeclaration|ts.FunctionDeclaration|ts.FunctionExpression|ts.VariableDeclaration|
+      ts.ArrowFunction;
 
   /**
    * Statements of the function body, if a body is present, or null if no body is present or the
@@ -449,31 +413,16 @@ export interface FunctionDefinition {
    * Metadata regarding the function's parameters, including possible default value expressions.
    */
   parameters: Parameter[];
-}
-
-/**
- * Possible declarations of known values, such as built-in objects/functions or TypeScript helpers.
- */
-export enum KnownDeclaration {
-  /**
-   * Indicates the JavaScript global `Object` class.
-   */
-  JsGlobalObject,
 
   /**
-   * Indicates the `__assign` TypeScript helper function.
+   * Generic type parameters of the function.
    */
-  TsHelperAssign,
+  typeParameters: ts.TypeParameterDeclaration[]|null;
 
   /**
-   * Indicates the `__spread` TypeScript helper function.
+   * Number of known signatures of the function.
    */
-  TsHelperSpread,
-
-  /**
-   * Indicates the `__spreadArrays` TypeScript helper function.
-   */
-  TsHelperSpreadArrays,
+  signatureCount: number;
 }
 
 /**
@@ -494,6 +443,11 @@ export interface Parameter {
    * Expression which represents the default value of the parameter, if any.
    */
   initializer: ts.Expression|null;
+
+  /**
+   * Type of the parameter.
+   */
+  type: ts.TypeNode|null;
 }
 
 /**
@@ -512,56 +466,23 @@ export interface Import {
    * This could either be an absolute module name (@angular/core for example) or a relative path.
    */
   from: string;
-}
-
-/**
- * A single enum member extracted from JavaScript when no `ts.EnumDeclaration` is available.
- */
-export interface EnumMember {
-  /**
-   * The name of the enum member.
-   */
-  name: ts.PropertyName;
 
   /**
-   * The initializer expression of the enum member. Unlike in TypeScript, this is always available
-   * in emitted JavaScript.
+   * TypeScript node that represents this import.
    */
-  initializer: ts.Expression;
+  node: ts.ImportDeclaration;
 }
 
 /**
  * A type that is used to identify a declaration.
- *
- * Declarations are normally `ts.Declaration` types such as variable declarations, class
- * declarations, function declarations etc.
- * But in some cases there is no `ts.Declaration` that can be used for a declaration, such
- * as when they are declared inline as part of an exported expression. Then we must use a
- * `ts.Expression` as the declaration.
- * An example of this is `exports.someVar = 42` where the declaration expression would be
- * `exports.someVar`.
  */
-export type DeclarationNode = ts.Declaration|ts.Expression;
+export type DeclarationNode = ts.Declaration;
 
 /**
- * The type of a Declaration - whether its node is concrete (ts.Declaration) or inline
- * (ts.Expression). See `ConcreteDeclaration`, `InlineDeclaration` and `DeclarationNode` for more
- * information about this.
+ * The declaration of a symbol, along with information about how it was imported into the
+ * application.
  */
-export const enum DeclarationKind {
-  Concrete,
-  Inline,
-}
-
-/**
- * Base type for all `Declaration`s.
- */
-export interface BaseDeclaration<T extends DeclarationNode> {
-  /**
-   * The type of the underlying `node`.
-   */
-  kind: DeclarationKind;
-
+export interface Declaration<T extends ts.Declaration = ts.Declaration> {
   /**
    * The absolute module path from which the symbol was imported into the application, if the symbol
    * was imported via an absolute module (even through a chain of re-exports). If the symbol is part
@@ -573,67 +494,7 @@ export interface BaseDeclaration<T extends DeclarationNode> {
    * TypeScript reference to the declaration itself, if one exists.
    */
   node: T;
-
-  /**
-   * If set, describes the type of the known declaration this declaration resolves to.
-   */
-  known: KnownDeclaration|null;
 }
-
-/**
- * Returns true if the `decl` is a `ConcreteDeclaration` (ie. that its `node` property is a
- * `ts.Declaration`).
- */
-export function isConcreteDeclaration(decl: Declaration): decl is ConcreteDeclaration {
-  return decl.kind === DeclarationKind.Concrete;
-}
-
-export interface ConcreteDeclaration<T extends ts.Declaration = ts.Declaration> extends
-    BaseDeclaration<T> {
-  kind: DeclarationKind.Concrete;
-
-  /**
-   * Optionally represents a special identity of the declaration, or `null` if the declaration
-   * does not have a special identity.
-   */
-  identity: SpecialDeclarationIdentity|null;
-}
-
-export type SpecialDeclarationIdentity = DownleveledEnum;
-
-export const enum SpecialDeclarationKind {
-  DownleveledEnum,
-}
-
-/**
- * A special declaration identity that represents an enum. This is used in downleveled forms where
- * a `ts.EnumDeclaration` is emitted in an alternative form, e.g. an IIFE call that declares all
- * members.
- */
-export interface DownleveledEnum {
-  kind: SpecialDeclarationKind.DownleveledEnum;
-  enumMembers: EnumMember[];
-}
-
-/**
- * A declaration that does not have an associated TypeScript `ts.Declaration`.
- *
- * This can occur in some downlevelings when an `export const VAR = ...;` (a `ts.Declaration`) is
- * transpiled to an assignment statement (e.g. `exports.VAR = ...;`). There is no `ts.Declaration`
- * associated with `VAR` in that case, only an expression.
- */
-export interface InlineDeclaration extends
-    BaseDeclaration<Exclude<DeclarationNode, ts.Declaration>> {
-  kind: DeclarationKind.Inline;
-  implementation?: DeclarationNode;
-}
-
-/**
- * The declaration of a symbol, along with information about how it was imported into the
- * application.
- */
-export type Declaration<T extends ts.Declaration = ts.Declaration> =
-    ConcreteDeclaration<T>|InlineDeclaration;
 
 /**
  * Abstracts reflection operations on a TypeScript AST.
@@ -714,7 +575,7 @@ export interface ReflectionHost {
    * Determine if an identifier was imported from another module and return `Import` metadata
    * describing its origin.
    *
-   * @param id a TypeScript `ts.Identifer` to reflect.
+   * @param id a TypeScript `ts.Identifier` to reflect.
    *
    * @returns metadata about the `Import` if the identifier was imported from another module, or
    * `null` if the identifier doesn't resolve to an import but instead is locally defined.
@@ -814,36 +675,12 @@ export interface ReflectionHost {
   getVariableValue(declaration: ts.VariableDeclaration): ts.Expression|null;
 
   /**
-   * Take an exported declaration (maybe a class down-leveled to a variable) and look up the
-   * declaration of its type in a separate .d.ts tree.
+   * Returns `true` if a declaration is exported from the module in which it's defined.
    *
-   * This function is allowed to return `null` if the current compilation unit does not have a
-   * separate .d.ts tree. When compiling TypeScript code this is always the case, since .d.ts files
-   * are produced only during the emit of such a compilation. When compiling .js code, however,
-   * there is frequently a parallel .d.ts tree which this method exposes.
-   *
-   * Note that the `ts.Declaration` returned from this function may not be from the same
-   * `ts.Program` as the input declaration.
+   * Not all mechanisms by which a declaration is exported can be statically detected, especially
+   * when processing already compiled JavaScript. A `false` result does not indicate that the
+   * declaration is never visible outside its module, only that it was not exported via one of the
+   * export mechanisms that the `ReflectionHost` is capable of statically checking.
    */
-  getDtsDeclaration(declaration: DeclarationNode): ts.Declaration|null;
-
-  /**
-   * Get a `ts.Identifier` for a given `ClassDeclaration` which can be used to refer to the class
-   * within its definition (such as in static fields).
-   *
-   * This can differ from `clazz.name` when ngcc runs over ES5 code, since the class may have a
-   * different name within its IIFE wrapper than it does externally.
-   */
-  getInternalNameOfClass(clazz: ClassDeclaration): ts.Identifier;
-
-  /**
-   * Get a `ts.Identifier` for a given `ClassDeclaration` which can be used to refer to the class
-   * from statements that are "adjacent", and conceptually tightly bound, to the class but not
-   * actually inside it.
-   *
-   * Similar to `getInternalNameOfClass()`, this name can differ from `clazz.name` when ngcc runs
-   * over ES5 code, since these "adjacent" statements need to exist in the IIFE where the class may
-   * have a different name than it does externally.
-   */
-  getAdjacentNameOfClass(clazz: ClassDeclaration): ts.Identifier;
+  isStaticallyExported(decl: ts.Node): boolean;
 }

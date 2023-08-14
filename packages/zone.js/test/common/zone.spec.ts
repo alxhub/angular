@@ -185,8 +185,9 @@ describe('Zone', function() {
       try {
         zone.cancelTask(task);
       } catch (e) {
-        expect(e.message).toContain(
-            'macroTask \'test\': can not transition to \'canceling\', expecting state \'scheduled\' or \'running\', was \'notScheduled\'.');
+        expect((e as Error).message)
+            .toContain(
+                'macroTask \'test\': can not transition to \'canceling\', expecting state \'scheduled\' or \'running\', was \'notScheduled\'.');
       }
     });
 
@@ -334,7 +335,7 @@ describe('Zone', function() {
         Zone.assertZonePatched();
       });
 
-      xit('should throw error if ZoneAwarePromise has been overwritten', () => {
+      it('should throw error if ZoneAwarePromise has been overwritten', () => {
         class WrongPromise {
           static resolve(value: any) {}
 
@@ -343,8 +344,8 @@ describe('Zone', function() {
 
         const ZoneAwarePromise = global.Promise;
         try {
-          global.Promise = WrongPromise;
-          expect(Zone.assertZonePatched()).toThrow();
+          (global as any).Promise = WrongPromise;
+          expect(() => Zone.assertZonePatched()).toThrow();
         } finally {
           // restore it.
           global.Promise = ZoneAwarePromise;

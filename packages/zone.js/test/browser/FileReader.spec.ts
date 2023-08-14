@@ -13,12 +13,11 @@ describe('FileReader', ifEnvSupports('FileReader', function() {
            let fileReader: FileReader;
            let blob: Blob;
            const data = 'Hello, World!';
-           const testZone = Zone.current.fork({name: 'TestZone'});
 
            // Android 4.3's native browser doesn't implement add/RemoveEventListener for FileReader
            function supportsEventTargetFns() {
-             return FileReader.prototype.addEventListener &&
-                 FileReader.prototype.removeEventListener;
+             return !!FileReader.prototype.addEventListener &&
+                 !!FileReader.prototype.removeEventListener;
            }
            (<any>supportsEventTargetFns).message =
                'FileReader#addEventListener and FileReader#removeEventListener';
@@ -39,6 +38,8 @@ describe('FileReader', ifEnvSupports('FileReader', function() {
 
            describe('EventTarget methods', ifEnvSupports(supportsEventTargetFns, function() {
                       it('should bind addEventListener listeners', function(done) {
+                        const testZone = Zone.current.fork({name: 'TestZone'});
+
                         testZone.run(function() {
                           fileReader.addEventListener('load', function() {
                             expect(Zone.current).toBe(testZone);
@@ -51,6 +52,7 @@ describe('FileReader', ifEnvSupports('FileReader', function() {
                       });
 
                       it('should remove listeners via removeEventListener', function(done) {
+                        const testZone = Zone.current.fork({name: 'TestZone'});
                         const listenerSpy = jasmine.createSpy('listener');
 
                         testZone.run(function() {
@@ -67,6 +69,7 @@ describe('FileReader', ifEnvSupports('FileReader', function() {
                     }));
 
            it('should bind onEventType listeners', function(done) {
+             const testZone = Zone.current.fork({name: 'TestZone'});
              let listenersCalled = 0;
 
              testZone.run(function() {

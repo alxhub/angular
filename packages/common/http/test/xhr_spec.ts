@@ -9,7 +9,6 @@
 import {HttpRequest} from '@angular/common/http/src/request';
 import {HttpDownloadProgressEvent, HttpErrorResponse, HttpEvent, HttpEventType, HttpHeaderResponse, HttpResponse, HttpResponseBase, HttpStatusCode, HttpUploadProgressEvent} from '@angular/common/http/src/response';
 import {HttpXhrBackend} from '@angular/common/http/src/xhr';
-import {describe, expect, it} from '@angular/core/testing/src/testing_internal';
 import {Observable} from 'rxjs';
 import {toArray} from 'rxjs/operators';
 
@@ -22,6 +21,10 @@ function trackEvents(obs: Observable<HttpEvent<any>>): HttpEvent<any>[] {
 }
 
 const TEST_POST = new HttpRequest('POST', '/test', 'some body', {
+  responseType: 'text',
+});
+
+const TEST_POST_WITH_JSON_BODY = new HttpRequest('POST', '/test', {'some': 'body'}, {
   responseType: 'text',
 });
 
@@ -49,6 +52,10 @@ const XSSI_PREFIX = ')]}\'\n';
     it('sets outgoing body correctly', () => {
       backend.handle(TEST_POST).subscribe();
       expect(factory.mock.body).toBe('some body');
+    });
+    it('sets outgoing body correctly when request payload is json', () => {
+      backend.handle(TEST_POST_WITH_JSON_BODY).subscribe();
+      expect(factory.mock.body).toBe('{"some":"body"}');
     });
     it('sets outgoing headers, including default headers', () => {
       const post = TEST_POST.clone({
@@ -351,16 +358,6 @@ const XSSI_PREFIX = ')]}\'\n';
       });
     });
     describe('corrects for quirks', () => {
-      it('by normalizing 1223 status to 204', done => {
-        backend.handle(TEST_POST).pipe(toArray()).subscribe(events => {
-          expect(events.length).toBe(2);
-          expect(events[1].type).toBe(HttpEventType.Response);
-          const response = events[1] as HttpResponse<string>;
-          expect(response.status).toBe(HttpStatusCode.NoContent);
-          done();
-        });
-        factory.mock.mockFlush(1223, 'IE Special Status', 'Test');
-      });
       it('by normalizing 0 status to 200 if a body is present', done => {
         backend.handle(TEST_POST).pipe(toArray()).subscribe(events => {
           expect(events.length).toBe(2);

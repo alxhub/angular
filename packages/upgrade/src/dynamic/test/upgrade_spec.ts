@@ -7,7 +7,7 @@
  */
 
 import {ChangeDetectorRef, Component, destroyPlatform, EventEmitter, forwardRef, Input, NgModule, NgModuleFactory, NgZone, NO_ERRORS_SCHEMA, OnChanges, OnDestroy, Output, SimpleChange, SimpleChanges, Testability} from '@angular/core';
-import {fakeAsync, flushMicrotasks, tick, waitForAsync} from '@angular/core/testing';
+import {fakeAsync, flushMicrotasks, TestBed, tick, waitForAsync} from '@angular/core/testing';
 import {BrowserModule} from '@angular/platform-browser';
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 
@@ -182,6 +182,7 @@ withEachNg1Version(() => {
 
     describe('bootstrap errors', () => {
       let adapter: UpgradeAdapter;
+      let zone: NgZone;
 
       beforeEach(() => {
         angular.module_('ng1', []);
@@ -200,6 +201,7 @@ withEachNg1Version(() => {
         class Ng2Module {
         }
 
+        zone = TestBed.inject(NgZone);
         adapter = new UpgradeAdapter(Ng2Module);
       });
 
@@ -208,8 +210,12 @@ withEachNg1Version(() => {
            spyOn(console, 'error');
 
            expect(() => {
-             adapter.bootstrap(html('<ng2></ng2>'), ['ng1']).ready(resolveSpy);
-             flushMicrotasks();
+             // Needs to be run inside the `NgZone` in order
+             // for the promises to be flushed correctly.
+             zone.run(() => {
+               adapter.bootstrap(html('<ng2></ng2>'), ['ng1']).ready(resolveSpy);
+               flushMicrotasks();
+             });
            }).toThrowError();
            expect(resolveSpy).not.toHaveBeenCalled();
          }));
@@ -217,8 +223,12 @@ withEachNg1Version(() => {
       it('should output an error message to the console and re-throw', fakeAsync(() => {
            const consoleErrorSpy: jasmine.Spy = spyOn(console, 'error');
            expect(() => {
-             adapter.bootstrap(html('<ng2></ng2>'), ['ng1']);
-             flushMicrotasks();
+             // Needs to be run inside the `NgZone` in order
+             // for the promises to be flushed correctly.
+             zone.run(() => {
+               adapter.bootstrap(html('<ng2></ng2>'), ['ng1']);
+               flushMicrotasks();
+             });
            }).toThrowError();
            const args: any[] = consoleErrorSpy.calls.mostRecent().args;
            expect(consoleErrorSpy).toHaveBeenCalled();
@@ -348,7 +358,7 @@ withEachNg1Version(() => {
                  upgradeRef.dispose();
                });
 
-               Promise.resolve().then(() => this.valueFromPromise = changes['value'].currentValue);
+               queueMicrotask(() => this.valueFromPromise = changes['value'].currentValue);
              }
            }
 
@@ -604,10 +614,8 @@ withEachNg1Version(() => {
            class Ng2Component implements OnChanges {
              ngOnChangesCount = 0;
              firstChangesCount = 0;
-             // TODO(issue/24571): remove '!'.
-             initialValue!: string;
-             // TODO(issue/24571): remove '!'.
-             @Input() foo!: string;
+             @Input() foo: string = '';
+             initialValue: string = this.foo;
 
              ngOnChanges(changes: SimpleChanges) {
                this.ngOnChangesCount++;
@@ -654,7 +662,7 @@ withEachNg1Version(() => {
            const adapter: UpgradeAdapter = new UpgradeAdapter(forwardRef(() => Ng2Module));
            const ng1Module = angular.module_('ng1', []);
 
-           ng1Module.run(($rootScope: any /** TODO #9100 */) => {
+           ng1Module.run(($rootScope: any) => {
              $rootScope.modelA = 'A';
            });
 
@@ -892,8 +900,7 @@ withEachNg1Version(() => {
       it('should correctly project structural directives', waitForAsync(() => {
            @Component({selector: 'ng2', template: 'ng2-{{ itemId }}(<ng-content></ng-content>)'})
            class Ng2Component {
-             // TODO(issue/24571): remove '!'.
-             @Input() itemId!: string;
+             @Input() itemId: string = '';
            }
 
            @NgModule({imports: [BrowserModule], declarations: [Ng2Component]})
@@ -2500,7 +2507,6 @@ withEachNg1Version(() => {
              // Define `Ng2Module`
              @NgModule({
                declarations: [adapter.upgradeNg1Component('ng1'), Ng2ComponentA, Ng2ComponentB],
-               entryComponents: [Ng2ComponentA],
                imports: [BrowserModule]
              })
              class Ng2Module {
@@ -2568,7 +2574,6 @@ withEachNg1Version(() => {
              // Define `Ng2Module`
              @NgModule({
                declarations: [adapter.upgradeNg1Component('ng1'), Ng2ComponentA, Ng2ComponentB],
-               entryComponents: [Ng2ComponentA],
                imports: [BrowserModule]
              })
              class Ng2Module {

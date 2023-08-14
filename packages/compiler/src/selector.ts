@@ -6,18 +6,16 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {getHtmlTagDefinition} from './ml_parser/html_tags';
-
 const _SELECTOR_REGEXP = new RegExp(
     '(\\:not\\()|' +               // 1: ":not("
         '(([\\.\\#]?)[-\\w]+)|' +  // 2: "tag"; 3: "."/"#";
         // "-" should appear first in the regexp below as FF31 parses "[.-\w]" as a range
         // 4: attribute; 5: attribute_string; 6: attribute_value
-        '(?:\\[([-.\\w*]+)(?:=([\"\']?)([^\\]\"\']*)\\5)?\\])|' +  // "[name]", "[name=value]",
-                                                                   // "[name="value"]",
-                                                                   // "[name='value']"
-        '(\\))|' +                                                 // 7: ")"
-        '(\\s*,\\s*)',                                             // 8: ","
+        '(?:\\[([-.\\w*\\\\$]+)(?:=([\"\']?)([^\\]\"\']*)\\5)?\\])|' +  // "[name]", "[name=value]",
+                                                                        // "[name="value"]",
+                                                                        // "[name='value']"
+        '(\\))|' +                                                      // 7: ")"
+        '(\\s*,\\s*)',                                                  // 8: ","
     'g');
 
 /**
@@ -84,18 +82,20 @@ export class CssSelector {
         const prefix = match[SelectorRegexp.PREFIX];
         if (prefix === '#') {
           // #hash
-          current.addAttribute('id', tag.substr(1));
+          current.addAttribute('id', tag.slice(1));
         } else if (prefix === '.') {
           // Class
-          current.addClassName(tag.substr(1));
+          current.addClassName(tag.slice(1));
         } else {
           // Element
           current.setElement(tag);
         }
       }
       const attribute = match[SelectorRegexp.ATTRIBUTE];
+
       if (attribute) {
-        current.addAttribute(attribute, match[SelectorRegexp.ATTRIBUTE_VALUE]);
+        current.addAttribute(
+            current.unescapeAttribute(attribute), match[SelectorRegexp.ATTRIBUTE_VALUE]);
       }
       if (match[SelectorRegexp.NOT_END]) {
         inNot = false;
@@ -113,6 +113,50 @@ export class CssSelector {
     return results;
   }
 
+  /**
+   * Unescape `\$` sequences from the CSS attribute selector.
+   *
+   * This is needed because `$` can have a special meaning in CSS selectors,
+   * but we might want to match an attribute that contains `$`.
+   * [MDN web link for more
+   * info](https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors).
+   * @param attr the attribute to unescape.
+   * @returns the unescaped string.
+   */
+  unescapeAttribute(attr: string): string {
+    let result = '';
+    let escaping = false;
+    for (let i = 0; i < attr.length; i++) {
+      const char = attr.charAt(i);
+      if (char === '\\') {
+        escaping = true;
+        continue;
+      }
+      if (char === '$' && !escaping) {
+        throw new Error(
+            `Error in attribute selector "${attr}". ` +
+            `Unescaped "$" is not supported. Please escape with "\\$".`);
+      }
+      escaping = false;
+      result += char;
+    }
+    return result;
+  }
+
+  /**
+   * Escape `$` sequences from the CSS attribute selector.
+   *
+   * This is needed because `$` can have a special meaning in CSS selectors,
+   * with this method we are escaping `$` with `\$'.
+   * [MDN web link for more
+   * info](https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors).
+   * @param attr the attribute to escape.
+   * @returns the escaped string. 
+   */
+  escapeAttribute(attr: string): string {
+    return attr.replace(/\\/g, '\\\\').replace(/\$/g, '\\$');
+  }
+
   isElementSelector(): boolean {
     return this.hasElementSelector() && this.classNames.length == 0 && this.attrs.length == 0 &&
         this.notSelectors.length === 0;
@@ -124,22 +168,6 @@ export class CssSelector {
 
   setElement(element: string|null = null) {
     this.element = element;
-  }
-
-  /** Gets a template string for an element that matches the selector. */
-  getMatchingElementTemplate(): string {
-    const tagName = this.element || 'div';
-    const classAttr = this.classNames.length > 0 ? ` class="${this.classNames.join(' ')}"` : '';
-
-    let attrs = '';
-    for (let i = 0; i < this.attrs.length; i += 2) {
-      const attrName = this.attrs[i];
-      const attrValue = this.attrs[i + 1] !== '' ? `="${this.attrs[i + 1]}"` : '';
-      attrs += ` ${attrName}${attrValue}`;
-    }
-
-    return getHtmlTagDefinition(tagName).isVoid ? `<${tagName}${classAttr}${attrs}/>` :
-                                                  `<${tagName}${classAttr}${attrs}></${tagName}>`;
   }
 
   getAttrs(): string[] {
@@ -165,7 +193,7 @@ export class CssSelector {
     }
     if (this.attrs) {
       for (let i = 0; i < this.attrs.length; i += 2) {
-        const name = this.attrs[i];
+        const name = this.escapeAttribute(this.attrs[i]);
         const value = this.attrs[i + 1];
         res += `[${name}${value ? '=' + value : ''}]`;
       }

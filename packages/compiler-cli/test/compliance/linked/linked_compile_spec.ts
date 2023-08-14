@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {PluginObj, transformSync} from '@babel/core';
+import babel, {PluginObj} from '@babel/core';
 
 import {needsLinking} from '../../../linker';
 import {createEs2015LinkerPlugin} from '../../../linker/babel';
@@ -32,8 +32,6 @@ function linkPartials(fileSystem: FileSystem, test: ComplianceTest): CompileResu
   const linkerPlugin = createEs2015LinkerPlugin({
     fileSystem,
     logger,
-    // By default we don't render legacy message ids in compliance tests.
-    enableI18nLegacyMessageIdFormat: false,
     sourceMapping: test.compilerOptions?.sourceMap === true,
     ...test.angularCompilerOptions
   });
@@ -91,7 +89,7 @@ function applyLinker(
   if (!filename.endsWith('.js') || !needsLinking(filename, source)) {
     return {linkedSource: source, linkedSourceMap: sourceMap};
   }
-  const result = transformSync(source, {
+  const result = babel.transformSync(source, {
     cwd,
     filename,
     sourceMaps: !!sourceMap,

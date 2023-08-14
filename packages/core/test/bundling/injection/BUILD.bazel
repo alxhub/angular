@@ -1,5 +1,5 @@
 load("//tools/symbol-extractor:index.bzl", "js_expected_symbol_test")
-load("//tools:defaults.bzl", "jasmine_node_test", "ng_rollup_bundle", "ts_library")
+load("//tools:defaults.bzl", "app_bundle", "jasmine_node_test", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,20 +9,14 @@ ts_library(
         "index.ts",
         "usage.ts",
     ],
-    tags = [
-        "ivy-only",
-    ],
     deps = [
         "//packages/core",
     ],
 )
 
-ng_rollup_bundle(
+app_bundle(
     name = "bundle",
     entry_point = ":index.ts",
-    tags = [
-        "ivy-only",
-    ],
     deps = [
         ":injection",
         "//packages/core",
@@ -34,9 +28,6 @@ ts_library(
     name = "test_lib",
     testonly = True,
     srcs = glob(["*_spec.ts"]),
-    tags = [
-        "ivy-only",
-    ],
     deps = [
         ":injection",
         "//packages:types",
@@ -48,17 +39,11 @@ ts_library(
 
 jasmine_node_test(
     name = "test",
-    tags = [
-        "ivy-only",
-    ],
     deps = [":test_lib"],
 )
 
 js_expected_symbol_test(
     name = "symbol_test",
-    src = ":bundle.min_debug.js",
+    src = ":bundle.debug.min.js",
     golden = ":bundle.golden_symbols.json",
-    tags = [
-        "ivy-only",
-    ],
 )

@@ -34,6 +34,36 @@ describe('url serializer', () => {
     expect(url.serialize(tree)).toEqual('/one/two(left:three//right:four)');
   });
 
+  it('should parse secondary segments with an = in the name', () => {
+    const tree = url.parse('/path/to/some=file');
+    expect(tree.root.children.primary.segments[2].path).toEqual('some=file');
+  });
+
+  it('should parse segments with matrix parameters when the name contains an =', () => {
+    const tree = url.parse('/path/to/some=file;test=11');
+    expect(tree.root.children.primary.segments[2].path).toEqual('some=file');
+    expect(tree.root.children.primary.segments[2].parameterMap.keys).toHaveSize(1);
+    expect(tree.root.children.primary.segments[2].parameterMap.get('test')).toEqual('11');
+  });
+
+  it('should parse segments that end with an =', () => {
+    const tree = url.parse('/password/de/MDAtMNTk=');
+    expect(tree.root.children.primary.segments[2].path).toEqual('MDAtMNTk=');
+  });
+
+  it('should parse segments that only contain an =', () => {
+    const tree = url.parse('example.com/prefix/=');
+    expect(tree.root.children.primary.segments[2].path).toEqual('=');
+  });
+
+  it('should parse segments with matrix parameter values containing an =', () => {
+    const tree = url.parse('/path/to/something;query=file=test;query2=test2');
+    expect(tree.root.children.primary.segments[2].path).toEqual('something');
+    expect(tree.root.children.primary.segments[2].parameterMap.keys).toHaveSize(2);
+    expect(tree.root.children.primary.segments[2].parameterMap.get('query')).toEqual('file=test');
+    expect(tree.root.children.primary.segments[2].parameterMap.get('query2')).toEqual('test2');
+  });
+
   it('should parse top-level nodes with only secondary segment', () => {
     const tree = url.parse('/(left:one)');
 
@@ -184,6 +214,12 @@ describe('url serializer', () => {
     const tree = url.parse('/one#');
     expect(tree.fragment).toEqual('');
     expect(url.serialize(tree)).toEqual('/one#');
+  });
+
+  it('should parse no fragment', () => {
+    const tree = url.parse('/one');
+    expect(tree.fragment).toEqual(null);
+    expect(url.serialize(tree)).toEqual('/one');
   });
 
   describe('encoding/decoding', () => {
@@ -370,12 +406,11 @@ describe('url serializer', () => {
 
   describe('error handling', () => {
     it('should throw when invalid characters inside children', () => {
-      expect(() => url.parse('/one/(left#one)'))
-          .toThrowError('Cannot parse url \'/one/(left#one)\'');
+      expect(() => url.parse('/one/(left#one)')).toThrowError();
     });
 
     it('should throw when missing closing )', () => {
-      expect(() => url.parse('/one/(left')).toThrowError('Cannot parse url \'/one/(left\'');
+      expect(() => url.parse('/one/(left')).toThrowError();
     });
   });
 });

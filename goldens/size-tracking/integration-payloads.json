@@ -1,78 +1,59 @@
 {
   "cli-hello-world": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 1485,
-        "main-es2015": 138937,
-        "polyfills-es2015": 36964
-      }
-    }
-  },
-  "cli-hello-world-ivy-minimal": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 1485,
-        "main-es2015": 17597,
-        "polyfills-es2015": 36709
-      }
-    }
-  },
-  "cli-hello-world-ivy-compat": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 1485,
-        "main-es2015": 144899,
-        "polyfills-es2015": 36964
-      }
+    "uncompressed": {
+      "runtime": 908,
+      "main": 134468,
+      "polyfills": 33792
     }
   },
   "cli-hello-world-ivy-i18n": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 1485,
-        "main-es2015": 137236,
-        "polyfills-es2015": 37641
-      }
+    "uncompressed": {
+      "runtime": 926,
+      "main": 131777,
+      "polyfills": 34676
     }
   },
   "cli-hello-world-lazy": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 2285,
-        "main-es2015": 241059,
-        "polyfills-es2015": 36709,
-        "5-es2015": 745
-      }
-    }
-  },
-  "cli-hello-world-lazy-rollup": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 2289,
-        "main-es2015": 216925,
-        "polyfills-es2015": 36723,
-        "5-es2015": 781
-      }
+    "uncompressed": {
+      "runtime": 2734,
+      "main": 232018,
+      "polyfills": 33810,
+      "src_app_lazy_lazy_routes_ts": 487
     }
   },
   "forms": {
-    "master": {
-      "uncompressed": {
-        "runtime-es2015": 1485,
-        "main-es2015": 169047,
-        "polyfills-es2015": 36975
-      }
+    "uncompressed": {
+      "runtime": 888,
+      "main": 166256,
+      "polyfills": 33772
     }
   },
-  "hello_world__closure": {
-    "master": {
-      "uncompressed": {
-        "bundle": "TODO(i): temporarily increase the payload size limit from 105779 - this is due to a closure issue related to ESM reexports that still needs to be investigated",
-        "bundle": "TODO(i): we should define ngDevMode to false in Closure, but --define only works in the global scope.",
-        "bundle": "TODO(i): (FW-2164) TS 3.9 new class shape seems to have broken Closure in big ways. The size went from 169991 to 252338",
-        "bundle": "TODO(i): after removal of tsickle from ngc-wrapped / ng_package, we had to switch to SIMPLE optimizations which increased the size from 252338 to 1198917, see PR#37221 and PR#37317 for more info",
-        "bundle": 1214857
-      }
+  "animations": {
+    "uncompressed": {
+      "runtime": 898,
+      "main": 164757,
+      "polyfills": 33782
+    }
+  },
+  "platform-server/standalone/browser": {
+    "uncompressed": {
+      "runtime": 2694,
+      "main": 232544,
+      "polyfills": 33782
+    }
+  },
+  "platform-server/ngmodule/browser": {
+    "uncompressed": {
+      "runtime": 2688,
+      "main": 244602,
+      "polyfills": 33778
+    }
+  },
+  "standalone-bootstrap": {
+    "uncompressed": {
+      "runtime": 918,
+      "main": 91485,
+      "polyfills": 33802
     }
   }
 }

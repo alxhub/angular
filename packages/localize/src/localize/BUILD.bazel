@@ -9,8 +9,16 @@ ts_library(
             "**/*.ts",
         ],
     ),
-    module_name = "@angular/localize/src/localize",
     deps = [
+        "//packages/localize/src/utils",
         "@npm//@types/node",
     ],
+)
+
+filegroup(
+    name = "files_for_docgen",
+    srcs = glob([
+        "*.ts",
+        "src/**/*.ts",
+    ]),
 )

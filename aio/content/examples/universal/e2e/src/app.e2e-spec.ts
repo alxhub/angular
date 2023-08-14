@@ -1,17 +1,16 @@
 import { browser, by, element, ElementArrayFinder, ElementFinder, logging } from 'protractor';
 
 class Hero {
-  id: number;
-  name: string;
+  constructor(public id: number, public name: string) {}
 
   // Factory methods
 
   // Hero from string formatted as '<id> <name>'.
   static fromString(s: string): Hero {
-    return {
-      id: +s.substr(0, s.indexOf(' ')),
-      name: s.substr(s.indexOf(' ') + 1),
-    };
+    return new Hero(
+      +s.substring(0, s.indexOf(' ')),
+      s.slice(s.indexOf(' ') + 1),
+    );
   }
 
   // Hero from hero list <li> element.
@@ -28,8 +27,8 @@ class Hero {
     // Get name from the h2
     const name = await detail.element(by.css('h2')).getText();
     return {
-      id: +id.substr(id.indexOf(' ') + 1),
-      name: name.substr(0, name.lastIndexOf(' '))
+      id: +id.slice(id.indexOf(' ') + 1),
+      name: name.substring(0, name.lastIndexOf(' '))
     };
   }
 }
@@ -38,7 +37,7 @@ describe('Universal', () => {
   const expectedH1 = 'Tour of Heroes';
   const expectedTitle = `${expectedH1}`;
   const targetHero = { id: 15, name: 'Magneta' };
-  const targetHeroDashboardIndex = 3;
+  const targetHeroDashboardIndex = 2;
   const nameSuffix = 'X';
   const newHeroName = targetHero.name + nameSuffix;
 
@@ -62,7 +61,7 @@ describe('Universal', () => {
 
     const expectedViewNames = ['Dashboard', 'Heroes'];
     it(`has views ${expectedViewNames}`, async () => {
-      const viewNames = await getPageElts().navElts.map(el => el.getText());
+      const viewNames = await getPageElts().navElts.map(el => el!.getText());
       expect(viewNames).toEqual(expectedViewNames);
     });
 
@@ -112,7 +111,7 @@ describe('Universal', () => {
       await getPageElts().appHeroesHref.click();
       const page = getPageElts();
       expect(await page.appHeroes.isPresent()).toBeTruthy();
-      expect(await page.allHeroes.count()).toEqual(10, 'number of heroes');
+      expect(await page.allHeroes.count()).toEqual(9, 'number of heroes');
     });
 
     it('can route to hero details', async () => {
@@ -141,7 +140,7 @@ describe('Universal', () => {
 
       const page = getPageElts();
       expect(await page.appHeroes.isPresent()).toBeTruthy();
-      expect(await page.allHeroes.count()).toEqual(9, 'number of heroes');
+      expect(await page.allHeroes.count()).toEqual(8, 'number of heroes');
       const heroesAfter = await toHeroArray(page.allHeroes);
       // console.log(await Hero.fromLi(page.allHeroes[0]));
       const expectedHeroes =  heroesBefore.filter(h => h.name !== newHeroName);
@@ -177,8 +176,9 @@ describe('Universal', () => {
         expect(await button.getCssValue('padding')).toBe('5px 10px');
         expect(await button.getCssValue('border-radius')).toBe('4px');
         // Styles defined in heroes.component.css
-        expect(await button.getCssValue('left')).toBe('194px');
-        expect(await button.getCssValue('top')).toBe('-32px');
+        expect(await button.getCssValue('right')).toBe('0px');
+        expect(await button.getCssValue('top')).toBe('0px');
+        expect(await button.getCssValue('bottom')).toBe('0px');
       }
 
       const addButton = element(by.buttonText('add'));
@@ -206,7 +206,7 @@ describe('Universal', () => {
       expect(await getPageElts().searchResults.count()).toBe(2);
     });
 
-    it(`continues search with 'e' and gets ${targetHero.name}`, async () => {
+    it(`continues search with 'n' and gets ${targetHero.name}`, async () => {
       await getPageElts().searchBox.sendKeys('n');
       await browser.sleep(1000);
       const page = getPageElts();
@@ -285,7 +285,7 @@ describe('Universal', () => {
   }
 
   async function toHeroArray(allHeroes: ElementArrayFinder): Promise<Hero[]> {
-    return await allHeroes.map(Hero.fromLi);
+    return await allHeroes.map(hero => Hero.fromLi(hero!));
   }
 
   async function updateHeroNameInDetailView(): Promise<void> {

@@ -6,41 +6,34 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Identifiers} from './identifiers';
 import * as o from './output/output_ast';
-import {compileFactoryFunction, R3DependencyMetadata, R3FactoryDelegateType, R3FactoryMetadata, R3FactoryTarget} from './render3/r3_factory';
-import {mapToMapExpression, R3Reference, typeWithParameters} from './render3/util';
-
-export interface InjectableDef {
-  expression: o.Expression;
-  type: o.Type;
-  statements: o.Statement[];
-}
+import {compileFactoryFunction, FactoryTarget, R3DependencyMetadata, R3FactoryDelegateType, R3FactoryMetadata} from './render3/r3_factory';
+import {Identifiers} from './render3/r3_identifiers';
+import {convertFromMaybeForwardRefExpression, ForwardRefHandling, generateForwardRef, MaybeForwardRefExpression, R3CompiledExpression, R3Reference, typeWithParameters} from './render3/util';
+import {DefinitionMap} from './render3/view/util';
 
 export interface R3InjectableMetadata {
   name: string;
   type: R3Reference;
-  internalType: o.Expression;
   typeArgumentCount: number;
-  providedIn: o.Expression;
-  useClass?: o.Expression;
+  providedIn: MaybeForwardRefExpression;
+  useClass?: MaybeForwardRefExpression;
   useFactory?: o.Expression;
-  useExisting?: o.Expression;
-  useValue?: o.Expression;
-  userDeps?: R3DependencyMetadata[];
+  useExisting?: MaybeForwardRefExpression;
+  useValue?: MaybeForwardRefExpression;
+  deps?: R3DependencyMetadata[];
 }
 
-export function compileInjectable(meta: R3InjectableMetadata): InjectableDef {
-  let result: {factory: o.Expression, statements: o.Statement[]}|null = null;
+export function compileInjectable(
+    meta: R3InjectableMetadata, resolveForwardRefs: boolean): R3CompiledExpression {
+  let result: {expression: o.Expression, statements: o.Statement[]}|null = null;
 
   const factoryMeta: R3FactoryMetadata = {
     name: meta.name,
     type: meta.type,
-    internalType: meta.internalType,
     typeArgumentCount: meta.typeArgumentCount,
     deps: [],
-    injectFn: Identifiers.inject,
-    target: R3FactoryTarget.Injectable,
+    target: FactoryTarget.Injectable,
   };
 
   if (meta.useClass !== undefined) {
@@ -51,38 +44,42 @@ export function compileInjectable(meta: R3InjectableMetadata): InjectableDef {
     // A special case exists for useClass: Type where Type is the injectable type itself and no
     // deps are specified, in which case 'useClass' is effectively ignored.
 
-    const useClassOnSelf = meta.useClass.isEquivalent(meta.internalType);
+    const useClassOnSelf = meta.useClass.expression.isEquivalent(meta.type.value);
     let deps: R3DependencyMetadata[]|undefined = undefined;
-    if (meta.userDeps !== undefined) {
-      deps = meta.userDeps;
+    if (meta.deps !== undefined) {
+      deps = meta.deps;
     }
 
     if (deps !== undefined) {
       // factory: () => new meta.useClass(...deps)
       result = compileFactoryFunction({
         ...factoryMeta,
-        delegate: meta.useClass,
+        delegate: meta.useClass.expression,
         delegateDeps: deps,
         delegateType: R3FactoryDelegateType.Class,
       });
     } else if (useClassOnSelf) {
       result = compileFactoryFunction(factoryMeta);
     } else {
-      result = delegateToFactory(
-          meta.type.value as o.WrappedNodeExpr<any>, meta.useClass as o.WrappedNodeExpr<any>);
+      result = {
+        statements: [],
+        expression: delegateToFactory(
+            meta.type.value as o.WrappedNodeExpr<any>,
+            meta.useClass.expression as o.WrappedNodeExpr<any>, resolveForwardRefs)
+      };
     }
   } else if (meta.useFactory !== undefined) {
-    if (meta.userDeps !== undefined) {
+    if (meta.deps !== undefined) {
       result = compileFactoryFunction({
         ...factoryMeta,
         delegate: meta.useFactory,
-        delegateDeps: meta.userDeps || [],
+        delegateDeps: meta.deps || [],
         delegateType: R3FactoryDelegateType.Function,
       });
     } else {
       result = {
         statements: [],
-        factory: o.fn([], [new o.ReturnStatement(meta.useFactory.callFn([]))])
+        expression: o.fn([], [new o.ReturnStatement(meta.useFactory.callFn([]))])
       };
     }
   } else if (meta.useValue !== undefined) {
@@ -91,49 +88,81 @@ export function compileInjectable(meta: R3InjectableMetadata): InjectableDef {
     // value is undefined.
     result = compileFactoryFunction({
       ...factoryMeta,
-      expression: meta.useValue,
+      expression: meta.useValue.expression,
     });
   } else if (meta.useExisting !== undefined) {
     // useExisting is an `inject` call on the existing token.
     result = compileFactoryFunction({
       ...factoryMeta,
-      expression: o.importExpr(Identifiers.inject).callFn([meta.useExisting]),
+      expression: o.importExpr(Identifiers.inject).callFn([meta.useExisting.expression]),
     });
   } else {
-    result = delegateToFactory(
-        meta.type.value as o.WrappedNodeExpr<any>, meta.internalType as o.WrappedNodeExpr<any>);
+    result = {
+      statements: [],
+      expression: delegateToFactory(
+          meta.type.value as o.WrappedNodeExpr<any>, meta.type.value as o.WrappedNodeExpr<any>,
+          resolveForwardRefs)
+    };
   }
 
-  const token = meta.internalType;
+  const token = meta.type.value;
 
-  const injectableProps: {[key: string]: o.Expression} = {token, factory: result.factory};
+  const injectableProps =
+      new DefinitionMap<{token: o.Expression, factory: o.Expression, providedIn: o.Expression}>();
+  injectableProps.set('token', token);
+  injectableProps.set('factory', result.expression);
 
   // Only generate providedIn property if it has a non-null value
-  if ((meta.providedIn as o.LiteralExpr).value !== null) {
-    injectableProps.providedIn = meta.providedIn;
+  if ((meta.providedIn.expression as o.LiteralExpr).value !== null) {
+    injectableProps.set('providedIn', convertFromMaybeForwardRefExpression(meta.providedIn));
   }
 
   const expression = o.importExpr(Identifiers.ɵɵdefineInjectable)
-                         .callFn([mapToMapExpression(injectableProps)], undefined, true);
-  const type = new o.ExpressionType(o.importExpr(
-      Identifiers.InjectableDef, [typeWithParameters(meta.type.type, meta.typeArgumentCount)]));
-
+                         .callFn([injectableProps.toLiteralMap()], undefined, true);
   return {
     expression,
-    type,
+    type: createInjectableType(meta),
     statements: result.statements,
   };
 }
 
-function delegateToFactory(type: o.WrappedNodeExpr<any>, internalType: o.WrappedNodeExpr<any>) {
-  return {
-    statements: [],
-    // If types are the same, we can generate `factory: type.ɵfac`
-    // If types are different, we have to generate a wrapper function to ensure
-    // the internal type has been resolved (`factory: function(t) { return type.ɵfac(t); }`)
-    factory: type.node === internalType.node ?
-        internalType.prop('ɵfac') :
-        o.fn([new o.FnParam('t', o.DYNAMIC_TYPE)], [new o.ReturnStatement(internalType.callMethod(
-                                                       'ɵfac', [o.variable('t')]))])
-  };
+export function createInjectableType(meta: R3InjectableMetadata) {
+  return new o.ExpressionType(o.importExpr(
+      Identifiers.InjectableDeclaration,
+      [typeWithParameters(meta.type.type, meta.typeArgumentCount)]));
+}
+
+function delegateToFactory(
+    type: o.WrappedNodeExpr<any>, useType: o.WrappedNodeExpr<any>,
+    unwrapForwardRefs: boolean): o.Expression {
+  if (type.node === useType.node) {
+    // The types are the same, so we can simply delegate directly to the type's factory.
+    // ```
+    // factory: type.ɵfac
+    // ```
+    return useType.prop('ɵfac');
+  }
+
+  if (!unwrapForwardRefs) {
+    // The type is not wrapped in a `forwardRef()`, so we create a simple factory function that
+    // accepts a sub-type as an argument.
+    // ```
+    // factory: function(t) { return useType.ɵfac(t); }
+    // ```
+    return createFactoryFunction(useType);
+  }
+
+  // The useType is actually wrapped in a `forwardRef()` so we need to resolve that before
+  // calling its factory.
+  // ```
+  // factory: function(t) { return core.resolveForwardRef(type).ɵfac(t); }
+  // ```
+  const unwrappedType = o.importExpr(Identifiers.resolveForwardRef).callFn([useType]);
+  return createFactoryFunction(unwrappedType);
+}
+
+function createFactoryFunction(type: o.Expression): o.FunctionExpr {
+  return o.fn(
+      [new o.FnParam('t', o.DYNAMIC_TYPE)],
+      [new o.ReturnStatement(type.prop('ɵfac').callFn([o.variable('t')]))]);
 }

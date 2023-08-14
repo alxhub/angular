@@ -8,8 +8,8 @@
 
 import {PLATFORM_ID} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {NgswCommChannel} from '@angular/service-worker/src/low_level';
-import {ngswCommChannelFactory, SwRegistrationOptions} from '@angular/service-worker/src/module';
+import {NgswCommChannel, NoNewVersionDetectedEvent, VersionDetectedEvent} from '@angular/service-worker/src/low_level';
+import {ngswCommChannelFactory, SwRegistrationOptions} from '@angular/service-worker/src/provider';
 import {SwPush} from '@angular/service-worker/src/push';
 import {SwUpdate} from '@angular/service-worker/src/update';
 import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockServiceWorkerRegistration, patchDecodeBase64} from '@angular/service-worker/testing/mock';
@@ -91,7 +91,7 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
           ],
         });
 
-        const context: any = global || window;
+        const context: any = globalThis;
         const originalDescriptor = Object.getOwnPropertyDescriptor(context, 'navigator');
         const patchedDescriptor = {value: {serviceWorker: undefined}, configurable: true};
 
@@ -120,7 +120,7 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
              ]
            });
 
-           const context: any = global || window;
+           const context: any = globalThis;
            const originalDescriptor = Object.getOwnPropertyDescriptor(context, 'navigator');
            const patchedDescriptor = {value: {serviceWorker: mock}, configurable: true};
 
@@ -213,7 +213,7 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
             await push.unsubscribe();
             throw new Error('`unsubscribe()` should fail');
           } catch (err) {
-            expect(err.message).toBe('Not subscribed to push notifications.');
+            expect((err as Error).message).toBe('Not subscribed to push notifications.');
           }
         });
 
@@ -234,7 +234,7 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
             await push.unsubscribe();
             throw new Error('`unsubscribe()` should fail');
           } catch (err) {
-            expect(err.message).toBe('foo');
+            expect((err as Error).message).toBe('foo');
           }
         });
 
@@ -246,7 +246,7 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
             await push.unsubscribe();
             throw new Error('`unsubscribe()` should fail');
           } catch (err) {
-            expect(err.message).toBe('Unsubscribe failed!');
+            expect((err as Error).message).toBe('Unsubscribe failed!');
           }
         });
 
@@ -426,11 +426,11 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
           done();
         });
         mock.sendMessage({
-          type: 'UPDATE_AVAILABLE',
-          current: {
+          type: 'VERSION_READY',
+          currentVersion: {
             hash: 'A',
           },
-          available: {
+          latestVersion: {
             hash: 'B',
           },
         });
@@ -460,33 +460,53 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
           },
         });
       });
-      it('activates updates when requested', done => {
-        mock.messages.subscribe((msg: {action: string, statusNonce: number}) => {
+      it('processes a no new version event when sent', done => {
+        update.versionUpdates.subscribe(event => {
+          expect(event.type).toEqual('NO_NEW_VERSION_DETECTED');
+          expect((event as NoNewVersionDetectedEvent).version).toEqual({hash: 'A'});
+          done();
+        });
+        mock.sendMessage({
+          type: 'NO_NEW_VERSION_DETECTED',
+          version: {
+            hash: 'A',
+          },
+        });
+      });
+      it('process any version update event when sent', done => {
+        update.versionUpdates.subscribe(event => {
+          expect(event.type).toEqual('VERSION_DETECTED');
+          expect((event as VersionDetectedEvent).version).toEqual({hash: 'A'});
+          done();
+        });
+        mock.sendMessage({
+          type: 'VERSION_DETECTED',
+          version: {
+            hash: 'A',
+          },
+        });
+      });
+      it('activates updates when requested', async () => {
+        mock.messages.subscribe((msg: {action: string, nonce: number}) => {
           expect(msg.action).toEqual('ACTIVATE_UPDATE');
           mock.sendMessage({
-            type: 'STATUS',
-            nonce: msg.statusNonce,
-            status: true,
+            type: 'OPERATION_COMPLETED',
+            nonce: msg.nonce,
+            result: true,
           });
         });
-        return update.activateUpdate().then(() => done()).catch(err => done.fail(err));
+        expect(await update.activateUpdate()).toBeTruthy();
       });
-      it('reports activation failure when requested', done => {
-        mock.messages.subscribe((msg: {action: string, statusNonce: number}) => {
+      it('reports activation failure when requested', async () => {
+        mock.messages.subscribe((msg: {action: string, nonce: number}) => {
           expect(msg.action).toEqual('ACTIVATE_UPDATE');
           mock.sendMessage({
-            type: 'STATUS',
-            nonce: msg.statusNonce,
-            status: false,
+            type: 'OPERATION_COMPLETED',
+            nonce: msg.nonce,
             error: 'Failed to activate',
           });
         });
-        return update.activateUpdate()
-            .catch(err => {
-              expect(err.message).toEqual('Failed to activate');
-            })
-            .then(() => done())
-            .catch(err => done.fail(err));
+        await expectAsync(update.activateUpdate()).toBeRejectedWithError('Failed to activate');
       });
       it('is injectable', () => {
         TestBed.configureTestingModule({
@@ -509,6 +529,7 @@ import {MockPushManager, MockPushSubscription, MockServiceWorkerContainer, MockS
           update.available.toPromise().catch(err => fail(err));
           update.activated.toPromise().catch(err => fail(err));
           update.unrecoverable.toPromise().catch(err => fail(err));
+          update.versionUpdates.toPromise().catch(err => fail(err));
         });
         it('gives an error when checking for updates', done => {
           update = new SwUpdate(comm);

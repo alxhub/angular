@@ -9,9 +9,10 @@ import { LoggerService } from './logger.service';
   selector: 'after-content',
 // #docregion template
   template: `
-    <div>-- projected content begins --</div>
+    <div>projected content begins</div>
       <ng-content></ng-content>
-    <div>-- projected content ends --</div>`
+    <div>projected content ends</div>
+  `
 // #enddocregion template
    + `
     <p *ngIf="comment" class="comment">
@@ -25,7 +26,7 @@ export class AfterContentComponent implements AfterContentChecked, AfterContentI
   comment = '';
 
   // Query for a CONTENT child of type `ChildComponent`
-  @ContentChild(ChildComponent) contentChild: ChildComponent;
+  @ContentChild(ChildComponent) contentChild!: ChildComponent;
 
 // #enddocregion hooks
   constructor(private logger: LoggerService) {
@@ -53,7 +54,7 @@ export class AfterContentComponent implements AfterContentChecked, AfterContentI
 
   // This surrogate for real business logic sets the `comment`
   private doSomething() {
-    this.comment = this.contentChild.hero.length > 10 ? `That's a long name` : '';
+    this.comment = this.contentChild.hero.length > 10 ? "That's a long name" : '';
   }
 
   private logIt(method: string) {

@@ -8,7 +8,7 @@
 
 import {Generator, processNavigationUrls} from '../src/generator';
 import {AssetGroup} from '../src/in';
-import {MockFilesystem} from '../testing/mock';
+import {HashTrackingMockFilesystem, MockFilesystem} from '../testing/mock';
 
 describe('Generator', () => {
   beforeEach(() => spyOn(Date, 'now').and.returnValue(1234567890123));
@@ -106,6 +106,7 @@ describe('Generator', () => {
         maxAge: 259200000,
         timeoutMs: 60000,
         version: 1,
+        cacheOpaqueResponses: undefined,
         cacheQueryOptions: {ignoreVary: true}
       }],
       navigationUrls: [
@@ -127,6 +128,102 @@ describe('Generator', () => {
       },
     });
   });
+
+  it('assigns files to the first matching asset-group (unaffected by file-system access delays)',
+     async () => {
+       const fs = new MockFilesystem({
+         '/index.html': 'This is a test',
+         '/foo/script-1.js': 'This is script 1',
+         '/foo/script-2.js': 'This is script 2',
+         '/bar/script-3.js': 'This is script 3',
+         '/bar/script-4.js': 'This is script 4',
+         '/qux/script-5.js': 'This is script 5',
+       });
+
+       // Simulate fluctuating file-system access delays.
+       const allFiles = await fs.list('/');
+       spyOn(fs, 'list')
+           .and.returnValues(
+               new Promise(resolve => setTimeout(resolve, 2000, allFiles.slice())),
+               new Promise(resolve => setTimeout(resolve, 3000, allFiles.slice())),
+               new Promise(resolve => setTimeout(resolve, 1000, allFiles.slice())),
+           );
+
+       const gen = new Generator(fs, '');
+       const config = await gen.process({
+         index: '/index.html',
+         assetGroups: [
+           {
+             name: 'group-foo',
+             resources: {files: ['/foo/**/*.js']},
+           },
+           {
+             name: 'group-bar',
+             resources: {files: ['/bar/**/*.js']},
+           },
+           {
+             name: 'group-fallback',
+             resources: {files: ['/**/*.js']},
+           },
+         ],
+       });
+
+       expect(config).toEqual({
+         configVersion: 1,
+         timestamp: 1234567890123,
+         appData: undefined,
+         index: '/index.html',
+         assetGroups: [
+           {
+             name: 'group-foo',
+             installMode: 'prefetch',
+             updateMode: 'prefetch',
+             cacheQueryOptions: {ignoreVary: true},
+             urls: [
+               '/foo/script-1.js',
+               '/foo/script-2.js',
+             ],
+             patterns: [],
+           },
+           {
+             name: 'group-bar',
+             installMode: 'prefetch',
+             updateMode: 'prefetch',
+             cacheQueryOptions: {ignoreVary: true},
+             urls: [
+               '/bar/script-3.js',
+               '/bar/script-4.js',
+             ],
+             patterns: [],
+           },
+           {
+             name: 'group-fallback',
+             installMode: 'prefetch',
+             updateMode: 'prefetch',
+             cacheQueryOptions: {ignoreVary: true},
+             urls: [
+               '/qux/script-5.js',
+             ],
+             patterns: [],
+           },
+         ],
+         dataGroups: [],
+         hashTable: {
+           '/bar/script-3.js': 'bc0a9b488b5707757c491ddac66f56304310b6b1',
+           '/bar/script-4.js': 'b7782e97a285f1f6e62feca842384babaa209040',
+           '/foo/script-1.js': '3cf257d7ef7e991898f8506fd408cab4f0c2de91',
+           '/foo/script-2.js': '9de2ba54065bb9d610bce51beec62e35bea870a7',
+           '/qux/script-5.js': '3dceafdc0a1b429718e45fbf8e3005dd767892de'
+         },
+         navigationUrls: [
+           {positive: true, regex: '^\\/.*$'},
+           {positive: false, regex: '^\\/(?:.+\\/)?[^/]*\\.[^/]*$'},
+           {positive: false, regex: '^\\/(?:.+\\/)?[^/]*__[^/]*$'},
+           {positive: false, regex: '^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$'},
+         ],
+         navigationRequestStrategy: 'performance',
+       });
+     });
 
   it('uses default `navigationUrls` if not provided', async () => {
     const fs = new MockFilesystem({
@@ -186,7 +283,173 @@ describe('Generator', () => {
     }
   });
 
-  it('generates a correct config with cacheQueryOptions', async () => {
+  it('generates a correct config with `cacheOpaqueResponses`', async () => {
+    const fs = new MockFilesystem({
+      '/index.html': 'This is a test',
+    });
+    const gen = new Generator(fs, '/');
+    const config = await gen.process({
+      index: '/index.html',
+      dataGroups: [
+        {
+          name: 'freshness-undefined',
+          urls: ['/api/1/**'],
+          cacheConfig: {
+            maxAge: '3d',
+            maxSize: 100,
+            strategy: 'freshness',
+          },
+        },
+        {
+          name: 'freshness-false',
+          urls: ['/api/2/**'],
+          cacheConfig: {
+            cacheOpaqueResponses: false,
+            maxAge: '3d',
+            maxSize: 100,
+            strategy: 'freshness',
+          },
+        },
+        {
+          name: 'freshness-true',
+          urls: ['/api/3/**'],
+          cacheConfig: {
+            cacheOpaqueResponses: true,
+            maxAge: '3d',
+            maxSize: 100,
+            strategy: 'freshness',
+          },
+        },
+        {
+          name: 'performance-undefined',
+          urls: ['/api/4/**'],
+          cacheConfig: {
+            maxAge: '3d',
+            maxSize: 100,
+            strategy: 'performance',
+          },
+        },
+        {
+          name: 'performance-false',
+          urls: ['/api/5/**'],
+          cacheConfig: {
+            cacheOpaqueResponses: false,
+            maxAge: '3d',
+            maxSize: 100,
+            strategy: 'performance',
+          },
+        },
+        {
+          name: 'performance-true',
+          urls: ['/api/6/**'],
+          cacheConfig: {
+            cacheOpaqueResponses: true,
+            maxAge: '3d',
+            maxSize: 100,
+            strategy: 'performance',
+          },
+        },
+      ],
+    });
+
+    expect(config).toEqual({
+      configVersion: 1,
+      appData: undefined,
+      timestamp: 1234567890123,
+      index: '/index.html',
+      assetGroups: [],
+      dataGroups: [
+        {
+          name: 'freshness-undefined',
+          patterns: [
+            '\\/api\\/1\\/.*',
+          ],
+          strategy: 'freshness',
+          maxSize: 100,
+          maxAge: 259200000,
+          timeoutMs: undefined,
+          version: 1,
+          cacheOpaqueResponses: undefined,
+          cacheQueryOptions: {ignoreVary: true},
+        },
+        {
+          name: 'freshness-false',
+          patterns: [
+            '\\/api\\/2\\/.*',
+          ],
+          strategy: 'freshness',
+          maxSize: 100,
+          maxAge: 259200000,
+          timeoutMs: undefined,
+          version: 1,
+          cacheOpaqueResponses: false,
+          cacheQueryOptions: {ignoreVary: true},
+        },
+        {
+          name: 'freshness-true',
+          patterns: [
+            '\\/api\\/3\\/.*',
+          ],
+          strategy: 'freshness',
+          maxSize: 100,
+          maxAge: 259200000,
+          timeoutMs: undefined,
+          version: 1,
+          cacheOpaqueResponses: true,
+          cacheQueryOptions: {ignoreVary: true},
+        },
+        {
+          name: 'performance-undefined',
+          patterns: [
+            '\\/api\\/4\\/.*',
+          ],
+          strategy: 'performance',
+          maxSize: 100,
+          maxAge: 259200000,
+          timeoutMs: undefined,
+          version: 1,
+          cacheOpaqueResponses: undefined,
+          cacheQueryOptions: {ignoreVary: true},
+        },
+        {
+          name: 'performance-false',
+          patterns: [
+            '\\/api\\/5\\/.*',
+          ],
+          strategy: 'performance',
+          maxSize: 100,
+          maxAge: 259200000,
+          timeoutMs: undefined,
+          version: 1,
+          cacheOpaqueResponses: false,
+          cacheQueryOptions: {ignoreVary: true},
+        },
+        {
+          name: 'performance-true',
+          patterns: [
+            '\\/api\\/6\\/.*',
+          ],
+          strategy: 'performance',
+          maxSize: 100,
+          maxAge: 259200000,
+          timeoutMs: undefined,
+          version: 1,
+          cacheOpaqueResponses: true,
+          cacheQueryOptions: {ignoreVary: true},
+        },
+      ],
+      navigationUrls: [
+        {positive: true, regex: '^\\/.*$'},
+        {positive: false, regex: '^\\/(?:.+\\/)?[^/]*\\.[^/]*$'},
+        {positive: false, regex: '^\\/(?:.+\\/)?[^/]*__[^/]*$'},
+        {positive: false, regex: '^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$'},
+      ],
+      navigationRequestStrategy: 'performance',
+      hashTable: {},
+    });
+  });
+
+  it('generates a correct config with `cacheQueryOptions`', async () => {
     const fs = new MockFilesystem({
       '/index.html': 'This is a test',
       '/main.js': 'This is a JS file',
@@ -243,6 +506,7 @@ describe('Generator', () => {
         maxAge: 259200000,
         timeoutMs: 60000,
         version: 1,
+        cacheOpaqueResponses: undefined,
         cacheQueryOptions: {ignoreSearch: false, ignoreVary: true}
       }],
       navigationUrls: [
@@ -257,6 +521,26 @@ describe('Generator', () => {
         '/main.js': '41347a66676cdc0516934c76d9d13010df420f2c',
       },
     });
+  });
+
+  it('doesn\'t exceed concurrency limit', async () => {
+    const fileCount = 600;
+    const files = [...Array(fileCount).keys()].reduce((acc: Record<string, string>, _, i) => {
+      acc[`/test${i}.js`] = `This is a test ${i}`;
+      return acc;
+    }, {'/index.html': 'This is a test'});
+    const fs = new HashTrackingMockFilesystem(files);
+    const gen = new Generator(fs, '/');
+    const config = await gen.process({
+      index: '/index.html',
+      assetGroups: [{
+        name: 'test',
+        resources: {files: ['/*.js']},
+      }],
+    });
+    expect(fs.maxConcurrentHashings).toBeLessThanOrEqual(500);
+    expect(fs.maxConcurrentHashings).toBeGreaterThan(1);
+    expect(Object.keys((config as any).hashTable).length).toBe(fileCount);
   });
 
   describe('processNavigationUrls()', () => {

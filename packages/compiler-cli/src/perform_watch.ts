@@ -8,14 +8,14 @@
 
 import * as chokidar from 'chokidar';
 import * as path from 'path';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {Diagnostics, exitCodeFromResult, ParsedConfiguration, performCompilation, PerformCompilationResult, readConfiguration} from './perform_compile';
+import {exitCodeFromResult, ParsedConfiguration, performCompilation, PerformCompilationResult, readConfiguration} from './perform_compile';
 import * as api from './transformers/api';
 import {createCompilerHost} from './transformers/entry_points';
 import {createMessageDiagnostic} from './transformers/util';
 
-function totalCompilationTimeDiagnostic(timeInMillis: number): api.Diagnostic {
+function totalCompilationTimeDiagnostic(timeInMillis: number): ts.Diagnostic {
   let duration: string;
   if (timeInMillis > 1000) {
     duration = `${(timeInMillis / 1000).toPrecision(2)}s`;
@@ -27,6 +27,9 @@ function totalCompilationTimeDiagnostic(timeInMillis: number): api.Diagnostic {
     messageText: `Total time: ${duration}`,
     code: api.DEFAULT_ERROR_CODE,
     source: api.SOURCE,
+    file: undefined,
+    start: undefined,
+    length: undefined,
   };
 }
 
@@ -36,11 +39,11 @@ export enum FileChangeEvent {
   CreateDeleteDir,
 }
 
-export interface PerformWatchHost {
-  reportDiagnostics(diagnostics: Diagnostics): void;
+export interface PerformWatchHost<CbEmitRes extends ts.EmitResult = ts.EmitResult> {
+  reportDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>): void;
   readConfiguration(): ParsedConfiguration;
   createCompilerHost(options: api.CompilerOptions): api.CompilerHost;
-  createEmitCallback(options: api.CompilerOptions): api.TsEmitCallback|undefined;
+  createEmitCallback(options: api.CompilerOptions): api.TsEmitCallback<CbEmitRes>|undefined;
   onFileChange(
       options: api.CompilerOptions, listener: (event: FileChangeEvent, fileName: string) => void,
       ready: () => void): {close: () => void};
@@ -48,11 +51,11 @@ export interface PerformWatchHost {
   clearTimeout(timeoutId: any): void;
 }
 
-export function createPerformWatchHost(
-    configFileName: string, reportDiagnostics: (diagnostics: Diagnostics) => void,
+export function createPerformWatchHost<CbEmitRes extends ts.EmitResult = ts.EmitResult>(
+    configFileName: string, reportDiagnostics: (diagnostics: ReadonlyArray<ts.Diagnostic>) => void,
     existingOptions?: ts.CompilerOptions,
     createEmitCallback?: (options: api.CompilerOptions) =>
-        api.TsEmitCallback | undefined): PerformWatchHost {
+        api.TsEmitCallback<CbEmitRes>| undefined): PerformWatchHost {
   return {
     reportDiagnostics: reportDiagnostics,
     createCompilerHost: options => createCompilerHost({options}),
@@ -64,7 +67,10 @@ export function createPerformWatchHost(
           category: ts.DiagnosticCategory.Error,
           messageText: 'Invalid configuration option. baseDir not specified',
           source: api.SOURCE,
-          code: api.DEFAULT_ERROR_CODE
+          code: api.DEFAULT_ERROR_CODE,
+          file: undefined,
+          start: undefined,
+          length: undefined,
         }]);
         return {close: () => {}};
       }
@@ -112,8 +118,11 @@ interface QueuedCompilationInfo {
 /**
  * The logic in this function is adapted from `tsc.ts` from TypeScript.
  */
-export function performWatchCompilation(host: PerformWatchHost):
-    {close: () => void, ready: (cb: () => void) => void, firstCompileResult: Diagnostics} {
+export function performWatchCompilation(host: PerformWatchHost): {
+  close: () => void,
+  ready: (cb: () => void) => void,
+  firstCompileResult: ReadonlyArray<ts.Diagnostic>
+} {
   let cachedProgram: api.Program|undefined;            // Program cached from last compilation
   let cachedCompilerHost: api.CompilerHost|undefined;  // CompilerHost cached from last compilation
   let cachedOptions: ParsedConfiguration|undefined;  // CompilerOptions cached from last compilation
@@ -154,7 +163,7 @@ export function performWatchCompilation(host: PerformWatchHost):
   }
 
   // Invoked to perform initial compilation or re-compilation in watch mode
-  function doCompilation(): Diagnostics {
+  function doCompilation(): ReadonlyArray<ts.Diagnostic> {
     if (!cachedOptions) {
       cachedOptions = host.readConfiguration();
     }

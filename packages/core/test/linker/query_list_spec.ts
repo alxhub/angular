@@ -7,10 +7,9 @@
  */
 
 import {ɵgetDOM as getDOM} from '@angular/common';
-import {iterateListLike} from '@angular/core/src/change_detection/change_detection_util';
 import {QueryList} from '@angular/core/src/linker/query_list';
+import {iterateListLike} from '@angular/core/src/util/iterable';
 import {fakeAsync, tick} from '@angular/core/testing';
-import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testing_internal';
 
 {
   describe('QueryList', () => {
@@ -21,7 +20,7 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
       log = '';
     });
 
-    function logAppend(item: any /** TODO #9100 */) {
+    function logAppend(item: string) {
       log += (log.length == 0 ? '' : ', ') + item;
     }
 
@@ -140,6 +139,13 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
       expect(queryList.some(item => item === 'four')).toEqual(false);
     });
 
+    it('should support guards on filter', () => {
+      const qList = new QueryList<'foo'|'bar'>();
+      qList.reset(['foo']);
+      const foos: Array<'foo'> = queryList.filter((item): item is 'foo' => item === 'foo');
+      expect(qList.length).toEqual(1);
+    });
+
     it('should be iterable', () => {
       const data = ['one', 'two', 'three'];
       queryList.reset([...data]);
@@ -156,7 +162,7 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
       expect(data.length).toBe(0);
     });
 
-    if (getDOM().supportsDOMEvents()) {
+    if (getDOM().supportsDOMEvents) {
       describe('simple observable interface', () => {
         it('should fire callbacks on change', fakeAsync(() => {
              let fires = 0;
@@ -178,9 +184,9 @@ import {beforeEach, describe, expect, it} from '@angular/core/testing/src/testin
            }));
 
         it('should provides query list as an argument', fakeAsync(() => {
-             let recorded: any /** TODO #9100 */;
+             let recorded!: QueryList<string>;
              queryList.changes.subscribe({
-               next: (v: any) => {
+               next: (v: QueryList<string>) => {
                  recorded = v;
                }
              });

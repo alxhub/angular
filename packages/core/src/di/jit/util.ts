@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {CompilerFacade, getCompilerFacade, R3DependencyMetadataFacade, R3ResolvedDependencyType} from '../../compiler/compiler_facade';
+import {R3DependencyMetadataFacade} from '../../compiler/compiler_facade';
+import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {Type} from '../../interface/type';
 import {ReflectionCapabilities} from '../../reflection/reflection_capabilities';
 import {Host, Inject, Optional, Self, SkipSelf} from '../metadata';
@@ -23,24 +24,18 @@ export function reflectDependencies(type: Type<any>): R3DependencyMetadataFacade
 }
 
 export function convertDependencies(deps: any[]): R3DependencyMetadataFacade[] {
-  const compiler = getCompilerFacade();
-  return deps.map(dep => reflectDependency(compiler, dep));
+  return deps.map(dep => reflectDependency(dep));
 }
 
-function reflectDependency(compiler: CompilerFacade, dep: any|any[]): R3DependencyMetadataFacade {
+function reflectDependency(dep: any|any[]): R3DependencyMetadataFacade {
   const meta: R3DependencyMetadataFacade = {
     token: null,
+    attribute: null,
     host: false,
     optional: false,
-    resolved: compiler.R3ResolvedDependencyType.Token,
     self: false,
     skipSelf: false,
   };
-
-  function setTokenAndResolvedType(token: any): void {
-    meta.resolved = compiler.R3ResolvedDependencyType.Token;
-    meta.token = token;
-  }
 
   if (Array.isArray(dep) && dep.length > 0) {
     for (let j = 0; j < dep.length; j++) {
@@ -64,22 +59,19 @@ function reflectDependency(compiler: CompilerFacade, dep: any|any[]): R3Dependen
         meta.token = param.token;
       } else if (param instanceof Attribute) {
         if (param.attributeName === undefined) {
-          throw new Error(`Attribute name must be defined.`);
+          throw new RuntimeError(
+              RuntimeErrorCode.INVALID_INJECTION_TOKEN,
+              ngDevMode && `Attribute name must be defined.`);
         }
-        meta.token = param.attributeName;
-        meta.resolved = compiler.R3ResolvedDependencyType.Attribute;
-      } else if (param.__ChangeDetectorRef__ === true) {
-        meta.token = param;
-        meta.resolved = compiler.R3ResolvedDependencyType.ChangeDetectorRef;
+        meta.attribute = param.attributeName;
       } else {
-        setTokenAndResolvedType(param);
+        meta.token = param;
       }
     }
   } else if (dep === undefined || (Array.isArray(dep) && dep.length === 0)) {
-    meta.token = undefined;
-    meta.resolved = R3ResolvedDependencyType.Invalid;
+    meta.token = null;
   } else {
-    setTokenAndResolvedType(dep);
+    meta.token = dep;
   }
   return meta;
 }

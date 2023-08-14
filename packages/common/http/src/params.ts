@@ -89,18 +89,27 @@ function paramParser(rawParams: string, codec: HttpParameterCodec): Map<string, 
   }
   return map;
 }
+
+/**
+ * Encode input string with standard encodeURIComponent and then un-encode specific characters.
+ */
+const STANDARD_ENCODING_REGEX = /%(\d[a-f0-9])/gi;
+const STANDARD_ENCODING_REPLACEMENTS: {[x: string]: string} = {
+  '40': '@',
+  '3A': ':',
+  '24': '$',
+  '2C': ',',
+  '3B': ';',
+  '3D': '=',
+  '3F': '?',
+  '2F': '/',
+};
+
 function standardEncoding(v: string): string {
-  return encodeURIComponent(v)
-      .replace(/%40/gi, '@')
-      .replace(/%3A/gi, ':')
-      .replace(/%24/gi, '$')
-      .replace(/%2C/gi, ',')
-      .replace(/%3B/gi, ';')
-      .replace(/%2B/gi, '+')
-      .replace(/%3D/gi, '=')
-      .replace(/%3F/gi, '?')
-      .replace(/%2F/gi, '/');
+  return encodeURIComponent(v).replace(
+      STANDARD_ENCODING_REGEX, (s, t) => STANDARD_ENCODING_REPLACEMENTS[t] ?? s);
 }
+
 function valueToString(value: string|number|boolean): string {
   return `${value}`;
 }
@@ -155,7 +164,9 @@ export class HttpParams {
       this.map = new Map<string, string[]>();
       Object.keys(options.fromObject).forEach(key => {
         const value = (options.fromObject as any)[key];
-        this.map!.set(key, Array.isArray(value) ? value : [value]);
+        // convert the values to strings
+        const values = Array.isArray(value) ? value.map(valueToString) : [valueToString(value)];
+        this.map!.set(key, values);
       });
     } else {
       this.map = null;

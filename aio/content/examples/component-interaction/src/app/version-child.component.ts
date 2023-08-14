@@ -1,4 +1,4 @@
-/* tslint:disable:forin */
+/* eslint-disable guard-for-in */
 // #docregion
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 
@@ -13,8 +13,8 @@ import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
   `
 })
 export class VersionChildComponent implements OnChanges {
-  @Input() major: number;
-  @Input() minor: number;
+  @Input() major = 0;
+  @Input() minor = 0;
   changeLog: string[] = [];
 
   ngOnChanges(changes: SimpleChanges) {

@@ -6,18 +6,17 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {animate, query, state, style, transition, trigger} from '@angular/animations';
-import {AnimationDriver, ɵAnimationEngine, ɵsupportsWebAnimations, ɵWebAnimationsDriver, ɵWebAnimationsPlayer} from '@angular/animations/browser';
+import {AnimationDriver, ɵAnimationEngine, ɵWebAnimationsDriver, ɵWebAnimationsPlayer} from '@angular/animations/browser';
 import {TransitionAnimationPlayer} from '@angular/animations/browser/src/render/transition_animation_engine';
 import {AnimationGroupPlayer} from '@angular/animations/src/players/animation_group_player';
 import {Component, ViewChild} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {browserDetection} from '@angular/platform-browser/testing/src/browser_util';
 
 (function() {
-// these tests are only mean't to be run within the DOM (for now)
+// these tests are only meant to be run within the DOM (for now)
 // Buggy in Chromium 39, see https://github.com/angular/angular/issues/15793
-if (isNode || !ɵsupportsWebAnimations()) return;
+if (isNode) return;
 
 describe('animation integration tests using web animations', function() {
   beforeEach(() => {
@@ -63,23 +62,25 @@ describe('animation integration tests using web animations', function() {
     let webPlayer =
         (engine.players[0] as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
 
-    expect(webPlayer.keyframes).toEqual([{height: '0px', offset: 0}, {height: '100px', offset: 1}]);
+    expect(webPlayer.keyframes).toEqual([
+      new Map<string, string|number>([['height', '0px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '100px'], ['offset', 1]])
+    ]);
 
     webPlayer.finish();
 
-    if (!browserDetection.isOldChrome) {
-      cmp.exp = false;
-      fixture.detectChanges();
-      engine.flush();
+    cmp.exp = false;
+    fixture.detectChanges();
+    engine.flush();
 
-      expect(engine.players.length).toEqual(1);
-      webPlayer =
-          (engine.players[0] as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
+    expect(engine.players.length).toEqual(1);
+    webPlayer =
+        (engine.players[0] as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
 
-      expect(webPlayer.keyframes).toEqual([
-        {height: '100px', offset: 0}, {height: '0px', offset: 1}
-      ]);
-    }
+    expect(webPlayer.keyframes).toEqual([
+      new Map<string, string|number>([['height', '100px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '0px'], ['offset', 1]])
+    ]);
   });
 
   it('should compute (!) animation styles for a container that is being inserted', () => {
@@ -117,7 +118,8 @@ describe('animation integration tests using web animations', function() {
         (engine.players[0] as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
 
     expect(webPlayer.keyframes).toEqual([
-      {height: '100px', offset: 0}, {height: '120px', offset: 1}
+      new Map<string, string|number>([['height', '100px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '120px'], ['offset', 1]])
     ]);
   });
 
@@ -136,7 +138,6 @@ describe('animation integration tests using web animations', function() {
           [transition('* => *', [style({height: '!'}), animate(1000, style({height: '*'}))])])]
     })
     class Cmp {
-      // TODO(issue/24571): remove '!'.
       public exp!: number;
       public items = [0, 1, 2, 3, 4];
     }
@@ -155,7 +156,10 @@ describe('animation integration tests using web animations', function() {
     let player = engine.players[0];
     let webPlayer = (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
 
-    expect(webPlayer.keyframes).toEqual([{height: '0px', offset: 0}, {height: '100px', offset: 1}]);
+    expect(webPlayer.keyframes).toEqual([
+      new Map<string, string|number>([['height', '0px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '100px'], ['offset', 1]])
+    ]);
 
     // we destroy the player because since it has started and is
     // at 0ms duration a height value of `0px` will be extracted
@@ -172,7 +176,8 @@ describe('animation integration tests using web animations', function() {
     webPlayer = (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
 
     expect(webPlayer.keyframes).toEqual([
-      {height: '100px', offset: 0}, {height: '80px', offset: 1}
+      new Map<string, string|number>([['height', '100px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '80px'], ['offset', 1]])
     ]);
   });
 
@@ -221,22 +226,22 @@ describe('animation integration tests using web animations', function() {
     cmp.exp = true;
     fixture.detectChanges();
 
-    let player = engine.players[0]!;
+    let player = engine.players[0];
     let webPlayer = (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
     expect(webPlayer.keyframes).toEqual([
-      {height: '0px', offset: 0},
-      {height: '300px', offset: 1},
+      new Map<string, string|number>([['height', '0px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '300px'], ['offset', 1]]),
     ]);
     player.finish();
 
     cmp.exp = false;
     fixture.detectChanges();
 
-    player = engine.players[0]!;
+    player = engine.players[0];
     webPlayer = (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
     expect(webPlayer.keyframes).toEqual([
-      {height: '300px', offset: 0},
-      {height: '0px', offset: 1},
+      new Map<string, string|number>([['height', '300px'], ['offset', 0]]),
+      new Map<string, string|number>([['height', '0px'], ['offset', 1]]),
     ]);
   });
 
@@ -249,7 +254,8 @@ describe('animation integration tests using web animations', function() {
                 overflow:hidden;
               }
               .list .inner {
-                line-height:50px;
+                box-sizing: border-box;
+                height: 50px;
               }
             `],
           template: `
@@ -306,13 +312,13 @@ describe('animation integration tests using web animations', function() {
 
        cmp.empty();
        fixture.detectChanges();
-       let player = engine.players[0]! as TransitionAnimationPlayer;
+       let player = engine.players[0] as TransitionAnimationPlayer;
        player.finish();
 
        cmp.full();
        fixture.detectChanges();
 
-       player = engine.players[0]! as TransitionAnimationPlayer;
+       player = engine.players[0] as TransitionAnimationPlayer;
        let queriedPlayers =
            ((player as TransitionAnimationPlayer).getRealPlayer() as AnimationGroupPlayer).players;
        expect(queriedPlayers.length).toEqual(5);
@@ -321,8 +327,8 @@ describe('animation integration tests using web animations', function() {
        for (i = 0; i < queriedPlayers.length; i++) {
          let player = queriedPlayers[i] as ɵWebAnimationsPlayer;
          expect(player.keyframes).toEqual([
-           {height: '0px', offset: 0},
-           {height: '50px', offset: 1},
+           new Map<string, string|number>([['height', '0px'], ['offset', 0]]),
+           new Map<string, string|number>([['height', '50px'], ['offset', 1]]),
          ]);
          player.finish();
        }
@@ -330,7 +336,7 @@ describe('animation integration tests using web animations', function() {
        cmp.empty();
        fixture.detectChanges();
 
-       player = engine.players[0]! as TransitionAnimationPlayer;
+       player = engine.players[0] as TransitionAnimationPlayer;
        queriedPlayers =
            ((player as TransitionAnimationPlayer).getRealPlayer() as AnimationGroupPlayer).players;
        expect(queriedPlayers.length).toEqual(5);
@@ -338,8 +344,8 @@ describe('animation integration tests using web animations', function() {
        for (i = 0; i < queriedPlayers.length; i++) {
          let player = queriedPlayers[i] as ɵWebAnimationsPlayer;
          expect(player.keyframes).toEqual([
-           {height: '50px', offset: 0},
-           {height: '0px', offset: 1},
+           new Map<string, string|number>([['height', '50px'], ['offset', 0]]),
+           new Map<string, string|number>([['height', '0px'], ['offset', 1]]),
          ]);
        }
      });
@@ -348,7 +354,7 @@ describe('animation integration tests using web animations', function() {
     @Component({
       selector: 'ani-cmp',
       template: `
-          <div [@myAnimation]="exp">...</div>
+          <div [@myAnimation]="exp" style="background-color: blue;">...</div>
         `,
       animations: [
         trigger(
@@ -365,8 +371,7 @@ describe('animation integration tests using web animations', function() {
       ]
     })
     class Cmp {
-      // TODO(issue/24571): remove '!'.
-      public exp!: string;
+      public exp: string|undefined;
     }
 
     TestBed.configureTestingModule({declarations: [Cmp]});
@@ -378,18 +383,20 @@ describe('animation integration tests using web animations', function() {
     cmp.exp = 'a';
     fixture.detectChanges();
 
-    let player = engine.players[0]!;
-    let webPlayer = (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
-    webPlayer.setPosition(0.5);
+    const player1 = engine.players[0];
+    const webPlayer1 =
+        (player1 as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
+    webPlayer1.setPosition(0.5);
 
     cmp.exp = 'b';
     fixture.detectChanges();
 
-    player = engine.players[0]!;
-    webPlayer = (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
-    expect(approximate(parseFloat(webPlayer.keyframes[0]['width'] as string), 150))
+    const player2 = engine.players[0];
+    const webPlayer2 =
+        (player2 as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer;
+    expect(approximate(parseFloat(webPlayer2.keyframes[0].get('width') as string), 150))
         .toBeLessThan(0.05);
-    expect(approximate(parseFloat(webPlayer.keyframes[0]['height'] as string), 300))
+    expect(approximate(parseFloat(webPlayer2.keyframes[0].get('height') as string), 300))
         .toBeLessThan(0.05);
   });
 
@@ -418,8 +425,7 @@ describe('animation integration tests using web animations', function() {
          ]
        })
        class Cmp {
-         // TODO(issue/24571): remove '!'.
-         public exp!: string;
+         public exp: string|undefined;
          public items: any[] = [];
        }
 
@@ -433,7 +439,7 @@ describe('animation integration tests using web animations', function() {
        cmp.items = [0, 1, 2, 3, 4];
        fixture.detectChanges();
 
-       let player = engine.players[0]!;
+       let player = engine.players[0];
        let groupPlayer =
            (player as TransitionAnimationPlayer).getRealPlayer() as AnimationGroupPlayer;
        let players = groupPlayer.players;
@@ -455,8 +461,9 @@ describe('animation integration tests using web animations', function() {
        expect(players.length).toEqual(5);
        for (let i = 0; i < players.length; i++) {
          const p = players[i] as ɵWebAnimationsPlayer;
-         expect(approximate(parseFloat(p.keyframes[0]['width'] as string), 250)).toBeLessThan(0.05);
-         expect(approximate(parseFloat(p.keyframes[0]['height'] as string), 500))
+         expect(approximate(parseFloat(p.keyframes[0].get('width') as string), 250))
+             .toBeLessThan(0.05);
+         expect(approximate(parseFloat(p.keyframes[0].get('height') as string), 500))
              .toBeLessThan(0.05);
        }
      });
@@ -511,6 +518,116 @@ describe('animation integration tests using web animations', function() {
 
        expect(elm.style.getPropertyValue('display')).toEqual('inline-block');
        expect(elm.style.getPropertyValue('position')).toEqual('fixed');
+     });
+
+  it('should set normalized style property values on animation end', () => {
+    @Component({
+      selector: 'ani-cmp',
+      template: `
+          <div #elm [@myAnimation]="myAnimationExp" style="width: 100%; font-size: 2rem"></div>
+        `,
+      animations: [
+        trigger(
+            'myAnimation',
+            [
+              state('go', style({width: 300, 'font-size': 14})),
+              transition('* => go', [animate('1s')])
+            ]),
+      ]
+    })
+    class Cmp {
+      @ViewChild('elm', {static: true}) public element: any;
+
+      public myAnimationExp = '';
+    }
+
+    TestBed.configureTestingModule({declarations: [Cmp]});
+
+    const engine = TestBed.inject(ɵAnimationEngine);
+    const fixture = TestBed.createComponent(Cmp);
+    const cmp = fixture.componentInstance;
+
+    const elm = cmp.element.nativeElement;
+    expect(elm.style.getPropertyValue('width')).toEqual('100%');
+    expect(elm.style.getPropertyValue('font-size')).toEqual('2rem');
+
+    cmp.myAnimationExp = 'go';
+    fixture.detectChanges();
+
+    const player = engine.players.pop()!;
+    player.finish();
+    player.destroy();
+
+    expect(elm.style.getPropertyValue('width')).toEqual('300px');
+    expect(elm.style.getPropertyValue('font-size')).toEqual('14px');
+  });
+
+  it('should apply correct state transitions for both CamelCase and kebab-case CSS properties',
+     () => {
+       @Component({
+         selector: 'ani-cmp',
+         template: `
+          <div id="camelCaseDiv" [@camelCaseTrigger]="status"></div>
+          <div id="kebab-case-div" [@kebab-case-trigger]="status"></div>
+        `,
+         animations: [
+           trigger(
+               'camelCaseTrigger',
+               [
+                 state('active', style({
+                         'backgroundColor': 'green',
+                       })),
+                 transition(
+                     'inactive => active',
+                     [
+                       style({
+                         'backgroundColor': 'red',
+                       }),
+                       animate(500),
+                     ]),
+               ]),
+           trigger(
+               'kebab-case-trigger',
+               [
+                 state('active', style({
+                         'background-color': 'green',
+                       })),
+                 transition(
+                     'inactive => active',
+                     [
+                       style({
+                         'background-color': 'red',
+                       }),
+                       animate(500),
+                     ]),
+               ]),
+         ]
+       })
+       class Cmp {
+         public status: 'active'|'inactive' = 'inactive';
+       }
+
+       TestBed.configureTestingModule({declarations: [Cmp]});
+
+       const engine = TestBed.inject(ɵAnimationEngine);
+       const fixture = TestBed.createComponent(Cmp);
+       const cmp = fixture.componentInstance;
+       fixture.detectChanges();
+
+       cmp.status = 'active';
+       fixture.detectChanges();
+       engine.flush();
+
+       expect(engine.players.length).toEqual(2);
+       const [camelCaseWebPlayer, kebabCaseWebPlayer] = engine.players.map(
+           player => (player as TransitionAnimationPlayer).getRealPlayer() as ɵWebAnimationsPlayer);
+
+       [camelCaseWebPlayer, kebabCaseWebPlayer].forEach(webPlayer => {
+         expect(webPlayer.keyframes).toEqual([
+           new Map<string, string|number>([['backgroundColor', 'red'], ['offset', 0]]),
+           new Map<string, string|number>([['backgroundColor', 'green'], ['offset', 1]])
+         ]);
+       });
      });
 });
 })();

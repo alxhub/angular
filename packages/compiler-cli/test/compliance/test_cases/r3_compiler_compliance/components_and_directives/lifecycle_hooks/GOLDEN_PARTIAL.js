@@ -5,33 +5,34 @@ import { Component, NgModule } from '@angular/core';
 import * as i0 from "@angular/core";
 export class MyComponent {
 }
-MyComponent.ɵfac = function MyComponent_Factory(t) { return new (t || MyComponent)(); };
-MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", type: MyComponent, selector: "my-component", ngImport: i0, template: '<input #user>Hello {{user.value}}!', isInline: true });
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(MyComponent, [{
-        type: Component,
-        args: [{ selector: 'my-component', template: '<input #user>Hello {{user.value}}!' }]
-    }], null, null); })();
+MyComponent.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyComponent, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyComponent, selector: "my-component", ngImport: i0, template: '<input #user>Hello {{user.value}}!', isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyComponent, decorators: [{
+            type: Component,
+            args: [{ selector: 'my-component', template: '<input #user>Hello {{user.value}}!' }]
+        }] });
 export class MyModule {
 }
-MyModule.ɵmod = /*@__PURE__*/ i0.ɵɵdefineNgModule({ type: MyModule });
-MyModule.ɵinj = /*@__PURE__*/ i0.ɵɵdefineInjector({ factory: function MyModule_Factory(t) { return new (t || MyModule)(); } });
-(function () { (typeof ngJitMode === "undefined" || ngJitMode) && i0.ɵɵsetNgModuleScope(MyModule, { declarations: [MyComponent] }); })();
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(MyModule, [{
-        type: NgModule,
-        args: [{ declarations: [MyComponent] }]
-    }], null, null); })();
+MyModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+MyModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, declarations: [MyComponent] });
+MyModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, decorators: [{
+            type: NgModule,
+            args: [{ declarations: [MyComponent] }]
+        }] });
 
 /****************************************************************************************************
  * PARTIAL FILE: local_reference.d.ts
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never, false, never>;
 }
 export declare class MyModule {
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -42,16 +43,16 @@ import * as i0 from "@angular/core";
 export class IfDirective {
     constructor(template) { }
 }
-IfDirective.ɵfac = function IfDirective_Factory(t) { return new (t || IfDirective)(i0.ɵɵdirectiveInject(i0.TemplateRef)); };
-IfDirective.ɵdir = i0.ɵɵngDeclareDirective({ version: "0.0.0-PLACEHOLDER", type: IfDirective, selector: "[if]", ngImport: i0 });
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(IfDirective, [{
-        type: Directive,
-        args: [{ selector: '[if]' }]
-    }], function () { return [{ type: i0.TemplateRef }]; }, null); })();
+IfDirective.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: IfDirective, deps: [{ token: i0.TemplateRef }], target: i0.ɵɵFactoryTarget.Directive });
+IfDirective.ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: IfDirective, selector: "[if]", ngImport: i0 });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: IfDirective, decorators: [{
+            type: Directive,
+            args: [{ selector: '[if]' }]
+        }], ctorParameters: function () { return [{ type: i0.TemplateRef }]; } });
 export class MyComponent {
 }
-MyComponent.ɵfac = function MyComponent_Factory(t) { return new (t || MyComponent)(); };
-MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", type: MyComponent, selector: "my-component", ngImport: i0, template: `
+MyComponent.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyComponent, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyComponent, selector: "my-component", ngImport: i0, template: `
     <div #foo></div>
     {{foo}}
     <div *if>
@@ -60,12 +61,12 @@ MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", ty
       <span #bar></span>
     </div>
     <div #baz></div>
-    `, isInline: true, directives: [{ type: IfDirective, selector: "[if]" }] });
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(MyComponent, [{
-        type: Component,
-        args: [{
-                selector: 'my-component',
-                template: `
+    `, isInline: true, dependencies: [{ kind: "directive", type: IfDirective, selector: "[if]" }] });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyComponent, decorators: [{
+            type: Component,
+            args: [{
+                    selector: 'my-component',
+                    template: `
     <div #foo></div>
     {{foo}}
     <div *if>
@@ -75,17 +76,17 @@ MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", ty
     </div>
     <div #baz></div>
     `
-            }]
-    }], null, null); })();
+                }]
+        }] });
 export class MyModule {
 }
-MyModule.ɵmod = /*@__PURE__*/ i0.ɵɵdefineNgModule({ type: MyModule });
-MyModule.ɵinj = /*@__PURE__*/ i0.ɵɵdefineInjector({ factory: function MyModule_Factory(t) { return new (t || MyModule)(); } });
-(function () { (typeof ngJitMode === "undefined" || ngJitMode) && i0.ɵɵsetNgModuleScope(MyModule, { declarations: [IfDirective, MyComponent] }); })();
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(MyModule, [{
-        type: NgModule,
-        args: [{ declarations: [IfDirective, MyComponent] }]
-    }], null, null); })();
+MyModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+MyModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, declarations: [IfDirective, MyComponent] });
+MyModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, decorators: [{
+            type: NgModule,
+            args: [{ declarations: [IfDirective, MyComponent] }]
+        }] });
 
 /****************************************************************************************************
  * PARTIAL FILE: local_reference_nested.d.ts
@@ -94,16 +95,17 @@ import { TemplateRef } from '@angular/core';
 import * as i0 from "@angular/core";
 export declare class IfDirective {
     constructor(template: TemplateRef<any>);
-    static ɵfac: i0.ɵɵFactoryDef<IfDirective, never>;
-    static ɵdir: i0.ɵɵDirectiveDefWithMeta<IfDirective, "[if]", never, {}, {}, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<IfDirective, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<IfDirective, "[if]", never, {}, {}, never, never, false, never>;
 }
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never, false, never>;
 }
 export declare class MyModule {
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof IfDirective, typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof IfDirective, typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -113,48 +115,49 @@ import { Component, NgModule } from '@angular/core';
 import * as i0 from "@angular/core";
 export class MyComponent {
 }
-MyComponent.ɵfac = function MyComponent_Factory(t) { return new (t || MyComponent)(); };
-MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", type: MyComponent, selector: "my-component", ngImport: i0, template: `
+MyComponent.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyComponent, deps: [], target: i0.ɵɵFactoryTarget.Component });
+MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: MyComponent, selector: "my-component", ngImport: i0, template: `
     <div *ngFor="let item of items">
        <div #foo></div>
         <span *ngIf="showing">
           {{ foo }} - {{ item }}
         </span>
     </div>`, isInline: true });
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(MyComponent, [{
-        type: Component,
-        args: [{
-                selector: 'my-component',
-                template: `
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyComponent, decorators: [{
+            type: Component,
+            args: [{
+                    selector: 'my-component',
+                    template: `
     <div *ngFor="let item of items">
        <div #foo></div>
         <span *ngIf="showing">
           {{ foo }} - {{ item }}
         </span>
     </div>`
-            }]
-    }], null, null); })();
+                }]
+        }] });
 export class MyModule {
 }
-MyModule.ɵmod = /*@__PURE__*/ i0.ɵɵdefineNgModule({ type: MyModule });
-MyModule.ɵinj = /*@__PURE__*/ i0.ɵɵdefineInjector({ factory: function MyModule_Factory(t) { return new (t || MyModule)(); } });
-(function () { (typeof ngJitMode === "undefined" || ngJitMode) && i0.ɵɵsetNgModuleScope(MyModule, { declarations: [MyComponent] }); })();
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(MyModule, [{
-        type: NgModule,
-        args: [{ declarations: [MyComponent] }]
-    }], null, null); })();
+MyModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+MyModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, declarations: [MyComponent] });
+MyModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: MyModule, decorators: [{
+            type: NgModule,
+            args: [{ declarations: [MyComponent] }]
+        }] });
 
 /****************************************************************************************************
  * PARTIAL FILE: local_reference_and_context_variables.d.ts
  ****************************************************************************************************/
 import * as i0 from "@angular/core";
 export declare class MyComponent {
-    static ɵfac: i0.ɵɵFactoryDef<MyComponent, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<MyComponent, "my-component", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<MyComponent, "my-component", never, {}, {}, never, never, false, never>;
 }
 export declare class MyModule {
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<MyModule, [typeof MyComponent], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<MyModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<MyModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<MyModule, [typeof MyComponent], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<MyModule>;
 }
 
 /****************************************************************************************************
@@ -189,45 +192,45 @@ export class LifecycleComp {
         events.push(this.nameMin);
     }
 }
-LifecycleComp.ɵfac = function LifecycleComp_Factory(t) { return new (t || LifecycleComp)(); };
-LifecycleComp.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", type: LifecycleComp, selector: "lifecycle-comp", inputs: { nameMin: ["name", "nameMin"] }, usesOnChanges: true, ngImport: i0, template: '', isInline: true });
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(LifecycleComp, [{
-        type: Component,
-        args: [{ selector: 'lifecycle-comp', template: '' }]
-    }], null, { nameMin: [{
-            type: Input,
-            args: ['name']
-        }] }); })();
+LifecycleComp.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: LifecycleComp, deps: [], target: i0.ɵɵFactoryTarget.Component });
+LifecycleComp.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: LifecycleComp, selector: "lifecycle-comp", inputs: { nameMin: ["name", "nameMin"] }, usesOnChanges: true, ngImport: i0, template: '', isInline: true });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: LifecycleComp, decorators: [{
+            type: Component,
+            args: [{ selector: 'lifecycle-comp', template: '' }]
+        }], propDecorators: { nameMin: [{
+                type: Input,
+                args: ['name']
+            }] } });
 export class SimpleLayout {
     constructor() {
         this.name1 = '1';
         this.name2 = '2';
     }
 }
-SimpleLayout.ɵfac = function SimpleLayout_Factory(t) { return new (t || SimpleLayout)(); };
-SimpleLayout.ɵcmp = i0.ɵɵngDeclareComponent({ version: "0.0.0-PLACEHOLDER", type: SimpleLayout, selector: "simple-layout", ngImport: i0, template: `
+SimpleLayout.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: SimpleLayout, deps: [], target: i0.ɵɵFactoryTarget.Component });
+SimpleLayout.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", type: SimpleLayout, selector: "simple-layout", ngImport: i0, template: `
     <lifecycle-comp [name]="name1"></lifecycle-comp>
     <lifecycle-comp [name]="name2"></lifecycle-comp>
-  `, isInline: true, directives: [{ type: LifecycleComp, selector: "lifecycle-comp", inputs: ["name"] }] });
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(SimpleLayout, [{
-        type: Component,
-        args: [{
-                selector: 'simple-layout',
-                template: `
+  `, isInline: true, dependencies: [{ kind: "component", type: LifecycleComp, selector: "lifecycle-comp", inputs: ["name"] }] });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: SimpleLayout, decorators: [{
+            type: Component,
+            args: [{
+                    selector: 'simple-layout',
+                    template: `
     <lifecycle-comp [name]="name1"></lifecycle-comp>
     <lifecycle-comp [name]="name2"></lifecycle-comp>
   `
-            }]
-    }], null, null); })();
+                }]
+        }] });
 export class LifecycleModule {
 }
-LifecycleModule.ɵmod = /*@__PURE__*/ i0.ɵɵdefineNgModule({ type: LifecycleModule });
-LifecycleModule.ɵinj = /*@__PURE__*/ i0.ɵɵdefineInjector({ factory: function LifecycleModule_Factory(t) { return new (t || LifecycleModule)(); } });
-(function () { (typeof ngJitMode === "undefined" || ngJitMode) && i0.ɵɵsetNgModuleScope(LifecycleModule, { declarations: [LifecycleComp, SimpleLayout] }); })();
-(function () { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassMetadata(LifecycleModule, [{
-        type: NgModule,
-        args: [{ declarations: [LifecycleComp, SimpleLayout] }]
-    }], null, null); })();
+LifecycleModule.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: LifecycleModule, deps: [], target: i0.ɵɵFactoryTarget.NgModule });
+LifecycleModule.ɵmod = i0.ɵɵngDeclareNgModule({ minVersion: "14.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: LifecycleModule, declarations: [LifecycleComp, SimpleLayout] });
+LifecycleModule.ɵinj = i0.ɵɵngDeclareInjector({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: LifecycleModule });
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: LifecycleModule, decorators: [{
+            type: NgModule,
+            args: [{ declarations: [LifecycleComp, SimpleLayout] }]
+        }] });
 
 /****************************************************************************************************
  * PARTIAL FILE: lifecycle_hooks.d.ts
@@ -243,17 +246,18 @@ export declare class LifecycleComp {
     ngAfterViewInit(): void;
     ngAfterViewChecked(): void;
     ngOnDestroy(): void;
-    static ɵfac: i0.ɵɵFactoryDef<LifecycleComp, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<LifecycleComp, "lifecycle-comp", never, { "nameMin": "name"; }, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<LifecycleComp, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<LifecycleComp, "lifecycle-comp", never, { "nameMin": { "alias": "name"; "required": false; }; }, {}, never, never, false, never>;
 }
 export declare class SimpleLayout {
     name1: string;
     name2: string;
-    static ɵfac: i0.ɵɵFactoryDef<SimpleLayout, never>;
-    static ɵcmp: i0.ɵɵComponentDefWithMeta<SimpleLayout, "simple-layout", never, {}, {}, never, never>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<SimpleLayout, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<SimpleLayout, "simple-layout", never, {}, {}, never, never, false, never>;
 }
 export declare class LifecycleModule {
-    static ɵmod: i0.ɵɵNgModuleDefWithMeta<LifecycleModule, [typeof LifecycleComp, typeof SimpleLayout], never, never>;
-    static ɵinj: i0.ɵɵInjectorDef<LifecycleModule>;
+    static ɵfac: i0.ɵɵFactoryDeclaration<LifecycleModule, never>;
+    static ɵmod: i0.ɵɵNgModuleDeclaration<LifecycleModule, [typeof LifecycleComp, typeof SimpleLayout], never, never>;
+    static ɵinj: i0.ɵɵInjectorDeclaration<LifecycleModule>;
 }
 

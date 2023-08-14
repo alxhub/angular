@@ -6,5 +6,4 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-export * from './src/render3';
-export * from './src/ivy_test_selectors';
+export * from './src/utils';

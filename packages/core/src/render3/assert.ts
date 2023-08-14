@@ -15,7 +15,7 @@ import {TIcu} from './interfaces/i18n';
 import {NodeInjectorOffset} from './interfaces/injector';
 import {TNode} from './interfaces/node';
 import {isLContainer, isLView} from './interfaces/type_checks';
-import {DECLARATION_COMPONENT_VIEW, HEADER_OFFSET, LView, T_HOST, TVIEW, TView} from './interfaces/view';
+import {DECLARATION_COMPONENT_VIEW, FLAGS, HEADER_OFFSET, LView, LViewFlags, T_HOST, TVIEW, TView} from './interfaces/view';
 
 // [Assert functions do not constraint type when they are guarded by a truthy
 // expression.](https://github.com/microsoft/TypeScript/issues/37295)
@@ -27,10 +27,13 @@ export function assertTNodeForLView(tNode: TNode, lView: LView) {
 
 export function assertTNodeForTView(tNode: TNode, tView: TView) {
   assertTNode(tNode);
-  tNode.hasOwnProperty('tView_') &&
-      assertEqual(
-          (tNode as any as {tView_: TView}).tView_, tView,
-          'This TNode does not belong to this TView.');
+  const tData = tView.data;
+  for (let i = HEADER_OFFSET; i < tData.length; i++) {
+    if (tData[i] === tNode) {
+      return;
+    }
+  }
+  throwError('This TNode does not belong to this TView.');
 }
 
 export function assertTNode(tNode: TNode) {
@@ -73,12 +76,6 @@ export function assertHasParent(tNode: TNode|null) {
   assertDefined(tNode!.parent, 'currentTNode should have a parent');
 }
 
-export function assertDataNext(lView: LView, index: number, arr?: any[]) {
-  if (arr == null) arr = lView;
-  assertEqual(
-      arr.length, index, `index ${index} expected to be at the end of arr (length ${arr.length})`);
-}
-
 export function assertLContainer(value: any): asserts value is LContainer {
   assertDefined(value, 'LContainer must be defined');
   assertEqual(isLContainer(value), true, 'Expecting LContainer');
@@ -117,11 +114,6 @@ export function assertDirectiveDef<T>(obj: any): asserts obj is DirectiveDef<T> 
 export function assertIndexInDeclRange(lView: LView, index: number) {
   const tView = lView[1];
   assertBetween(HEADER_OFFSET, tView.bindingStartIndex, index);
-}
-
-export function assertIndexInVarsRange(lView: LView, index: number) {
-  const tView = lView[1];
-  assertBetween(tView.bindingStartIndex, tView.expandoStartIndex, index);
 }
 
 export function assertIndexInExpandoRange(lView: LView, index: number) {

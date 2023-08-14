@@ -7,11 +7,13 @@
  */
 
 import {ConstantPool} from '@angular/compiler';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
-import {DefaultImportRecorder, ImportRewriter} from '../../imports';
+import {DefaultImportTracker, ImportRewriter} from '../../imports';
+import {getDefaultImportDeclaration} from '../../imports/src/default';
+import {PerfPhase, PerfRecorder} from '../../perf';
 import {Decorator, ReflectionHost} from '../../reflection';
-import {ImportManager, RecordWrappedNodeExprFn, translateExpression, translateStatement, TranslatorOptions} from '../../translator';
+import {ImportManager, RecordWrappedNodeFn, translateExpression, translateStatement, TranslatorOptions} from '../../translator';
 import {visit, VisitListEntryResult, Visitor} from '../../util/src/visitor';
 
 import {CompileResult} from './api';
@@ -33,14 +35,16 @@ interface FileOverviewMeta {
 
 export function ivyTransformFactory(
     compilation: TraitCompiler, reflector: ReflectionHost, importRewriter: ImportRewriter,
-    defaultImportRecorder: DefaultImportRecorder, isCore: boolean,
+    defaultImportTracker: DefaultImportTracker, perf: PerfRecorder, isCore: boolean,
     isClosureCompilerEnabled: boolean): ts.TransformerFactory<ts.SourceFile> {
-  const recordWrappedNodeExpr = createRecorderFn(defaultImportRecorder);
+  const recordWrappedNode = createRecorderFn(defaultImportTracker);
   return (context: ts.TransformationContext): ts.Transformer<ts.SourceFile> => {
     return (file: ts.SourceFile): ts.SourceFile => {
-      return transformIvySourceFile(
-          compilation, context, reflector, importRewriter, file, isCore, isClosureCompilerEnabled,
-          recordWrappedNodeExpr);
+      return perf.inPhase(
+          PerfPhase.Compile,
+          () => transformIvySourceFile(
+              compilation, context, reflector, importRewriter, file, isCore,
+              isClosureCompilerEnabled, recordWrappedNode));
     };
   };
 }
@@ -52,18 +56,29 @@ export function ivyTransformFactory(
  */
 class IvyCompilationVisitor extends Visitor {
   public classCompilationMap = new Map<ts.ClassDeclaration, CompileResult[]>();
+  public deferrableImports = new Set<ts.ImportDeclaration>();
 
   constructor(private compilation: TraitCompiler, private constantPool: ConstantPool) {
     super();
   }
 
-  visitClassDeclaration(node: ts.ClassDeclaration):
+  override visitClassDeclaration(node: ts.ClassDeclaration):
       VisitListEntryResult<ts.Statement, ts.ClassDeclaration> {
     // Determine if this class has an Ivy field that needs to be added, and compile the field
     // to an expression if so.
     const result = this.compilation.compile(node, this.constantPool);
     if (result !== null) {
       this.classCompilationMap.set(node, result);
+
+      // Collect all deferrable imports declarations into a single set,
+      // so that we can pass it to the transform visitor that will drop
+      // corresponding regular import declarations.
+      for (const classResult of result) {
+        if (classResult.deferrableImports !== null && classResult.deferrableImports.size > 0) {
+          classResult.deferrableImports.forEach(
+              importDecl => this.deferrableImports.add(importDecl));
+        }
+      }
     }
     return {node};
   }
@@ -78,12 +93,13 @@ class IvyTransformationVisitor extends Visitor {
       private compilation: TraitCompiler,
       private classCompilationMap: Map<ts.ClassDeclaration, CompileResult[]>,
       private reflector: ReflectionHost, private importManager: ImportManager,
-      private recordWrappedNodeExpr: RecordWrappedNodeExprFn<ts.Expression>,
-      private isClosureCompilerEnabled: boolean, private isCore: boolean) {
+      private recordWrappedNodeExpr: RecordWrappedNodeFn<ts.Expression>,
+      private isClosureCompilerEnabled: boolean, private isCore: boolean,
+      private deferrableImports: Set<ts.ImportDeclaration>) {
     super();
   }
 
-  visitClassDeclaration(node: ts.ClassDeclaration):
+  override visitClassDeclaration(node: ts.ClassDeclaration):
       VisitListEntryResult<ts.Statement, ts.ClassDeclaration> {
     // If this class is not registered in the map, it means that it doesn't have Angular decorators,
     // thus no further processing is required.
@@ -92,7 +108,7 @@ class IvyTransformationVisitor extends Visitor {
     }
 
     const translateOptions: TranslatorOptions<ts.Expression> = {
-      recordWrappedNodeExpr: this.recordWrappedNodeExpr,
+      recordWrappedNode: this.recordWrappedNodeExpr,
       annotateForClosureCompiler: this.isClosureCompilerEnabled,
     };
 
@@ -101,13 +117,18 @@ class IvyTransformationVisitor extends Visitor {
     const members = [...node.members];
 
     for (const field of this.classCompilationMap.get(node)!) {
+      // Type-only member.
+      if (field.initializer === null) {
+        continue;
+      }
+
       // Translate the initializer for the field into TS nodes.
       const exprNode = translateExpression(field.initializer, this.importManager, translateOptions);
 
       // Create a static property declaration for the new field.
-      const property = ts.createProperty(
-          undefined, [ts.createToken(ts.SyntaxKind.StaticKeyword)], field.name, undefined,
-          undefined, exprNode);
+      const property = ts.factory.createPropertyDeclaration(
+          [ts.factory.createToken(ts.SyntaxKind.StaticKeyword)], field.name, undefined, undefined,
+          exprNode);
 
       if (this.isClosureCompilerEnabled) {
         // Closure compiler transforms the form `Service.ɵprov = X` into `Service$ɵprov = X`. To
@@ -125,15 +146,33 @@ class IvyTransformationVisitor extends Visitor {
       members.push(property);
     }
 
-    // Replace the class declaration with an updated version.
-    node = ts.updateClassDeclaration(
-        node,
+    const filteredDecorators =
         // Remove the decorator which triggered this compilation, leaving the others alone.
-        maybeFilterDecorator(node.decorators, this.compilation.decoratorsFor(node)), node.modifiers,
-        node.name, node.typeParameters, node.heritageClauses || [],
+        maybeFilterDecorator(ts.getDecorators(node), this.compilation.decoratorsFor(node));
+
+    const nodeModifiers = ts.getModifiers(node);
+    let updatedModifiers: ts.ModifierLike[]|undefined;
+
+    if (filteredDecorators?.length || nodeModifiers?.length) {
+      updatedModifiers = [...(filteredDecorators || []), ...(nodeModifiers || [])];
+    }
+
+    // Replace the class declaration with an updated version.
+    node = ts.factory.updateClassDeclaration(
+        node, updatedModifiers, node.name, node.typeParameters, node.heritageClauses || [],
         // Map over the class members and remove any Angular decorators from them.
         members.map(member => this._stripAngularDecorators(member)));
     return {node, after: statements};
+  }
+
+  override visitOtherNode<T extends ts.Node>(node: T): T {
+    if (ts.isImportDeclaration(node) && this.deferrableImports.has(node)) {
+      // Return `null` as an indication that this node should not be present
+      // in the final AST. Symbols from this import would be imported via
+      // dynamic imports.
+      return null!;
+    }
+    return node;
   }
 
   /**
@@ -154,31 +193,26 @@ class IvyTransformationVisitor extends Visitor {
     }
   }
 
-  /**
-   * Given a `ts.Node`, filter the decorators array and return a version containing only non-Angular
-   * decorators.
-   *
-   * If all decorators are removed (or none existed in the first place), this method returns
-   * `undefined`.
-   */
-  private _nonCoreDecoratorsOnly(node: ts.Declaration): ts.NodeArray<ts.Decorator>|undefined {
+  private _nonCoreDecoratorsOnly(node: ts.HasDecorators): ts.NodeArray<ts.Decorator>|undefined {
+    const decorators = ts.getDecorators(node);
+
     // Shortcut if the node has no decorators.
-    if (node.decorators === undefined) {
+    if (decorators === undefined) {
       return undefined;
     }
     // Build a Set of the decorators on this node from @angular/core.
     const coreDecorators = this._angularCoreDecorators(node);
 
-    if (coreDecorators.size === node.decorators.length) {
+    if (coreDecorators.size === decorators.length) {
       // If all decorators are to be removed, return `undefined`.
       return undefined;
     } else if (coreDecorators.size === 0) {
       // If no decorators need to be removed, return the original decorators array.
-      return node.decorators;
+      return nodeArrayFromDecoratorsArray(decorators);
     }
 
     // Filter out the core decorators.
-    const filtered = node.decorators.filter(dec => !coreDecorators.has(dec));
+    const filtered = decorators.filter(dec => !coreDecorators.has(dec));
 
     // If no decorators survive, return `undefined`. This can only happen if a core decorator is
     // repeated on the node.
@@ -187,10 +221,7 @@ class IvyTransformationVisitor extends Visitor {
     }
 
     // Create a new `NodeArray` with the filtered decorators that sourcemaps back to the original.
-    const array = ts.createNodeArray(filtered);
-    (array.pos as number) = node.decorators.pos;
-    (array.end as number) = node.decorators.end;
-    return array;
+    return nodeArrayFromDecoratorsArray(filtered);
   }
 
   /**
@@ -200,42 +231,43 @@ class IvyTransformationVisitor extends Visitor {
    * as parameters of constructors.
    */
   private _stripAngularDecorators<T extends ts.Node>(node: T): T {
+    const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
+    const nonCoreDecorators =
+        ts.canHaveDecorators(node) ? this._nonCoreDecoratorsOnly(node) : undefined;
+    const combinedModifiers = [...(nonCoreDecorators || []), ...(modifiers || [])];
+
     if (ts.isParameter(node)) {
       // Strip decorators from parameters (probably of the constructor).
-      node = ts.updateParameter(
-                 node, this._nonCoreDecoratorsOnly(node), node.modifiers, node.dotDotDotToken,
-                 node.name, node.questionToken, node.type, node.initializer) as T &
+      node = ts.factory.updateParameterDeclaration(
+                 node, combinedModifiers, node.dotDotDotToken, node.name, node.questionToken,
+                 node.type, node.initializer) as T &
           ts.ParameterDeclaration;
-    } else if (ts.isMethodDeclaration(node) && node.decorators !== undefined) {
+    } else if (ts.isMethodDeclaration(node)) {
       // Strip decorators of methods.
-      node = ts.updateMethod(
-                 node, this._nonCoreDecoratorsOnly(node), node.modifiers, node.asteriskToken,
-                 node.name, node.questionToken, node.typeParameters, node.parameters, node.type,
-                 node.body) as T &
+      node = ts.factory.updateMethodDeclaration(
+                 node, combinedModifiers, node.asteriskToken, node.name, node.questionToken,
+                 node.typeParameters, node.parameters, node.type, node.body) as T &
           ts.MethodDeclaration;
-    } else if (ts.isPropertyDeclaration(node) && node.decorators !== undefined) {
+    } else if (ts.isPropertyDeclaration(node)) {
       // Strip decorators of properties.
-      node = ts.updateProperty(
-                 node, this._nonCoreDecoratorsOnly(node), node.modifiers, node.name,
-                 node.questionToken, node.type, node.initializer) as T &
+      node = ts.factory.updatePropertyDeclaration(
+                 node, combinedModifiers, node.name, node.questionToken, node.type,
+                 node.initializer) as T &
           ts.PropertyDeclaration;
     } else if (ts.isGetAccessor(node)) {
       // Strip decorators of getters.
-      node = ts.updateGetAccessor(
-                 node, this._nonCoreDecoratorsOnly(node), node.modifiers, node.name,
-                 node.parameters, node.type, node.body) as T &
+      node = ts.factory.updateGetAccessorDeclaration(
+                 node, combinedModifiers, node.name, node.parameters, node.type, node.body) as T &
           ts.GetAccessorDeclaration;
     } else if (ts.isSetAccessor(node)) {
       // Strip decorators of setters.
-      node = ts.updateSetAccessor(
-                 node, this._nonCoreDecoratorsOnly(node), node.modifiers, node.name,
-                 node.parameters, node.body) as T &
+      node = ts.factory.updateSetAccessorDeclaration(
+                 node, combinedModifiers, node.name, node.parameters, node.body) as T &
           ts.SetAccessorDeclaration;
     } else if (ts.isConstructorDeclaration(node)) {
       // For constructors, strip decorators of the parameters.
       const parameters = node.parameters.map(param => this._stripAngularDecorators(param));
-      node =
-          ts.updateConstructor(node, node.decorators, node.modifiers, parameters, node.body) as T &
+      node = ts.factory.updateConstructorDeclaration(node, modifiers, parameters, node.body) as T &
           ts.ConstructorDeclaration;
     }
     return node;
@@ -249,7 +281,7 @@ function transformIvySourceFile(
     compilation: TraitCompiler, context: ts.TransformationContext, reflector: ReflectionHost,
     importRewriter: ImportRewriter, file: ts.SourceFile, isCore: boolean,
     isClosureCompilerEnabled: boolean,
-    recordWrappedNodeExpr: RecordWrappedNodeExprFn<ts.Expression>): ts.SourceFile {
+    recordWrappedNode: RecordWrappedNodeFn<ts.Expression>): ts.SourceFile {
   const constantPool = new ConstantPool(isClosureCompilerEnabled);
   const importManager = new ImportManager(importRewriter);
 
@@ -271,7 +303,7 @@ function transformIvySourceFile(
   // results obtained at Step 1.
   const transformationVisitor = new IvyTransformationVisitor(
       compilation, compilationVisitor.classCompilationMap, reflector, importManager,
-      recordWrappedNodeExpr, isClosureCompilerEnabled, isCore);
+      recordWrappedNode, isClosureCompilerEnabled, isCore, compilationVisitor.deferrableImports);
   let sf = visit(file, transformationVisitor, context);
 
   // Generate the constant statements first, as they may involve adding additional imports
@@ -279,7 +311,7 @@ function transformIvySourceFile(
   const downlevelTranslatedCode = getLocalizeCompileTarget(context) < ts.ScriptTarget.ES2015;
   const constants =
       constantPool.statements.map(stmt => translateStatement(stmt, importManager, {
-                                    recordWrappedNodeExpr,
+                                    recordWrappedNode,
                                     downlevelTaggedTemplates: downlevelTranslatedCode,
                                     downlevelVariableDeclarations: downlevelTranslatedCode,
                                     annotateForClosureCompiler: isClosureCompilerEnabled,
@@ -350,7 +382,7 @@ function setFileOverviewComment(sf: ts.SourceFile, fileoverview: FileOverviewMet
 }
 
 function maybeFilterDecorator(
-    decorators: ts.NodeArray<ts.Decorator>|undefined,
+    decorators: readonly ts.Decorator[]|undefined,
     toRemove: ts.Decorator[]): ts.NodeArray<ts.Decorator>|undefined {
   if (decorators === undefined) {
     return undefined;
@@ -360,18 +392,32 @@ function maybeFilterDecorator(
   if (filtered.length === 0) {
     return undefined;
   }
-  return ts.createNodeArray(filtered);
+  return ts.factory.createNodeArray(filtered);
 }
 
 function isFromAngularCore(decorator: Decorator): boolean {
   return decorator.import !== null && decorator.import.from === '@angular/core';
 }
 
-function createRecorderFn(defaultImportRecorder: DefaultImportRecorder):
-    RecordWrappedNodeExprFn<ts.Expression> {
-  return expr => {
-    if (ts.isIdentifier(expr)) {
-      defaultImportRecorder.recordUsedIdentifier(expr);
+function createRecorderFn(defaultImportTracker: DefaultImportTracker):
+    RecordWrappedNodeFn<ts.Expression> {
+  return node => {
+    const importDecl = getDefaultImportDeclaration(node);
+    if (importDecl !== null) {
+      defaultImportTracker.recordUsedImport(importDecl);
     }
   };
+}
+
+/** Creates a `NodeArray` with the correct offsets from an array of decorators. */
+function nodeArrayFromDecoratorsArray(decorators: readonly ts.Decorator[]):
+    ts.NodeArray<ts.Decorator> {
+  const array = ts.factory.createNodeArray(decorators);
+
+  if (array.length > 0) {
+    (array.pos as number) = decorators[0].pos;
+    (array.end as number) = decorators[decorators.length - 1].end;
+  }
+
+  return array;
 }

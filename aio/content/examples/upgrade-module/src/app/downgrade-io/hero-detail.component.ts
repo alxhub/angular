@@ -6,12 +6,12 @@ import { Hero } from '../hero';
   selector: 'hero-detail',
   template: `
     <h2>{{hero.name}} details!</h2>
-    <div><label>id: </label>{{hero.id}}</div>
-    <button (click)="onDelete()">Delete</button>
+    <div>id: {{hero.id}}</div>
+    <button type="button" (click)="onDelete()">Delete</button>
   `
 })
 export class HeroDetailComponent {
-  @Input() hero: Hero;
+  @Input() hero!: Hero;
   @Output() deleted = new EventEmitter<Hero>();
   onDelete() {
     this.deleted.emit(this.hero);

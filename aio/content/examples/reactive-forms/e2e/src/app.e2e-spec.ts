@@ -3,8 +3,8 @@ import { browser, element, by } from 'protractor';
 describe('Reactive forms', () => {
   const nameEditor = element(by.css('app-name-editor'));
   const profileEditor = element(by.css('app-profile-editor'));
-  const nameEditorLink = element(by.cssContainingText('app-root > nav > a', 'Name Editor'));
-  const profileEditorLink = element(by.cssContainingText('app-root > nav > a', 'Profile Editor'));
+  const nameEditorButton = element(by.cssContainingText('app-root > nav > button', 'Name Editor'));
+  const profileEditorButton = element(by.cssContainingText('app-root > nav > button', 'Profile Editor'));
 
   beforeAll(() => browser.get(''));
 
@@ -14,7 +14,7 @@ describe('Reactive forms', () => {
     const nameText = 'John Smith';
 
     beforeAll(async () => {
-      await nameEditorLink.click();
+      await nameEditorButton.click();
     });
 
     beforeEach(async () => {
@@ -54,9 +54,9 @@ describe('Reactive forms', () => {
   describe('Profile Editor', () => {
     const firstNameInput = getInput('firstName');
     const streetInput = getInput('street');
-    const addAliasButton = element(by.buttonText('Add Alias'));
+    const addAliasButton = element(by.buttonText('+ Add another alias'));
     const updateButton = profileEditor.element(by.buttonText('Update Profile'));
-    const profile = {
+    const profile: Record<string, string | number> = {
       firstName: 'John',
       lastName: 'Smith',
       street: '345 South Lane',
@@ -66,12 +66,12 @@ describe('Reactive forms', () => {
     };
 
     beforeAll(async () => {
-      await profileEditorLink.click();
+      await profileEditorButton.click();
     });
 
     beforeEach(async () => {
       await browser.get('');
-      await profileEditorLink.click();
+      await profileEditorButton.click();
     });
 
     it('should be invalid by default', async () => {
@@ -121,15 +121,14 @@ describe('Reactive forms', () => {
           )
       );
 
-      const aliasInputs = profileEditor.all(by.cssContainingText('label', 'Alias'));
-      const aliasInput = aliasInputs.get(0).element(by.css('input'));
+      const aliasInput = profileEditor.all(by.css('#alias-0'));
       await aliasInput.sendKeys(aliasText);
       const formValueElement = profileEditor.all(by.cssContainingText('p', 'Form Value:'));
       const formValue = await formValueElement.getText();
       const formJson = JSON.parse(formValue.toString().replace('Form Value:', ''));
 
-      expect(profile.firstName).toBe(formJson.firstName);
-      expect(profile.lastName).toBe(formJson.lastName);
+      expect(profile['firstName']).toBe(formJson.firstName);
+      expect(profile['lastName']).toBe(formJson.lastName);
       expect(formJson.aliases[0]).toBe(aliasText);
     });
   });

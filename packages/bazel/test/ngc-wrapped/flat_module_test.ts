@@ -6,12 +6,9 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {obsoleteInIvy, onlyInIvy} from '@angular/private/testing';
+import {runfiles} from '@bazel/runfiles';
 import {existsSync, readFileSync} from 'fs';
 import {dirname, join} from 'path';
-
-/** Runfiles helper from bazel to resolve file name paths.  */
-const runfiles = require(process.env['BAZEL_NODE_RUNFILES_HELPER']!);
 
 describe('flat_module ng_module', () => {
   let packageOutput: string;
@@ -19,8 +16,8 @@ describe('flat_module ng_module', () => {
 
   beforeAll(() => {
     packageOutput =
-        dirname(runfiles.resolve('angular/packages/bazel/test/ngc-wrapped/flat_module/index.js'));
-    flatModuleOutFile = join(packageOutput, 'flat_module.js');
+        dirname(runfiles.resolve('angular/packages/bazel/test/ngc-wrapped/flat_module/index.mjs'));
+    flatModuleOutFile = join(packageOutput, 'flat_module.mjs');
   });
 
   it('should have a flat module out file', () => {
@@ -28,15 +25,10 @@ describe('flat_module ng_module', () => {
   });
 
   describe('flat module out file', () => {
-    obsoleteInIvy('Ngtsc computes the AMD module name differently than NGC')
-        .it('should have a proper AMD module name', () => {
-          expect(readFileSync(flatModuleOutFile, 'utf8'))
-              .toContain(`define("flat_module/flat_module"`);
-        });
-
-    onlyInIvy('Ngtsc computes the AMD module name differently than NGC')
-        .it('should have a proper AMD module name', () => {
-          expect(readFileSync(flatModuleOutFile, 'utf8')).toContain(`define("flat_module"`);
-        });
+    it('should have a proper flat module re-export', () => {
+      expect(readFileSync(flatModuleOutFile, 'utf8')).toContain(`export * from './index';`);
+      expect(readFileSync(flatModuleOutFile, 'utf8'))
+          .toContain(`Generated bundle index. Do not edit.`);
+    });
   });
 });

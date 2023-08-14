@@ -9,28 +9,24 @@
 // We are temporarily importing the existing viewEngine_from core so we can be sure we are
 // correctly implementing its interfaces for backwards compatibility.
 
-import {InjectionToken} from '../di/injection_token';
-import {Type} from '../interface/type';
+import {ProviderToken} from '../di/provider_token';
 import {createElementRef, ElementRef as ViewEngine_ElementRef, unwrapElementRef} from '../linker/element_ref';
 import {QueryList} from '../linker/query_list';
 import {createTemplateRef, TemplateRef as ViewEngine_TemplateRef} from '../linker/template_ref';
 import {createContainerRef, ViewContainerRef} from '../linker/view_container_ref';
 import {assertDefined, assertIndexInRange, assertNumber, throwError} from '../util/assert';
 import {stringify} from '../util/stringify';
+
 import {assertFirstCreatePass, assertLContainer} from './assert';
 import {getNodeInjectable, locateDirectiveOrProvider} from './di';
 import {storeCleanupWithContext} from './instructions/shared';
 import {CONTAINER_HEADER_OFFSET, LContainer, MOVED_VIEWS} from './interfaces/container';
-import {unusedValueExportToPlacateAjd as unused1} from './interfaces/definition';
-import {unusedValueExportToPlacateAjd as unused2} from './interfaces/injector';
-import {TContainerNode, TElementContainerNode, TElementNode, TNode, TNodeType, unusedValueExportToPlacateAjd as unused3} from './interfaces/node';
-import {LQueries, LQuery, QueryFlags, TQueries, TQuery, TQueryMetadata, unusedValueExportToPlacateAjd as unused4} from './interfaces/query';
+import {TContainerNode, TElementContainerNode, TElementNode, TNode, TNodeType} from './interfaces/node';
+import {LQueries, LQuery, QueryFlags, TQueries, TQuery, TQueryMetadata} from './interfaces/query';
 import {DECLARATION_LCONTAINER, LView, PARENT, QUERIES, TVIEW, TView} from './interfaces/view';
 import {assertTNodeType} from './node_assert';
 import {getCurrentQueryIndex, getCurrentTNode, getLView, getTView, setCurrentQueryIndex} from './state';
 import {isCreationMode} from './util/view_utils';
-
-const unusedValueToPlacateAjd = unused1 + unused2 + unused3 + unused4;
 
 class LQuery_<T> implements LQuery<T> {
   matches: (T|null)[]|null = null;
@@ -88,7 +84,7 @@ class LQueries_ implements LQueries {
 
 class TQueryMetadata_ implements TQueryMetadata {
   constructor(
-      public predicate: Type<any>|InjectionToken<unknown>|string[], public flags: QueryFlags,
+      public predicate: ProviderToken<unknown>|string[], public flags: QueryFlags,
       public read: any = null) {}
 }
 
@@ -456,7 +452,7 @@ export function ɵɵqueryRefresh(queryList: QueryList<any>): boolean {
  * @codeGenApi
  */
 export function ɵɵviewQuery<T>(
-    predicate: Type<any>|InjectionToken<unknown>|string[], flags: QueryFlags, read?: any): void {
+    predicate: ProviderToken<unknown>|string[], flags: QueryFlags, read?: any): void {
   ngDevMode && assertNumber(flags, 'Expecting flags');
   const tView = getTView();
   if (tView.firstCreatePass) {
@@ -481,8 +477,8 @@ export function ɵɵviewQuery<T>(
  * @codeGenApi
  */
 export function ɵɵcontentQuery<T>(
-    directiveIndex: number, predicate: Type<any>|InjectionToken<unknown>|string[],
-    flags: QueryFlags, read?: any): void {
+    directiveIndex: number, predicate: ProviderToken<unknown>|string[], flags: QueryFlags,
+    read?: any): void {
   ngDevMode && assertNumber(flags, 'Expecting flags');
   const tView = getTView();
   if (tView.firstCreatePass) {

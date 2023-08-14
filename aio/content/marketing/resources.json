@@ -1,6 +1,6 @@
 {
   "Community": {
-    "order": 3,
+    "order": 1,
     "subCategories": {
       "Community Curations": {
         "order": 1,
@@ -44,28 +44,67 @@
             "desc": "A collection of Angular builders for your Angular projects",
             "url": "https://angular-builders.dev/",
             "title": "Angular Builders"
+          },
+          "butter-cms": {
+            "desc": "Add API Based CMS to your Angular app",
+            "url": "https://github.com/ButterCMS/buttercms-angular-tutorial",
+            "title": "API Based CMS with Butter"
+          },
+          "angular-community-meetup": {
+            "desc": "Come learn technical skills and network at this monthly, multi-series, multi-event, multi-timezone online meetup.",
+            "url": "https://angularcommunity.net",
+            "title": "Angular Community Meetup"
+          },
+          "This-is-Angular": {
+            "desc": "Inclusive Angular publication free from conflict of interest. This publication is all about sharing Angular knowledge for free and not at all about money or KPIs. Cross-posts are welcome. Part of This is Learning.",
+            "url": "https://dev.to/this-is-angular",
+            "title": "This is Angular"
           }
         }
       },
       "Podcasts": {
         "order": 3,
         "resources": {
-          "sdfjkdkfj": {
+          "adventures-in-angular": {
             "desc": "Adventures in Angular is a weekly podcast dedicated to the Angular platform and related technologies, tools, languages, and practices.",
             "logo": "",
             "title": "Adventures in Angular",
             "url": "https://devchat.tv/adv-in-angular/"
           },
-          "sdlkfjsldfkj": {
+          "angular-show": {
+            "desc": "ng-conf's official all-Angular podcast.",
+            "logo": "",
+            "title": "The Angular Show",
+            "url": "https://www.spreaker.com/show/angular-show"
+          },
+          "angular-air": {
             "desc": "Weekly video podcast hosted by Jeff Whelpley with all the latest and greatest happenings in the wild world of Angular.",
             "logo": "",
             "title": "AngularAir",
             "url": "https://angularair.com/"
           },
-          "sdlkfjsldfkz": {
+          "angular-rocks": {
+            "desc": "Podcast for those who want to know more about Angular 🚀",
+            "logo": "",
+            "title": "Angular Rocks",
+            "url": "https://angularrocks.com"
+          },
+          "angular-master-podcast": {
+            "desc": "Listen / Code / Repeat. Everything you need to fall in love with Angular for a long time.",
+            "logo": "https://ng-poland.pl/images/podcast/angular-master-podcast-logo.png",
+            "title": "Angular Master Podcast",
+            "url": "https://anchor.fm/angular-master/"
+          },
+          "javascript-master-podcast": {
+            "desc": "Listen / Code / Repeat. Everything you need to know to become an informed JavaScript developer.",
+            "logo": "https://ng-poland.pl/images/podcast/javascript-master-podcast-logo.png",
+            "title": "JavaScript Master Podcast",
+            "url": "https://anchor.fm/javascript-master/"
+          },
+          "happy-angular": {
             "desc": "A weekly German podcast for Angular on the go",
             "logo": "",
-            "title": "Happy Angular Podcast",
+            "title": "Happy Angular",
             "url": "https://happy-angular.de/"
           },
           "ngruair": {
@@ -74,18 +113,18 @@
             "title": "NgRuAir",
             "url": "https://github.com/ngRuAir/ngruair"
           },
-          "the-deep-dive": {
-            "desc": "The advanced web development podcast about Angular, RxJS, TypeScript and other technologies. English, audio only.",
-            "logo": "https://i.imgur.com/mmE5Feq.jpg",
-            "title": "The Deep Dive",
-            "url": "https://thedeepdive.simplecast.com"
+          "ngxp": {
+            "desc": "Weekly technical-adjacent podcast by Brooke Avery & Erik Slack. Don't just code in Angular, come enjoy the Angular Experience!",
+            "logo": "",
+            "title": "Angular Experience (NgXP)",
+            "url": "https://ngxp.show"
           }
         }
       }
     }
   },
   "Development": {
-    "order": 1,
+    "order": 3,
     "subCategories": {
       "Cross-Platform Development": {
         "order": 5,
@@ -106,7 +145,13 @@
             "desc": "NativeScript is how you build cross-platform, native iOS and Android apps with Angular and TypeScript. Get 100% access to native APIs via JavaScript and reuse of packages from NPM, CocoaPods and Gradle. Open source and backed by Telerik.​​​",
             "logo": "",
             "title": "NativeScript",
-            "url": "https://docs.nativescript.org/angular/start/introduction"
+            "url": "https://docs.nativescript.org/tutorial/angular.html"
+          },
+          "angular-miniprogram": {
+            "desc": "MiniProgram Platform for Angular.",
+            "logo": "",
+            "title": "MiniProgram",
+            "url": "https://github.com/wszgrcy/angular-miniprogram"
           }
         }
       },
@@ -128,6 +173,11 @@
             "title": "ngrx",
             "url": "https://ngrx.io/"
           },
+          "rx-angular": {
+            "desc": "RxAngular is a reactive library that provides extensions for developing high performant and scalable applications. It addresses the issues of local state management, rendering performance, and reactive architecture.",
+            "title": "rx-angular",
+            "url": "https://rx-angular.io"
+          },
           "ngxs": {
             "desc": "NGXS is a state management pattern + library for Angular. NGXS is modeled after the CQRS pattern popularly implemented in libraries like Redux and NgRx but reduces boilerplate by using modern TypeScript features such as classes and decorators.",
             "title": "NGXS",
@@ -146,13 +196,13 @@
           },
           "ab2": {
             "desc": "Use Angular and Meteor to build full-stack JavaScript apps  for Mobile and Desktop.",
-            "logo": "http://www.angular-meteor.com/images/logo.png",
+            "logo": "https://angular-meteor.com/assets/images/logo-large.png",
             "title": "Meteor",
             "url": "https://github.com/urigo/angular-meteor"
           },
           "ab3": {
             "desc": "Apollo is a data stack for modern apps, built with GraphQL.",
-            "logo": "http://docs.apollostack.com/logo/large.png",
+            "logo": "",
             "title": "Apollo",
             "url": "https://www.apollographql.com/docs/angular/"
           },
@@ -161,6 +211,12 @@
             "logo": "",
             "title": "ngx-api-utils",
             "url": "https://github.com/ngx-api-utils/ngx-api-utils"
+          },
+          "butter": {
+            "desc": "ButterCMS is a headless CMS that lets you manage content using our dashboard and integrate it into your Angular Application",
+            "logo": "https://buttercms.com/static/v2/images/logo.fb7c1035e94d.svg",
+            "title": "ButterCMS",
+            "url": "https://buttercms.com/docs/api-client/angular"
           }
         }
       },
@@ -193,7 +249,7 @@
           "amexio-canvas": {
             "desc": "Amexio Canvas is Drag and Drop Environment to create Fully Responsive Web and Smart Device HTML5/Angular Apps. Code will be auto generated and hot deployed by the Canvas for live testing. Out of the box 50+ Material Design Theme support. Commit your code to GitHub public or private repository.",
             "title": "Amexio Canvas Web Based Drag and Drop IDE by MetaMagic",
-            "url": "https://amexio.tech/"
+            "url": "https://api.amexio.org/"
           }
         }
       },
@@ -236,6 +292,12 @@
             "title": "Compodoc",
             "url": "https://github.com/compodoc/compodoc"
           },
+          "docgeni": {
+            "desc": "A modern, powerful and out of the box documentation generator for Angular component lib and markdown docs.",
+            "logo": "",
+            "title": "Docgeni",
+            "url": "https://github.com/docgeni/docgeni"
+          },
           "angular-playground": {
             "desc": "UI development environment for building, testing, and documenting Angular applications.",
             "title": "Angular Playground",
@@ -248,16 +310,10 @@
             "url": "https://github.com/chrisguttandin/angular-prerender"
           },
           "nx": {
-            "desc": "Nx (Nrwl Extensions for Angular) is an open source toolkit built on top of Angular CLI to help enterprise teams develop Angular at scale.",
-            "title": "Nx",
+            "desc": "Nx is an open source build system featuring a lot of monorepo features that help enterprise teams develop Angular at scale.",
+            "title": "Nx - Smart, Fast and Extensible Build System",
             "logo": "https://nrwl.io/assets/nx-logo.png",
             "url": "https://nrwl.io/nx"
-          },
-          "uijar": {
-            "desc": "A drop in module to automatically create a living style guide based on the test you write for your components.",
-            "logo": "",
-            "title": "UI-jar - Test Driven Style Guide Development",
-            "url": "https://github.com/ui-jar/ui-jar"
           },
           "protractor": {
             "desc": "The official end to end testing framework for Angular applications.",
@@ -331,7 +387,7 @@
           },
           "a2b": {
             "desc": "PrimeNG is a collection of rich UI components for Angular",
-            "logo": "http://www.primefaces.org/primeng/showcase/resources/images/primeng.svg",
+            "logo": "https://www.primefaces.org/primeng/resources/images/logo-primeng.svg",
             "title": "Prime Faces",
             "url": "https://www.primefaces.org/primeng/"
           },
@@ -343,7 +399,7 @@
           },
           "a5b": {
             "desc": "High-performance UI controls with the most complete Angular support available. Wijmo’s controls are all written in TypeScript and have zero dependencies. FlexGrid control includes full declarative markup, including cell templates.",
-            "logo": "http://wijmocdn.azureedge.net/wijmositeblob/wijmo-theme/logos/wijmo-55.png",
+            "logo": "",
             "title": "Wijmo",
             "url": "https://www.grapecity.com/wijmo"
           },
@@ -365,8 +421,20 @@
             "title": "Angular Material",
             "url": "https://material.angular.io/"
           },
+          "mdb5": {
+            "desc": "Free components, templates & plugins for the latest Bootstrap 5 styled in accordance with Material Design 2.0 (guidelines introduced in 2020)",
+            "logo": "",
+            "title": "Angular & Material Design 2.0 for Bootstrap 5",
+            "url": "https://mdbootstrap.com/docs/b5/angular/"
+          },
+          "mdb4": {
+            "desc": "Free components, templates & plugins for the latest Bootstrap 4 styled in accordance with Material Design (guidelines introduced in 2015)",
+            "logo": "",
+            "title": "Angular & Material Design for Bootstrap 4",
+            "url": "https://mdbootstrap.com/docs/angular/"
+          },
           "mcc": {
-            "desc": "Material components made by the community",
+            "desc": "Material components made by the community that includes Color Picker, Timer Picker, Speed Dial and Scrollspy",
             "logo": "",
             "title": "Material Community Components",
             "url": "https://github.com/tiaguinho/material-community-components"
@@ -416,7 +484,7 @@
             "desc": "Amexio is a rich set of Angular components powered by HTML5 & CSS3 for Responsive Web Design and 80+ built-in Material Design Themes. Amexio has 3 Editions, Standard, Enterprise and Creative. Std Edition consists of basic UI Components which include Grid, Tabs, Form Inputs and so on. While Enterprise Edition consists of components like Calendar, Tree Tabs, Social Media Logins (Facebook, GitHub, Twitter and so on) and Creative Edition is focused building elegant and beautiful websites. With more than 200+ components/features. All the editions are open-sourced and free, based on Apache 2 License.",
             "title": "Amexio - Angular Extensions",
             "url": "https://amexio.tech/",
-            "logo": "http://www.amexio.org/amexio-logo.png"
+            "logo": ""
           },
           "bm": {
             "desc": "A lightweight Material Design library for Angular, based upon Google's Material Components for the Web",
@@ -480,6 +548,32 @@
             "desc": "Taiga UI is fully-treeshakable Angular UI Kit consisting of multiple base libraries and several add-ons. We have 130+ components, 100+ directives, dozens of tokens, utils and tools. They are easily customizable and well engineered.",
             "title": "Taiga UI",
             "url": "https://taiga-ui.dev"
+          },
+          "coreui-angular": {
+            "desc": "Open Source UI Components library for creating modern, beautiful, and responsive applications in half the time with high-performing and easy-to-customize UI components.",
+            "title": "CoreUI for Angular",
+            "url": "https://coreui.io/angular"
+          },
+          "poui": {
+            "desc": "PO UI, Brazilian UI Components, focused on ease and productivity to Angular applications.",
+            "rev": true,
+            "title": "PO UI",
+            "url": "https://po-ui.io"
+          },
+          "ngx-gantt": {
+            "desc": "A modern and powerful gantt chart component for Angular",
+            "title": "Angular Gantt Chart Component",
+            "url": "https://github.com/worktile/ngx-gantt"
+          },
+          "ngx-youi": {
+            "desc": "NGX-YOUI is an Angular UI Library that can be highly customized with content and styles. You can easily integrate with other CSS frameworks and UI Library, such as Tailwind, Bootstrap, PrimeNG, Angular Material etc.",
+            "title": "NGX-YOUI",
+            "url": "https://ngx-youi.github.io/NGX-YOUI/"
+          },
+          "ngx-cookie-service": {
+            "desc": "NGX Cookie Service is an Angular Library that can be used to read, set and delete browser cookies",
+            "title": "NGX Cookie Service",
+            "url": "https://github.com/stevermeister/ngx-cookie-service"
           }
         }
       }
@@ -493,8 +587,8 @@
         "resources": {
           "-KLIzGEp8Mh5W-FkiQnL": {
             "desc": "A no-nonsense beginner's guide to building web applications with Angular and TypeScript",
-            "title": "Learning Angular - Third Edition",
-            "url": "https://www.packtpub.com/product/learning-angular-third-edition/9781839210662"
+            "title": "Learning Angular - Fourth Edition",
+            "url": "https://www.amazon.com/dp/1803240601"
           },
           "3ab": {
             "desc": "More than 15 books from O'Reilly about Angular",
@@ -564,6 +658,33 @@
             "desc": "Comprehensive learning resource on building Angular apps with NgRx",
             "url": "https://gumroad.com/l/angular-ngrx-book",
             "logo": ""
+          },
+          "testing-angular-guide": {
+            "title": "Testing Angular",
+            "desc": "A Guide to Robust Angular Applications (free online book and e-book)",
+            "url": "https://testing-angular.com",
+            "logo": ""
+          },
+          "butter-cms": {
+            "title":"How to integrate ButterCMS into Angular 2+ App",
+            "desc": "Integrate a Headless CMS into your Angular App, create blog posts and pages",
+            "url":"https://medium.com/orlyknop/how-to-integrate-buttercms-into-angular-2-app-a1baaa51402",
+            "logo": ""
+          },
+          "angular-projects": {
+            "title": "Angular Projects - Third Edition",
+            "desc": "Build modern web apps in Angular 16 with 10 different projects and cutting-edge technologies",
+            "url": "https://amazon.com/dp/1803239115"
+          },
+          "rangle-angular-training-book": {
+            "title": "Rangle’s Angular Training Book",
+            "desc": "It's a free book, drawn from years of collective experience and aligned with the best practices of modern software development. The book covers the most important Angular topics, from getting started with the Angular toolchain to writing Angular applications in a scalable and maintainable manner.",
+            "url": "https://angular-training-guide.rangle.io/"
+          },
+          "angular-from-scratch": {
+            "title": "Angular from Scratch",
+            "desc": "Learn Angular from Scratch, building a sales application",
+            "url": "https://leanpub.com/book-angular"
           }
         }
       },
@@ -589,6 +710,11 @@
             "desc": "Spanish language Angular articles and information",
             "title": "Academia Binaria (español)",
             "url": "https://academia-binaria.com/"
+          },
+          "-KLIxHwg-glQLXni1hvA": {
+            "desc": "How to write cost effective Angular tests without wasting time on slow and brittle techniques. This masterclass will show you the most effective testing strategies that will accelerate your learning and start you off on the right track. Brought to you by Shai Reznik (HiRez.io) totally free of charge.",
+            "title": "Angular FREE Testing Masterclass - Cost Effective Angular Testing",
+            "url": "https://hirez.link/aio-cost-effective-angular-testing"
           },
           "-KN3uNQvxifu26D6WKJW": {
             "category": "Education",
@@ -682,6 +808,21 @@
             "logo": "",
             "title": "DotNetTricks",
             "url": "https://www.dotnettricks.com/courses/angular"
+          },
+          "architect-angular-nation": {
+            "desc": "Whether you're already an architect or you'd like to become one, come learn how to keep your apps clean and fast (especially at the enterprise level). Four weeks of training includes live office hours every week with an Angular GDE, diversity discounts, and scholarships available!",
+            "title": "Angular Architect Training",
+            "url": "https://www.angularnation.net/"
+          },
+          "platzi": {
+            "desc": "An online education platform with a complete path in Angular and TypeScript from zero to advanced. Platzi helps students from all over the world acquire new, in-demand skills.",
+            "title": "Platzi (Español)",
+            "url": "https://platzi.com/angular-io"
+          },
+          "angular-gettin-started": {
+            "desc": "Want to learn #Angular, but not sure where to start? Check out this in-depth “Angular for Beginners Course“ created by Angular #GDE @SantoshYadavDev.",
+            "title": "Angular for Beginners Course",
+            "url": "https://youtu.be/3qBXWUpoPHo"
           }
         }
       },
@@ -692,6 +833,21 @@
             "desc": "Customized in-person instructor-led Angular training for private groups and public online instructor-led Angular classes.",
             "title": "Webucator",
             "url": "https://www.webucator.com/webdev-training/angular-training"
+          },
+          "decoded-frontend": {
+            "desc": "YouTube Channel about Angular & Web Development",
+            "title": "Decoded Frontend",
+            "url": "https://www.youtube.com/DecodedFrontend"
+          },
+          "angular-university": {
+            "desc": "A website to learn and keep up with the Angular ecosystem",
+            "title": "Angular University",
+            "url": "https://angular-university.io/"
+          },
+          "angular-master-dev": {
+            "desc": "Angular Architecture: Strategic Design with Nx - Online Video Course",
+            "title": "Angular Master",
+            "url": "https://angularmaster.dev/"
           },
           "-acceleb": {
             "desc": "Customized, Instructor-Led Angular Training",
@@ -731,7 +887,7 @@
           "500tech": {
             "desc": "Learn from 500Tech, an Angular consultancy in Israel.  This course was built by an expert developer, who lives and breathes Angular, and has practical experience  with real world large scale Angular apps.",
             "title": "Angular Hands-on Course (Israel)",
-            "url": "http://angular2.courses.500tech.com/"
+            "url": "https://500tech.com/courses/angular/"
           },
           "9ab": {
             "desc": "OnSite Training From the Authors of  \"Become A Ninja with Angular\"",
@@ -783,10 +939,10 @@
             "title": "Angular.Schule (German)",
             "url": "https://angular.schule/"
           },
-          "strbrw": {
+          "simplified": {
             "desc": "Angular and RxJS trainings, Code Reviews and consultancy. We help software engineers all over the world to create better web-applications...",
-            "title": "StrongBrew",
-            "url": "https://strongbrew.io/"
+            "title": "Simplified Courses",
+            "url": "https://simplified.courses/"
           },
           "angular.de": {
             "desc": "Onsite Angular Training delivered by the greatest community in the german speaking area in Germany, Austria and Switzerland. We also regularly post articles and tutorials on our blog.",

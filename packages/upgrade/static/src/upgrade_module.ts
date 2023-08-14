@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Injector, isDevMode, NgModule, NgZone, PlatformRef, Testability} from '@angular/core';
+import {Injector, NgModule, NgZone, PlatformRef, Testability} from '@angular/core';
 
 import {bootstrap, element as angularElement, IInjectorService, IIntervalService, IProvideService, ITestabilityService, module_ as angularModule} from '../../src/common/src/angular1';
 import {$$TESTABILITY, $DELEGATE, $INJECTOR, $INTERVAL, $PROVIDE, INJECTOR_KEY, LAZY_MODULE_REF, UPGRADE_APP_TYPE_KEY, UPGRADE_MODULE_NAME} from '../../src/common/src/constants';
@@ -91,11 +91,11 @@ import {NgAdapterInjector} from './util';
  * This class is an `NgModule`, which you import to provide AngularJS core services,
  * and has an instance method used to bootstrap the hybrid upgrade application.
  *
- * * Core AngularJS services
+ * * Core AngularJS services<br />
  *   Importing this `NgModule` will add providers for the core
  *   [AngularJS services](https://docs.angularjs.org/api/ng/service) to the root injector.
  *
- * * Bootstrap
+ * * Bootstrap<br />
  *   The runtime instance of this class contains a {@link UpgradeModule#bootstrap `bootstrap()`}
  *   method, which you use to bootstrap the top level AngularJS module onto an element in the
  *   DOM for the hybrid upgrade app.
@@ -116,7 +116,7 @@ import {NgAdapterInjector} from './util';
  *
  * {@example upgrade/static/ts/full/module.ts region='bootstrap-ng1'}
  *
- * Finally, kick off the whole process, by bootstraping your top level Angular `NgModule`.
+ * Finally, kick off the whole process, by bootstrapping your top level Angular `NgModule`.
  *
  * {@example upgrade/static/ts/full/module.ts region='bootstrap-ng2'}
  *
@@ -170,9 +170,12 @@ export class UpgradeModule {
    * @param element the element on which to bootstrap the AngularJS application
    * @param [modules] the AngularJS modules to bootstrap for this application
    * @param [config] optional extra AngularJS bootstrap configuration
+   * @return The value returned by
+   *     [angular.bootstrap()](https://docs.angularjs.org/api/ng/function/angular.bootstrap).
    */
   bootstrap(
-      element: Element, modules: string[] = [], config?: any /*angular.IAngularBootstrapConfig*/) {
+      element: Element, modules: string[] = [], config?: any /*angular.IAngularBootstrapConfig*/):
+      any /*ReturnType<typeof angular.bootstrap>*/ {
     const INIT_MODULE_NAME = UPGRADE_MODULE_NAME + '.init';
 
     // Create an ng1 module to bootstrap
@@ -236,7 +239,17 @@ export class UpgradeModule {
                         });
                       };
 
-                  (wrappedInterval as any)['cancel'] = intervalDelegate.cancel;
+                  (Object.keys(intervalDelegate) as (keyof IIntervalService)[])
+                      .forEach(prop => (wrappedInterval as any)[prop] = intervalDelegate[prop]);
+
+                  // the `flush` method will be present when ngMocks is used
+                  if (intervalDelegate.hasOwnProperty('flush')) {
+                    (wrappedInterval as any)['flush'] = () => {
+                      (intervalDelegate as any)['flush']();
+                      return wrappedInterval;
+                    };
+                  }
+
                   return wrappedInterval;
                 }
               ]);
@@ -269,7 +282,7 @@ export class UpgradeModule {
             setTimeout(() => {
               const subscription = this.ngZone.onMicrotaskEmpty.subscribe(() => {
                 if ($rootScope.$$phase) {
-                  if (isDevMode()) {
+                  if (typeof ngDevMode === 'undefined' || ngDevMode) {
                     console.warn(
                         'A digest was triggered while one was already in progress. This may mean that something is triggering digests outside the Angular zone.');
                   }
@@ -293,9 +306,7 @@ export class UpgradeModule {
     windowAngular.resumeBootstrap = undefined;
 
     // Bootstrap the AngularJS application inside our zone
-    this.ngZone.run(() => {
-      bootstrap(element, [upgradeModule.name], config);
-    });
+    const returnValue = this.ngZone.run(() => bootstrap(element, [upgradeModule.name], config));
 
     // Patch resumeBootstrap() to run inside the ngZone
     if (windowAngular.resumeBootstrap) {
@@ -307,5 +318,7 @@ export class UpgradeModule {
         return ngZone.run(() => windowAngular.resumeBootstrap.apply(this, args));
       };
     }
+
+    return returnValue;
   }
 }

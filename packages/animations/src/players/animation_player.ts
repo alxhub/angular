@@ -5,16 +5,17 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {scheduleMicroTask} from '../util';
 
 /**
  * Provides programmatic control of a reusable animation sequence,
- * built using the `build()` method of `AnimationBuilder`. The `build()` method
- * returns a factory, whose `create()` method instantiates and initializes this interface.
+ * built using the <code>[AnimationBuilder.build](api/animations/AnimationBuilder#build)()</code>
+ * method which returns an `AnimationFactory`, whose
+ * <code>[create](api/animations/AnimationFactory#create)()</code> method instantiates and
+ * initializes this interface.
  *
- * @see `AnimationBuilder`
- * @see `AnimationFactory`
- * @see `animate()`
+ * @see {@link AnimationBuilder}
+ * @see {@link AnimationFactory}
+ * @see {@link animate}
  *
  * @publicApi
  */
@@ -22,20 +23,20 @@ export interface AnimationPlayer {
   /**
    * Provides a callback to invoke when the animation finishes.
    * @param fn The callback function.
-   * @see `finish()`
+   * @see {@link #finish}
    */
   onDone(fn: () => void): void;
   /**
    * Provides a callback to invoke when the animation starts.
    * @param fn The callback function.
-   * @see `run()`
+   * @see {@link #play}
    */
   onStart(fn: () => void): void;
   /**
    * Provides a callback to invoke after the animation is destroyed.
    * @param fn The callback function.
-   * @see `destroy()`
-   * @see `beforeDestroy()`
+   * @see {@link #destroy}
+   * @see {@link #beforeDestroy}
    */
   onDestroy(fn: () => void): void;
   /**
@@ -76,7 +77,7 @@ export interface AnimationPlayer {
    * Sets the position of the animation.
    * @param position A 0-based offset into the duration, in milliseconds.
    */
-  setPosition(position: any /** TODO #9100 */): void;
+  setPosition(position: number): void;
   /**
    * Reports the current position of the animation.
    * @returns A 0-based offset into the duration, in milliseconds.
@@ -111,9 +112,9 @@ export interface AnimationPlayer {
  * Used internally when animations are disabled, to avoid
  * checking for the null case when an animation player is expected.
  *
- * @see `animate()`
- * @see `AnimationPlayer`
- * @see `GroupPlayer`
+ * @see {@link animate}
+ * @see {@link AnimationPlayer}
+ * @see {@link ɵAnimationGroupPlayer AnimationGroupPlayer}
  *
  * @publicApi
  */
@@ -121,6 +122,8 @@ export class NoopAnimationPlayer implements AnimationPlayer {
   private _onDoneFns: Function[] = [];
   private _onStartFns: Function[] = [];
   private _onDestroyFns: Function[] = [];
+  private _originalOnDoneFns: Function[] = [];
+  private _originalOnStartFns: Function[] = [];
   private _started = false;
   private _destroyed = false;
   private _finished = false;
@@ -138,9 +141,11 @@ export class NoopAnimationPlayer implements AnimationPlayer {
     }
   }
   onStart(fn: () => void): void {
+    this._originalOnStartFns.push(fn);
     this._onStartFns.push(fn);
   }
   onDone(fn: () => void): void {
+    this._originalOnDoneFns.push(fn);
     this._onDoneFns.push(fn);
   }
   onDestroy(fn: () => void): void {
@@ -160,7 +165,7 @@ export class NoopAnimationPlayer implements AnimationPlayer {
 
   /** @internal */
   triggerMicrotask() {
-    scheduleMicroTask(() => this._onFinish());
+    queueMicrotask(() => this._onFinish());
   }
 
   private _onStart() {
@@ -184,7 +189,12 @@ export class NoopAnimationPlayer implements AnimationPlayer {
       this._onDestroyFns = [];
     }
   }
-  reset(): void {}
+  reset(): void {
+    this._started = false;
+    this._finished = false;
+    this._onStartFns = this._originalOnStartFns;
+    this._onDoneFns = this._originalOnDoneFns;
+  }
   setPosition(position: number): void {
     this._position = this.totalTime ? position * this.totalTime : 1;
   }

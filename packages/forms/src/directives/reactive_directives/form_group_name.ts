@@ -6,19 +6,19 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {Directive, forwardRef, Host, Inject, Input, OnDestroy, OnInit, Optional, Self, SkipSelf} from '@angular/core';
+import {Directive, forwardRef, Host, Inject, Input, OnDestroy, OnInit, Optional, Provider, Self, SkipSelf} from '@angular/core';
 
-import {FormArray} from '../../model';
+import {FormArray} from '../../model/form_array';
 import {NG_ASYNC_VALIDATORS, NG_VALIDATORS} from '../../validators';
 import {AbstractFormGroupDirective} from '../abstract_form_group_directive';
 import {ControlContainer} from '../control_container';
-import {ReactiveErrors} from '../reactive_errors';
+import {arrayParentException, groupParentException} from '../reactive_errors';
 import {controlPath} from '../shared';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from '../validators';
 
 import {FormGroupDirective} from './form_group_directive';
 
-export const formGroupNameProvider: any = {
+const formGroupNameProvider: Provider = {
   provide: ControlContainer,
   useExisting: forwardRef(() => FormGroupName)
 };
@@ -26,12 +26,12 @@ export const formGroupNameProvider: any = {
 /**
  * @description
  *
- * Syncs a nested `FormGroup` to a DOM element.
+ * Syncs a nested `FormGroup` or `FormRecord` to a DOM element.
  *
  * This directive can only be used with a parent `FormGroupDirective`.
  *
- * It accepts the string name of the nested `FormGroup` to link, and
- * looks for a `FormGroup` registered with that name in the parent
+ * It accepts the string name of the nested `FormGroup` or `FormRecord` to link, and
+ * looks for a `FormGroup` or `FormRecord` registered with that name in the parent
  * `FormGroup` instance you passed into `FormGroupDirective`.
  *
  * Use nested form groups to validate a sub-group of a
@@ -44,7 +44,7 @@ export const formGroupNameProvider: any = {
  *
  * ### Access the group by name
  *
- * The following example uses the {@link AbstractControl#get get} method to access the
+ * The following example uses the `AbstractControl.get` method to access the
  * associated `FormGroup`
  *
  * ```ts
@@ -53,7 +53,7 @@ export const formGroupNameProvider: any = {
  *
  * ### Access individual controls in the group
  *
- * The following example uses the {@link AbstractControl#get get} method to access
+ * The following example uses the `AbstractControl.get` method to access
  * individual controls within the group using dot syntax.
  *
  * ```ts
@@ -81,8 +81,7 @@ export class FormGroupName extends AbstractFormGroupDirective implements OnInit,
    * while the numerical form allows for form groups to be bound
    * to indices when iterating over groups in a `FormArray`.
    */
-  // TODO(issue/24571): remove '!'.
-  @Input('formGroupName') name!: string|number|null;
+  @Input('formGroupName') override name: string|number|null = null;
 
   constructor(
       @Optional() @Host() @SkipSelf() parent: ControlContainer,
@@ -96,9 +95,9 @@ export class FormGroupName extends AbstractFormGroupDirective implements OnInit,
   }
 
   /** @internal */
-  _checkParentType(): void {
+  override _checkParentType(): void {
     if (_hasInvalidParent(this._parent) && (typeof ngDevMode === 'undefined' || ngDevMode)) {
-      ReactiveErrors.groupParentException();
+      throw groupParentException();
     }
   }
 }
@@ -121,7 +120,7 @@ export const formArrayNameProvider: any = {
  * `FormGroup` instance you passed into `FormGroupDirective`.
  *
  * @see [Reactive Forms Guide](guide/reactive-forms)
- * @see `AbstractControl`
+ * @see {@link AbstractControl}
  *
  * @usageNotes
  *
@@ -146,8 +145,7 @@ export class FormArrayName extends ControlContainer implements OnInit, OnDestroy
    * while the numerical form allows for form arrays to be bound
    * to indices when iterating over arrays in a `FormArray`.
    */
-  // TODO(issue/24571): remove '!'.
-  @Input('formArrayName') name!: string|number|null;
+  @Input('formArrayName') override name: string|number|null = null;
 
   constructor(
       @Optional() @Host() @SkipSelf() parent: ControlContainer,
@@ -184,7 +182,7 @@ export class FormArrayName extends ControlContainer implements OnInit, OnDestroy
    * @description
    * The `FormArray` bound to this directive.
    */
-  get control(): FormArray {
+  override get control(): FormArray {
     return this.formDirective!.getFormArray(this);
   }
 
@@ -192,7 +190,7 @@ export class FormArrayName extends ControlContainer implements OnInit, OnDestroy
    * @description
    * The top-level directive for this group if present, otherwise null.
    */
-  get formDirective(): FormGroupDirective|null {
+  override get formDirective(): FormGroupDirective|null {
     return this._parent ? <FormGroupDirective>this._parent.formDirective : null;
   }
 
@@ -201,13 +199,13 @@ export class FormArrayName extends ControlContainer implements OnInit, OnDestroy
    * Returns an array that represents the path from the top-level form to this control.
    * Each index is the string name of the control on that level.
    */
-  get path(): string[] {
+  override get path(): string[] {
     return controlPath(this.name == null ? this.name : this.name.toString(), this._parent);
   }
 
   private _checkParentType(): void {
     if (_hasInvalidParent(this._parent) && (typeof ngDevMode === 'undefined' || ngDevMode)) {
-      ReactiveErrors.arrayParentException();
+      throw arrayParentException();
     }
   }
 }

@@ -8,7 +8,7 @@
 
 import {Directive, DoCheck, ElementRef, EventEmitter, Inject, Injector, OnChanges, OnDestroy, OnInit, SimpleChange, SimpleChanges, Type} from '@angular/core';
 
-import {IAttributes, IDirective, IDirectivePrePost, IInjectorService, ILinkFn, IScope, ITranscludeFunction} from '../../common/src/angular1';
+import {IAttributes, IDirective, IInjectorService, ILinkFn, IScope, ITranscludeFunction} from '../../common/src/angular1';
 import {$SCOPE} from '../../common/src/constants';
 import {IBindingDestination, IControllerInstance, UpgradeHelper} from '../../common/src/upgrade_helper';
 import {isFunction, strictEquals} from '../../common/src/util';
@@ -20,10 +20,16 @@ const INITIAL_VALUE = {
 };
 const NOT_SUPPORTED: any = 'NOT_SUPPORTED';
 
+function getInputPropertyMapName(name: string): string {
+  return `input_${name}`;
+}
+
+function getOutputPropertyMapName(name: string): string {
+  return `output_${name}`;
+}
 
 export class UpgradeNg1ComponentAdapterBuilder {
-  // TODO(issue/24571): remove '!'.
-  type!: Type<any>;
+  type: Type<any>;
   inputs: string[] = [];
   inputsRename: string[] = [];
   outputs: string[] = [];
@@ -32,20 +38,15 @@ export class UpgradeNg1ComponentAdapterBuilder {
   checkProperties: string[] = [];
   propertyMap: {[name: string]: string} = {};
   directive: IDirective|null = null;
-  // TODO(issue/24571): remove '!'.
-  template !: string;
+  template!: string;
 
   constructor(public name: string) {
     const selector =
         name.replace(CAMEL_CASE, (all: string, next: string) => '-' + next.toLowerCase());
     const self = this;
 
-    // Note: There is a bug in TS 2.4 that prevents us from
-    // inlining this into @Directive
-    // TODO(tbosch): find or file a bug against TypeScript for this.
-    const directive = {selector: selector, inputs: this.inputsRename, outputs: this.outputsRename};
-
-    @Directive({jit: true, ...directive})
+    @Directive(
+        {jit: true, selector: selector, inputs: this.inputsRename, outputs: this.outputsRename})
     class MyClass extends UpgradeNg1ComponentAdapter implements OnInit, OnChanges, DoCheck,
                                                                 OnDestroy {
       constructor(@Inject($SCOPE) scope: IScope, injector: Injector, elementRef: ElementRef) {
@@ -76,9 +77,9 @@ export class UpgradeNg1ComponentAdapterBuilder {
 
         // QUESTION: What about `=*`? Ignore? Throw? Support?
 
-        const inputName = `input_${attrName}`;
+        const inputName = getInputPropertyMapName(attrName);
         const inputNameRename = `${inputName}: ${attrName}`;
-        const outputName = `output_${attrName}`;
+        const outputName = getOutputPropertyMapName(attrName);
         const outputNameRename = `${outputName}: ${attrName}`;
         const outputNameRenameChange = `${outputNameRename}Change`;
 
@@ -121,8 +122,7 @@ export class UpgradeNg1ComponentAdapterBuilder {
   static resolve(
       exportedComponents: {[name: string]: UpgradeNg1ComponentAdapterBuilder},
       $injector: IInjectorService): Promise<string[]> {
-    const promises = Object.keys(exportedComponents).map(name => {
-      const exportedComponent = exportedComponents[name];
+    const promises = Object.entries(exportedComponents).map(([name, exportedComponent]) => {
       exportedComponent.directive = UpgradeHelper.getDirective($injector, name);
       exportedComponent.extractBindings();
 
@@ -163,19 +163,17 @@ class UpgradeNg1ComponentAdapter implements OnInit, OnChanges, DoCheck {
       this.destinationObj = this.componentScope;
     }
 
-    for (let i = 0; i < inputs.length; i++) {
-      (this as any)[inputs[i]] = null;
+    for (const input of this.inputs) {
+      (this as any)[input] = null;
     }
-    for (let j = 0; j < outputs.length; j++) {
-      const emitter = (this as any)[outputs[j]] = new EventEmitter<any>();
-      if (this.propOuts.indexOf(outputs[j]) === -1) {
+    for (const output of this.outputs) {
+      const emitter = (this as any)[output] = new EventEmitter();
+      if (this.propOuts.indexOf(output) === -1) {
         this.setComponentProperty(
-            outputs[j], (emitter => (value: any) => emitter.emit(value))(emitter));
+            output, (emitter => (value: any) => emitter.emit(value))(emitter));
       }
     }
-    for (let k = 0; k < propOuts.length; k++) {
-      this.checkLastValues.push(INITIAL_VALUE);
-    }
+    this.checkLastValues.push(...Array(propOuts.length).fill(INITIAL_VALUE));
   }
 
   ngOnInit() {
@@ -223,10 +221,10 @@ class UpgradeNg1ComponentAdapter implements OnInit, OnChanges, DoCheck {
 
   ngOnChanges(changes: SimpleChanges) {
     const ng1Changes: any = {};
-    Object.keys(changes).forEach(name => {
-      const change: SimpleChange = changes[name];
-      this.setComponentProperty(name, change.currentValue);
-      ng1Changes[this.propertyMap[name]] = change;
+    Object.keys(changes).forEach(propertyMapName => {
+      const change: SimpleChange = changes[propertyMapName];
+      this.setComponentProperty(propertyMapName, change.currentValue);
+      ng1Changes[this.propertyMap[propertyMapName]] = change;
     });
 
     if (isFunction(this.destinationObj!.$onChanges)) {

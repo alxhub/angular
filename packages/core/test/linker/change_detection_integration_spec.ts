@@ -6,22 +6,18 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ResourceLoader, UrlResolver} from '@angular/compiler';
-import {MockResourceLoader} from '@angular/compiler/testing';
-import {AfterContentChecked, AfterContentInit, AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, DebugElement, Directive, DoCheck, EventEmitter, HostBinding, Injectable, Input, OnChanges, OnDestroy, OnInit, Output, Pipe, PipeTransform, Provider, RendererFactory2, RendererType2, SimpleChange, SimpleChanges, TemplateRef, Type, ViewChild, ViewContainerRef, WrappedValue} from '@angular/core';
+import {ResourceLoader} from '@angular/compiler';
+import {AfterContentChecked, AfterContentInit, AfterViewChecked, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, DebugElement, Directive, DoCheck, EventEmitter, HostBinding, Injectable, Input, OnChanges, OnDestroy, OnInit, Output, Pipe, PipeTransform, Provider, RendererFactory2, RendererType2, SimpleChange, SimpleChanges, TemplateRef, Type, ViewChild, ViewContainerRef} from '@angular/core';
 import {ComponentFixture, fakeAsync, TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser/src/dom/debug/by';
 import {isTextNode} from '@angular/platform-browser/testing/src/browser_util';
 import {expect} from '@angular/platform-browser/testing/src/matchers';
-import {ivyEnabled, modifiedInIvy, onlyInIvy} from '@angular/private/testing';
 
-export function createUrlResolverWithoutPackagePrefix(): UrlResolver {
-  return new UrlResolver();
-}
+import {MockResourceLoader} from './resource_loader_mock';
+
 
 const TEST_COMPILER_PROVIDERS: Provider[] = [
   {provide: ResourceLoader, useClass: MockResourceLoader, deps: []},
-  {provide: UrlResolver, useFactory: createUrlResolverWithoutPackagePrefix, deps: []}
 ];
 
 
@@ -100,7 +96,6 @@ describe(`ChangeDetection`, () => {
         MultiArgPipe,
         PipeWithOnDestroy,
         IdentityPipe,
-        WrappedPipe,
       ],
       providers: [
         RenderLog,
@@ -135,8 +130,8 @@ describe(`ChangeDetection`, () => {
        }));
 
     it('should support / operations', fakeAsync(() => {
-         expect(_bindAndCheckSimpleValue('10 / 2')).toEqual([`id=${5.0}`]);
-       }));  // dart exp=5.0, js exp=5
+         expect(_bindAndCheckSimpleValue('10 / 2')).toEqual([`id=5`]);
+       }));
 
     it('should support % operations', fakeAsync(() => {
          expect(_bindAndCheckSimpleValue('11 % 2')).toEqual(['id=1']);
@@ -523,41 +518,6 @@ describe(`ChangeDetection`, () => {
            expect(renderLog.log).toEqual([]);
          }));
 
-      it('should unwrap the wrapped value and force a change', fakeAsync(() => {
-           const ctx = _bindSimpleValue('"Megatron" | wrappedPipe', Person);
-
-           ctx.detectChanges(false);
-
-           expect(renderLog.log).toEqual(['id=Megatron']);
-
-           renderLog.clear();
-           ctx.detectChanges(false);
-
-           expect(renderLog.log).toEqual(['id=Megatron']);
-         }));
-
-      it('should record unwrapped values via ngOnChanges', fakeAsync(() => {
-           const ctx = createCompFixture(
-               '<div [testDirective]="\'aName\' | wrappedPipe" [a]="1" [b]="2 | wrappedPipe"></div>');
-           const dir: TestDirective = queryDirs(ctx.debugElement, TestDirective)[0];
-           ctx.detectChanges(false);
-           dir.changes = {};
-           ctx.detectChanges(false);
-
-           // Note: the binding for `a` did not change and has no ValueWrapper,
-           // and should therefore stay unchanged.
-           expect(dir.changes).toEqual({
-             'name': new SimpleChange('aName', 'aName', false),
-             'b': new SimpleChange(2, 2, false)
-           });
-
-           ctx.detectChanges(false);
-           expect(dir.changes).toEqual({
-             'name': new SimpleChange('aName', 'aName', false),
-             'b': new SimpleChange(2, 2, false)
-           });
-         }));
-
       it('should call pure pipes only if the arguments change', fakeAsync(() => {
            const ctx = _bindSimpleValue('name | countingPipe', Person);
            // change from undefined -> null
@@ -582,57 +542,29 @@ describe(`ChangeDetection`, () => {
            expect(renderLog.loggedValues).toEqual(['null state:0', 'bob state:1', 'bart state:2']);
          }));
 
-      modifiedInIvy('Pure pipes are instantiated differently in view engine and ivy')
-          .it('should call pure pipes that are used multiple times only when the arguments change and share state between pipe instances',
-              fakeAsync(() => {
-                const ctx = createCompFixture(
-                    `<div [id]="name | countingPipe"></div><div [id]="age | countingPipe"></div>` +
-                        '<div *ngFor="let x of [1,2]" [id]="address.city | countingPipe"></div>',
-                    Person);
-                ctx.componentInstance.name = 'a';
-                ctx.componentInstance.age = 10;
-                ctx.componentInstance.address = new Address('mtv');
-                ctx.detectChanges(false);
-                expect(renderLog.loggedValues).toEqual([
-                  'mtv state:0', 'mtv state:1', 'a state:2', '10 state:3'
-                ]);
-                ctx.detectChanges(false);
-                expect(renderLog.loggedValues).toEqual([
-                  'mtv state:0', 'mtv state:1', 'a state:2', '10 state:3'
-                ]);
-                ctx.componentInstance.age = 11;
-                ctx.detectChanges(false);
-                expect(renderLog.loggedValues).toEqual([
-                  'mtv state:0', 'mtv state:1', 'a state:2', '10 state:3', '11 state:4'
-                ]);
-              }));
-
-      // this is the ivy version of the above tests - the difference is in pure pipe instantiation
-      // logic and binding execution order
-      ivyEnabled &&
-          it('should call pure pipes that are used multiple times only when the arguments change',
-             fakeAsync(() => {
-               const ctx = createCompFixture(
-                   `<div [id]="name | countingPipe"></div><div [id]="age | countingPipe"></div>` +
-                       '<div *ngFor="let x of [1,2]" [id]="address.city | countingPipe"></div>',
-                   Person);
-               ctx.componentInstance.name = 'a';
-               ctx.componentInstance.age = 10;
-               ctx.componentInstance.address = new Address('mtv');
-               ctx.detectChanges(false);
-               expect(renderLog.loggedValues).toEqual([
-                 'a state:0', '10 state:0', 'mtv state:0', 'mtv state:0'
-               ]);
-               ctx.detectChanges(false);
-               expect(renderLog.loggedValues).toEqual([
-                 'a state:0', '10 state:0', 'mtv state:0', 'mtv state:0'
-               ]);
-               ctx.componentInstance.age = 11;
-               ctx.detectChanges(false);
-               expect(renderLog.loggedValues).toEqual([
-                 'a state:0', '10 state:0', 'mtv state:0', 'mtv state:0', '11 state:1'
-               ]);
-             }));
+      it('should call pure pipes that are used multiple times only when the arguments change',
+         fakeAsync(() => {
+           const ctx = createCompFixture(
+               `<div [id]="name | countingPipe"></div><div [id]="age | countingPipe"></div>` +
+                   '<div *ngFor="let x of [1,2]" [id]="address.city | countingPipe"></div>',
+               Person);
+           ctx.componentInstance.name = 'a';
+           ctx.componentInstance.age = 10;
+           ctx.componentInstance.address = new Address('mtv');
+           ctx.detectChanges(false);
+           expect(renderLog.loggedValues).toEqual([
+             'a state:0', '10 state:0', 'mtv state:0', 'mtv state:0'
+           ]);
+           ctx.detectChanges(false);
+           expect(renderLog.loggedValues).toEqual([
+             'a state:0', '10 state:0', 'mtv state:0', 'mtv state:0'
+           ]);
+           ctx.componentInstance.age = 11;
+           ctx.detectChanges(false);
+           expect(renderLog.loggedValues).toEqual([
+             'a state:0', '10 state:0', 'mtv state:0', 'mtv state:0', '11 state:1'
+           ]);
+         }));
 
       it('should call impure pipes on each change detection run', fakeAsync(() => {
            const ctx = _bindSimpleValue('name | countingImpurePipe', Person);
@@ -816,7 +748,7 @@ describe(`ChangeDetection`, () => {
            try {
              ctx.detectChanges(false);
            } catch (e) {
-             expect(e.message).toBe('Boom!');
+             expect((e as Error).message).toBe('Boom!');
              errored = true;
            }
            expect(errored).toBe(true);
@@ -828,7 +760,7 @@ describe(`ChangeDetection`, () => {
            try {
              ctx.detectChanges(false);
            } catch (e) {
-             expect(e.message).toBe('Boom!');
+             expect((e as Error).message).toBe('Boom!');
              throw new Error('Second detectChanges() should not have called ngOnInit.');
            }
            expect(directiveLog.filter(['ngOnInit'])).toEqual([]);
@@ -1179,9 +1111,7 @@ describe(`ChangeDetection`, () => {
          const ctx = createCompFixture('<div [id]="a" [changed]="b"></div>', TestData);
 
          ctx.componentInstance.b = 1;
-         const errMsgRegExp = ivyEnabled ?
-             /Previous value: 'undefined'\. Current value: '1'/g :
-             /Previous value: 'changed: undefined'\. Current value: 'changed: 1'/g;
+         const errMsgRegExp = /Previous value: 'undefined'\. Current value: '1'/g;
          expect(() => ctx.checkNoChanges()).toThrowError(errMsgRegExp);
        }));
 
@@ -1201,9 +1131,7 @@ describe(`ChangeDetection`, () => {
          ctx.detectChanges();
 
          ctx.componentInstance.b = 2;
-         const errMsgRegExp = ivyEnabled ?
-             /Previous value: '1'\. Current value: '2'/g :
-             /Previous value: 'changed: 1'\. Current value: 'changed: 2'/g;
+         const errMsgRegExp = /Previous value: '1'\. Current value: '2'/g;
          expect(() => ctx.checkNoChanges()).toThrowError(errMsgRegExp);
        }));
 
@@ -1329,19 +1257,6 @@ describe(`ChangeDetection`, () => {
        }));
   });
 
-  describe('multi directive order', () => {
-    modifiedInIvy('order of bindings to directive inputs is different in ivy')
-        .it('should follow the DI order for the same element', fakeAsync(() => {
-              const ctx =
-                  createCompFixture('<div orderCheck2="2" orderCheck0="0" orderCheck1="1"></div>');
-
-              ctx.detectChanges(false);
-              ctx.destroy();
-
-              expect(directiveLog.filter(['set'])).toEqual(['0.set', '1.set', '2.set']);
-            }));
-  });
-
   describe('nested view recursion', () => {
     it('should recurse into nested components even if there are no bindings in the component view',
        () => {
@@ -1362,10 +1277,8 @@ describe(`ChangeDetection`, () => {
          @Component({template: '<ng-template #vc>{{name}}</ng-template>'})
          class Comp {
            name = 'Tom';
-           // TODO(issue/24571): remove '!'.
            @ViewChild('vc', {read: ViewContainerRef, static: true}) vc!: ViewContainerRef;
-           // TODO(issue/24571): remove '!'.
-           @ViewChild(TemplateRef, {static: true}) template !: TemplateRef<any>;
+           @ViewChild(TemplateRef, {static: true}) template!: TemplateRef<any>;
          }
 
          TestBed.configureTestingModule({declarations: [Comp]});
@@ -1406,7 +1319,6 @@ describe(`ChangeDetection`, () => {
             `<span [i]="log('start')"></span><inner-cmp [outerTpl]="tpl"><ng-template><span [i]="log('tpl')"></span></ng-template></inner-cmp>`
       })
       class OuterComp {
-        // TODO(issue/24571): remove '!'.
         @ContentChild(TemplateRef, {static: true}) tpl!: TemplateRef<any>;
 
         constructor(public cdRef: ChangeDetectorRef) {}
@@ -1421,11 +1333,8 @@ describe(`ChangeDetection`, () => {
             `<span [i]="log('start')"></span>><ng-container [ngTemplateOutlet]="outerTpl"></ng-container><ng-container [ngTemplateOutlet]="tpl"></ng-container>`
       })
       class InnerComp {
-        // TODO(issue/24571): remove '!'.
         @ContentChild(TemplateRef, {static: true}) tpl!: TemplateRef<any>;
-
-        // TODO(issue/24571): remove '!'.
-        @Input() outerTpl!: TemplateRef<any>;
+        @Input() outerTpl: TemplateRef<any>|undefined;
 
         constructor(public cdRef: ChangeDetectorRef) {}
         log(id: string) {
@@ -1476,49 +1385,26 @@ describe(`ChangeDetection`, () => {
         expect(log).toEqual(['inner-start', 'main-tpl', 'outer-tpl']);
       });
 
-      modifiedInIvy('Views should not be dirty checked if inserted into CD-detached view tree')
-          .it('should dirty check projected views if the declaration place is dirty checked',
-              () => {
-                ctx.detectChanges(false);
-                log = [];
-                innerComp.cdRef.detach();
-                mainComp.cdRef.detectChanges();
+      it('should not dirty check views that are inserted into a detached tree, even if the declaration place is dirty checked',
+         () => {
+           ctx.detectChanges(false);
+           log = [];
+           innerComp.cdRef.detach();
+           mainComp.cdRef.detectChanges();
 
-                expect(log).toEqual(['main-start', 'outer-start', 'main-tpl', 'outer-tpl']);
+           expect(log).toEqual(['main-start', 'outer-start']);
 
-                log = [];
-                outerComp.cdRef.detectChanges();
+           log = [];
+           outerComp.cdRef.detectChanges();
 
-                expect(log).toEqual(['outer-start', 'outer-tpl']);
+           expect(log).toEqual(['outer-start']);
 
-                log = [];
-                outerComp.cdRef.detach();
-                mainComp.cdRef.detectChanges();
+           log = [];
+           outerComp.cdRef.detach();
+           mainComp.cdRef.detectChanges();
 
-                expect(log).toEqual(['main-start', 'main-tpl']);
-              });
-
-      onlyInIvy('Views should not be dirty checked if inserted into CD-detached view tree')
-          .it('should not dirty check views that are inserted into a detached tree, even if the declaration place is dirty checked',
-              () => {
-                ctx.detectChanges(false);
-                log = [];
-                innerComp.cdRef.detach();
-                mainComp.cdRef.detectChanges();
-
-                expect(log).toEqual(['main-start', 'outer-start']);
-
-                log = [];
-                outerComp.cdRef.detectChanges();
-
-                expect(log).toEqual(['outer-start']);
-
-                log = [];
-                outerComp.cdRef.detach();
-                mainComp.cdRef.detectChanges();
-
-                expect(log).toEqual(['main-start']);
-              });
+           expect(log).toEqual(['main-start']);
+         });
     });
   });
 
@@ -1597,8 +1483,7 @@ describe(`ChangeDetection`, () => {
         class MyChild {
           private thrown = LifetimeMethods.None;
 
-          // TODO(issue/24571): remove '!'.
-          @Input() inp!: boolean;
+          @Input() inp: boolean|undefined;
           @Output() outp = new EventEmitter<any>();
 
           constructor() {}
@@ -1827,13 +1712,6 @@ class IdentityPipe implements PipeTransform {
   }
 }
 
-@Pipe({name: 'wrappedPipe'})
-class WrappedPipe implements PipeTransform {
-  transform(value: any) {
-    return WrappedValue.wrap(value);
-  }
-}
-
 @Pipe({name: 'multiArgPipe'})
 class MultiArgPipe implements PipeTransform {
   transform(value: any, arg1: any, arg2: any, arg3 = 'default') {
@@ -1910,16 +1788,13 @@ class TestDirective implements OnInit, DoCheck, OnChanges, AfterContentInit, Aft
                                AfterViewInit, AfterViewChecked, OnDestroy {
   @Input() a: any;
   @Input() b: any;
-  // TODO(issue/24571): remove '!'.
-  changes!: SimpleChanges;
+  changes: SimpleChanges|undefined;
   event: any;
   eventEmitter: EventEmitter<string> = new EventEmitter<string>();
 
-  // TODO(issue/24571): remove '!'.
-  @Input('testDirective') name!: string;
+  @Input('testDirective') name: string = '';
 
-  // TODO(issue/24571): remove '!'.
-  @Input() throwOn!: string;
+  @Input() throwOn: string|undefined;
 
   constructor(public log: DirectiveLog) {}
 
@@ -2003,8 +1878,7 @@ class OnDestroyDirective implements OnDestroy {
 
 @Directive({selector: '[orderCheck0]'})
 class OrderCheckDirective0 {
-  // TODO(issue/24571): remove '!'.
-  private _name!: string;
+  private _name: string|undefined;
 
   @Input('orderCheck0')
   set name(value: string) {
@@ -2017,8 +1891,7 @@ class OrderCheckDirective0 {
 
 @Directive({selector: '[orderCheck1]'})
 class OrderCheckDirective1 {
-  // TODO(issue/24571): remove '!'.
-  private _name!: string;
+  private _name: string|undefined;
 
   @Input('orderCheck1')
   set name(value: string) {
@@ -2031,8 +1904,7 @@ class OrderCheckDirective1 {
 
 @Directive({selector: '[orderCheck2]'})
 class OrderCheckDirective2 {
-  // TODO(issue/24571): remove '!'.
-  private _name!: string;
+  private _name: string|undefined;
 
   @Input('orderCheck2')
   set name(value: string) {
@@ -2056,13 +1928,10 @@ class TestLocals {
 
 @Component({selector: 'root', template: 'empty'})
 class Person {
-  // TODO(issue/24571): remove '!'.
-  age!: number;
-  // TODO(issue/24571): remove '!'.
-  name!: string;
+  age: number|undefined;
+  name: string|undefined;
   address: Address|null = null;
-  // TODO(issue/24571): remove '!'.
-  phones!: number[];
+  phones: number[]|undefined;
 
   init(name: string, address: Address|null = null) {
     this.name = name;
@@ -2124,19 +1993,8 @@ class TestData {
   b: any;
 }
 
-@Component({selector: 'root', template: 'empty'})
-class TestDataWithGetter {
-  // TODO(issue/24571): remove '!'.
-  public fn!: Function;
-
-  get a() {
-    return this.fn();
-  }
-}
-
 class Holder<T> {
-  // TODO(issue/24571): remove '!'.
-  value!: T;
+  value: T|undefined;
 }
 
 @Component({selector: 'root', template: 'empty'})

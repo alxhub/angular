@@ -7,24 +7,7 @@ module.exports = function collectExamples(exampleMap, regionParser, log, createD
     $runBefore: ['parsing-tags'],
     $validate: {exampleFolders: {presence: true}},
     exampleFolders: [],
-    ignoredExamples: {},
-    /**
-     * Call this method to indicate to the processor that some files, that actually exist,
-     * have been filtered out from being processed.
-     * @param paths an array of relative paths to the examples that have been ignored.
-     * @param gitIgnorePath the path to the gitignore file that caused this example to be ignored.
-     */
-    registerIgnoredExamples(paths, gitIgnorePath) {
-      paths.forEach(path => { this.ignoredExamples[path] = gitIgnorePath; });
-    },
-    /**
-     * Call this method to find out if an example was ignored.
-     * @param path a relative path to the example file to test for being ignored.
-     * @returns the path to the .gitignore file.
-     */
-    isExampleIgnored(path) {
-      return this.ignoredExamples[path];
-    },
+
     $process(docs) {
       const exampleFolders = this.exampleFolders;
       exampleFolders.forEach(folder => exampleMap[folder] = exampleMap[folder] || {});
@@ -36,7 +19,7 @@ module.exports = function collectExamples(exampleMap, regionParser, log, createD
             exampleFolders.some((folder) => {
               if (doc.fileInfo.relativePath.indexOf(folder) === 0) {
                 const relativePath =
-                    doc.fileInfo.relativePath.substr(folder.length).replace(/^\//, '');
+                    doc.fileInfo.relativePath.slice(folder.length).replace(/^\//, '');
                 exampleMap[folder][relativePath] = doc;
 
                 // We treat files that end in `.annotated` specially
@@ -45,7 +28,7 @@ module.exports = function collectExamples(exampleMap, regionParser, log, createD
                 // of the original but contains inline doc region comments
                 let fileType = doc.fileInfo.extension;
                 if (fileType === 'annotated') {
-                  fileType = extname(doc.fileInfo.baseName).substr(1) + '.' + fileType;
+                  fileType = extname(doc.fileInfo.baseName).slice(1) + '.' + fileType;
                 }
 
                 const parsedRegions = regionParser(doc.content, fileType);

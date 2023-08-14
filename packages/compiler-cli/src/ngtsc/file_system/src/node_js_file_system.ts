@@ -6,9 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 /// <reference types="node" />
-import * as fs from 'fs';
-import * as fsExtra from 'fs-extra';
+import fs from 'fs';
+import module from 'module';
 import * as p from 'path';
+import {fileURLToPath} from 'url';
+
 import {AbsoluteFsPath, FileStats, FileSystem, PathManipulation, PathSegment, PathString, ReadonlyFileSystem} from './types';
 
 /**
@@ -52,6 +54,12 @@ export class NodeJSPathManipulation implements PathManipulation {
   }
 }
 
+// G3-ESM-MARKER: G3 uses CommonJS, but externally everything in ESM.
+// CommonJS/ESM interop for determining the current file name and containing dir.
+const isCommonJS = typeof __filename !== 'undefined';
+const currentFileUrl = isCommonJS ? null : import.meta.url;
+const currentFileName = isCommonJS ? __filename : fileURLToPath(currentFileUrl!);
+
 /**
  * A wrapper around the Node.js file-system that supports readonly operations and path manipulation.
  */
@@ -61,7 +69,7 @@ export class NodeJSReadonlyFileSystem extends NodeJSPathManipulation implements 
     if (this._caseSensitive === undefined) {
       // Note the use of the real file-system is intentional:
       // `this.exists()` relies upon `isCaseSensitive()` so that would cause an infinite recursion.
-      this._caseSensitive = !fs.existsSync(this.normalize(toggleCase(__filename)));
+      this._caseSensitive = !fs.existsSync(this.normalize(toggleCase(currentFileName)));
     }
     return this._caseSensitive;
   }
@@ -87,7 +95,9 @@ export class NodeJSReadonlyFileSystem extends NodeJSPathManipulation implements 
     return this.resolve(fs.realpathSync(path));
   }
   getDefaultLibLocation(): AbsoluteFsPath {
-    return this.resolve(require.resolve('typescript'), '..');
+    // G3-ESM-MARKER: G3 uses CommonJS, but externally everything in ESM.
+    const requireFn = isCommonJS ? require : module.createRequire(currentFileUrl!);
+    return this.resolve(requireFn.resolve('typescript'), '..');
   }
 }
 
@@ -111,29 +121,10 @@ export class NodeJSFileSystem extends NodeJSReadonlyFileSystem implements FileSy
     fs.renameSync(from, to);
   }
   ensureDir(path: AbsoluteFsPath): void {
-    const parents: AbsoluteFsPath[] = [];
-    while (!this.isRoot(path) && !this.exists(path)) {
-      parents.push(path);
-      path = this.dirname(path);
-    }
-    while (parents.length) {
-      this.safeMkdir(parents.pop()!);
-    }
+    fs.mkdirSync(path, {recursive: true});
   }
   removeDeep(path: AbsoluteFsPath): void {
-    fsExtra.removeSync(path);
-  }
-
-  private safeMkdir(path: AbsoluteFsPath): void {
-    try {
-      fs.mkdirSync(path);
-    } catch (err) {
-      // Ignore the error, if the path already exists and points to a directory.
-      // Re-throw otherwise.
-      if (!this.exists(path) || !this.stat(path).isDirectory()) {
-        throw err;
-      }
-    }
+    fs.rmdirSync(path, {recursive: true});
   }
 }
 

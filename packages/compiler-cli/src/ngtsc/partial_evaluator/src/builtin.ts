@@ -6,17 +6,17 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 import {DynamicValue} from './dynamic';
-import {KnownFn, ResolvedValue, ResolvedValueArray} from './result';
+import {EnumValue, KnownFn, ResolvedValue, ResolvedValueArray} from './result';
 
 export class ArraySliceBuiltinFn extends KnownFn {
   constructor(private lhs: ResolvedValueArray) {
     super();
   }
 
-  evaluate(node: ts.CallExpression, args: ResolvedValueArray): ResolvedValue {
+  override evaluate(node: ts.CallExpression, args: ResolvedValueArray): ResolvedValue {
     if (args.length === 0) {
       return this.lhs;
     } else {
@@ -30,7 +30,7 @@ export class ArrayConcatBuiltinFn extends KnownFn {
     super();
   }
 
-  evaluate(node: ts.CallExpression, args: ResolvedValueArray): ResolvedValue {
+  override evaluate(node: ts.CallExpression, args: ResolvedValueArray): ResolvedValue {
     const result: ResolvedValueArray = [...this.lhs];
     for (const arg of args) {
       if (arg instanceof DynamicValue) {
@@ -45,22 +45,25 @@ export class ArrayConcatBuiltinFn extends KnownFn {
   }
 }
 
-export class ObjectAssignBuiltinFn extends KnownFn {
-  evaluate(node: ts.CallExpression, args: ResolvedValueArray): ResolvedValue {
-    if (args.length === 0) {
-      return DynamicValue.fromUnsupportedSyntax(node);
-    }
+export class StringConcatBuiltinFn extends KnownFn {
+  constructor(private lhs: string) {
+    super();
+  }
+
+  override evaluate(node: ts.CallExpression, args: ResolvedValueArray): ResolvedValue {
+    let result = this.lhs;
     for (const arg of args) {
-      if (arg instanceof DynamicValue) {
-        return DynamicValue.fromDynamicInput(node, arg);
-      } else if (!(arg instanceof Map)) {
-        return DynamicValue.fromUnsupportedSyntax(node);
+      const resolved = arg instanceof EnumValue ? arg.resolved : arg;
+
+      if (typeof resolved === 'string' || typeof resolved === 'number' ||
+          typeof resolved === 'boolean' || resolved == null) {
+        // Cast to `any`, because `concat` will convert
+        // anything to a string, but TS only allows strings.
+        result = result.concat(resolved as any);
+      } else {
+        return DynamicValue.fromUnknown(node);
       }
     }
-    const [target, ...sources] = args as Map<string, ResolvedValue>[];
-    for (const source of sources) {
-      source.forEach((value, key) => target.set(key, value));
-    }
-    return target;
+    return result;
   }
 }

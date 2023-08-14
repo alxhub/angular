@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {XhrFactory} from '@angular/common';
 import {HttpHeaders} from '@angular/common/http/src/headers';
-import {XhrFactory} from '@angular/common/http/src/xhr';
 
 export class MockXhrFactory implements XhrFactory {
   // TODO(issue/24571): remove '!'.
@@ -53,8 +53,8 @@ export class MockXMLHttpRequest {
   mockResponseHeaders: string = '';
 
   listeners: {
-    error?: (event: ErrorEvent) => void,
-    timeout?: (event: ErrorEvent) => void,
+    error?: (event: ProgressEvent) => void,
+    timeout?: (event: ProgressEvent) => void,
     abort?: () => void,
     load?: () => void,
     progress?: (event: ProgressEvent) => void,

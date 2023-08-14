@@ -4,10 +4,8 @@
   <h1>Property Binding with Angular</h1>
   <h2>Binding the src property of an image:</h2>
   <!-- #docregion property-binding -->
-  <img [src]="itemImageUrl">
+  <img alt="item" [src]="itemImageUrl">
   <!-- #enddocregion property-binding -->
-  <h2>Using bind- syntax:</h2>
-  <img bind-src="itemImageUrl">
   <hr />
 
   <h2>Binding to the colSpan property</h2>
@@ -22,7 +20,7 @@
   <h2>Button disabled state bound to isUnchanged property:</h2>
   <!-- #docregion disabled-button -->
   <!-- Bind button disabled state to `isUnchanged` property -->
-  <button [disabled]="isUnchanged">Disabled Button</button>
+  <button type="button" [disabled]="isUnchanged">Disabled Button</button>
   <!-- #enddocregion disabled-button -->
   <hr />
 
@@ -46,33 +44,23 @@
   <!-- #enddocregion pass-object -->
 
   <hr />
-  <h2>Initialized string:</h2>
-  <app-string-init prefix="This is a one-time initialized string."></app-string-init>
-
-  <hr />
 
   <h2>Property binding and interpolation</h2>
-  <!-- #docregion property-binding-interpolation -->
-  <p><img src="{{itemImageUrl}}"> is the <i>interpolated</i> image.</p>
-  <p><img [src]="itemImageUrl"> is the <i>property bound</i> image.</p>
+  <p><img alt="Interpolated item" src="{{itemImageUrl}}"> is the <em>interpolated</em> image.</p>
+  <p><img alt="Property Bound item" [src]="itemImageUrl"> is the <em>property bound</em> image.</p>
 
-  <p><span>"{{interpolationTitle}}" is the <i>interpolated</i> title.</span></p>
-  <p>"<span [innerHTML]="propertyTitle"></span>" is the <i>property bound</i> title.</p>
-  <!-- #enddocregion property-binding-interpolation -->
+  <p><span>"{{interpolationTitle}}" is the <em>interpolated</em> title.</span></p>
+  <p>"<span [innerHTML]="propertyTitle"></span>" is the <em>property bound</em> title.</p>
 
   <hr />
 
   <h2>Malicious content</h2>
 
-<!-- #docregion malicious-interpolated -->
-  <p><span>"{{evilTitle}}" is the <i>interpolated</i> evil title.</span></p>
-<!-- #enddocregion malicious-interpolated -->
+  <p><span>"{{evilTitle}}" is the <em>interpolated</em> evil title.</span></p>
 
-<!-- #docregion malicious-content -->
   <!--
   Angular generates a warning for the following line as it sanitizes them
   WARNING: sanitizing HTML stripped some content (see https://g.co/ng/security#xss).
  -->
-  <p>"<span [innerHTML]="evilTitle"></span>" is the <i>property bound</i> evil title.</p>
-<!-- #enddocregion malicious-content -->
+  <p>"<span [innerHTML]="evilTitle"></span>" is the <em>property bound</em> evil title.</p>
 </div>

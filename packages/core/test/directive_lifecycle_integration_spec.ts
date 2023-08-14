@@ -6,8 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AfterContentChecked, AfterContentInit, AfterViewChecked, AfterViewInit, DoCheck, OnChanges, OnInit} from '@angular/core';
-import {Component, Directive} from '@angular/core/src/metadata';
+import {AfterContentChecked, AfterContentInit, AfterViewChecked, AfterViewInit, Component, Directive, DoCheck, OnChanges, OnInit} from '@angular/core';
 import {inject, TestBed} from '@angular/core/testing';
 import {Log} from '@angular/core/testing/src/testing_internal';
 
@@ -65,10 +64,10 @@ class LifecycleDir implements DoCheck {
 })
 class LifecycleCmp implements OnChanges, OnInit, DoCheck, AfterContentInit, AfterContentChecked,
                               AfterViewInit, AfterViewChecked {
-  field: any /** TODO #9100 */;
+  field: number = 0;
   constructor(private _log: Log) {}
 
-  ngOnChanges(_: any /** TODO #9100 */) {
+  ngOnChanges() {
     this._log.add('ngOnChanges');
   }
 

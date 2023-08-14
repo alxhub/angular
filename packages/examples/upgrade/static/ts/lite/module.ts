@@ -10,15 +10,13 @@
 import {Component, Directive, ElementRef, EventEmitter, Inject, Injectable, Injector, Input, NgModule, Output, StaticProvider} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
 // #docregion basic-how-to
-// Alternatively, we could import and use an `NgModuleFactory` instead:
-// import {MyLazyAngularModuleNgFactory} from './my-lazy-angular-module.ngfactory';
 import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 // #enddocregion
 /* tslint:disable: no-duplicate-imports */
-import {UpgradeComponent} from '@angular/upgrade/static';
-import {downgradeComponent} from '@angular/upgrade/static';
 // #docregion basic-how-to
-import {downgradeModule} from '@angular/upgrade/static';
+import {downgradeComponent, downgradeModule, UpgradeComponent} from '@angular/upgrade/static';
+
+
 // #enddocregion
 /* tslint:enable: no-duplicate-imports */
 
@@ -124,8 +122,6 @@ class Ng1HeroComponentWrapper extends UpgradeComponent {
     // Register an Angular provider whose value is the "upgraded" AngularJS service.
     {provide: 'titleCase', useFactory: (i: any) => i.get('titleCase'), deps: ['$injector']}
   ],
-  // All components that are to be "downgraded" must be declared as `entryComponents`.
-  entryComponents: [Ng2HeroesComponent]
   // Note that there are no `bootstrap` components, since the "downgraded" component
   // will be instantiated by ngUpgrade.
 })
