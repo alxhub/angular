@@ -665,6 +665,16 @@ function allocLFrame() {
   return newLFrame;
 }
 
+export function saveLFrame(): LFrame {
+  const currentFrame = instructionState.lFrame;
+  instructionState.lFrame = createLFrame(null);
+  return currentFrame;
+}
+
+export function restoreLFrame(frame: LFrame): void {
+  instructionState.lFrame = frame;
+}
+
 function createLFrame(parent: LFrame | null): LFrame {
   const lFrame: LFrame = {
     currentTNode: null,

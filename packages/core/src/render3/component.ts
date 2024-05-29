@@ -95,6 +95,27 @@ export function createComponent<C>(
   );
 }
 
+export function createComponentAsync<C>(
+  component: Type<C>,
+  options: {
+    environmentInjector: EnvironmentInjector;
+    hostElement?: Element;
+    elementInjector?: Injector;
+    projectableNodes?: Node[][];
+  },
+): Generator<unknown, ComponentRef<C>, unknown> {
+  ngDevMode && assertComponentDef(component);
+  const componentDef = getComponentDef(component)!;
+  const elementInjector = options.elementInjector || getNullInjector();
+  const factory = new ComponentFactory<C>(componentDef);
+  return factory.createAsync(
+    elementInjector,
+    options.projectableNodes,
+    options.hostElement,
+    options.environmentInjector,
+  );
+}
+
 /**
  * An interface that describes the subset of component metadata
  * that can be retrieved using the `reflectComponentType` function.
