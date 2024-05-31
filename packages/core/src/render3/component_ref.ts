@@ -405,7 +405,6 @@ export class ComponentFactory<T> extends AbstractComponentFactory<T> {
           rootLView,
           [LifecycleHooksFeature],
         );
-        console.log('pre-render-async');
         yield* renderViewAsync(rootTView, rootLView, null);
       } finally {
         leaveView();

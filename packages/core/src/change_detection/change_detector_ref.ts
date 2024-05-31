@@ -99,6 +99,8 @@ export abstract class ChangeDetectorRef {
    */
   abstract detectChanges(): void;
 
+  abstract detectChangesAsync(): Generator;
+
   /**
    * Checks the change detector and its children, and throws if any changes are detected.
    *

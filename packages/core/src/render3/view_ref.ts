@@ -15,6 +15,7 @@ import {assertEqual} from '../util/assert';
 
 import {collectNativeNodes} from './collect_native_nodes';
 import {checkNoChangesInternal, detectChangesInternal} from './instructions/change_detection';
+import {detectChangesInternalAsync} from './instructions/change_detection_async';
 import {markViewDirty} from './instructions/mark_view_dirty';
 import {CONTAINER_HEADER_OFFSET, VIEW_REFS} from './interfaces/container';
 import {isLContainer, isRootView} from './interfaces/type_checks';
@@ -311,6 +312,11 @@ export class ViewRef<T> implements EmbeddedViewRef<T>, ChangeDetectorRefInterfac
     // in the state of the LViewFlags during template execution.
     this._lView[FLAGS] |= LViewFlags.RefreshView;
     detectChangesInternal(this._lView, this.notifyErrorHandler);
+  }
+
+  detectChangesAsync(): Generator {
+    this._lView[FLAGS] |= LViewFlags.RefreshView;
+    return detectChangesInternalAsync(this._lView, this.notifyErrorHandler);
   }
 
   /**

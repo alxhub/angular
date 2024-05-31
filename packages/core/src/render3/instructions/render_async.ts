@@ -30,7 +30,6 @@ export function* renderComponentAsync(hostLView: LView, componentHostIdx: number
     componentView[HYDRATION] = retrieveHydrationInfo(hostRNode, componentView[INJECTOR]!);
   }
 
-  console.log('child component render view');
   yield* renderViewAsync(componentTView, componentView, componentView[CONTEXT]);
 }
 
@@ -44,6 +43,11 @@ export function* renderComponentAsync(hostLView: LView, componentHostIdx: number
 export function* renderViewAsync<T>(tView: TView, lView: LView<T>, context: T): Generator {
   ngDevMode && assertEqual(isCreationMode(lView), true, 'Should be run in creation mode');
   ngDevMode && assertNotReactive(renderViewAsync.name);
+
+  const frame = saveLFrame();
+  yield;
+  restoreLFrame(frame);
+
   enterView(lView);
   try {
     const viewQuery = tView.viewQuery;
@@ -103,16 +107,11 @@ export function* renderViewAsync<T>(tView: TView, lView: LView<T>, context: T): 
     lView[FLAGS] &= ~LViewFlags.CreationMode;
     leaveView();
   }
-
-  const frame = saveLFrame();
-  yield;
-  restoreLFrame(frame);
 }
 
 /** Renders child components in the current view (creation mode). */
 function* renderChildComponentsAsync(hostLView: LView, components: number[]): Generator {
   for (let i = 0; i < components.length; i++) {
-    console.log('rendering child component', i);
     yield* renderComponentAsync(hostLView, components[i]);
   }
 }
