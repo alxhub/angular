@@ -27,7 +27,12 @@ import {
 } from '@angular/compiler';
 import ts from 'typescript';
 
-import {ErrorCode, FatalDiagnosticError, makeRelatedInformation} from '../../../diagnostics';
+import {
+  ErrorCode,
+  FatalDiagnosticError,
+  makeDiagnostic,
+  makeRelatedInformation,
+} from '../../../diagnostics';
 import {
   assertSuccessfulReferenceEmit,
   ImportedSymbolsTracker,
@@ -115,6 +120,7 @@ export function extractDirectiveMetadata(
   annotateForClosureCompiler: boolean,
   compilationMode: CompilationMode,
   defaultSelector: string | null,
+  strictStandalone: boolean,
 ):
   | {
       jitForced: false;
@@ -342,6 +348,14 @@ export function extractDirectiveMetadata(
       throw createValueHasWrongTypeError(expr, resolved, `standalone flag must be a boolean`);
     }
     isStandalone = resolved;
+
+    if (!isStandalone && strictStandalone) {
+      throw makeDiagnostic(
+        ErrorCode.NON_STANDALONE_NOT_ALLOWED,
+        expr,
+        `Only standalone components/directives are allowed when 'strictStandalone' is enabled.`,
+      );
+    }
   }
   let isSignal = false;
   if (directive.has('signals')) {

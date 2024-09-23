@@ -18,7 +18,7 @@ import {
 } from '@angular/compiler';
 import ts from 'typescript';
 
-import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
+import {ErrorCode, FatalDiagnosticError, makeDiagnostic} from '../../diagnostics';
 import {Reference} from '../../imports';
 import {SemanticSymbol} from '../../incremental/semantic_graph';
 import {MetadataRegistry, MetaKind} from '../../metadata';
@@ -95,6 +95,7 @@ export class PipeDecoratorHandler
     private includeClassMetadata: boolean,
     private readonly compilationMode: CompilationMode,
     private readonly generateExtraImportsInLocalMode: boolean,
+    private readonly strictStandalone: boolean,
   ) {}
 
   readonly precedence = HandlerPrecedence.PRIMARY;
@@ -183,6 +184,14 @@ export class PipeDecoratorHandler
         throw createValueHasWrongTypeError(expr, resolved, `standalone flag must be a boolean`);
       }
       isStandalone = resolved;
+
+      if (!isStandalone && this.strictStandalone) {
+        throw makeDiagnostic(
+          ErrorCode.NON_STANDALONE_NOT_ALLOWED,
+          expr,
+          `Only standalone pipes are allowed when 'strictStandalone' is enabled.`,
+        );
+      }
     }
 
     return {
