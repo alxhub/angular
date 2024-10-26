@@ -11,14 +11,7 @@ import {computed} from '../render3/reactivity/computed';
 import {signal, WritableSignal} from '../render3/reactivity/signal';
 import {Signal} from '../render3/reactivity/api';
 import {effect, EffectRef} from '../render3/reactivity/effect';
-import {
-  ResourceOptions,
-  ResourceStatus,
-  WritableResource,
-  ResourceLoader,
-  Resource,
-  ResourceRef,
-} from './api';
+import {ResourceOptions, ResourceStatus, ResourceRef, ResourceStreamLoader} from './api';
 import {ValueEqualityFn} from '@angular/core/primitives/signals';
 import {Injector} from '../di/injector';
 import {assertInInjectionContext} from '../di/contextual';
@@ -26,7 +19,11 @@ import {inject} from '../di/injector_compatibility';
 import {PendingTasks} from '../pending_tasks';
 import {DestroyRef} from '../linker';
 
-import {linkedSignal} from '../render3/reactivity/linked_signal';
+import {BaseWritableResource} from './resource';
+
+export interface StreamResourceOptions<T, R> extends Omit<ResourceOptions<T, R>, 'loader'> {
+  loader: ResourceStreamLoader<T, R>;
+}
 
 /**
  * Constructs a `Resource` that projects a reactive request to an asynchronous operation defined by
@@ -38,10 +35,10 @@ import {linkedSignal} from '../render3/reactivity/linked_signal';
  *
  * @experimental
  */
-export function resource<T, R>(options: ResourceOptions<T, R>): ResourceRef<T> {
-  options?.injector || assertInInjectionContext(resource);
+export function streamResource<T, R>(options: StreamResourceOptions<T, R>): ResourceRef<T> {
+  options?.injector || assertInInjectionContext(streamResource);
   const request = (options.request ?? (() => null)) as () => R;
-  return new WritableResourceImpl<T, R>(request, options.loader, options.equal, options.injector);
+  return new StreamResourceImpl<T, R>(request, options.loader, options.equal, options.injector);
 }
 
 interface ResourceState<T> {
@@ -51,115 +48,7 @@ interface ResourceState<T> {
   error: unknown;
 }
 
-/**
- * Base class for `WritableResource` which handles the state operations and is unopinionated on the
- * actual async operation.
- *
- * Mainly factored out for better readability.
- */
-export abstract class BaseWritableResource<T> implements WritableResource<T> {
-  private readonly equal: ValueEqualityFn<T | undefined> | undefined;
-
-  protected readonly state = linkedSignal<ResourceStatus, ResourceState<T>>({
-    source: () => this.computeStatus(),
-    computation: (status, previous) => ({
-      status,
-      // When the state of the resource changes due to the request, remember the previous status for
-      // the loader to consider.
-      previousStatus: previous?.value.status ?? ResourceStatus.Idle,
-      value: undefined,
-      error: undefined,
-    }),
-  });
-
-  readonly value: WritableSignal<T | undefined>;
-  readonly status = computed(() => this.state().status);
-  readonly error = computed(() => this.state().error);
-
-  constructor(equal: ValueEqualityFn<T> | undefined) {
-    this.equal = equal && wrapEqualityFn(equal);
-    this.value = computed<T | undefined>(() => this.state().value, {
-      equal: this.equal,
-    }) as WritableSignal<T | undefined>;
-    this.value.set = (value: T | undefined) => this.set(value);
-    this.value.update = (fn: (value: T | undefined) => T | undefined) =>
-      this.set(fn(untracked(this.value)));
-  }
-
-  set(value: T | undefined): void {
-    const currentState = untracked(this.state);
-    if (this.equal ? this.equal(currentState.value, value) : currentState.value === value) {
-      return;
-    }
-
-    this.state.set({
-      status: ResourceStatus.Local,
-      previousStatus: ResourceStatus.Local,
-      value,
-      error: undefined,
-    });
-
-    // We're departing from whatever state the resource was in previously, and entering Local state.
-    this.onLocalValue();
-  }
-
-  update(updater: (value: T | undefined) => T | undefined): void {
-    this.value.update(updater);
-  }
-
-  readonly isLoading = computed(
-    () => this.status() === ResourceStatus.Loading || this.status() === ResourceStatus.Reloading,
-  );
-
-  hasValue(): this is WritableResource<T> & {value: WritableSignal<T>} {
-    return (
-      this.status() === ResourceStatus.Resolved ||
-      this.status() === ResourceStatus.Local ||
-      this.status() === ResourceStatus.Reloading
-    );
-  }
-
-  asReadonly(): Resource<T> {
-    return this;
-  }
-
-  protected abstract computeStatus(): ResourceStatus;
-
-  /**
-   * Put the resource in a state with a given value.
-   */
-  protected setValueState(status: ResourceStatus, value: T | undefined = undefined): void {
-    this.state.set({
-      status,
-      previousStatus: status,
-      value,
-      error: undefined,
-    });
-  }
-
-  /**
-   * Put the resource into the error state.
-   */
-  protected setErrorState(error: unknown): void {
-    this.state.set({
-      status: ResourceStatus.Error,
-      previousStatus: ResourceStatus.Error,
-      value: undefined,
-      error,
-    });
-  }
-
-  /**
-   * Called when the resource is transitioning to local state.
-   *
-   * For example, this can be used to cancel any in-progress loading operations.
-   */
-  protected abstract onLocalValue(): void;
-
-  public abstract reload(): boolean;
-}
-
-class WritableResourceImpl<T, R> extends BaseWritableResource<T> implements ResourceRef<T> {
+class StreamResourceImpl<T, R> extends BaseWritableResource<T> implements ResourceRef<T> {
   private readonly request: Signal<{request: R; reload: WritableSignal<number>}>;
   private readonly pendingTasks: PendingTasks;
   private readonly effectRef: EffectRef;
@@ -169,7 +58,7 @@ class WritableResourceImpl<T, R> extends BaseWritableResource<T> implements Reso
 
   constructor(
     requestFn: () => R,
-    private readonly loaderFn: ResourceLoader<T, R>,
+    private readonly loaderFn: ResourceStreamLoader<T, R>,
     equal: ValueEqualityFn<T> | undefined,
     injector: Injector | undefined,
   ) {
@@ -262,21 +151,27 @@ class WritableResourceImpl<T, R> extends BaseWritableResource<T> implements Reso
       // The actual loading is run through `untracked` - only the request side of `resource` is
       // reactive. This avoids any confusion with signals tracking or not tracking depending on
       // which side of the `await` they are.
-      const result = await untracked(() =>
-        this.loaderFn({
+      await untracked(async () => {
+        const stream = this.loaderFn({
           abortSignal,
           request: request as Exclude<R, undefined>,
           previous: {
             status: previousStatus,
           },
-        }),
-      );
-      if (abortSignal.aborted) {
-        // This load operation was cancelled.
-        return;
-      }
-      // Success :)
-      this.setValueState(ResourceStatus.Resolved, result);
+        });
+
+        for await (const value of stream) {
+          if (abortSignal.aborted) {
+            // This load operation was cancelled.
+            break;
+          }
+
+          this.setValueState(ResourceStatus.Resolved, value);
+
+          // Resolve the pending task after the first value.
+          resolvePendingTask();
+        }
+      });
     } catch (err) {
       if (abortSignal.aborted) {
         // This load operation was cancelled.

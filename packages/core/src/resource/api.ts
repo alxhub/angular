@@ -160,6 +160,8 @@ export interface ResourceLoaderParams<R> {
  */
 export type ResourceLoader<T, R> = (param: ResourceLoaderParams<R>) => PromiseLike<T>;
 
+export type ResourceStreamLoader<T, R> = (param: ResourceLoaderParams<R>) => AsyncIterable<T>;
+
 /**
  * Options to the `resource` function, for creating a resource.
  *
