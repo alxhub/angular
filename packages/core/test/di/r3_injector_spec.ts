@@ -16,8 +16,7 @@ import {
   ɵɵdefineInjector,
   ɵɵinject,
 } from '@angular/core';
-import {createInjector} from '@angular/core/src/di/create_injector';
-import {R3Injector} from '@angular/core/src/di/r3_injector';
+import {createInjector, InjectorImpl} from '@angular/core/src/di/injector';
 
 describe('InjectorDef-based createInjector()', () => {
   class CircularA {
@@ -336,22 +335,21 @@ describe('InjectorDef-based createInjector()', () => {
 
   it('should throw when no provider defined', () => {
     expect(() => injector.get(ServiceTwo)).toThrowError(
-      `R3InjectorError(Module)[ServiceTwo]: \n` +
-        `  NullInjectorError: No provider for ServiceTwo!`,
+      `InjectorError(Module)[ServiceTwo]: \n` + `  NullInjectorError: No provider for ServiceTwo!`,
     );
   });
 
   it('should throw without the module name when no module', () => {
     const injector = createInjector([ServiceTwo]);
     expect(() => injector.get(ServiceTwo)).toThrowError(
-      `R3InjectorError[ServiceTwo]: \n` + `  NullInjectorError: No provider for ServiceTwo!`,
+      `InjectorError[ServiceTwo]: \n` + `  NullInjectorError: No provider for ServiceTwo!`,
     );
   });
 
   it('should throw with the full path when no provider', () => {
     const injector = createInjector(ModuleWithMissingDep);
     expect(() => injector.get(ServiceWithMissingDep)).toThrowError(
-      `R3InjectorError(ModuleWithMissingDep)[ServiceWithMissingDep -> Service]: \n` +
+      `InjectorError(ModuleWithMissingDep)[ServiceWithMissingDep -> Service]: \n` +
         `  NullInjectorError: No provider for Service!`,
     );
   });
@@ -441,27 +439,27 @@ describe('InjectorDef-based createInjector()', () => {
   it('calls ngOnDestroy on services when destroyed', () => {
     injector.get(DeepService);
     expect(deepServiceDestroyed).toBe(false, 'DeepService already destroyed');
-    (injector as R3Injector).destroy();
+    (injector as InjectorImpl).destroy();
     expect(deepServiceDestroyed).toBe(true, 'DeepService not destroyed');
   });
 
   it('calls ngOnDestroy on scoped providers', () => {
     injector.get(ScopedService);
     expect(scopedServiceDestroyed).toBe(false, 'ScopedService already destroyed');
-    (injector as R3Injector).destroy();
+    (injector as InjectorImpl).destroy();
     expect(scopedServiceDestroyed).toBe(true, 'ScopedService not destroyed');
   });
 
   it('does not allow injection after destroy', () => {
-    (injector as R3Injector).destroy();
+    (injector as InjectorImpl).destroy();
     expect(() => injector.get(DeepService)).toThrowError(
       'NG0205: Injector has already been destroyed.',
     );
   });
 
   it('does not allow double destroy', () => {
-    (injector as R3Injector).destroy();
-    expect(() => (injector as R3Injector).destroy()).toThrowError(
+    (injector as InjectorImpl).destroy();
+    expect(() => (injector as InjectorImpl).destroy()).toThrowError(
       'NG0205: Injector has already been destroyed.',
     );
   });

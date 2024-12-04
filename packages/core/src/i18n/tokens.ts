@@ -7,8 +7,8 @@
  */
 
 import {InjectionToken} from '../di/injection_token';
-import {inject} from '../di/injector_compatibility';
-import {InjectFlags} from '../di/interface/injector';
+import {inject} from '../di/inject';
+import {InjectFlags} from '../di/flags';
 
 import {DEFAULT_LOCALE_ID, USD_CURRENCY_CODE} from './localization';
 

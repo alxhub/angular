@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ɵɵdefineInjectable} from '../di/interface/defs';
+import {ɵɵdefineInjectable} from '../di/defs';
 import {SecurityContext} from './security';
 
 /**

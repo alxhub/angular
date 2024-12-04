@@ -19,7 +19,7 @@ import {
 import {FLAGS, LViewFlags, LView, EFFECTS} from '../interfaces/view';
 import {markAncestorsForTraversal} from '../util/view_utils';
 import {InjectionToken} from '../../di/injection_token';
-import {inject} from '../../di/injector_compatibility';
+import {inject} from '../../di/inject';
 import {performanceMarkFeature} from '../../util/performance';
 import {Injector} from '../../di/injector';
 import {assertNotInReactiveContext} from './asserts';

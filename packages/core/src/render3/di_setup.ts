@@ -6,10 +6,10 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {resolveForwardRef} from '../di/forward_ref';
-import {ClassProvider, Provider} from '../di/interface/provider';
+import {providerToFactory} from '../di/factory';
+import {resolveForwardRef} from '../forward_ref';
+import {ClassProvider, Provider} from '../di/provider';
 import {isClassProvider, isTypeProvider, SingleProvider} from '../di/provider_collection';
-import {providerToFactory} from '../di/r3_injector';
 import {assertDefined} from '../util/assert';
 
 import {emitProviderConfiguredEvent, runInInjectorProfilerContext} from './debug/injector_profiler';
@@ -19,7 +19,6 @@ import {
   getOrCreateNodeInjectorForNode,
   NodeInjector,
 } from './di';
-import {ɵɵdirectiveInject} from './instructions/all';
 import {DirectiveDef} from './interfaces/definition';
 import {NodeInjectorFactory} from './interfaces/injector';
 import {
@@ -116,7 +115,7 @@ function resolveProvider(
 
     if (isTypeProvider(provider) || !provider.multi) {
       // Single provider case: the factory is created and pushed immediately
-      const factory = new NodeInjectorFactory(providerFactory, isViewProvider, ɵɵdirectiveInject);
+      const factory = new NodeInjectorFactory(providerFactory, isViewProvider);
       const existingFactoryIndex = indexOf(
         token,
         tInjectables,
@@ -391,7 +390,7 @@ function multiFactory(
   isComponent: boolean,
   f: () => any,
 ): NodeInjectorFactory {
-  const factory = new NodeInjectorFactory(factoryFn, isViewProvider, ɵɵdirectiveInject);
+  const factory = new NodeInjectorFactory(factoryFn, isViewProvider);
   factory.multi = [];
   factory.index = index;
   factory.componentProviders = 0;

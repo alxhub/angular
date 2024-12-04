@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ɵɵdefineInjectable} from '../../di/interface/defs';
-import {StaticProvider} from '../../di/interface/provider';
+import {ɵɵdefineInjectable} from '../../di/defs';
+import {StaticProvider} from '../../di/provider';
 import {Optional, SkipSelf} from '../../di/metadata';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {DefaultIterableDifferFactory} from '../differs/default_iterable_differ';

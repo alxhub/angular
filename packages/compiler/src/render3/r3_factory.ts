@@ -250,8 +250,7 @@ function compileInjectDependency(
     if (flagsParam) {
       injectArgs.push(flagsParam);
     }
-    const injectFn = getInjectFn(target);
-    return o.importExpr(injectFn).callFn(injectArgs);
+    return o.importExpr(R3.inject).callFn(injectArgs);
   } else {
     // The `dep.attributeTypeName` value is defined, which indicates that this is an `@Attribute()`
     // type dependency. For the generated JS we still want to use the `dep.token` value in case the
@@ -315,17 +314,4 @@ export function isExpressionFactoryMetadata(
   meta: R3FactoryMetadata,
 ): meta is R3ExpressionFactoryMetadata {
   return (meta as any).expression !== undefined;
-}
-
-function getInjectFn(target: FactoryTarget): o.ExternalReference {
-  switch (target) {
-    case FactoryTarget.Component:
-    case FactoryTarget.Directive:
-    case FactoryTarget.Pipe:
-      return R3.directiveInject;
-    case FactoryTarget.NgModule:
-    case FactoryTarget.Injectable:
-    default:
-      return R3.inject;
-  }
 }

@@ -11,9 +11,9 @@ import {
   JitCompilerUsage,
   R3InjectorMetadataFacade,
 } from '../../compiler/compiler_facade';
-import {resolveForwardRef} from '../../di/forward_ref';
-import {NG_INJ_DEF} from '../../di/interface/defs';
-import type {ModuleWithProviders} from '../../di/interface/provider';
+import {resolveForwardRef} from '../../forward_ref';
+import {NG_INJ_DEF} from '../../di/defs';
+import type {ModuleWithProviders} from '../../di/provider';
 import {reflectDependencies} from '../../di/jit/util';
 import {Type} from '../../interface/type';
 import {registerNgModuleType} from '../../linker/ng_module_registration';

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {EnvironmentInjector} from '../di';
+import {EnvironmentInjector} from '../di/injector';
 import {LView} from '../render3/interfaces/view';
 import {getLView} from '../render3/state';
 import {removeLViewOnDestroy, storeLViewOnDestroy} from '../render3/util/view_utils';

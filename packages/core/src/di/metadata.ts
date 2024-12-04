@@ -6,10 +6,10 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
+import {DecoratorFlags, InjectFlags, InternalInjectFlags} from './flags';
 import {makeParamDecorator} from '../util/decorators';
 
-import {attachInjectFlag} from './injector_compatibility';
-import {DecoratorFlags, InternalInjectFlags} from './interface/injector';
+import {attachInjectFlag} from './inject_args';
 
 /**
  * Type of the Inject decorator / constructor function.
@@ -104,7 +104,7 @@ export interface Optional {}
 export const Optional: OptionalDecorator =
   // Disable tslint because `InternalInjectFlags` is a const enum which gets inlined.
   // tslint:disable-next-line: no-toplevel-property-access
-  attachInjectFlag(makeParamDecorator('Optional'), InternalInjectFlags.Optional);
+  attachInjectFlag(makeParamDecorator('Optional'), InjectFlags.Optional);
 
 /**
  * Type of the Self decorator / constructor function.
@@ -151,7 +151,7 @@ export interface Self {}
 export const Self: SelfDecorator =
   // Disable tslint because `InternalInjectFlags` is a const enum which gets inlined.
   // tslint:disable-next-line: no-toplevel-property-access
-  attachInjectFlag(makeParamDecorator('Self'), InternalInjectFlags.Self);
+  attachInjectFlag(makeParamDecorator('Self'), InternalInjectFlags.Self as unknown as InjectFlags);
 
 /**
  * Type of the `SkipSelf` decorator / constructor function.
@@ -197,7 +197,10 @@ export interface SkipSelf {}
 export const SkipSelf: SkipSelfDecorator =
   // Disable tslint because `InternalInjectFlags` is a const enum which gets inlined.
   // tslint:disable-next-line: no-toplevel-property-access
-  attachInjectFlag(makeParamDecorator('SkipSelf'), InternalInjectFlags.SkipSelf);
+  attachInjectFlag(
+    makeParamDecorator('SkipSelf'),
+    InternalInjectFlags.SkipSelf as unknown as InjectFlags,
+  );
 
 /**
  * Type of the `Host` decorator / constructor function.
@@ -239,4 +242,4 @@ export interface Host {}
 export const Host: HostDecorator =
   // Disable tslint because `InternalInjectFlags` is a const enum which gets inlined.
   // tslint:disable-next-line: no-toplevel-property-access
-  attachInjectFlag(makeParamDecorator('Host'), InternalInjectFlags.Host);
+  attachInjectFlag(makeParamDecorator('Host'), InternalInjectFlags.Host as unknown as InjectFlags);

@@ -7,7 +7,7 @@
  */
 
 import {ChangeDetectionStrategy} from '../change_detection/constants';
-import {Provider} from '../di/interface/provider';
+import {Provider} from '../di/provider';
 import {Type} from '../interface/type';
 import {compileComponent, compileDirective} from '../render3/jit/directive';
 import {compilePipe} from '../render3/jit/pipe';

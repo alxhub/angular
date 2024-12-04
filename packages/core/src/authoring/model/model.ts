@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {assertInInjectionContext} from '../../di';
+import {assertInInjectionContext} from '../../di/contextual';
 import {REQUIRED_UNSET_VALUE} from '../input/input_signal_node';
 
 import {createModelSignal, ModelOptions, ModelSignal} from './model_signal';

@@ -70,7 +70,6 @@ export {
   ɵɵclassMapInterpolateV,
   ɵɵclassProp,
   ɵɵcomponentInstance,
-  ɵɵdirectiveInject,
   ɵɵelement,
   ɵɵelementContainer,
   ɵɵelementContainerEnd,

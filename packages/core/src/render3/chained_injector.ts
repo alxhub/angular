@@ -7,8 +7,8 @@
  */
 
 import {Injector} from '../di/injector';
-import {convertToBitFlags} from '../di/injector_compatibility';
-import {InjectFlags, InjectOptions} from '../di/interface/injector';
+import {convertToBitFlags, InjectFlags} from '../di/flags';
+import {InjectOptions} from '../di/options';
 import {ProviderToken} from '../di/provider_token';
 import {NOT_FOUND_CHECK_ONLY_ELEMENT_INJECTOR} from '../view/provider_flags';
 
@@ -22,7 +22,11 @@ export class ChainedInjector implements Injector {
     public parentInjector: Injector,
   ) {}
 
-  get<T>(token: ProviderToken<T>, notFoundValue?: T, flags?: InjectFlags | InjectOptions): T {
+  get<T>(
+    token: ProviderToken<T>,
+    notFoundValue?: T,
+    flags: InjectFlags | InjectOptions = InjectFlags.Default,
+  ): T {
     flags = convertToBitFlags(flags);
     const value = this.injector.get<T | typeof NOT_FOUND_CHECK_ONLY_ELEMENT_INJECTOR>(
       token,

@@ -6,12 +6,11 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isForwardRef, resolveForwardRef} from '../di/forward_ref';
-import {injectRootLimpMode, setInjectImplementation} from '../di/inject_switch';
+import {isForwardRef, resolveForwardRef} from '../forward_ref';
+import {setCurrentInjector} from '../di/inject';
 import {Injector} from '../di/injector';
-import {convertToBitFlags} from '../di/injector_compatibility';
 import {InjectorMarkers} from '../di/injector_marker';
-import {InjectFlags, InjectOptions} from '../di/interface/injector';
+import {convertToBitFlags, InjectFlags} from '../di/flags';
 import {ProviderToken} from '../di/provider_token';
 import {Type} from '../interface/type';
 import {assertDefined, assertEqual, assertIndexInRange} from '../util/assert';
@@ -25,9 +24,9 @@ import {
   setInjectorProfilerContext,
 } from './debug/injector_profiler';
 import {getFactoryDef} from './definition_factory';
-import {throwCyclicDependencyError, throwProviderNotFoundError} from './errors_di';
 import {NG_ELEMENT_ID, NG_FACTORY_DEF} from './fields';
 import {registerPreOrderHooks} from './hooks';
+import {DIRECTIVE_INJECTOR} from './instructions/di';
 import {AttributeMarker} from './interfaces/attribute_marker';
 import {ComponentDef, DirectiveDef} from './interfaces/definition';
 import {
@@ -71,6 +70,8 @@ import {
   hasParentInjector,
 } from './util/injector_utils';
 import {stringifyForError} from './util/stringify_utils';
+import {InjectOptions} from '../di/options';
+import {throwCyclicDependencyError, throwProviderNotFoundError} from '../di/error';
 
 /**
  * Defines if the call to `inject` should include `viewProviders` in its resolution.
@@ -412,19 +413,17 @@ function lookupTokenUsingModuleInjector<T>(
   }
 
   if ((flags & (InjectFlags.Self | InjectFlags.Host)) === 0) {
-    const moduleInjector = lView[INJECTOR];
-    // switch to `injectInjectorOnly` implementation for module injector, since module injector
-    // should not have access to Component/Directive DI scope (that may happen through
-    // `directiveInject` implementation)
-    const previousInjectImplementation = setInjectImplementation(undefined);
+    const parentInjector = lView[INJECTOR];
+    // Switch the current injector to `undefined` so that calls to `inject` within
+    // `moduleInjector.get` don't attempt to read from the view DI tree. This is only a precaution
+    // since a proper `Injector` implementation should be calling `setCurrentInjector(this)` before
+    // running any factory code anyway.
+    const prevInjector = setCurrentInjector(undefined);
     try {
-      if (moduleInjector) {
-        return moduleInjector.get(token, notFoundValue, flags & InjectFlags.Optional);
-      } else {
-        return injectRootLimpMode(token, notFoundValue, flags & InjectFlags.Optional);
-      }
+      ngDevMode && assertDefined(parentInjector, 'Expected a parent injector for the view');
+      return parentInjector.get(token, notFoundValue, flags & InjectFlags.Optional);
     } finally {
-      setInjectImplementation(previousInjectImplementation);
+      setCurrentInjector(prevInjector);
     }
   }
   return notFoundValueOrThrow<T>(notFoundValue, token, flags);
@@ -749,9 +748,7 @@ export function getNodeInjectable(
       prevInjectContext = setInjectorProfilerContext({injector, token});
     }
 
-    const previousInjectImplementation = factory.injectImpl
-      ? setInjectImplementation(factory.injectImpl)
-      : null;
+    const prevInjector = setCurrentInjector(DIRECTIVE_INJECTOR);
     const success = enterDI(lView, tNode, InjectFlags.Default);
     ngDevMode &&
       assertEqual(
@@ -776,9 +773,7 @@ export function getNodeInjectable(
       }
     } finally {
       ngDevMode && setInjectorProfilerContext(prevInjectContext!);
-
-      previousInjectImplementation !== null &&
-        setInjectImplementation(previousInjectImplementation);
+      setCurrentInjector(prevInjector);
       setIncludeViewProviders(previousIncludeViewProviders);
       factory.resolving = false;
       leaveDI();
@@ -868,7 +863,11 @@ export class NodeInjector implements Injector {
     private _lView: LView,
   ) {}
 
-  get(token: any, notFoundValue?: any, flags?: InjectFlags | InjectOptions): any {
+  get(
+    token: any,
+    notFoundValue?: any,
+    flags: InjectFlags | InjectOptions = InjectFlags.Default,
+  ): any {
     return getOrCreateInjectable(
       this._tNode,
       this._lView,

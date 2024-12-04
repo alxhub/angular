@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {inject, Injector} from '../di';
+import {inject} from '../di/inject';
+import {Injector} from '../di/injector';
 import {isRootTemplateMessage} from '../render3/i18n/i18n_util';
 import {createIcuIterator} from '../render3/instructions/i18n_icu_container_visitor';
 import {I18nNode, I18nNodeKind, I18nPlaceholderType, TI18n, TIcu} from '../render3/interfaces/i18n';

@@ -8,7 +8,7 @@
 
 import {setActiveConsumer} from '@angular/core/primitives/signals';
 
-import {inject} from '../../di/injector_compatibility';
+import {inject} from '../../di/inject';
 import {ErrorHandler} from '../../error_handler';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {DestroyRef} from '../../linker/destroy_ref';

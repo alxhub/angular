@@ -668,18 +668,9 @@ export function enableProdMode(): void;
 export const ENVIRONMENT_INITIALIZER: InjectionToken<readonly (() => void)[]>;
 
 // @public
-export abstract class EnvironmentInjector implements Injector {
+export abstract class EnvironmentInjector extends Injector {
     // (undocumented)
     abstract destroy(): void;
-    abstract get<T>(token: ProviderToken<T>, notFoundValue: undefined, options: InjectOptions & {
-        optional?: false;
-    }): T;
-    abstract get<T>(token: ProviderToken<T>, notFoundValue: null | undefined, options: InjectOptions): T | null;
-    abstract get<T>(token: ProviderToken<T>, notFoundValue?: T, options?: InjectOptions): T;
-    // @deprecated
-    abstract get<T>(token: ProviderToken<T>, notFoundValue?: T, flags?: InjectFlags): T;
-    // @deprecated (undocumented)
-    abstract get(token: any, notFoundValue?: any): any;
     // @deprecated
     abstract runInContext<ReturnT>(fn: () => ReturnT): ReturnT;
 }
@@ -954,9 +945,7 @@ export abstract class Injector {
     // (undocumented)
     static NULL: Injector;
     // (undocumented)
-    static THROW_IF_NOT_FOUND: {};
-    // (undocumented)
-    static ɵprov: unknown;
+    static THROW_IF_NOT_FOUND: unknown;
 }
 
 // @public

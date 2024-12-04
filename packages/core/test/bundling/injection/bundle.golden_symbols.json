@@ -3,6 +3,9 @@
     "name": "CIRCULAR"
   },
   {
+    "name": "DI_DECORATOR_FLAG"
+  },
+  {
     "name": "EMPTY_ARRAY"
   },
   {
@@ -25,6 +28,12 @@
   },
   {
     "name": "InjectionToken"
+  },
+  {
+    "name": "Injector"
+  },
+  {
+    "name": "InjectorImpl"
   },
   {
     "name": "NEW_LINE"
@@ -51,28 +60,31 @@
     "name": "NG_PROV_DEF"
   },
   {
+    "name": "NG_TEMP_TOKEN_PATH"
+  },
+  {
+    "name": "NG_TOKEN_PATH"
+  },
+  {
     "name": "NOT_YET"
   },
   {
-    "name": "NULL_INJECTOR"
+    "name": "NO_NEW_LINE"
   },
   {
     "name": "NullInjector"
   },
   {
-    "name": "R3Injector"
+    "name": "RuntimeError"
   },
   {
-    "name": "RuntimeError"
+    "name": "SOURCE"
   },
   {
     "name": "ScopedService"
   },
   {
     "name": "Subscription"
-  },
-  {
-    "name": "THROW_IF_NOT_FOUND"
   },
   {
     "name": "USE_VALUE"
@@ -90,12 +102,6 @@
     "name": "__publicField"
   },
   {
-    "name": "_currentInjector"
-  },
-  {
-    "name": "_injectImplementation"
-  },
-  {
     "name": "activeConsumer"
   },
   {
@@ -103,6 +109,9 @@
   },
   {
     "name": "assertNotDestroyed"
+  },
+  {
+    "name": "convertToBitFlags"
   },
   {
     "name": "createErrorClass"
@@ -114,6 +123,9 @@
     "name": "createLFrame"
   },
   {
+    "name": "currentInjector"
+  },
+  {
     "name": "deepForEach"
   },
   {
@@ -121,6 +133,9 @@
   },
   {
     "name": "execFinalizer"
+  },
+  {
+    "name": "factoryForToken"
   },
   {
     "name": "forEachSingleProvider"
@@ -141,22 +156,16 @@
     "name": "getInjectorDef"
   },
   {
-    "name": "getNullInjector"
-  },
-  {
     "name": "getOwnDefinition"
   },
   {
     "name": "importProvidersFrom"
   },
   {
+    "name": "inject"
+  },
+  {
     "name": "injectArgs"
-  },
-  {
-    "name": "injectInjectorOnly"
-  },
-  {
-    "name": "injectableDefOrInjectorDefFactory"
   },
   {
     "name": "instructionState"
@@ -192,9 +201,6 @@
     "name": "setCurrentInjector"
   },
   {
-    "name": "setInjectImplementation"
-  },
-  {
     "name": "stringify"
   },
   {
@@ -202,8 +208,5 @@
   },
   {
     "name": "ɵɵdefineInjectable"
-  },
-  {
-    "name": "ɵɵinject"
   }
 ]

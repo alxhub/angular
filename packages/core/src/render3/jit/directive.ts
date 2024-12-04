@@ -15,7 +15,7 @@ import {
   R3ComponentMetadataFacade,
   R3QueryMetadataFacade,
 } from '../../compiler/compiler_facade_interface';
-import {resolveForwardRef} from '../../di/forward_ref';
+import {resolveForwardRef} from '../../forward_ref';
 import {getReflect, reflectDependencies} from '../../di/jit/util';
 import {Type} from '../../interface/type';
 import type {Query} from '../../metadata/di';

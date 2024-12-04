@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {EnvironmentProviders, Provider} from '../di';
+import {EnvironmentProviders, Provider} from '../di/provider';
 
 /**
  * Set of config options available during the application bootstrap operation.

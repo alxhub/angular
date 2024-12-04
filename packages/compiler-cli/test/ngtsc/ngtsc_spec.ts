@@ -2214,7 +2214,7 @@ runInEachFileSystem((os: string) => {
 
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        'return new (__ngFactoryType__ || TestPipe)(i0.ɵɵdirectiveInject(Dep, 16));',
+        'return new (__ngFactoryType__ || TestPipe)(i0.ɵɵinject(Dep, 16));',
       );
     });
 
@@ -4723,7 +4723,7 @@ runInEachFileSystem((os: string) => {
       env.driveMain();
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        `FooCmp.ɵfac = function FooCmp_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || FooCmp)(i0.ɵɵinjectAttribute("test"), i0.ɵɵdirectiveInject(i0.ChangeDetectorRef), i0.ɵɵdirectiveInject(i0.ElementRef), i0.ɵɵdirectiveInject(i0.Injector), i0.ɵɵdirectiveInject(i0.Renderer2), i0.ɵɵdirectiveInject(i0.TemplateRef), i0.ɵɵdirectiveInject(i0.ViewContainerRef)); }`,
+        `FooCmp.ɵfac = function FooCmp_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || FooCmp)(i0.ɵɵinjectAttribute("test"), i0.ɵɵinject(i0.ChangeDetectorRef), i0.ɵɵinject(i0.ElementRef), i0.ɵɵinject(i0.Injector), i0.ɵɵinject(i0.Renderer2), i0.ɵɵinject(i0.TemplateRef), i0.ɵɵinject(i0.ViewContainerRef)); }`,
       );
     });
 
@@ -6137,8 +6137,8 @@ runInEachFileSystem((os: string) => {
       const jsContents = trim(env.getContents('test.js'));
       expect(jsContents).toContain(`import Default from './types';`);
       expect(jsContents).toContain(`import * as i1 from "./types";`);
-      expect(jsContents).toContain('i0.ɵɵdirectiveInject(Default)');
-      expect(jsContents).toContain('i0.ɵɵdirectiveInject(i1.Other)');
+      expect(jsContents).toContain('i0.ɵɵinject(Default)');
+      expect(jsContents).toContain('i0.ɵɵinject(i1.Other)');
       expect(jsContents).toMatch(setClassMetadataRegExp('type: Default'));
       expect(jsContents).toMatch(setClassMetadataRegExp('type: i1.Other'));
     });

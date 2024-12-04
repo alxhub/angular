@@ -7,9 +7,9 @@
  */
 
 import {TracingService} from '../../application/tracing';
-import {assertInInjectionContext} from '../../di';
+import {assertInInjectionContext} from '../../di/contextual';
 import {Injector} from '../../di/injector';
-import {inject} from '../../di/injector_compatibility';
+import {inject} from '../../di/inject';
 import {DestroyRef} from '../../linker/destroy_ref';
 import {performanceMarkFeature} from '../../util/performance';
 import {assertNotInReactiveContext} from '../reactivity/asserts';

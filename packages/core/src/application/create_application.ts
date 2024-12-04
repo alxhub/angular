@@ -7,8 +7,8 @@
  */
 
 import {internalProvideZoneChangeDetection} from '../change_detection/scheduling/ng_zone_scheduling';
-import {EnvironmentProviders, Provider, StaticProvider} from '../di/interface/provider';
-import {EnvironmentInjector} from '../di/r3_injector';
+import {EnvironmentProviders, Provider, StaticProvider} from '../di/provider';
+import {EnvironmentInjector} from '../di/injector';
 import {Type} from '../interface/type';
 import {createOrReusePlatformInjector} from '../platform/platform';
 import {assertStandaloneComponentType} from '../render3/errors';

@@ -21,6 +21,12 @@
     "name": "ApplicationRef"
   },
   {
+    "name": "BLOOM_BUCKET_BITS"
+  },
+  {
+    "name": "BLOOM_MASK"
+  },
+  {
     "name": "BehaviorSubject"
   },
   {
@@ -61,6 +67,12 @@
   },
   {
     "name": "ConsumerObserver"
+  },
+  {
+    "name": "DIRECTIVE_INJECTOR"
+  },
+  {
+    "name": "DI_DECORATOR_FLAG"
   },
   {
     "name": "DOCUMENT2"
@@ -132,6 +144,9 @@
     "name": "Injector"
   },
   {
+    "name": "InjectorImpl"
+  },
+  {
     "name": "InputFlags"
   },
   {
@@ -174,6 +189,12 @@
     "name": "NG_PROV_DEF"
   },
   {
+    "name": "NG_TEMP_TOKEN_PATH"
+  },
+  {
+    "name": "NG_TOKEN_PATH"
+  },
+  {
     "name": "NOT_FOUND"
   },
   {
@@ -186,7 +207,10 @@
     "name": "NO_CHANGE"
   },
   {
-    "name": "NULL_INJECTOR"
+    "name": "NO_NEW_LINE"
+  },
+  {
+    "name": "NO_PARENT_INJECTOR"
   },
   {
     "name": "NgModuleFactory"
@@ -249,9 +273,6 @@
     "name": "PlatformRef"
   },
   {
-    "name": "R3Injector"
-  },
-  {
     "name": "REACTIVE_LVIEW_CONSUMER_NODE"
   },
   {
@@ -271,6 +292,9 @@
   },
   {
     "name": "SIMPLE_CHANGES_STORE"
+  },
+  {
+    "name": "SOURCE"
   },
   {
     "name": "SafeSubscriber"
@@ -295,9 +319,6 @@
   },
   {
     "name": "TESTABILITY"
-  },
-  {
-    "name": "THROW_IF_NOT_FOUND"
   },
   {
     "name": "TRACKED_LVIEWS"
@@ -336,9 +357,6 @@
     "name": "_DOM"
   },
   {
-    "name": "_Injector"
-  },
-  {
     "name": "_NullComponentFactoryResolver"
   },
   {
@@ -355,12 +373,6 @@
   },
   {
     "name": "_bind"
-  },
-  {
-    "name": "_currentInjector"
-  },
-  {
-    "name": "_injectImplementation"
   },
   {
     "name": "_isRefreshingViews"
@@ -504,6 +516,9 @@
     "name": "createTView"
   },
   {
+    "name": "currentInjector"
+  },
+  {
     "name": "deepForEach"
   },
   {
@@ -564,6 +579,9 @@
     "name": "executeViewQueryFn"
   },
   {
+    "name": "factoryForToken"
+  },
+  {
     "name": "forEachSingleProvider"
   },
   {
@@ -600,9 +618,6 @@
     "name": "getFirstLContainer"
   },
   {
-    "name": "getInjectImplementation"
-  },
-  {
     "name": "getInjectableDef"
   },
   {
@@ -631,9 +646,6 @@
   },
   {
     "name": "getNodeInjectable"
-  },
-  {
-    "name": "getNullInjector"
   },
   {
     "name": "getOrCreateInjectable"
@@ -706,15 +718,6 @@
   },
   {
     "name": "injectElementRef"
-  },
-  {
-    "name": "injectInjectorOnly"
-  },
-  {
-    "name": "injectRootLimpMode"
-  },
-  {
-    "name": "injectableDefOrInjectorDefFactory"
   },
   {
     "name": "insertBloom"
@@ -933,9 +936,6 @@
     "name": "setIncludeViewProviders"
   },
   {
-    "name": "setInjectImplementation"
-  },
-  {
     "name": "setIsRefreshingViews"
   },
   {
@@ -1003,11 +1003,5 @@
   },
   {
     "name": "ɵɵdefineNgModule"
-  },
-  {
-    "name": "ɵɵdirectiveInject"
-  },
-  {
-    "name": "ɵɵinject"
   }
 ]

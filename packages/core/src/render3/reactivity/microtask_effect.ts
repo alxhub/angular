@@ -10,8 +10,8 @@ import {createWatch, Watch, WatchCleanupRegisterFn} from '@angular/core/primitiv
 
 import {ChangeDetectorRef} from '../../change_detection/change_detector_ref';
 import {Injector} from '../../di/injector';
-import {inject} from '../../di/injector_compatibility';
-import {ɵɵdefineInjectable} from '../../di/interface/defs';
+import {inject} from '../../di/inject';
+import {ɵɵdefineInjectable} from '../../di/defs';
 import {ErrorHandler} from '../../error_handler';
 import type {ViewRef} from '../view_ref';
 import {DestroyRef} from '../../linker/destroy_ref';
@@ -21,7 +21,7 @@ import type {CreateEffectOptions, EffectCleanupRegisterFn, EffectRef} from './ef
 import {type SchedulableEffect, ZoneAwareEffectScheduler} from './root_effect_scheduler';
 import {performanceMarkFeature} from '../../util/performance';
 import {assertNotInReactiveContext} from './asserts';
-import {assertInInjectionContext} from '../../di';
+import {assertInInjectionContext} from '../../di/contextual';
 import {PendingTasksInternal} from '../../pending_tasks';
 
 export class MicrotaskEffectScheduler extends ZoneAwareEffectScheduler {

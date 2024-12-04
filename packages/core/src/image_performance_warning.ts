@@ -7,8 +7,8 @@
  */
 
 import {IMAGE_CONFIG, ImageConfig, PLATFORM_ID} from './application/application_tokens';
-import {Injectable} from './di';
-import {inject} from './di/injector_compatibility';
+import {Injectable} from './di/injectable';
+import {inject} from './di/inject';
 import {formatRuntimeError, RuntimeErrorCode} from './errors';
 import {OnDestroy} from './interface/lifecycle_hooks';
 import {getDocument} from './render3/interfaces/document';

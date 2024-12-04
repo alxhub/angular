@@ -14,16 +14,15 @@ import {
 import {Type} from '../../interface/type';
 import {NG_FACTORY_DEF} from '../../render3/fields';
 import {getClosureSafeProperty} from '../../util/property';
-import {resolveForwardRef} from '../forward_ref';
 import type {Injectable} from '../injectable';
-import {NG_PROV_DEF} from '../interface/defs';
+import {NG_PROV_DEF} from '../defs';
 import {
   ClassSansProvider,
   ExistingSansProvider,
   FactorySansProvider,
   ValueProvider,
   ValueSansProvider,
-} from '../interface/provider';
+} from '../provider';
 
 import {angularCoreDiEnv} from './environment';
 import {convertDependencies, reflectDependencies} from './util';

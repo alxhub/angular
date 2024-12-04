@@ -18,7 +18,8 @@ import {
 } from '../change_detection/scheduling/ng_zone_scheduling';
 import {ChangeDetectionScheduler} from '../change_detection/scheduling/zoneless_scheduling';
 import {ChangeDetectionSchedulerImpl} from '../change_detection/scheduling/zoneless_scheduling_impl';
-import {Injectable, Injector} from '../di';
+import {Injectable} from '../di/injectable';
+import {Injector} from '../di/injector';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
 import {CompilerOptions} from '../linker';

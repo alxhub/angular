@@ -22,7 +22,7 @@ import {
 import {ValueEqualityFn, SIGNAL, SignalNode} from '@angular/core/primitives/signals';
 import {Injector} from '../di/injector';
 import {assertInInjectionContext} from '../di/contextual';
-import {inject} from '../di/injector_compatibility';
+import {inject} from '../di/inject';
 import {PendingTasks} from '../pending_tasks';
 import {DestroyRef} from '../linker';
 

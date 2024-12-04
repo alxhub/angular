@@ -91,7 +91,7 @@ import {
   processTextNodeBeforeSerialization,
   TextNodeMarker,
 } from './utils';
-import {Injector} from '../di';
+import {Injector} from '../di/injector';
 
 /**
  * A collection that tracks all serialized views (`ngh` DOM annotations)

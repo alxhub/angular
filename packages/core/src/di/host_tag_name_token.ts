@@ -11,7 +11,7 @@ import {TNode, TNodeType} from '../render3/interfaces/node';
 import {getCurrentTNode} from '../render3/state';
 
 import {InjectionToken} from './injection_token';
-import {InjectFlags} from './interface/injector';
+import {InjectFlags} from './flags';
 
 /**
  * A token that can be used to inject the tag name of the host node.

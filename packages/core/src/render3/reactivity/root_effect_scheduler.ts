@@ -6,9 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ɵɵdefineInjectable} from '../../di/interface/defs';
-import {PendingTasksInternal} from '../../pending_tasks';
-import {inject} from '../../di/injector_compatibility';
+import {ɵɵdefineInjectable} from '../../di/defs';
 
 /**
  * Abstraction that encompasses any kind of effect that can be scheduled.

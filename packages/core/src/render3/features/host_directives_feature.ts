@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.dev/license
  */
-import {resolveForwardRef} from '../../di';
+import {resolveForwardRef} from '../../forward_ref';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {assertEqual} from '../../util/assert';
 import {EMPTY_OBJ} from '../../util/empty';

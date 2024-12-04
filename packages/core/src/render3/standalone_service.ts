@@ -5,10 +5,10 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.dev/license
  */
-import {ɵɵinject as inject} from '../di/injector_compatibility';
-import {ɵɵdefineInjectable as defineInjectable} from '../di/interface/defs';
+import {inject} from '../di/inject';
+import {ɵɵdefineInjectable as defineInjectable} from '../di/defs';
 import {internalImportProvidersFrom} from '../di/provider_collection';
-import {EnvironmentInjector} from '../di/r3_injector';
+import {EnvironmentInjector} from '../di/injector';
 import {OnDestroy} from '../interface/lifecycle_hooks';
 import {ComponentDef} from './interfaces/definition';
 import {createEnvironmentInjector} from './ng_module_ref';

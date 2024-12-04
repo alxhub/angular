@@ -11,7 +11,7 @@ import {PartialObserver, Subject, Subscription} from 'rxjs';
 
 import {OutputRef} from './authoring/output/output_ref';
 import {isInInjectionContext} from './di/contextual';
-import {inject} from './di/injector_compatibility';
+import {inject} from './di/inject';
 import {DestroyRef} from './linker/destroy_ref';
 import {PendingTasksInternal} from './pending_tasks';
 

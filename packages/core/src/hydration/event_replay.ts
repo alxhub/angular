@@ -19,9 +19,10 @@ import {
 } from '@angular/core/primitives/event-dispatch';
 
 import {APP_BOOTSTRAP_LISTENER, ApplicationRef} from '../application/application_ref';
-import {ENVIRONMENT_INITIALIZER, Injector} from '../di';
-import {inject} from '../di/injector_compatibility';
-import {Provider} from '../di/interface/provider';
+import {inject} from '../di/inject';
+import {Injector} from '../di/injector';
+import {ENVIRONMENT_INITIALIZER} from '../di/initializer_token';
+import {Provider} from '../di/provider';
 import {setStashFn} from '../render3/instructions/listener';
 import {RElement} from '../render3/interfaces/renderer_dom';
 import {CLEANUP, LView, TView} from '../render3/interfaces/view';

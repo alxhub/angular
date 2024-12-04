@@ -4057,9 +4057,9 @@ describe('di', () => {
         service: Service;
         constructor() {
           // `Service` is injected starting from the component context, where `inject` is
-          // `ɵɵdirectiveInject` under the hood. However, this should reach the root injector which
-          // should _not_ use `ɵɵdirectiveInject` to inject dependencies of `Service`, so `TOKEN`
-          // should not be visible to `Service`.
+          // using directive injection under the hood. However, this should reach the root injector
+          // which should _not_ use directive injection to inject dependencies of `Service`, so
+          // `TOKEN` should not be visible to `Service`.
           this.service = inject(Service);
         }
       }

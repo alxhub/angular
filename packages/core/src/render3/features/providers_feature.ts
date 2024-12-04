@@ -5,7 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.dev/license
  */
-import {ProcessProvidersFunction, Provider} from '../../di/interface/provider';
+import {ProcessProvidersFunction, Provider} from '../../di/provider';
 import {providersResolver} from '../di_setup';
 import {DirectiveDef} from '../interfaces/definition';
 
@@ -21,7 +21,7 @@ import {DirectiveDef} from '../interfaces/definition';
  *   static ɵcmp = defineComponent({
  *     type: ComponentWithProviders,
  *     selectors: [['component-with-providers']],
- *    factory: () => new ComponentWithProviders(directiveInject(GreeterDE as any)),
+ *    factory: () => new ComponentWithProviders(inject(GreeterDE as any)),
  *    decls: 1,
  *    vars: 1,
  *    template: function(fs: RenderFlags, ctx: ComponentWithProviders) {

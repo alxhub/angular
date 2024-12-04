@@ -8,7 +8,9 @@
 
 import {CachedInjectorService} from '../cached_injector_service';
 import {NotificationSource} from '../change_detection/scheduling/zoneless_scheduling';
-import {EnvironmentInjector, InjectionToken, Injector, Provider} from '../di';
+import {EnvironmentInjector, Injector} from '../di/injector';
+import {InjectionToken} from '../di/injection_token';
+import {Provider} from '../di/provider';
 import {
   DehydratedContainerView,
   DEFER_BLOCK_STATE as SERIALIZED_DEFER_BLOCK_STATE,

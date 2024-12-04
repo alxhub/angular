@@ -129,6 +129,9 @@
     "name": "DEHYDRATED_VIEWS"
   },
   {
+    "name": "DIRECTIVE_INJECTOR"
+  },
+  {
     "name": "DI_DECORATOR_FLAG"
   },
   {
@@ -249,6 +252,9 @@
     "name": "Injector"
   },
   {
+    "name": "InjectorImpl"
+  },
+  {
     "name": "InputFlags"
   },
   {
@@ -357,9 +363,6 @@
     "name": "NO_PARENT_INJECTOR"
   },
   {
-    "name": "NULL_INJECTOR"
-  },
-  {
     "name": "NgModuleRef"
   },
   {
@@ -418,9 +421,6 @@
   },
   {
     "name": "PendingTasksInternal"
-  },
-  {
-    "name": "R3Injector"
   },
   {
     "name": "REACTIVE_LVIEW_CONSUMER_NODE"
@@ -495,9 +495,6 @@
     "name": "TESTABILITY"
   },
   {
-    "name": "THROW_IF_NOT_FOUND"
-  },
-  {
     "name": "TRACKED_LVIEWS"
   },
   {
@@ -543,9 +540,6 @@
     "name": "_DOM"
   },
   {
-    "name": "_Injector"
-  },
-  {
     "name": "_NullComponentFactoryResolver"
   },
   {
@@ -570,16 +564,10 @@
     "name": "_bind"
   },
   {
-    "name": "_currentInjector"
-  },
-  {
     "name": "_getInsertInFrontOfRNodeWithI18n"
   },
   {
     "name": "_icuContainerIterate"
-  },
-  {
-    "name": "_injectImplementation"
   },
   {
     "name": "_isRefreshingViews"
@@ -780,6 +768,9 @@
     "name": "createTView"
   },
   {
+    "name": "currentInjector"
+  },
+  {
     "name": "declareTemplate"
   },
   {
@@ -867,6 +858,9 @@
     "name": "extractDirectiveDef"
   },
   {
+    "name": "factoryForToken"
+  },
+  {
     "name": "findAttrIndexInNode"
   },
   {
@@ -933,9 +927,6 @@
     "name": "getInitialLViewFlagsFromDef"
   },
   {
-    "name": "getInjectImplementation"
-  },
-  {
     "name": "getInjectableDef"
   },
   {
@@ -970,9 +961,6 @@
   },
   {
     "name": "getNodeInjectable"
-  },
-  {
-    "name": "getNullInjector"
   },
   {
     "name": "getOrCreateComponentTView"
@@ -1329,9 +1317,6 @@
     "name": "init_create_application"
   },
   {
-    "name": "init_create_injector"
-  },
-  {
     "name": "init_debug_node"
   },
   {
@@ -1372,12 +1357,6 @@
   },
   {
     "name": "init_di3"
-  },
-  {
-    "name": "init_di4"
-  },
-  {
-    "name": "init_di5"
   },
   {
     "name": "init_di_attr"
@@ -1440,6 +1419,9 @@
     "name": "init_equality"
   },
   {
+    "name": "init_error"
+  },
+  {
     "name": "init_errorContext"
   },
   {
@@ -1459,9 +1441,6 @@
   },
   {
     "name": "init_errors3"
-  },
-  {
-    "name": "init_errors_di"
   },
   {
     "name": "init_esm"
@@ -1506,10 +1485,16 @@
     "name": "init_external_styles_feature"
   },
   {
+    "name": "init_factory"
+  },
+  {
     "name": "init_fields"
   },
   {
     "name": "init_flags"
+  },
+  {
+    "name": "init_flags2"
   },
   {
     "name": "init_forward_ref"
@@ -1614,7 +1599,10 @@
     "name": "init_initializer_token"
   },
   {
-    "name": "init_inject_switch"
+    "name": "init_inject"
+  },
+  {
+    "name": "init_inject_args"
   },
   {
     "name": "init_injectable"
@@ -1630,12 +1618,6 @@
   },
   {
     "name": "init_injector2"
-  },
-  {
-    "name": "init_injector3"
-  },
-  {
-    "name": "init_injector_compatibility"
   },
   {
     "name": "init_injector_discovery_utils"
@@ -1663,6 +1645,9 @@
   },
   {
     "name": "init_input_transforms_feature"
+  },
+  {
+    "name": "init_instruction"
   },
   {
     "name": "init_instructions"
@@ -1851,9 +1836,6 @@
     "name": "init_noop2"
   },
   {
-    "name": "init_null_injector"
-  },
-  {
     "name": "init_observable"
   },
   {
@@ -1935,6 +1917,9 @@
     "name": "init_providers_feature"
   },
   {
+    "name": "init_public"
+  },
+  {
     "name": "init_public_api"
   },
   {
@@ -1957,9 +1942,6 @@
   },
   {
     "name": "init_query_reactive"
-  },
-  {
-    "name": "init_r3_injector"
   },
   {
     "name": "init_r3_symbols"
@@ -2232,15 +2214,6 @@
     "name": "injectElementRef"
   },
   {
-    "name": "injectInjectorOnly"
-  },
-  {
-    "name": "injectRootLimpMode"
-  },
-  {
-    "name": "injectableDefOrInjectorDefFactory"
-  },
-  {
     "name": "insertBloom"
   },
   {
@@ -2406,6 +2379,9 @@
     "name": "ngZoneInstanceId"
   },
   {
+    "name": "noSideEffects"
+  },
+  {
     "name": "nonNull"
   },
   {
@@ -2550,9 +2526,6 @@
     "name": "setIncludeViewProviders"
   },
   {
-    "name": "setInjectImplementation"
-  },
-  {
     "name": "setInputsForProperty"
   },
   {
@@ -2646,9 +2619,6 @@
     "name": "ɵɵdefineInjectable"
   },
   {
-    "name": "ɵɵdirectiveInject"
-  },
-  {
     "name": "ɵɵelement"
   },
   {
@@ -2656,9 +2626,6 @@
   },
   {
     "name": "ɵɵelementStart"
-  },
-  {
-    "name": "ɵɵinject"
   },
   {
     "name": "ɵɵtemplate"

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isForwardRef, resolveForwardRef} from '../di/forward_ref';
+import {isForwardRef, resolveForwardRef} from '../forward_ref';
 import {Type} from '../interface/type';
 import {flatten} from '../util/array_utils';
 import {noSideEffects} from '../util/closure';

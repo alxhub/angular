@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {isForwardRef, resolveForwardRef} from '../../di/forward_ref';
-import {ModuleWithProviders} from '../../di/interface/provider';
+import {isForwardRef, resolveForwardRef} from '../../forward_ref';
+import {ModuleWithProviders} from '../../di/provider';
 import {Type} from '../../interface/type';
 import {NgModuleDef} from '../../metadata/ng_module_def';
 import {getComponentDef, getDirectiveDef, getPipeDef, getNgModuleDef} from '../def_getters';

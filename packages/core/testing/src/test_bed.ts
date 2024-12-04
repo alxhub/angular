@@ -374,7 +374,11 @@ export class TestBedImpl implements TestBed {
     notFoundValue?: T | null,
     flags?: InjectFlags | InjectOptions,
   ): T | null {
-    return TestBedImpl.INSTANCE.inject(token, notFoundValue, convertToBitFlags(flags));
+    return TestBedImpl.INSTANCE.inject(
+      token,
+      notFoundValue,
+      convertToBitFlags(flags ?? InjectFlags.Default),
+    );
   }
 
   /** @deprecated from v9.0.0 use TestBed.inject */
@@ -592,7 +596,11 @@ export class TestBedImpl implements TestBed {
       return this as any;
     }
     const UNDEFINED = {} as unknown as T;
-    const result = this.testModuleRef.injector.get(token, UNDEFINED, convertToBitFlags(flags));
+    const result = this.testModuleRef.injector.get(
+      token,
+      UNDEFINED,
+      convertToBitFlags(flags ?? InjectFlags.Default),
+    );
     return result === UNDEFINED
       ? (this.compiler.injector.get(token, notFoundValue, flags) as any)
       : result;

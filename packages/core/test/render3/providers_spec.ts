@@ -26,7 +26,7 @@ import {
   ɵɵdefineNgModule,
   ɵɵinject,
 } from '../../src/core';
-import {forwardRef} from '../../src/di/forward_ref';
+import {forwardRef} from '../../src/forward_ref';
 import {ɵɵgetInheritedFactory} from '../../src/render3/index';
 import {getInjector} from '../../src/render3/util/discovery_utils';
 

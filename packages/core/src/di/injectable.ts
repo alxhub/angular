@@ -16,7 +16,7 @@ import {
   FactorySansProvider,
   StaticClassSansProvider,
   ValueSansProvider,
-} from './interface/provider';
+} from './provider';
 import {compileInjectable} from './jit/injectable';
 
 export {compileInjectable};

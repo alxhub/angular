@@ -7,8 +7,7 @@
  */
 
 import type {ChangeDetectorRef} from '../change_detection/change_detection';
-import type {Injector} from '../di/injector';
-import type {EnvironmentInjector} from '../di/r3_injector';
+import type {EnvironmentInjector, Injector} from '../di/injector';
 import {Type} from '../interface/type';
 
 import type {ElementRef} from './element_ref';

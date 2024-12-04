@@ -10,17 +10,16 @@ import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
 import {getComponentDef} from '../render3/def_getters';
 import {getFactoryDef} from '../render3/definition_factory';
-import {throwCyclicDependencyError, throwInvalidProviderError} from '../render3/errors_di';
 import {stringifyForError} from '../render3/util/stringify_utils';
 import {deepForEach} from '../util/array_utils';
 import {EMPTY_ARRAY} from '../util/empty';
 import {getClosureSafeProperty} from '../util/property';
 import {stringify} from '../util/stringify';
 
-import {resolveForwardRef} from './forward_ref';
+import {resolveForwardRef} from '../forward_ref';
 import {ENVIRONMENT_INITIALIZER} from './initializer_token';
-import {ɵɵinject as inject} from './injector_compatibility';
-import {getInjectorDef, InjectorType, InjectorTypeWithProviders} from './interface/defs';
+import {inject} from './inject';
+import {getInjectorDef, InjectorType, InjectorTypeWithProviders} from './defs';
 import {
   ClassProvider,
   ConstructorProvider,
@@ -34,8 +33,9 @@ import {
   StaticClassProvider,
   TypeProvider,
   ValueProvider,
-} from './interface/provider';
+} from './provider';
 import {INJECTOR_DEF_TYPES} from './internal_tokens';
+import {throwCyclicDependencyError, throwInvalidProviderError} from './error';
 
 /**
  * Wrap an array of `Provider`s into `EnvironmentProviders`, preventing them from being accidentally

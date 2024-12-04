@@ -104,7 +104,7 @@ describe('dependency resolution', () => {
       });
 
       expect(() => child.get(Car)).toThrowError(
-        `R3InjectorError[${stringify(Car)} -> ${stringify(Engine)}]: \n` +
+        `InjectorError[${stringify(Car)} -> ${stringify(Engine)}]: \n` +
           '  NullInjectorError: No provider for Engine!',
       );
     });
@@ -132,7 +132,7 @@ describe('dependency resolution', () => {
     it('should throw error when not requested provider on self', () => {
       const injector = Injector.create({providers: []});
       expect(() => injector.get(Car, undefined, InjectFlags.Self)).toThrowError(
-        `R3InjectorError[${stringify(Car)}]: \n` +
+        `InjectorError[${stringify(Car)}]: \n` +
           `  NullInjectorError: No provider for ${stringify(Car)}!`,
       );
     });
@@ -205,7 +205,7 @@ describe('displayName', () => {
         providers: [Engine.PROVIDER, {provide: BrokenEngine, useValue: null}],
       }).toString(),
     ).toEqual(
-      'R3Injector[Engine, BrokenEngine, InjectionToken INJECTOR, InjectionToken INJECTOR_DEF_TYPES, InjectionToken ENVIRONMENT_INITIALIZER]',
+      'Injector[Engine, BrokenEngine, Injector, InjectionToken INJECTOR, InjectionToken INJECTOR_DEF_TYPES, InjectionToken ENVIRONMENT_INITIALIZER]',
     );
   });
 });

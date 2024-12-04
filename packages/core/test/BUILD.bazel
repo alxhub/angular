@@ -68,7 +68,6 @@ ts_library(
         "//packages/compiler",
         "//packages/core",
         "//packages/core/rxjs-interop",
-        "//packages/core/src/di/interface",
         "//packages/core/src/interface",
         "//packages/core/src/reflection",
         "//packages/core/src/util",

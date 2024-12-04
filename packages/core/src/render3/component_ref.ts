@@ -13,8 +13,7 @@ import {
   ChangeDetectionScheduler,
   NotificationSource,
 } from '../change_detection/scheduling/zoneless_scheduling';
-import {Injector} from '../di/injector';
-import {EnvironmentInjector} from '../di/r3_injector';
+import {Injector, EnvironmentInjector} from '../di/injector';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {DehydratedView} from '../hydration/interfaces';
 import {retrieveHydrationInfo} from '../hydration/utils';

@@ -12,20 +12,32 @@
  * The `di` module provides dependency injection container services.
  */
 
-export * from './metadata';
+export {
+  Host,
+  HostDecorator,
+  Inject,
+  InjectDecorator,
+  Optional,
+  OptionalDecorator,
+  Self,
+  SelfDecorator,
+  SkipSelf,
+  SkipSelfDecorator,
+} from './metadata';
 export {assertInInjectionContext, runInInjectionContext} from './contextual';
-export {InjectFlags} from './interface/injector';
+export {InjectFlags} from './flags';
+export {InjectOptions} from './options';
 export {
   ɵɵdefineInjectable,
   defineInjectable,
   ɵɵdefineInjector,
   InjectableType,
   InjectorType,
-} from './interface/defs';
-export {forwardRef, resolveForwardRef, ForwardRefFn} from './forward_ref';
+} from './defs';
+export {forwardRef, resolveForwardRef, ForwardRefFn} from '../forward_ref';
+export {inject} from './inject';
 export {Injectable, InjectableDecorator, InjectableProvider} from './injectable';
-export {Injector} from './injector';
-export {EnvironmentInjector} from './r3_injector';
+export {Injector, EnvironmentInjector} from './injector';
 export {
   importProvidersFrom,
   ImportProvidersSource,
@@ -34,8 +46,6 @@ export {
 } from './provider_collection';
 export {ENVIRONMENT_INITIALIZER} from './initializer_token';
 export {ProviderToken} from './provider_token';
-export {ɵɵinject, inject, ɵɵinvalidFactoryDep} from './injector_compatibility';
-export {InjectOptions} from './interface/injector';
 export {INJECTOR} from './injector_token';
 export {
   ClassProvider,
@@ -56,7 +66,7 @@ export {
   TypeProvider,
   ValueProvider,
   ValueSansProvider,
-} from './interface/provider';
+} from './provider';
 export {InjectionToken} from './injection_token';
 export {HostAttributeToken} from './host_attribute_token';
 export {HOST_TAG_NAME} from './host_tag_name_token';

@@ -5,9 +5,10 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.dev/license
  */
-import {resolveForwardRef} from '../forward_ref';
-import {ɵɵinject, ɵɵinvalidFactoryDep} from '../injector_compatibility';
-import {ɵɵdefineInjectable, ɵɵdefineInjector} from '../interface/defs';
+import {resolveForwardRef} from '../../forward_ref';
+import {ɵɵdefineInjectable, ɵɵdefineInjector} from '../defs';
+import {inject} from '../inject';
+import {ɵɵinvalidFactoryDep} from '../instruction';
 
 /**
  * A mapping of the @angular/core API surface used in generated expressions to the actual symbols.
@@ -17,7 +18,7 @@ import {ɵɵdefineInjectable, ɵɵdefineInjector} from '../interface/defs';
 export const angularCoreDiEnv: {[name: string]: Function} = {
   'ɵɵdefineInjectable': ɵɵdefineInjectable,
   'ɵɵdefineInjector': ɵɵdefineInjector,
-  'ɵɵinject': ɵɵinject,
+  'ɵɵinject': inject,
   'ɵɵinvalidFactoryDep': ɵɵinvalidFactoryDep,
   'resolveForwardRef': resolveForwardRef,
 };

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import type {Provider} from '../di/interface/provider';
+import type {Provider} from '../di/provider';
 import type {LContainer} from '../render3/interfaces/container';
 import type {DependencyType} from '../render3/interfaces/definition';
 import type {TNode} from '../render3/interfaces/node';

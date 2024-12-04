@@ -28,7 +28,7 @@ import {
   Self,
   Type,
 } from '@angular/core';
-import {ɵɵdefineInjectable} from '@angular/core/src/di/interface/defs';
+import {ɵɵdefineInjectable} from '@angular/core/src/di/defs';
 import {NgModuleType} from '@angular/core/src/render3';
 import {getNgModuleDef} from '@angular/core/src/render3/def_getters';
 import {ComponentFixture, inject, TestBed} from '@angular/core/testing';
@@ -623,7 +623,7 @@ describe('NgModule', () => {
     it('should throw when the aliased provider does not exist', () => {
       const injector = createInjector([{provide: 'car', useExisting: SportsCar}]);
       const errorMsg =
-        `R3InjectorError(SomeModule)[car -> ${stringify(SportsCar)}]: \n  ` +
+        `InjectorError(SomeModule)[car -> ${stringify(SportsCar)}]: \n  ` +
         `NullInjectorError: No provider for ${stringify(SportsCar)}!`;
       expect(() => injector.get('car')).toThrowError(errorMsg);
     });
@@ -828,7 +828,7 @@ describe('NgModule', () => {
     it('should throw when no provider defined', () => {
       const injector = createInjector([]);
       const errorMsg =
-        `R3InjectorError(SomeModule)[NonExisting]: \n  ` +
+        `InjectorError(SomeModule)[NonExisting]: \n  ` +
         'NullInjectorError: No provider for NonExisting!';
       expect(() => injector.get('NonExisting')).toThrowError(errorMsg);
     });

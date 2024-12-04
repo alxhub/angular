@@ -18,11 +18,10 @@ import {map} from 'rxjs/operators';
 
 import {ZONELESS_ENABLED} from '../change_detection/scheduling/zoneless_scheduling';
 import {Console} from '../console';
-import {inject} from '../di';
+import {inject} from '../di/inject';
 import {Injectable} from '../di/injectable';
 import {InjectionToken} from '../di/injection_token';
-import {Injector} from '../di/injector';
-import {EnvironmentInjector, type R3Injector} from '../di/r3_injector';
+import {Injector, EnvironmentInjector, InjectorImpl} from '../di/injector';
 import {ErrorHandler, INTERNAL_APPLICATION_ERROR_HANDLER} from '../error_handler';
 import {formatRuntimeError, RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
@@ -643,7 +642,7 @@ export class ApplicationRef {
    * pending dirtiness (potentially in a loop).
    */
   private synchronize(): void {
-    if (this._rendererFactory === null && !(this._injector as R3Injector).destroyed) {
+    if (this._rendererFactory === null && !(this._injector as InjectorImpl).destroyed) {
       this._rendererFactory = this._injector.get(RendererFactory2, null, {optional: true});
     }
 
@@ -847,7 +846,7 @@ export class ApplicationRef {
       );
     }
 
-    const injector = this._injector as R3Injector;
+    const injector = this._injector as InjectorImpl;
 
     // Check that this injector instance supports destroy operation.
     if (injector.destroy && !injector.destroyed) {

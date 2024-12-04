@@ -6,8 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injector} from '../di/injector';
-import {EnvironmentInjector, getNullInjector} from '../di/r3_injector';
+import {Injector, EnvironmentInjector} from '../di/injector';
 import {Type} from '../interface/type';
 import {ComponentRef} from '../linker/component_factory';
 
@@ -88,7 +87,7 @@ export function createComponent<C>(
 ): ComponentRef<C> {
   ngDevMode && assertComponentDef(component);
   const componentDef = getComponentDef(component)!;
-  const elementInjector = options.elementInjector || getNullInjector();
+  const elementInjector = options.elementInjector ?? Injector.NULL;
   const factory = new ComponentFactory<C>(componentDef);
   return factory.create(
     elementInjector,

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {InjectFlags} from '../di/interface/injector';
+import {InjectFlags} from '../di/flags';
 import {
   assertDefined,
   assertEqual,

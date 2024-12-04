@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injector, ɵɵdefineInjectable} from '../di';
+import {ɵɵdefineInjectable} from '../di/defs';
+import type {Injector} from '../di/injector';
 import {arrayInsert2, arraySplice} from '../util/array_utils';
 
 /**

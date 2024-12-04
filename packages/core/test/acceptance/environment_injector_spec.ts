@@ -22,7 +22,7 @@ import {
   provideEnvironmentInitializer,
   ViewContainerRef,
 } from '@angular/core';
-import {R3Injector} from '@angular/core/src/di/r3_injector';
+import {InjectorImpl} from '@angular/core/src/di/injector';
 import {RuntimeError, RuntimeErrorCode} from '@angular/core/src/errors';
 import {TestBed} from '@angular/core/testing';
 
@@ -32,7 +32,7 @@ describe('environment injector', () => {
 
     let destroyed = false;
     const parentEnvInjector = TestBed.inject(EnvironmentInjector);
-    const envInjector = createEnvironmentInjector([Service], parentEnvInjector) as R3Injector;
+    const envInjector = createEnvironmentInjector([Service], parentEnvInjector) as InjectorImpl;
     envInjector.onDestroy(() => (destroyed = true));
 
     const service = envInjector.get(Service);

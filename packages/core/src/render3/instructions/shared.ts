@@ -153,7 +153,6 @@ import {
 } from '../util/view_utils';
 
 import {selectIndexInternal} from './advance';
-import {ɵɵdirectiveInject} from './di';
 import {handleUnknownPropertyError, isPropertyValid, matchingSchemas} from './element_validation';
 import {writeToDirectiveInput} from './write_to_directive_input';
 
@@ -1621,14 +1620,7 @@ export function configureViewWithDirective<T>(
   tView.data[directiveIndex] = def;
   const directiveFactory =
     def.factory || ((def as Writable<DirectiveDef<T>>).factory = getFactoryDef(def.type, true));
-  // Even though `directiveFactory` will already be using `ɵɵdirectiveInject` in its generated code,
-  // we also want to support `inject()` directly from the directive constructor context so we set
-  // `ɵɵdirectiveInject` as the inject implementation here too.
-  const nodeInjectorFactory = new NodeInjectorFactory(
-    directiveFactory,
-    isComponentDef(def),
-    ɵɵdirectiveInject,
-  );
+  const nodeInjectorFactory = new NodeInjectorFactory(directiveFactory, isComponentDef(def));
   tView.blueprint[directiveIndex] = nodeInjectorFactory;
   lView[directiveIndex] = nodeInjectorFactory;
 

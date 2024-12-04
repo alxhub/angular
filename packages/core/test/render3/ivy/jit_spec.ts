@@ -27,7 +27,7 @@ import {
 } from '@angular/core';
 import {Injectable} from '@angular/core/src/di/injectable';
 import {setCurrentInjector, ɵɵinject} from '@angular/core/src/di/injector_compatibility';
-import {ɵɵdefineInjectable, ɵɵInjectorDef} from '@angular/core/src/di/interface/defs';
+import {ɵɵdefineInjectable, ɵɵInjectorDef} from '@angular/core/src/di/defs';
 import {FactoryFn} from '@angular/core/src/render3/definition_factory';
 import {ComponentDef, PipeDef} from '@angular/core/src/render3/interfaces/definition';
 

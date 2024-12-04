@@ -8,11 +8,11 @@
 
 import {ApplicationRef} from '../../application/application_ref';
 import {ChangeDetectionSchedulerImpl} from './zoneless_scheduling_impl';
-import {inject} from '../../di/injector_compatibility';
+import {inject} from '../../di/inject';
 import {makeEnvironmentProviders} from '../../di/provider_collection';
 import {NgZone} from '../../zone/ng_zone';
 
-import {EnvironmentInjector} from '../../di/r3_injector';
+import {EnvironmentInjector} from '../../di/injector';
 import {ENVIRONMENT_INITIALIZER} from '../../di/initializer_token';
 import {CheckNoChangesMode} from '../../render3/state';
 import {ErrorHandler} from '../../error_handler';

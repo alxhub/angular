@@ -8,15 +8,13 @@
 
 import {Observable} from 'rxjs';
 
-import {
-  EnvironmentProviders,
-  inject,
-  Injectable,
-  InjectionToken,
-  Injector,
-  makeEnvironmentProviders,
-  runInInjectionContext,
-} from '../di';
+import {runInInjectionContext} from '../di/contextual';
+import {inject} from '../di/inject';
+import {Injectable} from '../di/injectable';
+import {InjectionToken} from '../di/injection_token';
+import {Injector} from '../di/injector';
+import {makeEnvironmentProviders} from '../di/provider_collection';
+import {EnvironmentProviders} from '../di/provider';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {isPromise, isSubscribable} from '../util/lang';
 

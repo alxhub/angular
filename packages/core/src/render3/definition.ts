@@ -7,7 +7,7 @@
  */
 
 import {ChangeDetectionStrategy} from '../change_detection/constants';
-import {EnvironmentInjector} from '../di/r3_injector';
+import {EnvironmentInjector} from '../di/injector';
 import {formatRuntimeError, RuntimeErrorCode} from '../errors';
 import {Type, Writable} from '../interface/type';
 import {NgModuleDef} from '../metadata/ng_module_def';

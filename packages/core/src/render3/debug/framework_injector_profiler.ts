@@ -6,11 +6,10 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injector} from '../../di/injector';
-import {EnvironmentInjector} from '../../di/r3_injector';
+import {Injector, EnvironmentInjector} from '../../di/injector';
 import {Type} from '../../interface/type';
 import {assertDefined, throwError} from '../../util/assert';
-import {assertTNode, assertTNodeForLView} from '../assert';
+import {assertTNodeForLView} from '../assert';
 import {getComponentDef} from '../def_getters';
 import {getNodeInjectorLView, getNodeInjectorTNode, NodeInjector} from '../di';
 import {TNode} from '../interfaces/node';

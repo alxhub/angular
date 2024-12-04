@@ -17,6 +17,7 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  Inject,
   Input,
   NgModule,
   OnInit,
@@ -28,7 +29,6 @@ import {
   ViewChildren,
   ViewContainerRef,
 } from '@angular/core';
-import {Inject} from '@angular/core/src/di';
 import {readPatchedLView} from '@angular/core/src/render3/context_discovery';
 import {LContainer} from '@angular/core/src/render3/interfaces/container';
 import {getLViewById} from '@angular/core/src/render3/interfaces/lview_tracking';

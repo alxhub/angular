@@ -7,8 +7,8 @@
  */
 
 import {APP_ID, PLATFORM_ID} from './application/application_tokens';
-import {inject} from './di/injector_compatibility';
-import {ɵɵdefineInjectable} from './di/interface/defs';
+import {inject} from './di/inject';
+import {ɵɵdefineInjectable} from './di/defs';
 import {getDocument} from './render3/interfaces/document';
 
 /**

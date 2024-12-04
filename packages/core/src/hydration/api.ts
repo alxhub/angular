@@ -8,14 +8,11 @@
 
 import {APP_BOOTSTRAP_LISTENER, ApplicationRef} from '../application/application_ref';
 import {Console} from '../console';
-import {
-  ENVIRONMENT_INITIALIZER,
-  EnvironmentProviders,
-  Injector,
-  makeEnvironmentProviders,
-  Provider,
-} from '../di';
-import {inject} from '../di/injector_compatibility';
+import {EnvironmentProviders, Provider} from '../di/provider';
+import {makeEnvironmentProviders} from '../di/provider_collection';
+import {Injector} from '../di/injector';
+import {inject} from '../di/inject';
+import {ENVIRONMENT_INITIALIZER} from '../di/initializer_token';
 import {formatRuntimeError, RuntimeError, RuntimeErrorCode} from '../errors';
 import {enableLocateOrCreateContainerRefImpl} from '../linker/view_container_ref';
 import {enableLocateOrCreateI18nNodeImpl} from '../render3/i18n/i18n_apply';

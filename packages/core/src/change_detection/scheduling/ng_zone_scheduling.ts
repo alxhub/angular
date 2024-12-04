@@ -9,15 +9,12 @@
 import {Subscription} from 'rxjs';
 
 import {ApplicationRef} from '../../application/application_ref';
-import {
-  ENVIRONMENT_INITIALIZER,
-  EnvironmentProviders,
-  inject,
-  Injectable,
-  InjectionToken,
-  makeEnvironmentProviders,
-  StaticProvider,
-} from '../../di';
+import {EnvironmentProviders, StaticProvider} from '../../di/provider';
+import {inject} from '../../di/inject';
+import {Injectable} from '../../di/injectable';
+import {InjectionToken} from '../../di/injection_token';
+import {ENVIRONMENT_INITIALIZER} from '../../di/initializer_token';
+import {makeEnvironmentProviders} from '../../di/provider_collection';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {PendingTasksInternal} from '../../pending_tasks';
 import {performanceMarkFeature} from '../../util/performance';

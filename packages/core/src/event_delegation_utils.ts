@@ -9,7 +9,7 @@
 // tslint:disable:no-duplicate-imports
 import {EventContract} from '@angular/core/primitives/event-dispatch';
 import {Attribute} from '@angular/core/primitives/event-dispatch';
-import {InjectionToken, Injector} from './di';
+import {InjectionToken} from './di/injection_token';
 import {RElement} from './render3/interfaces/renderer_dom';
 
 export const DEFER_BLOCK_SSR_ID_ATTRIBUTE = 'ngb';

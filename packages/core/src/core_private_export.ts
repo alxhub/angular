@@ -46,19 +46,17 @@ export {
   DeferBlockConfig as ɵDeferBlockConfig,
   DeferBlockState as ɵDeferBlockState,
 } from './defer/interfaces';
-export {
-  convertToBitFlags as ɵconvertToBitFlags,
-  setCurrentInjector as ɵsetCurrentInjector,
-} from './di/injector_compatibility';
+export {convertToBitFlags as ɵconvertToBitFlags} from './di/flags';
+export {setCurrentInjector as ɵsetCurrentInjector, inject as ɵɵinject} from './di/inject';
 export {
   getInjectableDef as ɵgetInjectableDef,
   ɵɵInjectableDeclaration,
   ɵɵInjectorDef,
-} from './di/interface/defs';
+} from './di/defs';
 export {
   InternalEnvironmentProviders as ɵInternalEnvironmentProviders,
   isEnvironmentProviders as ɵisEnvironmentProviders,
-} from './di/interface/provider';
+} from './di/provider';
 export {INJECTOR_SCOPE as ɵINJECTOR_SCOPE} from './di/scope';
 export {XSS_SECURITY_URL as ɵXSS_SECURITY_URL} from './error_details_base_url';
 export {

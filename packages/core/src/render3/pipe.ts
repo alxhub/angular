@@ -7,14 +7,15 @@
  */
 
 import {PipeTransform} from '../change_detection/pipe_transform';
-import {setInjectImplementation} from '../di/inject_switch';
+import {setCurrentInjector} from '../di/inject';
 import {formatRuntimeError, RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
 
 import {InjectorProfilerContext, setInjectorProfilerContext} from './debug/injector_profiler';
 import {getFactoryDef} from './definition_factory';
 import {NodeInjector, setIncludeViewProviders} from './di';
-import {store, ɵɵdirectiveInject} from './instructions/all';
+import {store} from './instructions/all';
+import {DIRECTIVE_INJECTOR} from './instructions/di';
 import {isHostComponentStandalone} from './instructions/element_validation';
 import {PipeDef, PipeDefList} from './interfaces/definition';
 import {TTextNode} from './interfaces/node';
@@ -64,7 +65,7 @@ export function ɵɵpipe(index: number, pipeName: string): any {
       token: pipeDef.type,
     });
   }
-  const previousInjectImplementation = setInjectImplementation(ɵɵdirectiveInject);
+  const prevInjector = setCurrentInjector(DIRECTIVE_INJECTOR);
   try {
     // DI for pipes is supposed to behave like directives when placed on a component
     // host node, which means that we have to disable access to `viewProviders`.
@@ -74,9 +75,7 @@ export function ɵɵpipe(index: number, pipeName: string): any {
     store(tView, getLView(), adjustedIndex, pipeInstance);
     return pipeInstance;
   } finally {
-    // we have to restore the injector implementation in finally, just in case the creation of the
-    // pipe throws an error.
-    setInjectImplementation(previousInjectImplementation);
+    setCurrentInjector(prevInjector);
     ngDevMode && setInjectorProfilerContext(previousInjectorProfilerContext!);
   }
 }

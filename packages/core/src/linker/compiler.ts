@@ -8,7 +8,7 @@
 
 import {Injectable} from '../di/injectable';
 import {InjectionToken} from '../di/injection_token';
-import {StaticProvider} from '../di/interface/provider';
+import {StaticProvider} from '../di/provider';
 import {Type} from '../interface/type';
 import {ViewEncapsulation} from '../metadata/view';
 import {ComponentFactory as ComponentFactoryR3} from '../render3/component_ref';

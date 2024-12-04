@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {StaticProvider} from '../di';
+import type {StaticProvider} from '../di/provider';
 
 import {createPlatformFactory} from './platform';
 import {PlatformRef} from './platform_ref';

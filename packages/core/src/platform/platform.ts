@@ -11,14 +11,12 @@ import {
   publishSignalConfiguration,
 } from '../application/application_ref';
 import {PLATFORM_INITIALIZER} from '../application/application_tokens';
-import {
-  EnvironmentProviders,
-  InjectionToken,
-  Injector,
-  makeEnvironmentProviders,
-  runInInjectionContext,
-  StaticProvider,
-} from '../di';
+
+import {runInInjectionContext} from '../di/contextual';
+import {InjectionToken} from '../di/injection_token';
+import {Injector} from '../di/injector';
+import {EnvironmentProviders, StaticProvider} from '../di/provider';
+import {makeEnvironmentProviders} from '../di/provider_collection';
 import {INJECTOR_SCOPE} from '../di/scope';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 

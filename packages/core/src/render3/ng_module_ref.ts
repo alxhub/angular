@@ -6,10 +6,13 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {createInjectorWithoutInjectorInstances} from '../di/create_injector';
-import {Injector} from '../di/injector';
-import {EnvironmentProviders, Provider, StaticProvider} from '../di/interface/provider';
-import {EnvironmentInjector, getNullInjector, R3Injector} from '../di/r3_injector';
+import {EnvironmentProviders, Provider, StaticProvider} from '../di/provider';
+import {
+  Injector,
+  EnvironmentInjector,
+  InjectorImpl,
+  createInjectorWithoutInjectorInstances,
+} from '../di/injector';
 import {Type} from '../interface/type';
 import {ComponentFactoryResolver as viewEngine_ComponentFactoryResolver} from '../linker/component_factory_resolver';
 import {
@@ -52,7 +55,7 @@ export class NgModuleRef<T> extends viewEngine_NgModuleRef<T> implements Interna
   // tslint:disable-next-line:require-internal-with-underscore
   _bootstrapComponents: Type<any>[] = [];
   // tslint:disable-next-line:require-internal-with-underscore
-  private readonly _r3Injector: R3Injector;
+  private readonly _r3Injector: InjectorImpl;
   override instance!: T;
   destroyCbs: (() => void)[] | null = [];
 
@@ -93,7 +96,7 @@ export class NgModuleRef<T> extends viewEngine_NgModuleRef<T> implements Interna
       ],
       stringify(ngModuleType),
       new Set(['environment']),
-    ) as R3Injector;
+    );
 
     // We need to resolve the injector types separately from the injector creation, because
     // the module might be trying to use this ref in its constructor for DI which will cause a
@@ -144,7 +147,7 @@ export function createNgModuleRefWithProviders<T>(
 }
 
 export class EnvironmentNgModuleRefAdapter extends viewEngine_NgModuleRef<null> {
-  override readonly injector: R3Injector;
+  override readonly injector: InjectorImpl;
   override readonly componentFactoryResolver: ComponentFactoryResolver =
     new ComponentFactoryResolver(this);
   override readonly instance = null;
@@ -156,13 +159,13 @@ export class EnvironmentNgModuleRefAdapter extends viewEngine_NgModuleRef<null> 
     runEnvironmentInitializers: boolean;
   }) {
     super();
-    const injector = new R3Injector(
+    const injector = new InjectorImpl(
       [
         ...config.providers,
         {provide: viewEngine_NgModuleRef, useValue: this},
         {provide: viewEngine_ComponentFactoryResolver, useValue: this.componentFactoryResolver},
       ],
-      config.parent || getNullInjector(),
+      config.parent ?? Injector.NULL,
       config.debugName,
       new Set(['environment']),
     );

@@ -18,8 +18,8 @@ export {
   NG_INJ_DEF as ɵNG_INJ_DEF,
   NG_PROV_DEF as ɵNG_PROV_DEF,
   isInjectable as ɵisInjectable,
-} from './di/interface/defs';
-export {createInjector as ɵcreateInjector} from './di/create_injector';
+} from './di/defs';
+export {createInjector as ɵcreateInjector} from './di/injector';
 export {
   registerNgModuleType as ɵɵregisterNgModuleType,
   setAllowDuplicateNgModuleIdsForTest as ɵsetAllowDuplicateNgModuleIdsForTest,
@@ -96,7 +96,6 @@ export {
   ɵɵdefineNgModule,
   ɵɵdefinePipe,
   ɵɵDirectiveDeclaration,
-  ɵɵdirectiveInject,
   ɵɵdisableBindings,
   ɵɵelement,
   ɵɵelementContainer,

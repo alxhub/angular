@@ -8,8 +8,8 @@
 
 import {AfterRenderPhase, AfterRenderRef} from './api';
 import {NgZone} from '../../zone';
-import {inject} from '../../di/injector_compatibility';
-import {ɵɵdefineInjectable} from '../../di/interface/defs';
+import {inject} from '../../di/inject';
+import {ɵɵdefineInjectable} from '../../di/defs';
 import {ErrorHandler} from '../../error_handler';
 import {
   ChangeDetectionScheduler,

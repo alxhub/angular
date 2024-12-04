@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {resolveForwardRef} from '../../di';
+import {resolveForwardRef} from '../../forward_ref';
 import {RuntimeError, RuntimeErrorCode} from '../../errors';
 import {Type} from '../../interface/type';
 import {NgModuleType} from '../../metadata/ng_module_def';

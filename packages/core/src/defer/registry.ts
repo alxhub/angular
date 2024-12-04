@@ -5,9 +5,9 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {inject} from '../di';
+import {inject} from '../di/inject';
 import {InjectionToken} from '../di/injection_token';
-import {ɵɵdefineInjectable} from '../di/interface/defs';
+import {ɵɵdefineInjectable} from '../di/defs';
 import {
   EventContractDetails,
   JSACTION_EVENT_CONTRACT,

@@ -10,8 +10,8 @@ import {Subscription} from 'rxjs';
 
 import {ApplicationRef, ApplicationRefDirtyFlags} from '../../application/application_ref';
 import {Injectable} from '../../di/injectable';
-import {inject} from '../../di/injector_compatibility';
-import {EnvironmentProviders} from '../../di/interface/provider';
+import {inject} from '../../di/inject';
+import {EnvironmentProviders} from '../../di/provider';
 import {makeEnvironmentProviders} from '../../di/provider_collection';
 import {RuntimeError, RuntimeErrorCode, formatRuntimeError} from '../../errors';
 import {PendingTasksInternal} from '../../pending_tasks';

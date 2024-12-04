@@ -6,9 +6,10 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {forwardRef, resolveForwardRef} from '../../di/forward_ref';
-import {ɵɵinject, ɵɵinvalidFactoryDep} from '../../di/injector_compatibility';
-import {ɵɵdefineInjectable, ɵɵdefineInjector} from '../../di/interface/defs';
+import {forwardRef, resolveForwardRef} from '../../forward_ref';
+import {inject} from '../../di/inject';
+import {ɵɵinvalidFactoryDep} from '../../di/instruction';
+import {ɵɵdefineInjectable, ɵɵdefineInjector} from '../../di/defs';
 import {registerNgModuleType} from '../../linker/ng_module_registration';
 import * as iframe_attrs_validation from '../../sanitization/iframe_attrs_validation';
 import * as sanitization from '../../sanitization/sanitization';
@@ -36,9 +37,8 @@ export const angularCoreEnv: {[name: string]: unknown} = (() => ({
   'ɵɵdefineInjector': ɵɵdefineInjector,
   'ɵɵdefineNgModule': r3.ɵɵdefineNgModule,
   'ɵɵdefinePipe': r3.ɵɵdefinePipe,
-  'ɵɵdirectiveInject': r3.ɵɵdirectiveInject,
   'ɵɵgetInheritedFactory': r3.ɵɵgetInheritedFactory,
-  'ɵɵinject': ɵɵinject,
+  'ɵɵinject': inject,
   'ɵɵinjectAttribute': r3.ɵɵinjectAttribute,
   'ɵɵinvalidFactory': r3.ɵɵinvalidFactory,
   'ɵɵinvalidFactoryDep': ɵɵinvalidFactoryDep,

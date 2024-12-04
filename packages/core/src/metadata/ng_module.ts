@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {EnvironmentProviders, ModuleWithProviders, Provider} from '../di/interface/provider';
+import {EnvironmentProviders, ModuleWithProviders, Provider} from '../di/provider';
 import {Type} from '../interface/type';
 import {SchemaMetadata} from '../metadata/schema';
 import {compileNgModule} from '../render3/jit/module';

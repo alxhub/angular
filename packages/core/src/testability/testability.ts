@@ -6,7 +6,9 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Inject, Injectable, InjectionToken} from '../di';
+import {Injectable} from '../di/injectable';
+import {InjectionToken} from '../di/injection_token';
+import {Inject} from '../di/metadata';
 import {NgZone} from '../zone/ng_zone';
 
 /**

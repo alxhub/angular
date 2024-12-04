@@ -7,7 +7,7 @@
  */
 
 import {afterNextRender} from '../render3/after_render/hooks';
-import type {Injector} from '../di';
+import type {Injector} from '../di/injector';
 import {assertLContainer, assertLView} from '../render3/assert';
 import {CONTAINER_HEADER_OFFSET} from '../render3/interfaces/container';
 import {TNode} from '../render3/interfaces/node';

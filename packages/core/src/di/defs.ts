@@ -6,8 +6,8 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Type} from '../../interface/type';
-import {getClosureSafeProperty} from '../../util/property';
+import {Type} from '../interface/type';
+import {getClosureSafeProperty} from '../util/property';
 
 import {
   ClassProvider,

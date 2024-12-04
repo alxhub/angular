@@ -6,13 +6,12 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import type {ProviderToken} from '../di';
-import {isEnvironmentProviders} from '../di/interface/provider';
-import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {Type} from '../interface/type';
+import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {stringify} from '../util/stringify';
-
-import {stringifyForError} from './util/stringify_utils';
+import {isEnvironmentProviders} from './provider';
+import {ProviderToken} from './provider_token';
+import {stringifyForError} from '../render3/util/stringify_utils';
 
 /** Called when directives inject each other (creating a circular dependency) */
 export function throwCyclicDependencyError(token: string, path?: string[]): never {
@@ -66,3 +65,54 @@ export function throwProviderNotFoundError(
     `No provider for ${stringifyForError(token)} found${injectorName ? ` in ${injectorName}` : ''}`;
   throw new RuntimeError(RuntimeErrorCode.PROVIDER_NOT_FOUND, errorMessage);
 }
+
+export function catchInjectorError(
+  e: any,
+  token: any,
+  injectorErrorName: string,
+  source: string | null,
+): never {
+  const tokenPath: any[] = e[NG_TEMP_TOKEN_PATH];
+  if (token[SOURCE]) {
+    tokenPath.unshift(token[SOURCE]);
+  }
+  e.message = formatError('\n' + e.message, tokenPath, injectorErrorName, source);
+  e[NG_TOKEN_PATH] = tokenPath;
+  e[NG_TEMP_TOKEN_PATH] = null;
+  throw e;
+}
+
+export function formatError(
+  text: string,
+  obj: any,
+  injectorErrorName: string,
+  source: string | null = null,
+): string {
+  text = text && text.charAt(0) === '\n' && text.charAt(1) == NO_NEW_LINE ? text.slice(2) : text;
+  let context = stringify(obj);
+  if (Array.isArray(obj)) {
+    context = obj.map(stringify).join(' -> ');
+  } else if (typeof obj === 'object') {
+    let parts = <string[]>[];
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        let value = obj[key];
+        parts.push(
+          key + ':' + (typeof value === 'string' ? JSON.stringify(value) : stringify(value)),
+        );
+      }
+    }
+    context = `{${parts.join(', ')}}`;
+  }
+  return `${injectorErrorName}${source ? '(' + source + ')' : ''}[${context}]: ${text.replace(
+    NEW_LINE,
+    '\n  ',
+  )}`;
+}
+
+export const NG_TEMP_TOKEN_PATH = 'ngTempTokenPath';
+
+const NG_TOKEN_PATH = 'ngTokenPath';
+const NEW_LINE = /\n/gm;
+const NO_NEW_LINE = 'ɵ';
+const SOURCE = '__source';

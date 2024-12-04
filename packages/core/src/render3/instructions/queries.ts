@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ProviderToken} from '../../di';
+import {ProviderToken} from '../../di/provider_token';
 import {unwrapElementRef} from '../../linker/element_ref';
 import {QueryList} from '../../linker/query_list';
 import {QueryFlags} from '../interfaces/query';

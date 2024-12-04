@@ -6,8 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injector} from '../di/injector';
-import {EnvironmentInjector} from '../di/r3_injector';
+import {Injector, EnvironmentInjector} from '../di/injector';
 import {validateMatchingNode} from '../hydration/error_handling';
 import {CONTAINERS} from '../hydration/interfaces';
 import {isInSkipHydrationBlock} from '../hydration/skip_hydration';

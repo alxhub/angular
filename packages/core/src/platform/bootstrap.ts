@@ -8,7 +8,6 @@
 import {Subscription} from 'rxjs';
 
 import {PROVIDED_NG_ZONE} from '../change_detection/scheduling/ng_zone_scheduling';
-import {EnvironmentInjector, R3Injector} from '../di/r3_injector';
 import {ErrorHandler} from '../error_handler';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {DEFAULT_LOCALE_ID} from '../i18n/localization';
@@ -22,7 +21,7 @@ import {NgZone} from '../zone/ng_zone';
 import {ApplicationInitStatus} from '../application/application_init';
 import {_callAndReportToErrorHandler, ApplicationRef, remove} from '../application/application_ref';
 import {PROVIDED_ZONELESS} from '../change_detection/scheduling/zoneless_scheduling';
-import {Injector} from '../di';
+import {Injector, InjectorImpl} from '../di/injector';
 import {InternalNgModuleRef, NgModuleRef} from '../linker/ng_module_factory';
 import {stringify} from '../util/stringify';
 
@@ -36,7 +35,7 @@ export interface ModuleBootstrapConfig<M> extends BootstrapConfig {
 }
 
 export interface ApplicationBootstrapConfig extends BootstrapConfig {
-  r3Injector: R3Injector;
+  r3Injector: InjectorImpl;
   rootComponent: Type<unknown> | undefined;
 }
 

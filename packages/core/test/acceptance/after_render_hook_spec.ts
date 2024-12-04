@@ -12,7 +12,9 @@ import {
   ApplicationRef,
   ChangeDetectorRef,
   Component,
+  EnvironmentInjector,
   ErrorHandler,
+  Injectable,
   Injector,
   NgZone,
   PLATFORM_ID,
@@ -32,7 +34,6 @@ import {TestBed} from '@angular/core/testing';
 
 import {firstValueFrom} from 'rxjs';
 import {filter} from 'rxjs/operators';
-import {EnvironmentInjector, Injectable} from '../../src/di';
 import {setUseMicrotaskEffectsByDefault} from '@angular/core/src/render3/reactivity/effect';
 
 function createAndAttachComponent<T>(component: Type<T>) {

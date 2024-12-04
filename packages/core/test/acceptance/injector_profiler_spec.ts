@@ -13,6 +13,7 @@ import {
   Component,
   Directive,
   ElementRef,
+  EnvironmentInjector,
   inject,
   Injectable,
   InjectFlags,
@@ -24,7 +25,7 @@ import {
   ViewChild,
   ViewChildren,
 } from '@angular/core';
-import {NullInjector} from '@angular/core/src/di/null_injector';
+import {InjectorImpl, NullInjector} from '@angular/core/src/di/injector';
 import {
   isClassProvider,
   isExistingProvider,
@@ -32,7 +33,6 @@ import {
   isTypeProvider,
   isValueProvider,
 } from '@angular/core/src/di/provider_collection';
-import {EnvironmentInjector, R3Injector} from '@angular/core/src/di/r3_injector';
 import {setupFrameworkInjectorProfiler} from '@angular/core/src/render3/debug/framework_injector_profiler';
 import {
   getInjectorProfilerContext,
@@ -314,9 +314,9 @@ describe('setProfiler', () => {
 
     expect(rootServiceProviderConfiguredEvent).toBeTruthy();
     expect(rootServiceProviderConfiguredEvent!.context).toBeTruthy();
-    expect(rootServiceProviderConfiguredEvent!.context!.injector).toBeInstanceOf(R3Injector);
+    expect(rootServiceProviderConfiguredEvent!.context!.injector).toBeInstanceOf(InjectorImpl);
     expect(
-      (rootServiceProviderConfiguredEvent!.context!.injector as R3Injector).scopes.has('root'),
+      (rootServiceProviderConfiguredEvent!.context!.injector as InjectorImpl).scopes.has('root'),
     ).toBeTrue();
 
     const platformServiceProviderConfiguredEvent = searchForProfilerEvent<ProviderConfiguredEvent>(
@@ -325,9 +325,9 @@ describe('setProfiler', () => {
     );
     expect(platformServiceProviderConfiguredEvent).toBeTruthy();
     expect(platformServiceProviderConfiguredEvent!.context).toBeTruthy();
-    expect(platformServiceProviderConfiguredEvent!.context!.injector).toBeInstanceOf(R3Injector);
+    expect(platformServiceProviderConfiguredEvent!.context!.injector).toBeInstanceOf(InjectorImpl);
     expect(
-      (platformServiceProviderConfiguredEvent!.context!.injector as R3Injector).scopes.has(
+      (platformServiceProviderConfiguredEvent!.context!.injector as InjectorImpl).scopes.has(
         'platform',
       ),
     ).toBeTrue();
@@ -340,11 +340,11 @@ describe('setProfiler', () => {
     expect(providedInRootInjectionTokenProviderConfiguredEvent).toBeTruthy();
     expect(providedInRootInjectionTokenProviderConfiguredEvent!.context).toBeTruthy();
     expect(providedInRootInjectionTokenProviderConfiguredEvent!.context!.injector).toBeInstanceOf(
-      R3Injector,
+      InjectorImpl,
     );
     expect(
       (
-        providedInRootInjectionTokenProviderConfiguredEvent!.context!.injector as R3Injector
+        providedInRootInjectionTokenProviderConfiguredEvent!.context!.injector as InjectorImpl
       ).scopes.has('root'),
     ).toBeTrue();
     expect(providedInRootInjectionTokenProviderConfiguredEvent!.providerRecord.token).toBe(
@@ -359,12 +359,12 @@ describe('setProfiler', () => {
     expect(providedInPlatformTokenProviderConfiguredEvent).toBeTruthy();
     expect(providedInPlatformTokenProviderConfiguredEvent!.context).toBeTruthy();
     expect(providedInPlatformTokenProviderConfiguredEvent!.context!.injector).toBeInstanceOf(
-      R3Injector,
+      InjectorImpl,
     );
     expect(
-      (providedInPlatformTokenProviderConfiguredEvent!.context!.injector as R3Injector).scopes.has(
-        'platform',
-      ),
+      (
+        providedInPlatformTokenProviderConfiguredEvent!.context!.injector as InjectorImpl
+      ).scopes.has('platform'),
     ).toBeTrue();
     expect(providedInPlatformTokenProviderConfiguredEvent!.providerRecord.token).toBe(
       providedInPlatformToken,
@@ -468,12 +468,12 @@ describe('getInjectorMetadata', () => {
     expect(getInjectorMetadata(mockInjector)).toBeNull();
   });
 
-  it('should return null as the source for an R3Injector with no source.', () => {
-    const emptyR3Injector = new R3Injector([], new NullInjector(), null, new Set());
-    const r3InjectorMetadata = getInjectorMetadata(emptyR3Injector);
-    expect(r3InjectorMetadata).toBeDefined();
-    expect(r3InjectorMetadata!.source).toBeNull();
-    expect(r3InjectorMetadata!.type).toBe('environment');
+  it('should return null as the source for an InjectorImpl with no source.', () => {
+    const emptyInjectorImpl = new InjectorImpl([], new NullInjector(), null, new Set());
+    const InjectorImplMetadata = getInjectorMetadata(emptyInjectorImpl);
+    expect(InjectorImplMetadata).toBeDefined();
+    expect(InjectorImplMetadata!.source).toBeNull();
+    expect(InjectorImplMetadata!.type).toBe('environment');
   });
 });
 
@@ -845,7 +845,7 @@ describe('getInjectorProviders', () => {
       .component as MyStandaloneComponentB;
     const routeEnvironmentInjector = myStandalonecomponentB.injector.get(
       EnvironmentInjector,
-    ) as R3Injector;
+    ) as InjectorImpl;
     expect(routeEnvironmentInjector).toBeTruthy();
     expect(routeEnvironmentInjector.source).toBeTruthy();
     expect(routeEnvironmentInjector.source!.startsWith('Route:')).toBeTrue();
@@ -1242,7 +1242,7 @@ describe('getDependenciesFromInjectable', () => {
       self: false,
       host: false,
     });
-    expect(routerDependency.providedIn).toBe((standaloneInjector as R3Injector).parent);
+    expect(routerDependency.providedIn).toBe((standaloneInjector as InjectorImpl).parent);
   }));
 });
 
@@ -1353,9 +1353,9 @@ describe('getInjectorResolutionPath', () => {
        *    NodeInjector[LazyComponent],
        *    NodeInjector[RouterOutlet],
        *    NodeInjector[MyStandaloneComponent],
-       *    R3Injector[LazyComponent],
-       *    R3Injector[Root],
-       *    R3Injector[Platform],
+       *    InjectorImpl[LazyComponent],
+       *    InjectorImpl[Root],
+       *    InjectorImpl[Platform],
        *    NullInjector
        * ]
        */
@@ -1373,18 +1373,18 @@ describe('getInjectorResolutionPath', () => {
         getNodeInjectorLView(myStandaloneComponentNodeInjector),
       );
 
-      expect(path[3]).toBeInstanceOf(R3Injector);
+      expect(path[3]).toBeInstanceOf(InjectorImpl);
       expect(path[3]).toBe(lazyComponentEnvironmentInjector);
-      expect((path[3] as R3Injector).scopes.has('environment')).toBeTrue();
-      expect((path[3] as R3Injector).source).toBe('Standalone[LazyComponent]');
+      expect((path[3] as InjectorImpl).scopes.has('environment')).toBeTrue();
+      expect((path[3] as InjectorImpl).source).toBe('Standalone[LazyComponent]');
 
-      expect(path[4]).toBeInstanceOf(R3Injector);
-      expect((path[4] as R3Injector).scopes.has('environment')).toBeTrue();
-      expect((path[4] as R3Injector).source).toBe('DynamicTestModule');
-      expect((path[4] as R3Injector).scopes.has('root')).toBeTrue();
+      expect(path[4]).toBeInstanceOf(InjectorImpl);
+      expect((path[4] as InjectorImpl).scopes.has('environment')).toBeTrue();
+      expect((path[4] as InjectorImpl).source).toBe('DynamicTestModule');
+      expect((path[4] as InjectorImpl).scopes.has('root')).toBeTrue();
 
-      expect(path[5]).toBeInstanceOf(R3Injector);
-      expect((path[5] as R3Injector).scopes.has('platform')).toBeTrue();
+      expect(path[5]).toBeInstanceOf(InjectorImpl);
+      expect((path[5] as InjectorImpl).scopes.has('platform')).toBeTrue();
 
       expect(path[6]).toBeInstanceOf(NullInjector);
     }

@@ -1056,7 +1056,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainComponent.ɵfac = function MainComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainComponent)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainComponent.ɵfac = function MainComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainComponent)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1093,7 +1093,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainComponent.ɵfac = function MainComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainComponent)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainComponent.ɵfac = function MainComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainComponent)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1133,7 +1133,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainDirective.ɵfac = function MainDirective_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainDirective)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainDirective.ɵfac = function MainDirective_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainDirective)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1168,7 +1168,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainDirective.ɵfac = function MainDirective_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainDirective)(i0.ɵɵdirectiveInject(i1.SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(i2.SomeService3), i0.ɵɵdirectiveInject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN)); };`,
+          `MainDirective.ɵfac = function MainDirective_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainDirective)(i0.ɵɵinject(i1.SomeService1), i0.ɵɵinject(SomeService2), i0.ɵɵinject(i2.SomeService3), i0.ɵɵinject(i3.nested.SomeService4), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN)); };`,
         );
       });
 
@@ -1207,7 +1207,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainPipe.ɵfac = function MainPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainPipe)(i0.ɵɵdirectiveInject(i1.SomeService1, 16), i0.ɵɵdirectiveInject(SomeService2, 16), i0.ɵɵdirectiveInject(i2.SomeService3, 16), i0.ɵɵdirectiveInject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN, 16)); };`,
+          `MainPipe.ɵfac = function MainPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainPipe)(i0.ɵɵinject(i1.SomeService1, 16), i0.ɵɵinject(SomeService2, 16), i0.ɵɵinject(i2.SomeService3, 16), i0.ɵɵinject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN, 16)); };`,
         );
       });
 
@@ -1243,7 +1243,7 @@ runInEachFileSystem(() => {
         const jsContents = env.getContents('test.js');
 
         expect(jsContents).toContain(
-          `MainPipe.ɵfac = function MainPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainPipe)(i0.ɵɵdirectiveInject(i1.SomeService1, 16), i0.ɵɵdirectiveInject(SomeService2, 16), i0.ɵɵdirectiveInject(i2.SomeService3, 16), i0.ɵɵdirectiveInject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵdirectiveInject(MESSAGE_TOKEN, 16)); };`,
+          `MainPipe.ɵfac = function MainPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || MainPipe)(i0.ɵɵinject(i1.SomeService1, 16), i0.ɵɵinject(SomeService2, 16), i0.ɵɵinject(i2.SomeService3, 16), i0.ɵɵinject(i3.nested.SomeService4, 16), i0.ɵɵinjectAttribute('title'), i0.ɵɵinject(MESSAGE_TOKEN, 16)); };`,
         );
       });
 

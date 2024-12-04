@@ -8,14 +8,12 @@
 
 import {ENVIRONMENT_INITIALIZER} from '../../di/initializer_token';
 import {InjectionToken} from '../../di/injection_token';
-import {Injector} from '../../di/injector';
-import {getInjectorDef, InjectorType} from '../../di/interface/defs';
-import {InternalInjectFlags} from '../../di/interface/injector';
-import {ValueProvider} from '../../di/interface/provider';
+import {getInjectorDef, InjectorType} from '../../di/defs';
+import {InternalInjectFlags} from '../../di/flags';
+import {ValueProvider} from '../../di/provider';
 import {INJECTOR_DEF_TYPES} from '../../di/internal_tokens';
-import {NullInjector} from '../../di/null_injector';
 import {SingleProvider, walkProviderTree} from '../../di/provider_collection';
-import {EnvironmentInjector, R3Injector} from '../../di/r3_injector';
+import {EnvironmentInjector, Injector, InjectorImpl, NullInjector} from '../../di/injector';
 import {Type} from '../../interface/type';
 import {NgModuleRef as viewEngine_NgModuleRef} from '../../linker/ng_module_factory';
 import {deepForEach} from '../../util/array_utils';
@@ -463,7 +461,7 @@ function getEnvironmentInjectorProviders(injector: EnvironmentInjector): Provide
 }
 
 function isPlatformInjector(injector: Injector) {
-  return injector instanceof R3Injector && injector.scopes.has('platform');
+  return injector instanceof InjectorImpl && injector.scopes.has('platform');
 }
 
 /**
@@ -512,7 +510,7 @@ export function getInjectorMetadata(
     return {type: 'element', source: getNativeByTNode(tNode, lView) as RElement};
   }
 
-  if (injector instanceof R3Injector) {
+  if (injector instanceof InjectorImpl) {
     return {type: 'environment', source: injector.source ?? null};
   }
 
@@ -600,7 +598,7 @@ function getInjectorResolutionPathHelper(
  * @returns Injector the parent of the given injector
  */
 function getInjectorParent(injector: Injector): Injector | null {
-  if (injector instanceof R3Injector) {
+  if (injector instanceof InjectorImpl) {
     const parent = injector.parent;
     if (isRouterOutletInjector(parent)) {
       // This is a special case for a `ChainedInjector` instance, which represents
@@ -675,7 +673,7 @@ function getModuleInjectorOfNodeInjector(injector: NodeInjector): Injector {
     throwError('getModuleInjectorOfNodeInjector must be called with a NodeInjector');
   }
 
-  const inj = lView[INJECTOR] as R3Injector | ChainedInjector;
+  const inj = lView[INJECTOR] as InjectorImpl | ChainedInjector;
   const moduleInjector = inj instanceof ChainedInjector ? inj.parentInjector : inj.parent;
   if (!moduleInjector) {
     throwError('NodeInjector must have some connection to the module injector tree');

@@ -24,7 +24,7 @@ import {
   NotificationSource,
 } from '../../change_detection/scheduling/zoneless_scheduling';
 import {Injector} from '../../di/injector';
-import {inject} from '../../di/injector_compatibility';
+import {inject} from '../../di/inject';
 import {
   AFTER_RENDER_PHASES,
   AfterRenderImpl,

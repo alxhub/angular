@@ -9,7 +9,7 @@
 import {Type} from '../interface/type';
 import {assertLessThan} from '../util/assert';
 
-import {ɵɵdefineInjectable} from './interface/defs';
+import {ɵɵdefineInjectable} from './defs';
 
 /**
  * Creates a token that can be used in a DI Provider.

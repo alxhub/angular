@@ -6,11 +6,12 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import type {FactoryProvider} from '../../di';
-import {resolveForwardRef} from '../../di/forward_ref';
+import type {FactoryProvider} from '../../di/provider';
+import {resolveForwardRef} from '../../forward_ref';
 import {InjectionToken} from '../../di/injection_token';
 import type {Injector} from '../../di/injector';
-import {InjectFlags, InjectOptions, InternalInjectFlags} from '../../di/interface/injector';
+import {InjectFlags, InternalInjectFlags} from '../../di/flags';
+import {InjectOptions} from '../../di/options';
 import type {SingleProvider} from '../../di/provider_collection';
 import {Type} from '../../interface/type';
 import {throwError} from '../../util/assert';

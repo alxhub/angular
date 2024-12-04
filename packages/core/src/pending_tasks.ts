@@ -8,8 +8,8 @@
 
 import {BehaviorSubject} from 'rxjs';
 
-import {inject} from './di/injector_compatibility';
-import {ɵɵdefineInjectable} from './di/interface/defs';
+import {inject} from './di/inject';
+import {ɵɵdefineInjectable} from './di/defs';
 import {OnDestroy} from './interface/lifecycle_hooks';
 import {
   ChangeDetectionScheduler,

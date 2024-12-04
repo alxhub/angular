@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {assertInInjectionContext} from '../../di';
+import {assertInInjectionContext} from '../../di/contextual';
 
 import {OutputEmitterRef} from './output_emitter_ref';
 

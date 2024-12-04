@@ -21,8 +21,8 @@
  * The below symbols are used for @Injectable and @NgModule compilation.
  */
 
-export {ɵɵinject} from './di/injector_compatibility';
-export {ɵɵdefineInjectable, ɵɵdefineInjector, ɵɵInjectableDeclaration} from './di/interface/defs';
+export {inject as ɵɵinject} from './di/inject';
+export {ɵɵdefineInjectable, ɵɵdefineInjector, ɵɵInjectableDeclaration} from './di/defs';
 export {NgModuleDef} from './metadata/ng_module_def';
 export {ɵɵdefineNgModule} from './render3/definition';
 export {

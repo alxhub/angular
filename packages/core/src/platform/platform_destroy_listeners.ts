@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {InjectionToken} from '../di';
+import {InjectionToken} from '../di/injection_token';
 
 /**
  * Internal token that allows to register extra callbacks that should be invoked during the

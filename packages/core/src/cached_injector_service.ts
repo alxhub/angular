@@ -6,9 +6,9 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {ɵɵdefineInjectable as defineInjectable} from './di/interface/defs';
-import {Provider} from './di/interface/provider';
-import {EnvironmentInjector} from './di/r3_injector';
+import {ɵɵdefineInjectable as defineInjectable} from './di/defs';
+import {Provider} from './di/provider';
+import {EnvironmentInjector} from './di/injector';
 import {OnDestroy} from './interface/lifecycle_hooks';
 import {createEnvironmentInjector} from './render3/ng_module_ref';
 

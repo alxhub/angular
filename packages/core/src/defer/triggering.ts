@@ -7,7 +7,7 @@
  */
 
 import {afterNextRender} from '../render3/after_render/hooks';
-import {Injector} from '../di';
+import type {Injector} from '../di/injector';
 import {internalImportProvidersFrom} from '../di/provider_collection';
 import {RuntimeError, RuntimeErrorCode} from '../errors';
 import {cleanupHydratedDeferBlocks} from '../hydration/cleanup';

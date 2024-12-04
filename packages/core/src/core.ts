@@ -23,7 +23,7 @@ export {model} from './authoring/model/model';
 export * from './metadata';
 export * from './version';
 export {TypeDecorator} from './util/decorators';
-export * from './di';
+export * from './di/public';
 export {
   BootstrapOptions,
   ApplicationRef,

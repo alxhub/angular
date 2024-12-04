@@ -11,11 +11,9 @@ import {
   InjectorProfilerContext,
   setInjectorProfilerContext,
 } from '../render3/debug/injector_profiler';
+import {getCurrentInjector, setCurrentInjector} from './inject';
 
-import {getInjectImplementation, setInjectImplementation} from './inject_switch';
-import type {Injector} from './injector';
-import {getCurrentInjector, setCurrentInjector} from './injector_compatibility';
-import {assertNotDestroyed, R3Injector} from './r3_injector';
+import {assertNotDestroyed, InjectorImpl, type Injector} from './injector';
 
 /**
  * Runs the given function in the [context](guide/di/dependency-injection-context) of the given
@@ -32,7 +30,7 @@ import {assertNotDestroyed, R3Injector} from './r3_injector';
  * @publicApi
  */
 export function runInInjectionContext<ReturnT>(injector: Injector, fn: () => ReturnT): ReturnT {
-  if (injector instanceof R3Injector) {
+  if (injector instanceof InjectorImpl) {
     assertNotDestroyed(injector);
   }
 
@@ -41,13 +39,11 @@ export function runInInjectionContext<ReturnT>(injector: Injector, fn: () => Ret
     prevInjectorProfilerContext = setInjectorProfilerContext({injector, token: null});
   }
   const prevInjector = setCurrentInjector(injector);
-  const previousInjectImplementation = setInjectImplementation(undefined);
   try {
     return fn();
   } finally {
     setCurrentInjector(prevInjector);
     ngDevMode && setInjectorProfilerContext(prevInjectorProfilerContext!);
-    setInjectImplementation(previousInjectImplementation);
   }
 }
 
@@ -55,7 +51,7 @@ export function runInInjectionContext<ReturnT>(injector: Injector, fn: () => Ret
  * Whether the current stack frame is inside an injection context.
  */
 export function isInInjectionContext(): boolean {
-  return getInjectImplementation() !== undefined || getCurrentInjector() != null;
+  return getCurrentInjector() !== undefined;
 }
 /**
  * Asserts that the current stack frame is within an [injection
