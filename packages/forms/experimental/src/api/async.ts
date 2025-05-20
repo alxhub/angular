@@ -13,18 +13,18 @@ import {FieldPathNode} from '../path_node';
 import {defineResource} from './data';
 import {FieldNode} from '../field_node';
 
-export interface AsyncValidatorOptions<TValue, TRequest, TData> {
-  readonly request: (ctx: FieldContext<TValue>) => TRequest;
-  readonly factory: (req: Signal<TRequest | undefined>) => ResourceRef<TData>;
+export interface AsyncValidatorOptions<TValue, TParams, TData> {
+  readonly params: (ctx: FieldContext<TValue>) => TParams;
+  readonly factory: (req: Signal<TParams | undefined>) => ResourceRef<TData | undefined>;
   readonly error: (
     data: TData,
     ctx: FieldContext<TValue>,
   ) => FormTreeError | FormTreeError[] | undefined;
 }
 
-export function validateAsync<TValue, TRequest, TData>(
+export function validateAsync<TValue, TParams, TData>(
   path: FieldPath<TValue>,
-  opts: AsyncValidatorOptions<TValue, TRequest, TData>,
+  opts: AsyncValidatorOptions<TValue, TParams, TData>,
 ): void {
   assertPathIsCurrent(path);
   const pathNode = FieldPathNode.unwrapFieldPath(path);
@@ -35,7 +35,7 @@ export function validateAsync<TValue, TRequest, TData>(
       if (node.shouldSkipValidation() || !node.syncValid()) {
         return undefined;
       }
-      return opts.request(ctx);
+      return opts.params(ctx);
     },
     factory: opts.factory,
   });
@@ -43,18 +43,18 @@ export function validateAsync<TValue, TRequest, TData>(
   pathNode.logic.asyncErrors.push((ctx) => {
     const res = ctx.data(dataKey);
     switch (res.status()) {
-      case ResourceStatus.Idle:
+      case 'idle':
         return undefined;
-      case ResourceStatus.Loading:
-      case ResourceStatus.Reloading:
+      case 'loading':
+      case 'reloading':
         return 'pending';
-      case ResourceStatus.Resolved:
-      case ResourceStatus.Local:
+      case 'resolved':
+      case 'local':
         if (!res.hasValue()) {
           return undefined;
         }
         return opts.error(res.value()!, ctx);
-      case ResourceStatus.Error:
+      case 'error':
         // Throw the resource's error:
         throw res.error();
     }
