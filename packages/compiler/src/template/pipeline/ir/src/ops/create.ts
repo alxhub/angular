@@ -11,6 +11,8 @@ import * as i18n from '../../../../../i18n/i18n_ast';
 import * as o from '../../../../../output/output_ast';
 import {ParseSourceSpan} from '../../../../../parse_util';
 import {
+  AnimationBindingType,
+  AnimationKind,
   BindingKind,
   DeferOpModifierKind,
   DeferTriggerKind,
@@ -26,13 +28,15 @@ import {Op, OpList, XrefId} from '../operations';
 import {
   ConsumesSlotOpTrait,
   ConsumesVarsTrait,
+  DependsOnSlotContextOpTrait,
   TRAIT_CONSUMES_SLOT,
   TRAIT_CONSUMES_VARS,
+  TRAIT_DEPENDS_ON_SLOT_CONTEXT,
 } from '../traits';
 
 import {ListEndOp, NEW_OP, StatementOp, VariableOp} from './shared';
 
-import type {UpdateOp} from './update';
+import type {Interpolation, UpdateOp} from './update';
 
 /**
  * An operation usable on the creation side of the IR.
@@ -73,6 +77,8 @@ export type CreateOp =
   | I18nContextOp
   | I18nAttributesOp
   | DeclareLetOp
+  | AnimationListenerOp
+  | AnimationOp
   | SourceLocationOp;
 
 /**
@@ -704,6 +710,77 @@ export function createTextOp(
 }
 
 /**
+ * A logical operation representing binding to an animation in the create IR.
+ */
+export interface AnimationOp extends Op<CreateOp>, ConsumesVarsTrait {
+  kind: OpKind.Animation;
+
+  /**
+   * The name of the extracted attribute.
+   */
+  name: string;
+
+  /**
+   * Reference to the element on which the property is bound.
+   */
+  target: XrefId;
+
+  /**
+   * Name of the bound property.
+   */
+  animationKind: AnimationKind;
+
+  /**
+   * Expression which is bound to the property.
+   */
+  expression: o.Expression | Interpolation;
+
+  i18nMessage: XrefId | null;
+
+  /**
+   * The security context of the binding.
+   */
+  securityContext: SecurityContext | SecurityContext[];
+
+  /**
+   * The sanitizer for this property.
+   */
+  sanitizer: o.Expression | null;
+
+  sourceSpan: ParseSourceSpan;
+
+  animationBindingType: AnimationBindingType;
+}
+
+/**
+ * Create an `AnimationOp`.
+ */
+export function createAnimationOp(
+  name: string,
+  target: XrefId,
+  animationKind: AnimationKind,
+  expression: o.Expression | Interpolation,
+  securityContext: SecurityContext | SecurityContext[],
+  sourceSpan: ParseSourceSpan,
+  animationBindingType: AnimationBindingType,
+): AnimationOp {
+  return {
+    kind: OpKind.Animation,
+    name,
+    target,
+    animationKind,
+    expression,
+    i18nMessage: null,
+    securityContext,
+    sanitizer: null,
+    sourceSpan,
+    animationBindingType,
+    ...TRAIT_CONSUMES_VARS,
+    ...NEW_OP,
+  };
+}
+
+/**
  * Logical operation representing an event listener on an element in the creation IR.
  */
 export interface ListenerOp extends Op<CreateOp> {
@@ -789,6 +866,89 @@ export function createListenerOp(
     consumesDollarEvent: false,
     isLegacyAnimationListener: legacyAnimationPhase !== null,
     legacyAnimationPhase: legacyAnimationPhase,
+    eventTarget,
+    sourceSpan,
+    ...NEW_OP,
+  };
+}
+
+export interface AnimationListenerOp extends Op<CreateOp> {
+  kind: OpKind.AnimationListener;
+
+  target: XrefId;
+  targetSlot: SlotHandle;
+
+  /**
+   * Whether this listener is from a host binding.
+   */
+  hostListener: boolean;
+
+  /**
+   * Name of the event which is being listened to.
+   */
+  name: string;
+
+  /**
+   * Whether the event is on enter or leave
+   */
+  animationKind: AnimationKind;
+
+  /**
+   * Tag name of the element on which this listener is placed. Might be null, if this listener
+   * belongs to a host binding.
+   */
+  tag: string | null;
+
+  /**
+   * A list of `UpdateOp`s representing the body of the event listener.
+   */
+  handlerOps: OpList<UpdateOp>;
+
+  /**
+   * Name of the function
+   */
+  handlerFnName: string | null;
+
+  /**
+   * Whether this listener is known to consume `$event` in its body.
+   */
+  consumesDollarEvent: boolean;
+
+  /**
+   * Some event listeners can have a target, e.g. in `document:dragover`.
+   */
+  eventTarget: string | null;
+
+  sourceSpan: ParseSourceSpan;
+}
+
+/**
+ * Create a `ListenerOp`. Host bindings reuse all the listener logic.
+ */
+export function createAnimationListenerOp(
+  target: XrefId,
+  targetSlot: SlotHandle,
+  name: string,
+  tag: string | null,
+  handlerOps: Array<UpdateOp>,
+  animationKind: AnimationKind,
+  eventTarget: string | null,
+  hostListener: boolean,
+  sourceSpan: ParseSourceSpan,
+): AnimationListenerOp {
+  const handlerList = new OpList<UpdateOp>();
+  handlerList.push(handlerOps);
+  return {
+    kind: OpKind.AnimationListener,
+    target,
+    targetSlot,
+    tag,
+    hostListener,
+    name,
+    animationKind,
+    handlerOps: handlerList,
+    handlerFnName: null,
+    consumesDollarEvent: false,
     eventTarget,
     sourceSpan,
     ...NEW_OP,
