@@ -134,8 +134,6 @@ function varsUsedByOp(op: (ir.CreateOp | ir.UpdateOp) & ir.ConsumesVarsTrait): n
     case ir.OpKind.ClassProp:
     case ir.OpKind.StyleMap:
     case ir.OpKind.ClassMap:
-    case ir.OpKind.AnimationBinding:
-    case ir.OpKind.Animation:
       // Style & class bindings use 2 variable slots, plus 1 slot for every interpolated expression,
       // if any.
       slots = 2;

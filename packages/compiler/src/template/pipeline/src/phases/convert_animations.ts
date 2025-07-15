@@ -7,6 +7,7 @@
  */
 
 import * as ir from '../../ir';
+import * as o from '../../../../output/output_ast';
 import {CompilationJob, CompilationJobKind} from '../compilation';
 
 /**
@@ -37,11 +38,15 @@ export function convertAnimations(job: CompilationJob): void {
   for (const unit of job.units) {
     for (const op of unit.ops()) {
       if (op.kind === ir.OpKind.AnimationBinding) {
+        let expression = op.expression;
+        if (expression instanceof ir.Interpolation) {
+          throw new Error(`TODO: interpolations can be converted to template strings`);
+        }
         const createAnimationOp = ir.createAnimationOp(
           op.name,
           op.target,
           op.name === 'animate.enter' ? ir.AnimationKind.ENTER : ir.AnimationKind.LEAVE,
-          op.expression,
+          [ir.createStatementOp(new o.ReturnStatement(expression, expression.sourceSpan))],
           op.securityContext,
           op.sourceSpan,
           ir.AnimationBindingType.VALUE,

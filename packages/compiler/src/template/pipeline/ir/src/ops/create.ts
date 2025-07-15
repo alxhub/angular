@@ -712,8 +712,10 @@ export function createTextOp(
 /**
  * A logical operation representing binding to an animation in the create IR.
  */
-export interface AnimationOp extends Op<CreateOp>, ConsumesVarsTrait {
+export interface AnimationOp extends Op<CreateOp> {
   kind: OpKind.Animation;
+
+  target: XrefId;
 
   /**
    * The name of the extracted attribute.
@@ -721,19 +723,19 @@ export interface AnimationOp extends Op<CreateOp>, ConsumesVarsTrait {
   name: string;
 
   /**
-   * Reference to the element on which the property is bound.
-   */
-  target: XrefId;
-
-  /**
    * Name of the bound property.
    */
   animationKind: AnimationKind;
 
   /**
-   * Expression which is bound to the property.
+   * A list of `UpdateOp`s representing the body of the callback function.
    */
-  expression: o.Expression | Interpolation;
+  handlerOps: OpList<UpdateOp>;
+
+  /**
+   * Name of the function
+   */
+  handlerFnName: string | null;
 
   i18nMessage: XrefId | null;
 
@@ -759,23 +761,25 @@ export function createAnimationOp(
   name: string,
   target: XrefId,
   animationKind: AnimationKind,
-  expression: o.Expression | Interpolation,
+  callbackOps: Array<UpdateOp>,
   securityContext: SecurityContext | SecurityContext[],
   sourceSpan: ParseSourceSpan,
   animationBindingType: AnimationBindingType,
 ): AnimationOp {
+  const handlerOps = new OpList<UpdateOp>();
+  handlerOps.push(callbackOps);
   return {
     kind: OpKind.Animation,
     name,
     target,
     animationKind,
-    expression,
+    handlerOps,
+    handlerFnName: null,
     i18nMessage: null,
     securityContext,
     sanitizer: null,
     sourceSpan,
     animationBindingType,
-    ...TRAIT_CONSUMES_VARS,
     ...NEW_OP,
   };
 }

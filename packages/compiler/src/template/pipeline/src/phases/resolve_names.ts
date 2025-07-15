@@ -74,6 +74,7 @@ function processLexicalScope(
             break;
         }
         break;
+      case ir.OpKind.Animation:
       case ir.OpKind.AnimationListener:
       case ir.OpKind.Listener:
       case ir.OpKind.TwoWayListener:

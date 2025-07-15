@@ -259,9 +259,15 @@ function reifyCreateOperations(unit: CompilationUnit, ops: ir.OpList<ir.CreateOp
         ir.OpList.replace(op, ng.declareLet(op.handle.slot!, op.sourceSpan));
         break;
       case ir.OpKind.Animation:
+        const animationCallbackFn = reifyListenerHandler(
+          unit,
+          op.handlerFnName!,
+          op.handlerOps,
+          /* consumesDollarEvent */ false,
+        );
         ir.OpList.replace(
           op,
-          ng.animation(op.animationKind, op.expression, op.sanitizer, op.sourceSpan),
+          ng.animation(op.animationKind, animationCallbackFn, op.sanitizer, op.sourceSpan),
         );
         break;
       case ir.OpKind.AnimationListener:

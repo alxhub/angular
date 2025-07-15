@@ -82,6 +82,7 @@ function generateTemporaries(
     opCount++;
 
     if (
+      op.kind === ir.OpKind.Animation ||
       op.kind === ir.OpKind.Listener ||
       op.kind === ir.OpKind.AnimationListener ||
       op.kind === ir.OpKind.TwoWayListener

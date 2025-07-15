@@ -63,6 +63,7 @@ function recursivelyProcessView(view: ViewCompilationUnit, parentScope: Scope | 
           op.trackByOps.prepend(generateVariablesInScopeForView(view, scope, false));
         }
         break;
+      case ir.OpKind.Animation:
       case ir.OpKind.AnimationListener:
       case ir.OpKind.Listener:
       case ir.OpKind.TwoWayListener:
@@ -231,7 +232,7 @@ function getScopeForView(view: ViewCompilationUnit, parent: Scope | null): Scope
 function generateVariablesInScopeForView(
   view: ViewCompilationUnit,
   scope: Scope,
-  isListener: boolean,
+  isCallback: boolean,
 ): ir.VariableOp<ir.UpdateOp>[] {
   const newOps: ir.VariableOp<ir.UpdateOp>[] = [];
 
@@ -289,7 +290,7 @@ function generateVariablesInScopeForView(
     );
   }
 
-  if (scope.view !== view.xref || isListener) {
+  if (scope.view !== view.xref || isCallback) {
     for (const decl of scope.letDeclarations) {
       newOps.push(
         ir.createVariableOp<ir.UpdateOp>(

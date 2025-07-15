@@ -28,6 +28,7 @@ export function mergeNextContextExpressions(job: CompilationJob): void {
     for (const op of unit.create) {
       if (
         op.kind === ir.OpKind.Listener ||
+        op.kind === ir.OpKind.Animation ||
         op.kind === ir.OpKind.AnimationListener ||
         op.kind === ir.OpKind.TwoWayListener
       ) {

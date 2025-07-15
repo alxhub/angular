@@ -56,6 +56,12 @@ function addNamesToView(
           op.name = '@' + op.name;
         }
         break;
+      case ir.OpKind.Animation:
+        if (op.handlerFnName !== null) {
+          break;
+        }
+        op.handlerFnName = `${unit.fnName}_TODO_generateARealName`;
+        break;
       case ir.OpKind.AnimationListener:
         if (op.handlerFnName !== null) {
           break;

@@ -26,7 +26,8 @@ function basicListenerKindTest(op: ir.CreateOp): boolean {
   return (
     (op.kind === ir.OpKind.Listener && !(op.hostListener && op.isLegacyAnimationListener)) ||
     op.kind === ir.OpKind.TwoWayListener ||
-    op.kind === ir.OpKind.AnimationListener
+    op.kind === ir.OpKind.AnimationListener ||
+    op.kind === ir.OpKind.Animation
   );
 }
 
