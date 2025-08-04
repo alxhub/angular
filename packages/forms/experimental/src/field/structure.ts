@@ -13,12 +13,12 @@ import {
   linkedSignal,
   Signal,
   WritableSignal,
+  ɵnestedSignal as nestedSignal,
 } from '@angular/core';
 
 import {DYNAMIC} from '../schema/logic';
 import {LogicNode} from '../schema/logic_node';
 import type {FieldPathNode} from '../schema/path_node';
-import {deepSignal} from '../util/deep_signal';
 import {isArray, isObject} from '../util/type_guards';
 import type {FormFieldManager} from './manager';
 import type {FieldNode} from './node';
@@ -259,7 +259,10 @@ export class ChildFieldNodeStructure extends FieldNodeStructure {
       });
     }
 
-    this.value = deepSignal(this.parent.structure.value, this.keyInParent as Signal<never>);
+    this.value = nestedSignal<{}, never>(
+      this.parent.structure.value as WritableSignal<{}>,
+      this.keyInParent as Signal<never>,
+    );
     this.childrenMap = makeChildrenMapSignal(
       node,
       this.value,
