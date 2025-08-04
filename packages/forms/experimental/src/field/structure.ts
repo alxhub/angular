@@ -14,6 +14,7 @@ import {
   Signal,
   WritableSignal,
   ɵnestedSignal as nestedSignal,
+  ɵstructuralSignal as structuralSignal,
 } from '@angular/core';
 
 import {DYNAMIC} from '../schema/logic';
@@ -346,7 +347,10 @@ function makeChildrenMapSignal(
   // the value of this field changes its object identity. The computation creates or updates the map
   // of child `FieldNode`s for `node` based on its current value.
   return linkedSignal<unknown, Map<TrackingKey, FieldNode> | undefined>({
-    source: valueSignal,
+    // `structuralSignal` here is appropriate because we're only interested in changes which create
+    // or destroy new child fields. Changes to the actual values of those children are irrelevant
+    // for `childrenMap`'s derivation.
+    source: structuralSignal(valueSignal),
     computation: (value, previous): Map<TrackingKey, FieldNode> | undefined => {
       const prevMap = previous?.value;
       // We may or may not have a previous map. If there isn't one, then `childrenMap` will be lazily
