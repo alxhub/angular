@@ -65,9 +65,10 @@ export interface ChildFieldContext<TValue> extends RootFieldContext<TValue> {
 }
 
 // @public
-export type CompatFieldState<TControl extends AbstractControl, TKey extends string | number = string | number> = FieldState<TControl extends AbstractControl<unknown, infer TValue> ? TValue : never, TKey> & {
+export interface CompatFieldState<TControl extends AbstractControl, TKey extends string | number = string | number> extends FieldState<TControl extends AbstractControl<unknown, infer TValue> ? TValue : never, TKey> {
+    // (undocumented)
     control: Signal<TControl>;
-};
+}
 
 // @public
 export type CompatSchemaPath<TControl extends AbstractControl, TPathKind extends PathKind = PathKind.Root> = SchemaPath<TControl extends AbstractControl<unknown, infer TValue> ? TValue : never, SchemaPathRules.Unsupported, TPathKind> & {

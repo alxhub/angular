@@ -319,12 +319,15 @@ export interface FieldState<TValue, TKey extends string | number = string | numb
  * @category interop
  * @experimental 21.0.0
  */
-export type CompatFieldState<
+export interface CompatFieldState<
   TControl extends AbstractControl,
   TKey extends string | number = string | number,
-> = FieldState<TControl extends AbstractControl<unknown, infer TValue> ? TValue : never, TKey> & {
+> extends FieldState<
+    TControl extends AbstractControl<unknown, infer TValue> ? TValue : never,
+    TKey
+  > {
   control: Signal<TControl>;
-};
+}
 
 /**
  * Allows declaring whether the Rules are supported for a given path.
