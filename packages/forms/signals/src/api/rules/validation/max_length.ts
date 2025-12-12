@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
 import {createMetadataKey, MAX_LENGTH, metadata} from '../metadata';
 import {
   BaseValidatorConfig,
@@ -35,13 +35,10 @@ import {maxLengthError} from './validation_errors';
  * @category validation
  * @experimental 21.0.0
  */
-export function maxLength<
-  TValue extends ValueWithLengthOrSize,
-  TPathKind extends PathKind = PathKind.Root,
->(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  maxLength: number | LogicFn<TValue, number | undefined, TPathKind>,
-  config?: BaseValidatorConfig<TValue, TPathKind>,
+export function maxLength<TValue extends ValueWithLengthOrSize>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  maxLength: number | LogicFn<TValue, number | undefined>,
+  config?: BaseValidatorConfig<TValue>,
 ) {
   const MAX_LENGTH_MEMO = metadata(path, createMetadataKey<number | undefined>(), (ctx) =>
     typeof maxLength === 'number' ? maxLength : maxLength(ctx),

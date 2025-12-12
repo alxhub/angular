@@ -8,7 +8,7 @@
 
 import {FieldPathNode} from '../../schema/path_node';
 import {assertPathIsCurrent} from '../../schema/schema';
-import type {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../types';
+import type {LogicFn, SchemaPath, SchemaPathRules} from '../types';
 
 /**
  * Adds logic to a field to conditionally make it readonly. A readonly field does not contribute to
@@ -22,9 +22,9 @@ import type {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../types';
  * @category logic
  * @experimental 21.0.0
  */
-export function readonly<TValue, TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  logic: NoInfer<LogicFn<TValue, boolean, TPathKind>> = () => true,
+export function readonly<TValue>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  logic: NoInfer<LogicFn<TValue, boolean>> = () => true,
 ) {
   assertPathIsCurrent(path);
 

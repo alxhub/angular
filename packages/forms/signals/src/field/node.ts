@@ -108,9 +108,18 @@ export class FieldNode implements FieldState<unknown> {
     return this._controlValue.asReadonly();
   }
 
-  get keyInParent(): Signal<string | number> {
-    return this.structure.keyInParent;
+  get key(): Signal<string> {
+    return this.structure.key;
   }
+
+  readonly index = computed<number>(() => {
+    const key = this.key(); // will throw if `parent` not defined.
+    if (!Array.isArray(untracked(this.structure.parent!.value))) {
+      throw new Error(`RuntimeError: index() on non-array child`);
+    }
+
+    return Number(key);
+  });
 
   get errors(): Signal<ValidationError.WithField[]> {
     return this.validationState.errors;

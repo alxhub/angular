@@ -8,7 +8,7 @@
 
 import {WritableSignal} from '@angular/core';
 import {form, FormOptions} from '../../../public_api';
-import {FieldTree, PathKind, SchemaOrSchemaFn} from '../../../src/api/types';
+import {FieldTree, SchemaOrSchemaFn} from '../../../src/api/types';
 import {normalizeFormArgs} from '../../../src/util/normalize_form_args';
 import {CompatFieldAdapter} from '../compat_field_adapter';
 
@@ -129,6 +129,6 @@ export function compatForm<TModel>(...args: any[]): FieldTree<TModel> {
   const [model, maybeSchema, maybeOptions] = normalizeFormArgs<TModel>(args);
 
   const options = {...maybeOptions, adapter: new CompatFieldAdapter()};
-  const schema = maybeSchema || ((() => {}) as SchemaOrSchemaFn<TModel, PathKind>);
+  const schema = maybeSchema || ((() => {}) as SchemaOrSchemaFn<TModel>);
   return form(model, schema, options) as FieldTree<TModel>;
 }

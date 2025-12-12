@@ -104,7 +104,7 @@ export class FieldNodeContext implements FieldContext<unknown> {
   }
 
   get key(): Signal<string> {
-    return this.node.structure.keyInParent;
+    return this.node.structure.key;
   }
 
   get pathKeys(): Signal<readonly string[]> {

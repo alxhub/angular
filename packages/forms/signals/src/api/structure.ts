@@ -23,7 +23,6 @@ import type {
   ItemType,
   LogicFn,
   OneOrMany,
-  PathKind,
   Schema,
   SchemaFn,
   SchemaOrSchemaFn,
@@ -217,15 +216,15 @@ export function form<TModel>(...args: any[]): FieldTree<TModel> {
  */
 export function applyEach<TValue extends ReadonlyArray<any>>(
   path: SchemaPath<TValue>,
-  schema: NoInfer<SchemaOrSchemaFn<TValue[number], PathKind.Item>>,
+  schema: NoInfer<SchemaOrSchemaFn<TValue[number]>>,
 ): void;
 export function applyEach<TValue extends Object>(
   path: SchemaPath<TValue>,
-  schema: NoInfer<SchemaOrSchemaFn<ItemType<TValue>, PathKind.Child>>,
+  schema: NoInfer<SchemaOrSchemaFn<ItemType<TValue>>>,
 ): void;
 export function applyEach<TValue extends Object>(
   path: SchemaPath<TValue>,
-  schema: NoInfer<SchemaOrSchemaFn<ItemType<TValue>, PathKind.Item>>,
+  schema: NoInfer<SchemaOrSchemaFn<ItemType<TValue>>>,
 ): void {
   assertPathIsCurrent(path);
 

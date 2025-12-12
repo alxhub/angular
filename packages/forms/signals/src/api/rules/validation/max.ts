@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
 import {createMetadataKey, MAX, metadata} from '../metadata';
 import {BaseValidatorConfig, getOption, isEmpty} from './util';
 import {validate} from './validate';
@@ -28,10 +28,10 @@ import {maxError} from './validation_errors';
  * @category validation
  * @experimental 21.0.0
  */
-export function max<TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<number | string | null, SchemaPathRules.Supported, TPathKind>,
-  maxValue: number | LogicFn<number | string | null, number | undefined, TPathKind>,
-  config?: BaseValidatorConfig<number | string | null, TPathKind>,
+export function max(
+  path: SchemaPath<number | string | null, SchemaPathRules.Supported>,
+  maxValue: number | LogicFn<number | string | null, number | undefined>,
+  config?: BaseValidatorConfig<number | string | null>,
 ) {
   const MAX_MEMO = metadata(path, createMetadataKey<number | undefined>(), (ctx) =>
     typeof maxValue === 'number' ? maxValue : maxValue(ctx),

@@ -9,7 +9,7 @@
 import {type Signal} from '@angular/core';
 import {FieldPathNode} from '../../schema/path_node';
 import {assertPathIsCurrent} from '../../schema/schema';
-import type {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../types';
+import type {LogicFn, SchemaPath, SchemaPathRules} from '../types';
 
 /**
  * Sets a value for the {@link MetadataKey} for this field.
@@ -27,14 +27,10 @@ import type {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../types';
  * @category logic
  * @experimental 21.0.0
  */
-export function metadata<
-  TValue,
-  TKey extends MetadataKey<any, any, any>,
-  TPathKind extends PathKind = PathKind.Root,
->(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
+export function metadata<TValue, TKey extends MetadataKey<any, any, any>>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
   key: TKey,
-  logic: NoInfer<LogicFn<TValue, MetadataSetterType<TKey>, TPathKind>>,
+  logic: NoInfer<LogicFn<TValue, MetadataSetterType<TKey>>>,
 ): TKey {
   assertPathIsCurrent(path);
 

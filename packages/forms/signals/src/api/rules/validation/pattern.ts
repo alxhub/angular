@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
 import {createMetadataKey, metadata, PATTERN} from '../metadata';
 import {BaseValidatorConfig, getOption, isEmpty} from './util';
 import {validate} from './validate';
@@ -27,10 +27,10 @@ import {patternError} from './validation_errors';
  * @category validation
  * @experimental 21.0.0
  */
-export function pattern<TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<string, SchemaPathRules.Supported, TPathKind>,
-  pattern: RegExp | LogicFn<string | undefined, RegExp | undefined, TPathKind>,
-  config?: BaseValidatorConfig<string, TPathKind>,
+export function pattern(
+  path: SchemaPath<string, SchemaPathRules.Supported>,
+  pattern: RegExp | LogicFn<string | undefined, RegExp | undefined>,
+  config?: BaseValidatorConfig<string>,
 ) {
   const PATTERN_MEMO = metadata(path, createMetadataKey<RegExp | undefined>(), (ctx) =>
     pattern instanceof RegExp ? pattern : pattern(ctx),

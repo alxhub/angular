@@ -14,7 +14,6 @@ import {
   FieldContext,
   form,
   metadata,
-  PathKind,
   SchemaPath,
   SchemaPathTree,
   validate,
@@ -62,74 +61,6 @@ describe('Field Context', () => {
       expect(ctx.field.name().value()).toEqual('pirojok-the-cat');
       expect(ctx.field.age().value()).toEqual(5);
     });
-  });
-
-  it('key', () => {
-    const keys: string[] = [];
-    const recordKey = ({key}: FieldContext<unknown, PathKind.Child>) => {
-      try {
-        keys.push(key());
-      } catch (e) {
-        keys.push((e as Error).message);
-      }
-      return undefined;
-    };
-    const cat = signal({name: 'pirojok-the-cat', age: 5});
-    const f = form(
-      cat,
-      (p) => {
-        // @ts-expect-error
-        validate(p, recordKey);
-        validate(p.name, recordKey);
-        validate(p.age, recordKey);
-      },
-      {injector: TestBed.inject(Injector)},
-    );
-    f().valid();
-    expect(keys).toEqual([
-      'RuntimeError: the top-level field in the form has no parent',
-      'name',
-      'age',
-    ]);
-  });
-
-  it('index', () => {
-    const indices: (string | number)[] = [];
-    const recordIndex = ({index}: FieldContext<unknown, PathKind.Item>) => {
-      try {
-        indices.push(index());
-      } catch (e) {
-        indices.push((e as Error).message);
-      }
-      return undefined;
-    };
-    const pets = signal({
-      cats: [
-        {name: 'pirojok-the-cat', age: 5},
-        {name: 'mielo', age: 10},
-      ],
-      owner: 'joe',
-    });
-    const f = form(
-      pets,
-      (p) => {
-        // @ts-expect-error
-        validate(p, recordIndex);
-        applyEach(p.cats, (cat) => {
-          validate(cat, recordIndex);
-        });
-        // @ts-expect-error
-        validate(p.owner, recordIndex);
-      },
-      {injector: TestBed.inject(Injector)},
-    );
-    f().valid();
-    expect(indices).toEqual([
-      'RuntimeError: the top-level field in the form has no parent',
-      0,
-      1,
-      'RuntimeError: cannot access index, parent field is not an array',
-    ]);
   });
 
   it('pathKeys', () => {

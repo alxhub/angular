@@ -54,7 +54,7 @@ export abstract class FieldNodeStructure {
    * The key of this field in its parent field.
    * Attempting to read this for the root field will result in an error being thrown.
    */
-  abstract readonly keyInParent: Signal<string>;
+  abstract readonly key: Signal<string>;
 
   /** The field manager responsible for managing this field. */
   abstract readonly fieldManager: FormFieldManager;
@@ -173,7 +173,7 @@ export abstract class FieldNodeStructure {
    * @param initialKeyInParent The initial key in parent (only for child nodes)
    * @returns A signal representing the field's key in its parent
    */
-  protected createKeyInParent(
+  protected createKeyComputed(
     options: FieldNodeOptions,
     identityInParent: TrackingKey | undefined,
     initialKeyInParent: string | undefined,
@@ -376,7 +376,7 @@ export class RootFieldNodeStructure extends FieldNodeStructure {
     return ROOT_PATH_KEYS;
   }
 
-  override get keyInParent(): Signal<string> {
+  override get key(): Signal<string> {
     return ROOT_KEY_IN_PARENT;
   }
 
@@ -410,7 +410,7 @@ export class RootFieldNodeStructure extends FieldNodeStructure {
 export class ChildFieldNodeStructure extends FieldNodeStructure {
   override readonly root: FieldNode;
   override readonly pathKeys: Signal<readonly string[]>;
-  override readonly keyInParent: Signal<string>;
+  override readonly key: Signal<string>;
   override readonly value: WritableSignal<unknown>;
   override readonly childrenMap: Signal<ChildrenData | undefined>;
 
@@ -442,7 +442,7 @@ export class ChildFieldNodeStructure extends FieldNodeStructure {
 
     this.root = this.parent.structure.root;
 
-    this.keyInParent = this.createKeyInParent(
+    this.key = this.createKeyComputed(
       {
         kind: 'child',
         parent,
@@ -456,9 +456,9 @@ export class ChildFieldNodeStructure extends FieldNodeStructure {
       initialKeyInParent,
     );
 
-    this.pathKeys = computed(() => [...parent.structure.pathKeys(), this.keyInParent()]);
+    this.pathKeys = computed(() => [...parent.structure.pathKeys(), this.key()]);
 
-    this.value = deepSignal(this.parent.structure.value, this.keyInParent);
+    this.value = deepSignal(this.parent.structure.value, this.key);
     this.childrenMap = this.createChildrenMap();
     this.fieldManager.structures.add(this);
   }

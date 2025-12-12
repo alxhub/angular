@@ -153,7 +153,7 @@ export class FieldNodeState {
       return this.node.structure.fieldManager.rootName;
     }
 
-    return `${parent.name()}.${this.node.structure.keyInParent()}`;
+    return `${parent.name()}.${this.node.structure.key()}`;
   });
 
   /**

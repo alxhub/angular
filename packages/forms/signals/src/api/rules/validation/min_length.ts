@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, PathKind, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
 import {createMetadataKey, metadata, MIN_LENGTH} from '../metadata';
 import {
   BaseValidatorConfig,
@@ -35,13 +35,10 @@ import {minLengthError} from './validation_errors';
  * @category validation
  * @experimental 21.0.0
  */
-export function minLength<
-  TValue extends ValueWithLengthOrSize,
-  TPathKind extends PathKind = PathKind.Root,
->(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  minLength: number | LogicFn<TValue, number | undefined, TPathKind>,
-  config?: BaseValidatorConfig<TValue, TPathKind>,
+export function minLength<TValue extends ValueWithLengthOrSize>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  minLength: number | LogicFn<TValue, number | undefined>,
+  config?: BaseValidatorConfig<TValue>,
 ) {
   const MIN_LENGTH_MEMO = metadata(path, createMetadataKey<number | undefined>(), (ctx) =>
     typeof minLength === 'number' ? minLength : minLength(ctx),

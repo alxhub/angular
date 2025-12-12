@@ -18,8 +18,7 @@ import {
   MinValidationError,
   ValidationError,
 } from '../../../../src/api/rules/validation/validation_errors';
-import {FieldTree, FieldValidator, PathKind} from '../../../../src/api/types';
-import Root = PathKind.Root;
+import {FieldTree, FieldValidator} from '../../../../src/api/types';
 
 describe('validation errors', () => {
   it('supports returning a a plain object ', () => {
@@ -122,7 +121,7 @@ describe('validation errors', () => {
   describe('type tests', () => {
     it('field on a validation result is not allowed', () => {
       //  field on a validation result is not allowed
-      const TBD: FieldValidator<string, Root> = () => ({
+      const TBD: FieldValidator<string> = () => ({
         kind: '3',
         dsdsd: 4,
         // @ts-expect-error

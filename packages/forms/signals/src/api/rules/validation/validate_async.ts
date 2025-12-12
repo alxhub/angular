@@ -11,13 +11,7 @@ import {FieldNode} from '../../../field/node';
 import {addDefaultField} from '../../../field/validation';
 import {FieldPathNode} from '../../../schema/path_node';
 import {assertPathIsCurrent} from '../../../schema/schema';
-import {
-  FieldContext,
-  PathKind,
-  SchemaPath,
-  SchemaPathRules,
-  TreeValidationResult,
-} from '../../types';
+import {FieldContext, SchemaPath, SchemaPathRules, TreeValidationResult} from '../../types';
 import {createManagedMetadataKey, metadata} from '../metadata';
 
 /**
@@ -36,9 +30,9 @@ import {createManagedMetadataKey, metadata} from '../metadata';
  *
  * @experimental 21.0.0
  */
-export type MapToErrorsFn<TValue, TResult, TPathKind extends PathKind = PathKind.Root> = (
+export type MapToErrorsFn<TValue, TResult> = (
   result: TResult,
-  ctx: FieldContext<TValue, TPathKind>,
+  ctx: FieldContext<TValue>,
 ) => TreeValidationResult;
 
 /**
@@ -53,19 +47,14 @@ export type MapToErrorsFn<TValue, TResult, TPathKind extends PathKind = PathKind
  * @category validation
  * @experimental 21.0.0
  */
-export interface AsyncValidatorOptions<
-  TValue,
-  TParams,
-  TResult,
-  TPathKind extends PathKind = PathKind.Root,
-> {
+export interface AsyncValidatorOptions<TValue, TParams, TResult> {
   /**
    * A function that receives the field context and returns the params for the resource.
    *
    * @param ctx The field context for the field being validated.
    * @returns The params for the resource.
    */
-  readonly params: (ctx: FieldContext<TValue, TPathKind>) => TParams;
+  readonly params: (ctx: FieldContext<TValue>) => TParams;
 
   /**
    * A function that receives the resource params and returns a resource of the given params.
@@ -80,7 +69,7 @@ export interface AsyncValidatorOptions<
    * A function to handle errors thrown by httpResource (HTTP errors, network errors, etc.).
    * Receives the error and the field context, returns a list of validation errors.
    */
-  readonly onError: (error: unknown, ctx: FieldContext<TValue, TPathKind>) => TreeValidationResult;
+  readonly onError: (error: unknown, ctx: FieldContext<TValue>) => TreeValidationResult;
   /**
    * A function that takes the resource result, and the current field context and maps it to a list
    * of validation errors.
@@ -92,7 +81,7 @@ export interface AsyncValidatorOptions<
    *   A targeted error will show up as an error on its target field rather than the field being validated.
    *   If a field is not given, the error is assumed to apply to the field being validated.
    */
-  readonly onSuccess: MapToErrorsFn<TValue, TResult, TPathKind>;
+  readonly onSuccess: MapToErrorsFn<TValue, TResult>;
 }
 
 /**
@@ -109,9 +98,9 @@ export interface AsyncValidatorOptions<
  * @category validation
  * @experimental 21.0.0
  */
-export function validateAsync<TValue, TParams, TResult, TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  opts: AsyncValidatorOptions<TValue, TParams, TResult, TPathKind>,
+export function validateAsync<TValue, TParams, TResult>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  opts: AsyncValidatorOptions<TValue, TParams, TResult>,
 ): void {
   assertPathIsCurrent(path);
   const pathNode = FieldPathNode.unwrapFieldPath(path);
@@ -142,10 +131,10 @@ export function validateAsync<TValue, TParams, TResult, TPathKind extends PathKi
         if (!res.hasValue()) {
           return undefined;
         }
-        errors = opts.onSuccess(res.value()!, ctx as FieldContext<TValue, TPathKind>);
+        errors = opts.onSuccess(res.value()!, ctx as FieldContext<TValue>);
         return addDefaultField(errors, ctx.field);
       case 'error':
-        errors = opts.onError(res.error(), ctx as FieldContext<TValue, TPathKind>);
+        errors = opts.onError(res.error(), ctx as FieldContext<TValue>);
         return addDefaultField(errors, ctx.field);
     }
   });

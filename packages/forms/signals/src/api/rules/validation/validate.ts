@@ -9,13 +9,7 @@
 import {addDefaultField} from '../../../field/validation';
 import {FieldPathNode} from '../../../schema/path_node';
 import {assertPathIsCurrent} from '../../../schema/schema';
-import type {
-  FieldContext,
-  FieldValidator,
-  PathKind,
-  SchemaPath,
-  SchemaPathRules,
-} from '../../types';
+import type {FieldContext, FieldValidator, SchemaPath, SchemaPathRules} from '../../types';
 import {ensureCustomValidationResult} from './util';
 
 /**
@@ -29,16 +23,16 @@ import {ensureCustomValidationResult} from './util';
  * @category logic
  * @experimental 21.0.0
  */
-export function validate<TValue, TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  logic: NoInfer<FieldValidator<TValue, TPathKind>>,
+export function validate<TValue>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  logic: NoInfer<FieldValidator<TValue>>,
 ): void {
   assertPathIsCurrent(path);
 
   const pathNode = FieldPathNode.unwrapFieldPath(path);
   pathNode.builder.addSyncErrorRule((ctx) => {
     return ensureCustomValidationResult(
-      addDefaultField(logic(ctx as FieldContext<TValue, TPathKind>), ctx.field),
+      addDefaultField(logic(ctx as FieldContext<TValue>), ctx.field),
     );
   });
 }

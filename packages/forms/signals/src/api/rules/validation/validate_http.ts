@@ -8,13 +8,7 @@
 
 import {httpResource, HttpResourceOptions, HttpResourceRequest} from '@angular/common/http';
 import {Signal} from '@angular/core';
-import {
-  FieldContext,
-  SchemaPath,
-  PathKind,
-  TreeValidationResult,
-  SchemaPathRules,
-} from '../../types';
+import {FieldContext, SchemaPath, TreeValidationResult, SchemaPathRules} from '../../types';
 import {MapToErrorsFn, validateAsync} from './validate_async';
 
 /**
@@ -28,7 +22,7 @@ import {MapToErrorsFn, validateAsync} from './validate_async';
  * @category validation
  * @experimental 21.0.0
  */
-export interface HttpValidatorOptions<TValue, TResult, TPathKind extends PathKind = PathKind.Root> {
+export interface HttpValidatorOptions<TValue, TResult> {
   /**
    * A function that receives the field context and returns the url or request for the httpResource.
    * If given a URL, the underlying httpResource will perform an HTTP GET on it.
@@ -37,8 +31,8 @@ export interface HttpValidatorOptions<TValue, TResult, TPathKind extends PathKin
    * @returns The URL or request for creating the httpResource.
    */
   readonly request:
-    | ((ctx: FieldContext<TValue, TPathKind>) => string | undefined)
-    | ((ctx: FieldContext<TValue, TPathKind>) => HttpResourceRequest | undefined);
+    | ((ctx: FieldContext<TValue>) => string | undefined)
+    | ((ctx: FieldContext<TValue>) => HttpResourceRequest | undefined);
 
   /**
    * A function that takes the httpResource result, and the current field context and maps it to a
@@ -51,13 +45,13 @@ export interface HttpValidatorOptions<TValue, TResult, TPathKind extends PathKin
    *   A targeted error will show up as an error on its target field rather than the field being validated.
    *   If a field is not given, the error is assumed to apply to the field being validated.
    */
-  readonly onSuccess: MapToErrorsFn<TValue, TResult, TPathKind>;
+  readonly onSuccess: MapToErrorsFn<TValue, TResult>;
 
   /**
    * A function to handle errors thrown by httpResource (HTTP errors, network errors, etc.).
    * Receives the error and the field context, returns a list of validation errors.
    */
-  readonly onError: (error: unknown, ctx: FieldContext<TValue, TPathKind>) => TreeValidationResult;
+  readonly onError: (error: unknown, ctx: FieldContext<TValue>) => TreeValidationResult;
   /**
    * The options to use when creating the httpResource.
    */
@@ -77,9 +71,9 @@ export interface HttpValidatorOptions<TValue, TResult, TPathKind extends PathKin
  * @category validation
  * @experimental 21.0.0
  */
-export function validateHttp<TValue, TResult = unknown, TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  opts: HttpValidatorOptions<TValue, TResult, TPathKind>,
+export function validateHttp<TValue, TResult = unknown>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  opts: HttpValidatorOptions<TValue, TResult>,
 ) {
   validateAsync(path, {
     params: opts.request,

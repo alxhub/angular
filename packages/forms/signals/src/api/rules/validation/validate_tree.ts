@@ -9,7 +9,7 @@
 import {addDefaultField} from '../../../field/validation';
 import {FieldPathNode} from '../../../schema/path_node';
 import {assertPathIsCurrent} from '../../../schema/schema';
-import type {FieldContext, PathKind, SchemaPath, SchemaPathRules, TreeValidator} from '../../types';
+import type {FieldContext, SchemaPath, SchemaPathRules, TreeValidator} from '../../types';
 
 /**
  * Adds logic to a field to determine if the field or any of its child fields has validation errors.
@@ -23,14 +23,14 @@ import type {FieldContext, PathKind, SchemaPath, SchemaPathRules, TreeValidator}
  * @category logic
  * @experimental 21.0.0
  */
-export function validateTree<TValue, TPathKind extends PathKind = PathKind.Root>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported, TPathKind>,
-  logic: NoInfer<TreeValidator<TValue, TPathKind>>,
+export function validateTree<TValue>(
+  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  logic: NoInfer<TreeValidator<TValue>>,
 ): void {
   assertPathIsCurrent(path);
 
   const pathNode = FieldPathNode.unwrapFieldPath(path);
   pathNode.builder.addSyncTreeErrorRule((ctx) =>
-    addDefaultField(logic(ctx as FieldContext<TValue, TPathKind>), ctx.field),
+    addDefaultField(logic(ctx as FieldContext<TValue>), ctx.field),
   );
 }

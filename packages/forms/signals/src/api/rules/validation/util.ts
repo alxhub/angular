@@ -7,17 +7,17 @@
  */
 
 import {isArray} from '../../../util/type_guards';
-import {LogicFn, OneOrMany, PathKind, ValidationResult, type FieldContext} from '../../types';
+import {LogicFn, OneOrMany, ValidationResult, type FieldContext} from '../../types';
 import {customError, ValidationError} from './validation_errors';
 
 /** Represents a value that has a length or size, such as an array or string, or set. */
 export type ValueWithLengthOrSize = {length: number} | {size: number};
 
 /** Common options available on the standard validators. */
-export type BaseValidatorConfig<TValue, TPathKind extends PathKind = PathKind.Root> =
+export type BaseValidatorConfig<TValue> =
   | {
       /** A user-facing error message to include with the error. */
-      message?: string | LogicFn<TValue, string, TPathKind>;
+      message?: string | LogicFn<TValue, string>;
       error?: never;
     }
   | {
@@ -25,7 +25,7 @@ export type BaseValidatorConfig<TValue, TPathKind extends PathKind = PathKind.Ro
        * Custom validation error(s) to report instead of the default,
        * or a function that receives the `FieldContext` and returns custom validation error(s).
        */
-      error?: OneOrMany<ValidationError> | LogicFn<TValue, OneOrMany<ValidationError>, TPathKind>;
+      error?: OneOrMany<ValidationError> | LogicFn<TValue, OneOrMany<ValidationError>>;
       message?: never;
     };
 
@@ -43,9 +43,9 @@ export function getLengthOrSize(value: ValueWithLengthOrSize) {
  * @param ctx The current FieldContext.
  * @returns The value for the option.
  */
-export function getOption<TOption, TValue, TPathKind extends PathKind = PathKind.Root>(
-  opt: Exclude<TOption, Function> | LogicFn<TValue, TOption, TPathKind> | undefined,
-  ctx: FieldContext<TValue, TPathKind>,
+export function getOption<TOption, TValue>(
+  opt: Exclude<TOption, Function> | LogicFn<TValue, TOption> | undefined,
+  ctx: FieldContext<TValue>,
 ): TOption | undefined {
   return opt instanceof Function ? opt(ctx) : opt;
 }
