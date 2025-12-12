@@ -48,6 +48,8 @@ export interface FormOptions {
   /**
    * Adapter allows managing fields in a more flexible way.
    * Currently this is used to support interop with reactive forms.
+   *
+   * @internal
    */
   adapter?: FieldAdapter;
 }

@@ -7,7 +7,6 @@
 import { AbstractControl } from '@angular/forms';
 import * as _angular_forms from '@angular/forms';
 import { ControlValueAccessor } from '@angular/forms';
-import { DestroyableInjector } from '@angular/core';
 import { FormControlStatus } from '@angular/forms';
 import { HttpResourceOptions } from '@angular/common/http';
 import { HttpResourceRequest } from '@angular/common/http';
@@ -204,7 +203,6 @@ export interface FormCheckboxControl extends FormUiControl {
 
 // @public
 export interface FormOptions {
-    adapter?: FieldAdapter;
     injector?: Injector;
     // (undocumented)
     name?: string;
