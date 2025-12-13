@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {SchemaPath, SchemaPathRules} from '../../types';
+import {SchemaPath} from '../../types';
 import {BaseValidatorConfig, getOption, isEmpty} from './util';
 import {validate} from './validate';
 import {emailError} from './validation_errors';
@@ -57,10 +57,7 @@ const EMAIL_REGEXP =
  * @category validation
  * @experimental 21.0.0
  */
-export function email(
-  path: SchemaPath<string, SchemaPathRules.Supported>,
-  config?: BaseValidatorConfig<string>,
-) {
+export function email(path: SchemaPath<string>, config?: BaseValidatorConfig<string>) {
   validate(path, (ctx) => {
     if (isEmpty(ctx.value())) {
       return undefined;

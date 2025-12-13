@@ -12,8 +12,7 @@ import {
   FieldContext,
   FieldState,
   FieldTree,
-  SchemaPath,
-  SchemaPathRules,
+  SchemaReferencePath,
   SchemaPathTree,
 } from '../api/types';
 import {FieldPathNode} from '../schema/path_node';
@@ -33,10 +32,7 @@ export class FieldNodeContext implements FieldContext<unknown> {
    * actually change, as they only place we currently track fields moving within the parent
    * structure is for arrays, and paths do not currently support array indexing.
    */
-  private readonly cache = new WeakMap<
-    SchemaPath<unknown, SchemaPathRules>,
-    Signal<FieldTree<unknown>>
-  >();
+  private readonly cache = new WeakMap<SchemaReferencePath<unknown>, Signal<FieldTree<unknown>>>();
 
   constructor(
     /** The field node this context corresponds to. */
@@ -48,7 +44,7 @@ export class FieldNodeContext implements FieldContext<unknown> {
    * @param target The path to resolve
    * @returns The field corresponding to the target path.
    */
-  private resolve<U>(target: SchemaPath<U, SchemaPathRules>): FieldTree<U> {
+  private resolve<U>(target: SchemaReferencePath<U>): FieldTree<U> {
     if (!this.cache.has(target)) {
       const resolver = computed<FieldTree<unknown>>(() => {
         const targetPathNode = FieldPathNode.unwrapFieldPath(target);
@@ -123,8 +119,8 @@ export class FieldNodeContext implements FieldContext<unknown> {
   });
 
   readonly fieldTreeOf = <TModel>(p: SchemaPathTree<TModel>) => this.resolve<TModel>(p);
-  readonly stateOf = <TModel>(p: SchemaPath<TModel, SchemaPathRules>) => this.resolve<TModel>(p)();
-  readonly valueOf = <TValue>(p: SchemaPath<TValue, SchemaPathRules>) => {
+  readonly stateOf = <TModel>(p: SchemaReferencePath<TModel>) => this.resolve<TModel>(p)();
+  readonly valueOf = <TValue>(p: SchemaReferencePath<TValue>) => {
     const result = this.resolve(p)().value();
 
     if (result instanceof AbstractControl) {

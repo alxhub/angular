@@ -8,7 +8,7 @@
 
 import {FieldPathNode} from '../../schema/path_node';
 import {assertPathIsCurrent} from '../../schema/schema';
-import type {FieldContext, LogicFn, SchemaPath, SchemaPathRules} from '../types';
+import type {FieldContext, LogicFn, SchemaPath} from '../types';
 
 /**
  * Adds logic to a field to conditionally disable it. A disabled field does not contribute to the
@@ -24,7 +24,7 @@ import type {FieldContext, LogicFn, SchemaPath, SchemaPathRules} from '../types'
  * @experimental 21.0.0
  */
 export function disabled<TValue>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   logic?: string | NoInfer<LogicFn<TValue, boolean | string>>,
 ): void {
   assertPathIsCurrent(path);

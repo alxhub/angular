@@ -11,7 +11,7 @@ import {FieldNode} from '../../../field/node';
 import {addDefaultField} from '../../../field/validation';
 import {FieldPathNode} from '../../../schema/path_node';
 import {assertPathIsCurrent} from '../../../schema/schema';
-import {FieldContext, SchemaPath, SchemaPathRules, TreeValidationResult} from '../../types';
+import {FieldContext, SchemaPath, TreeValidationResult} from '../../types';
 import {createManagedMetadataKey, metadata} from '../metadata';
 
 /**
@@ -99,7 +99,7 @@ export interface AsyncValidatorOptions<TValue, TParams, TResult> {
  * @experimental 21.0.0
  */
 export function validateAsync<TValue, TParams, TResult>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   opts: AsyncValidatorOptions<TValue, TParams, TResult>,
 ): void {
   assertPathIsCurrent(path);

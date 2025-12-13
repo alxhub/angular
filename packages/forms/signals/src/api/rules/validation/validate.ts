@@ -9,7 +9,7 @@
 import {addDefaultField} from '../../../field/validation';
 import {FieldPathNode} from '../../../schema/path_node';
 import {assertPathIsCurrent} from '../../../schema/schema';
-import type {FieldContext, FieldValidator, SchemaPath, SchemaPathRules} from '../../types';
+import type {FieldContext, FieldValidator, SchemaPath} from '../../types';
 import {ensureCustomValidationResult} from './util';
 
 /**
@@ -24,7 +24,7 @@ import {ensureCustomValidationResult} from './util';
  * @experimental 21.0.0
  */
 export function validate<TValue>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   logic: NoInfer<FieldValidator<TValue>>,
 ): void {
   assertPathIsCurrent(path);

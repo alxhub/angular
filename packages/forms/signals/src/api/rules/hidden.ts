@@ -8,7 +8,7 @@
 
 import {FieldPathNode} from '../../schema/path_node';
 import {assertPathIsCurrent} from '../../schema/schema';
-import type {LogicFn, SchemaPath, SchemaPathRules} from '../types';
+import type {LogicFn, SchemaPath} from '../types';
 
 /**
  * Adds logic to a field to conditionally hide it. A hidden field does not contribute to the
@@ -31,7 +31,7 @@ import type {LogicFn, SchemaPath, SchemaPathRules} from '../types';
  * @experimental 21.0.0
  */
 export function hidden<TValue>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   logic: NoInfer<LogicFn<TValue, boolean>>,
 ): void {
   assertPathIsCurrent(path);

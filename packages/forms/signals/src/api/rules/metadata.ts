@@ -9,7 +9,7 @@
 import {type Signal} from '@angular/core';
 import {FieldPathNode} from '../../schema/path_node';
 import {assertPathIsCurrent} from '../../schema/schema';
-import type {LogicFn, SchemaPath, SchemaPathRules} from '../types';
+import type {LogicFn, SchemaPath} from '../types';
 
 /**
  * Sets a value for the {@link MetadataKey} for this field.
@@ -28,7 +28,7 @@ import type {LogicFn, SchemaPath, SchemaPathRules} from '../types';
  * @experimental 21.0.0
  */
 export function metadata<TValue, TKey extends MetadataKey<any, any, any>>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   key: TKey,
   logic: NoInfer<LogicFn<TValue, MetadataSetterType<TKey>>>,
 ): TKey {

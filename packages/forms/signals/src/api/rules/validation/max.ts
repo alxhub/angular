@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath} from '../../types';
 import {createMetadataKey, MAX, metadata} from '../metadata';
 import {BaseValidatorConfig, getOption, isEmpty} from './util';
 import {validate} from './validate';
@@ -29,7 +29,7 @@ import {maxError} from './validation_errors';
  * @experimental 21.0.0
  */
 export function max(
-  path: SchemaPath<number | string | null, SchemaPathRules.Supported>,
+  path: SchemaPath<number | string | null>,
   maxValue: number | LogicFn<number | string | null, number | undefined>,
   config?: BaseValidatorConfig<number | string | null>,
 ) {

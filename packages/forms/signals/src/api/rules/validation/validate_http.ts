@@ -8,7 +8,7 @@
 
 import {httpResource, HttpResourceOptions, HttpResourceRequest} from '@angular/common/http';
 import {Signal} from '@angular/core';
-import {FieldContext, SchemaPath, TreeValidationResult, SchemaPathRules} from '../../types';
+import {FieldContext, SchemaPath, TreeValidationResult} from '../../types';
 import {MapToErrorsFn, validateAsync} from './validate_async';
 
 /**
@@ -72,7 +72,7 @@ export interface HttpValidatorOptions<TValue, TResult> {
  * @experimental 21.0.0
  */
 export function validateHttp<TValue, TResult = unknown>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   opts: HttpValidatorOptions<TValue, TResult>,
 ) {
   validateAsync(path, {

@@ -9,7 +9,12 @@
 import {untracked} from '@angular/core';
 import type {MetadataKey} from '../api/rules/metadata';
 import type {ValidationError} from '../api/rules/validation/validation_errors';
-import {DisabledReason, type FieldContext, type LogicFn, type SchemaPath} from '../api/types';
+import {
+  DisabledReason,
+  type FieldContext,
+  type LogicFn,
+  type SchemaReferencePath,
+} from '../api/types';
 import type {FieldNode} from '../field/node';
 import {cast} from '../field/util';
 import {isArray} from '../util/type_guards';
@@ -38,7 +43,7 @@ export interface Predicate {
    * The path which this predicate was created for. This is used to determine the correct
    * `FieldContext` to pass to the predicate function.
    */
-  readonly path: SchemaPath<any>;
+  readonly path: SchemaReferencePath<any>;
 }
 
 /**

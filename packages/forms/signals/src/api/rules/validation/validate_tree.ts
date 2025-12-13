@@ -9,7 +9,7 @@
 import {addDefaultField} from '../../../field/validation';
 import {FieldPathNode} from '../../../schema/path_node';
 import {assertPathIsCurrent} from '../../../schema/schema';
-import type {FieldContext, SchemaPath, SchemaPathRules, TreeValidator} from '../../types';
+import type {FieldContext, SchemaPath, TreeValidator} from '../../types';
 
 /**
  * Adds logic to a field to determine if the field or any of its child fields has validation errors.
@@ -24,7 +24,7 @@ import type {FieldContext, SchemaPath, SchemaPathRules, TreeValidator} from '../
  * @experimental 21.0.0
  */
 export function validateTree<TValue>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   logic: NoInfer<TreeValidator<TValue>>,
 ): void {
   assertPathIsCurrent(path);

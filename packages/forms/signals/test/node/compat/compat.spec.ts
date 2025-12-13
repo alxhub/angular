@@ -20,6 +20,7 @@ import {
   hidden,
   readonly,
   required,
+  SchemaPath,
   submit,
   TreeValidationResult,
   validate,
@@ -519,6 +520,25 @@ describe('Forms compat', () => {
         validate(path.age, () => {
           return undefined;
         });
+      },
+      {
+        injector: TestBed.inject(Injector),
+      },
+    );
+  });
+
+  it('disallows casting CompatSchemaPath to SchemaPath', () => {
+    const control = new FormControl(5, {nonNullable: true});
+    const cat = signal({
+      name: 'pirojok-the-cat',
+      age: control,
+    });
+    compatForm(
+      cat,
+      (path) => {
+        // CompatSchemaPath has supportsRules: false, so it cannot be cast to SchemaPath
+        // @ts-expect-error
+        const _schemaPath: SchemaPath<number> = path.age;
       },
       {
         injector: TestBed.inject(Injector),

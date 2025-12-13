@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath} from '../../types';
 import {createMetadataKey, metadata, PATTERN} from '../metadata';
 import {BaseValidatorConfig, getOption, isEmpty} from './util';
 import {validate} from './validate';
@@ -28,7 +28,7 @@ import {patternError} from './validation_errors';
  * @experimental 21.0.0
  */
 export function pattern(
-  path: SchemaPath<string, SchemaPathRules.Supported>,
+  path: SchemaPath<string>,
   pattern: RegExp | LogicFn<string | undefined, RegExp | undefined>,
   config?: BaseValidatorConfig<string>,
 ) {

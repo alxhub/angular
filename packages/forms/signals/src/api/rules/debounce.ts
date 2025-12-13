@@ -9,7 +9,7 @@
 import {DEBOUNCER} from '../../field/debounce';
 import {FieldPathNode} from '../../schema/path_node';
 import {assertPathIsCurrent} from '../../schema/schema';
-import type {Debouncer, SchemaPath, SchemaPathRules} from '../types';
+import type {Debouncer, SchemaPath} from '../types';
 
 /**
  * Configures the frequency at which a form field is updated by UI events.
@@ -24,7 +24,7 @@ import type {Debouncer, SchemaPath, SchemaPathRules} from '../types';
  * @experimental 21.0.0
  */
 export function debounce<TValue>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   durationOrDebouncer: number | Debouncer<TValue>,
 ): void {
   assertPathIsCurrent(path);

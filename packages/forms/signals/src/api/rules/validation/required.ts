@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {LogicFn, SchemaPath, SchemaPathRules} from '../../types';
+import {LogicFn, SchemaPath} from '../../types';
 import {createMetadataKey, metadata, REQUIRED} from '../metadata';
 import {BaseValidatorConfig, getOption, isEmpty} from './util';
 import {validate} from './validate';
@@ -30,7 +30,7 @@ import {requiredError} from './validation_errors';
  * @experimental 21.0.0
  */
 export function required<TValue>(
-  path: SchemaPath<TValue, SchemaPathRules.Supported>,
+  path: SchemaPath<TValue>,
   config?: BaseValidatorConfig<TValue> & {
     when?: NoInfer<LogicFn<TValue, boolean>>;
   },

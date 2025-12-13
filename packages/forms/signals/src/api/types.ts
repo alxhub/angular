@@ -283,60 +283,62 @@ export interface CompatFieldState<TControl extends AbstractControl>
 }
 
 /**
- * Allows declaring whether the Rules are supported for a given path.
+ * An object that represents a location in the `FieldTree` tree structure that can be used to
+ * reference fields within a schema. This is a base type that encompasses both paths that support
+ * rules and paths that do not (e.g., compat paths for `AbstractControl`).
  *
- * @experimental 21.0.0
- **/
-export type SchemaPathRules = SchemaPathRules.Supported | SchemaPathRules.Unsupported;
-
-export declare namespace SchemaPathRules {
-  /**
-   * Used for paths that support settings rules.
-   */
-  type Supported = 1;
-
-  /**
-   * Used for paths that do not support settings rules, e.g., compatPath.
-   */
-  type Unsupported = 2;
-}
-
-/**
- * An object that represents a location in the `FieldTree` tree structure and is used to bind logic to a
- * particular part of the structure prior to the creation of the form. Because the `FieldPath`
- * exists prior to the form's creation, it cannot be used to access any of the field state.
+ * Use `SchemaPath` instead when you need a path that supports rules.
  *
  * @template TValue The type of the data which the form is wrapped around.
- * @template TPathKind The kind of path (root field, child field, or item of an array)
  *
  * @category types
  * @experimental 21.0.0
  */
-export type SchemaPath<
-  TValue,
-  TSupportsRules extends SchemaPathRules = SchemaPathRules.Supported,
-> = {
+export type SchemaReferencePath<TValue> = {
   [ɵɵTYPE]: {
     value: () => TValue;
-    supportsRules: TSupportsRules;
+  };
+};
+
+/**
+ * An object that represents a location in the `FieldTree` tree structure and is used to bind logic to a
+ * particular part of the structure prior to the creation of the form. Because the `SchemaPath`
+ * exists prior to the form's creation, it cannot be used to access any of the field state.
+ *
+ * A `SchemaPath` supports rules (e.g., `validate`, `required`, `disabled`). For paths that may not
+ * support rules (e.g., compat paths for `AbstractControl`), use `SchemaReferencePath` instead.
+ *
+ * @template TValue The type of the data which the form is wrapped around.
+ *
+ * @category types
+ * @experimental 21.0.0
+ */
+export type SchemaPath<TValue> = {
+  [ɵɵTYPE]: {
+    value: () => TValue;
+    supportsRules: true;
   };
 };
 
 /**
  * Schema path used if the value is an AbstractControl.
  *
+ * Note: `CompatSchemaPath` is a `SchemaReferencePath` but NOT a `SchemaPath`, because it does not
+ * support rules. This means it can be used with `valueOf()` and `stateOf()`, but not with
+ * `validate()`, `required()`, or other rule functions.
+ *
  * @category interop
  * @experimental 21.0.0
  */
-export type CompatSchemaPath<TControl extends AbstractControl> = SchemaPath<
-  TControl extends AbstractControl<unknown, infer TValue> ? TValue : never,
-  SchemaPathRules.Unsupported
-> &
-  // & also we capture the control type, so that `stateOf(p)` can unwrap
-  // to a correctly typed `CompatFieldState`.
-  {
-    [ɵɵTYPE]: {control: TControl};
+export type CompatSchemaPath<TControl extends AbstractControl> = {
+  [ɵɵTYPE]: {
+    value: () => TControl extends AbstractControl<unknown, infer TValue> ? TValue : never;
+    // Explicitly false to prevent casting to SchemaPath
+    supportsRules: false;
+    // Capture the control type, so that `stateOf(p)` can unwrap to a correctly typed `CompatFieldState`.
+    control: TControl;
   };
+};
 
 /**
  * Nested schema path.
@@ -351,9 +353,7 @@ export type SchemaPathTree<TModel> =
   // (e.g. if we have a model of `number | string`, we want a `SchemaPath<number | string>`,
   // not a `SchemaPath<number> | SchemaPath<string>`.
   // See https://typescriptlang.org/docs/handbook/2/conditional-types.html#distributive-conditional-types)
-  ([TModel] extends [AbstractControl]
-    ? CompatSchemaPath<TModel>
-    : SchemaPath<TModel, SchemaPathRules.Supported>) &
+  ([TModel] extends [AbstractControl] ? CompatSchemaPath<TModel> : SchemaPath<TModel>) &
     // Subpaths
     (TModel extends AbstractControl
       ? unknown
@@ -471,7 +471,7 @@ export type Validator<TValue> = LogicFn<TValue, ValidationResult>;
 
 /**
  * Provides access to the state of the current field as well as functions that can be used to look
- * up state of other fields based on a `FieldPath`.
+ * up state of other fields based on a `SchemaReferencePath`.
  *
  * @category types
  * @experimental 21.0.0
@@ -485,13 +485,13 @@ export interface FieldContext<TValue> {
   readonly field: FieldTree<TValue>;
 
   /** Gets the value of the field represented by the given path. */
-  valueOf<PValue>(p: SchemaPath<PValue, SchemaPathRules>): PValue;
+  valueOf<PValue>(p: SchemaReferencePath<PValue>): PValue;
 
   /** Gets the state of the field represented by the given path. */
   stateOf<PControl extends AbstractControl>(
     p: CompatSchemaPath<PControl>,
   ): CompatFieldState<PControl>;
-  stateOf<PValue>(p: SchemaPath<PValue, SchemaPathRules>): FieldState<PValue>;
+  stateOf<PValue>(p: SchemaReferencePath<PValue>): FieldState<PValue>;
   /** Gets the field represented by the given path. */
   fieldTreeOf<PModel>(p: SchemaPathTree<PModel>): FieldTree<PModel>;
   /** The list of keys that lead from the root field to the current field. */
