@@ -8,6 +8,7 @@
 
 import type {StandardSchemaV1} from '@standard-schema/spec';
 import {FieldTree} from '../../types';
+import {Field} from '../../field_directive';
 
 /**
  * Options used to create a `ValidationError`.
@@ -326,6 +327,11 @@ export declare namespace ValidationError {
   export interface WithField extends ValidationError {
     /** The field associated with this error. */
     readonly field: FieldTree<unknown>;
+    readonly fieldBinding?: Field<unknown>;
+  }
+
+  export interface WithFieldBinding extends WithField {
+    readonly fieldBinding: Field<unknown>;
   }
 
   /**
@@ -347,6 +353,7 @@ export declare namespace ValidationError {
   export interface WithoutField extends ValidationError {
     /** The field associated with this error. */
     readonly field?: never;
+    readonly fieldBinding?: never;
   }
 }
 

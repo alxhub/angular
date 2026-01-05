@@ -248,6 +248,7 @@ export interface FieldState<TValue, TKey extends string | number = string | numb
   readonly hidden: Signal<boolean>;
   readonly disabledReasons: Signal<readonly DisabledReason[]>;
   readonly errors: Signal<ValidationError.WithField[]>;
+  readonly controlErrors: Signal<ValidationError.WithFieldBinding[]>;
 
   /**
    * A signal containing the {@link errors} of the field and its descendants.

@@ -70,6 +70,8 @@ export interface ValidationState {
    */
   errors: Signal<ValidationError.WithField[]>;
 
+  controlErrors: Signal<ValidationError.WithFieldBinding[]>;
+
   /**
    * The combined set of all errors that currently apply to this field and its descendants.
    */
@@ -245,6 +247,7 @@ export class FieldValidationState implements ValidationState {
   readonly errors = computed(() => [
     ...this.syncErrors(),
     ...this.asyncErrors().filter((err) => err !== 'pending'),
+    ...this.controlErrors(),
   ]);
 
   readonly errorSummary = computed(() =>
@@ -252,6 +255,10 @@ export class FieldValidationState implements ValidationState {
       ...result,
       ...child.errorSummary(),
     ]),
+  );
+
+  readonly controlErrors: Signal<ValidationError.WithFieldBinding[]> = computed(() =>
+    this.node.fieldBindings().flatMap((field) => field.controlErrors()),
   );
 
   /**

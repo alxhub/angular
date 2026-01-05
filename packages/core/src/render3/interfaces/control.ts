@@ -49,6 +49,8 @@ export interface ɵControl<T> {
    * and do nothing.
    */
   ɵregister(): void;
+
+  ɵsetUiControl(control: unknown): void;
 }
 
 /** Mirrors the `ControlValueAccessor` interface for interoperability.  */

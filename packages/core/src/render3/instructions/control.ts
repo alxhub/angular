@@ -64,6 +64,10 @@ export function ɵɵcontrolCreate(): void {
 
   if (tNode.flags & TNodeFlags.isFormValueControl) {
     listenToCustomControl(lView, tNode, control, 'value');
+    const uiControl = getCustomControl(tNode, lView);
+    if (uiControl) {
+      control.ɵsetUiControl(uiControl);
+    }
   } else if (tNode.flags & TNodeFlags.isFormCheckboxControl) {
     listenToCustomControl(lView, tNode, control, 'checked');
   } else if (tNode.flags & TNodeFlags.isInteropControl) {
@@ -273,6 +277,11 @@ function isNativeControlFirstCreatePass(tView: TView, tNode: TNode): boolean {
  */
 function getControlDirective<T>(tNode: TNode, lView: LView): ɵControl<T> | null {
   const index = tNode.fieldIndex;
+  return index === -1 ? null : lView[index];
+}
+
+function getCustomControl<T>(tNode: TNode, lView: LView): unknown | null {
+  const index = tNode.customControlIndex;
   return index === -1 ? null : lView[index];
 }
 
@@ -931,6 +940,7 @@ const CONTROL_BINDING_NAMES = {
   disabled: 'disabled',
   disabledReasons: 'disabledReasons',
   dirty: 'dirty',
+  // TODO: we actually want to grab errors from ɵControl and filter them...
   errors: 'errors',
   hidden: 'hidden',
   invalid: 'invalid',

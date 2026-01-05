@@ -16,6 +16,7 @@ import {
   InjectionToken,
   Injector,
   input,
+  signal,
   ɵcontrolUpdate as updateControlBinding,
   ɵCONTROL,
   ɵControl,
@@ -26,6 +27,8 @@ import {InteropNgControl} from '../controls/interop_ng_control';
 import {SIGNAL_FORMS_CONFIG} from '../field/di';
 import type {FieldNode} from '../field/node';
 import type {FieldTree} from './types';
+import {ValidationError} from './rules';
+import {FormUiControl} from './control';
 
 /**
  * Lightweight DI token provided by the {@link Field} directive.
@@ -77,6 +80,21 @@ export class Field<T> implements ɵControl<T> {
   readonly field = input.required<FieldTree<T>>();
   readonly state = computed(() => this.field()());
 
+  readonly uiControl = signal<FormUiControl<T> | undefined>(undefined);
+
+  readonly errors = computed(() =>
+    this.state()
+      .errors()
+      .filter((err) => !err.fieldBinding || err.fieldBinding === this),
+  );
+
+  readonly controlErrors = computed<ValidationError.WithFieldBinding[]>(
+    () =>
+      this.uiControl()
+        ?.controlErrors?.()
+        .map((err) => ({...err, field: this.field(), fieldBinding: this as Field<unknown>})) ?? [],
+  );
+
   readonly [ɵCONTROL] = controlInstructions;
 
   private config = inject(SIGNAL_FORMS_CONFIG, {optional: true});
@@ -126,4 +144,10 @@ export class Field<T> implements ɵControl<T> {
       {injector: this.injector},
     );
   }
+
+  ɵsetUiControl(control: unknown) {
+    this.uiControl.set(control as FormUiControl<T>);
+  }
 }
+
+let x: ɵControl<string>['ɵsetUiControl'];

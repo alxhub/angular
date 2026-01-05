@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {InputSignal, InputSignalWithTransform, ModelSignal, OutputRef} from '@angular/core';
+import {InputSignal, InputSignalWithTransform, ModelSignal, OutputRef, Signal} from '@angular/core';
 import {ValidationError, type WithOptionalField} from './rules/validation/validation_errors';
 import type {DisabledReason} from './types';
 
@@ -16,7 +16,7 @@ import type {DisabledReason} from './types';
  * @category control
  * @experimental 21.0.0
  */
-export interface FormUiControl {
+export interface FormUiControl<TValue> {
   // TODO: `ValidationError` and `DisabledReason` are inherently tied to the signal forms system.
   // They don't make sense when using a control separately from the forms system and setting the
   // inputs individually. Given that, should they still be part of this interface?
@@ -119,6 +119,9 @@ export interface FormUiControl {
   readonly pattern?:
     | InputSignal<readonly RegExp[]>
     | InputSignalWithTransform<readonly RegExp[], unknown>;
+
+  readonly errorValue?: TValue;
+  readonly controlErrors?: Signal<ValidationError.WithoutField[]>;
 }
 
 /**
@@ -134,7 +137,7 @@ export interface FormUiControl {
  * @category control
  * @experimental 21.0.0
  */
-export interface FormValueControl<TValue> extends FormUiControl {
+export interface FormValueControl<TValue> extends FormUiControl<TValue> {
   /**
    * The value is the only required property in this contract. A component that wants to integrate
    * with the `Field` directive via this contract, *must* provide a `model()` that will be kept in
@@ -163,7 +166,7 @@ export interface FormValueControl<TValue> extends FormUiControl {
  * @category control
  * @experimental 21.0.0
  */
-export interface FormCheckboxControl extends FormUiControl {
+export interface FormCheckboxControl extends FormUiControl<boolean> {
   /**
    * The checked is the only required property in this contract. A component that wants to integrate
    * with the `Field` directive, *must* provide a `model()` that will be kept in sync with the
