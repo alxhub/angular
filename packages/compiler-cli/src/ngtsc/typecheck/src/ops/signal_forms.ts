@@ -296,10 +296,9 @@ export function isFieldDirective(meta: TypeCheckableDirectiveMeta): boolean {
     ts.isClassDeclaration(meta.ref.node) &&
     meta.ref.node.members.some(
       (member) =>
-        ts.isPropertyDeclaration(member) &&
-        ts.isComputedPropertyName(member.name) &&
-        ts.isIdentifier(member.name.expression) &&
-        member.name.expression.text === 'ɵCONTROL',
+        ts.isMethodDeclaration(member) &&
+        ts.isIdentifier(member.name) &&
+        member.name.text === 'ɵngControlCreate',
     )
   );
 }

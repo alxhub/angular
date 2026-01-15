@@ -6,16 +6,10 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {
-  InputSignal,
-  InputSignalWithTransform,
-  ModelSignal,
-  OutputRef,
-  type Signal,
-} from '@angular/core';
-import type {FormFieldBindingOptions} from './form_field_directive';
-import {ValidationError, type WithOptionalFieldTree} from './rules/validation/validation_errors';
-import type {DisabledReason} from './types';
+import { InputSignal, InputSignalWithTransform, ModelSignal, OutputRef, Signal } from '@angular/core';
+import type { FormFieldBindingOptions } from '../directive/form_field_directive';
+import type { ValidationError, WithOptionalFieldTree } from './rules/validation/validation_errors';
+import type { DisabledReason } from './types';
 
 /**
  * The base set of properties shared by all form control contracts.
@@ -29,8 +23,8 @@ export interface FormUiControl<TValue> {
    * automatically bind errors from the bound field to this input.
    */
   readonly errors?:
-    | InputSignal<readonly ValidationError.WithOptionalFieldTree[]>
-    | InputSignalWithTransform<readonly ValidationError.WithOptionalFieldTree[], unknown>;
+  | InputSignal<readonly ValidationError.WithOptionalFieldTree[]>
+  | InputSignalWithTransform<readonly ValidationError.WithOptionalFieldTree[], unknown>;
   /**
    * An input to receive the disabled status for the field. If implemented, the `Field` directive
    * will automatically bind the disabled status from the bound field to this input.
@@ -41,8 +35,8 @@ export interface FormUiControl<TValue> {
    * directive will automatically bind the disabled reason from the bound field to this input.
    */
   readonly disabledReasons?:
-    | InputSignal<readonly WithOptionalFieldTree<DisabledReason>[]>
-    | InputSignalWithTransform<readonly WithOptionalFieldTree<DisabledReason>[], unknown>;
+  | InputSignal<readonly WithOptionalFieldTree<DisabledReason>[]>
+  | InputSignalWithTransform<readonly WithOptionalFieldTree<DisabledReason>[], unknown>;
   /**
    * An input to receive the readonly status for the field. If implemented, the `Field` directive
    * will automatically bind the readonly status from the bound field to this input.
@@ -68,10 +62,15 @@ export interface FormUiControl<TValue> {
    * will automatically bind the touched status from the bound field to this input.
    */
   readonly touched?:
-    | ModelSignal<boolean>
-    | InputSignal<boolean>
-    | InputSignalWithTransform<boolean, unknown>
-    | OutputRef<boolean>;
+  | ModelSignal<boolean>
+  | InputSignal<boolean>
+  | InputSignalWithTransform<boolean, unknown>
+  | OutputRef<boolean>;
+
+  // touched?: InputSignal<boolean>;
+
+  // touch?: OutputRef<void>; // (touch)="..."
+
   /**
    * An input to receive the dirty status for the field. If implemented, the `Field` directive
    * will automatically bind the dirty status from the bound field to this input.
@@ -92,36 +91,36 @@ export interface FormUiControl<TValue> {
    * automatically bind the min value from the bound field to this input.
    */
   readonly min?:
-    | InputSignal<number | undefined>
-    | InputSignalWithTransform<number | undefined, unknown>;
+  | InputSignal<number | undefined>
+  | InputSignalWithTransform<number | undefined, unknown>;
   /**
    * An input to receive the min length for the field. If implemented, the `Field` directive will
    * automatically bind the min length from the bound field to this input.
    */
   readonly minLength?:
-    | InputSignal<number | undefined>
-    | InputSignalWithTransform<number | undefined, unknown>;
+  | InputSignal<number | undefined>
+  | InputSignalWithTransform<number | undefined, unknown>;
   /**
    * An input to receive the max value for the field. If implemented, the `Field` directive will
    * automatically bind the max value from the bound field to this input.
    */
   readonly max?:
-    | InputSignal<number | undefined>
-    | InputSignalWithTransform<number | undefined, unknown>;
+  | InputSignal<number | undefined>
+  | InputSignalWithTransform<number | undefined, unknown>;
   /**
    * An input to receive the max length for the field. If implemented, the `Field` directive will
    * automatically bind the max length from the bound field to this input.
    */
   readonly maxLength?:
-    | InputSignal<number | undefined>
-    | InputSignalWithTransform<number | undefined, unknown>;
+  | InputSignal<number | undefined>
+  | InputSignalWithTransform<number | undefined, unknown>;
   /**
    * An input to receive the value patterns for the field. If implemented, the `Field` directive
    * will automatically bind the value patterns from the bound field to this input.
    */
   readonly pattern?:
-    | InputSignal<readonly RegExp[]>
-    | InputSignalWithTransform<readonly RegExp[], unknown>;
+  | InputSignal<readonly RegExp[]>
+  | InputSignalWithTransform<readonly RegExp[], unknown>;
   /**
    * A signal containing the current parse errors for the control.
    * This allows the control to communicate to the form that there are additional validation errors
@@ -142,7 +141,7 @@ export interface FormUiControl<TValue> {
 // However, we don't want to add it as an actual `extends` clause to avoid confusing users.
 type Check<T extends true> = T;
 type FormUiControlImplementsFormFieldBindingOptions = Check<
-  FormUiControl<unknown> extends FormFieldBindingOptions<unknown> ? true : false
+  FormUiControl<unknown> extends FormFieldBindingOptions ? true : false
 >;
 
 /**

@@ -78,6 +78,11 @@ export const enum TNodeType {
    */
   LetDeclaration = 0b10000000,
 
+  /**
+   * The TNode contains a control directive's update function.
+   */
+  ControlDirective = 0b100000000,
+
   // Combined Types These should never be used for `TNode.type` only as a useful way to check
   // if `TNode.type` is one of several choices.
 
@@ -190,7 +195,7 @@ export const enum TNodeFlags {
    *
    * This is used to bind to a `ControlValueAccessor` from `@angular/forms`.
    */
-  isInteropControl = 1 << 12,
+  isPassThroughControl = 1 << 12,
 
   /**
    * Bit #14 - This bit is set if the node is a native control.
@@ -377,7 +382,7 @@ export interface TNode {
    * Index at which the signal forms field directive is stored.
    * Value is set to -1 if there are no field directives.
    */
-  fieldIndex: number;
+  controlDirectiveIndex: number;
 
   /**
    * Index at which the custom control directive is stored.

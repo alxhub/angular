@@ -7,7 +7,7 @@
  */
 
 import type {StandardSchemaV1} from '@standard-schema/spec';
-import type {FormField} from '../../form_field_directive';
+import type { FormField } from '../../../directive/form_field_directive';
 import type {FieldTree} from '../../types';
 
 /**
