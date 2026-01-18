@@ -149,6 +149,10 @@ export class FieldNode implements FieldState<unknown> {
     return this.validationState.errors;
   }
 
+  get parseErrors(): Signal<ValidationError.WithFormField[]> {
+    return this.validationState.parseErrors;
+  }
+
   get errorSummary(): Signal<ValidationError.WithField[]> {
     return this.validationState.errorSummary;
   }

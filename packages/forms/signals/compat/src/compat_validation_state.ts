@@ -32,6 +32,8 @@ export class CompatValidationState implements ValidationState {
   readonly invalid: Signal<boolean>;
   readonly valid: Signal<boolean>;
 
+  readonly parseErrors: Signal<ValidationError.WithFormField[]> = computed(() => []);
+
   constructor(options: CompatFieldNodeOptions) {
     this.syncValid = getControlStatusSignal(options, (c: AbstractControl) => c.status === 'VALID');
     this.errors = getControlStatusSignal(options, extractNestedReactiveErrors);

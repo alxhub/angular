@@ -70,6 +70,8 @@ export interface ValidationState {
    */
   errors: Signal<ValidationError.WithField[]>;
 
+  parseErrors: Signal<ValidationError.WithFormField[]>;
+
   /**
    * The combined set of all errors that currently apply to this field and its descendants.
    */
@@ -239,10 +241,15 @@ export class FieldValidationState implements ValidationState {
     );
   });
 
+  readonly parseErrors: Signal<ValidationError.WithFormField[]> = computed(() =>
+    this.node.formFieldBindings().flatMap((field) => field.parseErrors()),
+  );
+
   /**
    * The combined set of all errors that currently apply to this field.
    */
   readonly errors = computed(() => [
+    ...this.parseErrors(),
     ...this.syncErrors(),
     ...this.asyncErrors().filter((err) => err !== 'pending'),
   ]);

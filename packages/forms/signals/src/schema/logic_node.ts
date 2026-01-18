@@ -9,7 +9,7 @@
 import {ɵRuntimeError as RuntimeError} from '@angular/core';
 import {SignalFormsErrorCode} from '../errors';
 
-import type {ValidationError, MetadataKey} from '../api/rules';
+import type {MetadataKey, ValidationError} from '../api/rules';
 import type {AsyncValidationResult, DisabledReason, LogicFn, ValidationResult} from '../api/types';
 import {setBoundPathDepthForResolution} from '../field/resolution';
 import {type BoundPredicate, DYNAMIC, LogicContainer, type Predicate} from './logic';

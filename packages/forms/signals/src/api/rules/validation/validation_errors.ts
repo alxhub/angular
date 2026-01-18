@@ -7,7 +7,8 @@
  */
 
 import type {StandardSchemaV1} from '@standard-schema/spec';
-import {FieldTree} from '../../types';
+import type {FormField} from '../../form_field_directive';
+import type {FieldTree} from '../../types';
 
 /**
  * Options used to create a `ValidationError`.
@@ -294,7 +295,7 @@ export interface ValidationError {
 
 export declare namespace ValidationError {
   /**
-   * Validation error with a field.
+   * Validation error with an associated field tree.
    *
    * This is returned from field state, e.g., catField.errors() would be of a list of errors with
    * `field: catField` bound to state.
@@ -302,6 +303,14 @@ export declare namespace ValidationError {
   export interface WithField extends ValidationError {
     /** The field associated with this error. */
     readonly fieldTree: FieldTree<unknown>;
+    readonly formField?: FormField<unknown>;
+  }
+
+  /**
+   * Validation error with an associated field tree and specific form field binding.
+   */
+  export interface WithFormField extends WithField {
+    readonly formField: FormField<unknown>;
   }
 
   /**
@@ -323,6 +332,7 @@ export declare namespace ValidationError {
   export interface WithoutField extends ValidationError {
     /** The field associated with this error. */
     readonly fieldTree?: never;
+    readonly formField?: never;
   }
 }
 
