@@ -45,7 +45,7 @@ export interface FormFieldBindingOptions<TValue> extends ɵFormFieldBindingOptio
 
   readonly errorValue?: TValue;
 
-  readonly parseErrors?: Signal<ValidationError.WithoutField[]>;
+  readonly parseErrors?: Signal<ValidationError.WithoutFieldTree[]>;
 }
 
 /**

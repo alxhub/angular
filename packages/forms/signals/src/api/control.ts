@@ -14,7 +14,7 @@ import {
   type Signal,
 } from '@angular/core';
 import type {FormFieldBindingOptions} from './form_field_directive';
-import {ValidationError, type WithOptionalField} from './rules/validation/validation_errors';
+import {ValidationError, type WithOptionalFieldTree} from './rules/validation/validation_errors';
 import type {DisabledReason} from './types';
 
 /**
@@ -29,8 +29,8 @@ export interface FormUiControl<TValue> {
    * automatically bind errors from the bound field to this input.
    */
   readonly errors?:
-    | InputSignal<readonly ValidationError.WithOptionalField[]>
-    | InputSignalWithTransform<readonly ValidationError.WithOptionalField[], unknown>;
+    | InputSignal<readonly ValidationError.WithOptionalFieldTree[]>
+    | InputSignalWithTransform<readonly ValidationError.WithOptionalFieldTree[], unknown>;
   /**
    * An input to receive the disabled status for the field. If implemented, the `Field` directive
    * will automatically bind the disabled status from the bound field to this input.
@@ -41,8 +41,8 @@ export interface FormUiControl<TValue> {
    * directive will automatically bind the disabled reason from the bound field to this input.
    */
   readonly disabledReasons?:
-    | InputSignal<readonly WithOptionalField<DisabledReason>[]>
-    | InputSignalWithTransform<readonly WithOptionalField<DisabledReason>[], unknown>;
+    | InputSignal<readonly WithOptionalFieldTree<DisabledReason>[]>
+    | InputSignalWithTransform<readonly WithOptionalFieldTree<DisabledReason>[], unknown>;
   /**
    * An input to receive the readonly status for the field. If implemented, the `Field` directive
    * will automatically bind the readonly status from the bound field to this input.
@@ -123,7 +123,7 @@ export interface FormUiControl<TValue> {
     | InputSignal<readonly RegExp[]>
     | InputSignalWithTransform<readonly RegExp[], unknown>;
   readonly errorValue?: TValue;
-  readonly parseErrors?: Signal<ValidationError.WithoutField[]>;
+  readonly parseErrors?: Signal<ValidationError.WithoutFieldTree[]>;
   /**
    * Focuses the UI control.
    *

@@ -145,7 +145,7 @@ export class FieldNode implements FieldState<unknown> {
     return this.structure.keyInParent;
   }
 
-  get errors(): Signal<ValidationError.WithField[]> {
+  get errors(): Signal<ValidationError.WithFieldTree[]> {
     return this.validationState.errors;
   }
 
@@ -153,7 +153,7 @@ export class FieldNode implements FieldState<unknown> {
     return this.validationState.parseErrors;
   }
 
-  get errorSummary(): Signal<ValidationError.WithField[]> {
+  get errorSummary(): Signal<ValidationError.WithFieldTree[]> {
     return this.validationState.errorSummary;
   }
 

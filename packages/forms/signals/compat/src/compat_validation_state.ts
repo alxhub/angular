@@ -48,8 +48,8 @@ export class CompatValidationState implements ValidationState {
     });
   }
 
-  asyncErrors: Signal<(ValidationError.WithField | 'pending')[]> = EMPTY_ARRAY_SIGNAL;
-  errorSummary: Signal<ValidationError.WithField[]> = EMPTY_ARRAY_SIGNAL;
+  asyncErrors: Signal<(ValidationError.WithFieldTree | 'pending')[]> = EMPTY_ARRAY_SIGNAL;
+  errorSummary: Signal<ValidationError.WithFieldTree[]> = EMPTY_ARRAY_SIGNAL;
 
   // Those are irrelevant for compat mode, as it has no children
   rawSyncTreeErrors = EMPTY_ARRAY_SIGNAL;
