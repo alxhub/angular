@@ -177,9 +177,9 @@ export class FormField<T> {
     // (undocumented)
     readonly element: HTMLElement;
     readonly errors: Signal<ValidationError.WithFieldTree[]>;
-    focus(options?: FocusOptions): void;
     // (undocumented)
-    readonly formField: i0.InputSignal<FieldTree<T>>;
+    readonly fieldTree: i0.InputSignal<FieldTree<T>>;
+    focus(options?: FocusOptions): void;
     protected getOrCreateNgControl(): InteropNgControl;
     // (undocumented)
     readonly injector: Injector;
@@ -187,15 +187,13 @@ export class FormField<T> {
     // (undocumented)
     readonly state: Signal<[T] extends [_angular_forms.AbstractControl<any, any, any>] ? CompatFieldState<T, string | number> : FieldState<T, string | number>>;
     // (undocumented)
-    static ɵdir: i0.ɵɵDirectiveDeclaration<FormField<any>, "[formField]", ["formField"], { "formField": { "alias": "formField"; "required": true; "isSignal": true; }; }, {}, never, never, true, never>;
+    static ɵdir: i0.ɵɵDirectiveDeclaration<FormField<any>, "[formField]", ["formField"], { "fieldTree": { "alias": "formField"; "required": true; "isSignal": true; }; }, {}, never, never, true, never>;
     // (undocumented)
     static ɵfac: i0.ɵɵFactoryDeclaration<FormField<any>, never>;
 }
 
 // @public (undocumented)
 export interface FormFieldBindingOptions<TValue> extends ɵFormFieldBindingOptions {
-    // (undocumented)
-    readonly errorValue?: TValue;
     focus?(options?: FocusOptions): void;
     // (undocumented)
     readonly parseErrors?: Signal<ValidationError.WithoutFieldTree[]>;
@@ -215,8 +213,6 @@ export interface FormUiControl<TValue> {
     readonly disabled?: InputSignal<boolean> | InputSignalWithTransform<boolean, unknown>;
     readonly disabledReasons?: InputSignal<readonly WithOptionalFieldTree<DisabledReason>[]> | InputSignalWithTransform<readonly WithOptionalFieldTree<DisabledReason>[], unknown>;
     readonly errors?: InputSignal<readonly ValidationError.WithOptionalFieldTree[]> | InputSignalWithTransform<readonly ValidationError.WithOptionalFieldTree[], unknown>;
-    // (undocumented)
-    readonly errorValue?: TValue;
     focus?(options?: FocusOptions): void;
     readonly hidden?: InputSignal<boolean> | InputSignalWithTransform<boolean, unknown>;
     readonly invalid?: InputSignal<boolean> | InputSignalWithTransform<boolean, unknown>;
@@ -225,7 +221,6 @@ export interface FormUiControl<TValue> {
     readonly min?: InputSignal<number | undefined> | InputSignalWithTransform<number | undefined, unknown>;
     readonly minLength?: InputSignal<number | undefined> | InputSignalWithTransform<number | undefined, unknown>;
     readonly name?: InputSignal<string> | InputSignalWithTransform<string, unknown>;
-    // (undocumented)
     readonly parseErrors?: Signal<ValidationError.WithoutFieldTree[]>;
     readonly pattern?: InputSignal<readonly RegExp[]> | InputSignalWithTransform<readonly RegExp[], unknown>;
     readonly pending?: InputSignal<boolean> | InputSignalWithTransform<boolean, unknown>;

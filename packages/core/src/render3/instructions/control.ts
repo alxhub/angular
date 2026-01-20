@@ -689,6 +689,13 @@ function updateNativeControl(
   }
 }
 
+/**
+ * Gets the value of the given field state key to bind to the form UI control associated with the
+ * given from field directive. In most cases this value is obtained by reading it off the field state.
+ * However, in the case of the `errors` property, we only want to report parse errors that are
+ * relevant for this particular UI control, so we read from the directive instead, which contains
+ * only the filtered errors that pertain to this binding.
+ */
 function getValue(
   fieldDirective: ɵFormFieldDirective<unknown>,
   state: ɵFieldState<unknown>,

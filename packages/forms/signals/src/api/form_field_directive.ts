@@ -43,8 +43,6 @@ export interface FormFieldBindingOptions<TValue> extends ɵFormFieldBindingOptio
    */
   focus?(options?: FocusOptions): void;
 
-  readonly errorValue?: TValue;
-
   readonly parseErrors?: Signal<ValidationError.WithoutFieldTree[]>;
 }
 
@@ -99,21 +97,20 @@ const controlInstructions = {
 export class FormField<T> {
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   readonly injector = inject(Injector);
-  readonly formField = input.required<FieldTree<T>>();
-  readonly state = computed(() => this.formField()());
+  readonly fieldTree = input.required<FieldTree<T>>({alias: 'formField'});
+  readonly state = computed(() => this.fieldTree()());
   private readonly bindingOptions = signal<FormFieldBindingOptions<T> | undefined>(undefined);
 
   /** @internal */
-  readonly parseErrors = computed<ValidationError.WithFormField[]>(() =>
-    isSame(this.state().value(), this.bindingOptions()?.errorValue)
-      ? (this.bindingOptions()
-          ?.parseErrors?.()
-          .map((err) => ({
-            ...err,
-            fieldTree: this.formField(),
-            formField: this as FormField<unknown>,
-          })) ?? [])
-      : [],
+  readonly parseErrors = computed<ValidationError.WithFormField[]>(
+    () =>
+      this.bindingOptions()
+        ?.parseErrors?.()
+        .map((err) => ({
+          ...err,
+          fieldTree: this.fieldTree(),
+          formField: this as FormField<unknown>,
+        })) ?? [],
   );
 
   /** Errors associated with this form field. */
@@ -196,10 +193,6 @@ export class FormField<T> {
       this.element.focus(options);
     }
   }
-}
-
-function isSame(a: unknown, b: unknown): boolean {
-  return Number.isNaN(a) ? Number.isNaN(b) : a === b;
 }
 
 // We can't add `implements ɵFormFieldDirective<T>` to `Field` even though it should conform to the interface.

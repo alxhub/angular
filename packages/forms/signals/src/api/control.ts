@@ -122,7 +122,11 @@ export interface FormUiControl<TValue> {
   readonly pattern?:
     | InputSignal<readonly RegExp[]>
     | InputSignalWithTransform<readonly RegExp[], unknown>;
-  readonly errorValue?: TValue;
+  /**
+   * A signal containing the current parse errors for the control.
+   * This allows the control to communicate to the form that there are additional validation errors
+   * beyond those produced by the schema, due to being unable to parse the user's input.
+   */
   readonly parseErrors?: Signal<ValidationError.WithoutFieldTree[]>;
   /**
    * Focuses the UI control.

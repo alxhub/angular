@@ -26,15 +26,14 @@ import {
 } from '../../public_api';
 
 describe('parse errors', () => {
-  it('should show parse error when value is specified error value', async () => {
+  it('should show parse error', async () => {
     @Component({
       selector: 'custom-control',
       template: ``,
     })
     class CustomControl implements FormValueControl<string> {
       readonly value = model.required<string>();
-      readonly errorValue = 'ERROR';
-      readonly parseErrors = computed(() => [{kind: 'parse'}]);
+      readonly parseErrors = computed(() => (this.value() === 'ERROR' ? [{kind: 'parse'}] : []));
     }
 
     @Component({
@@ -52,32 +51,6 @@ describe('parse errors', () => {
     await act(() => cmp.state.set('ERROR'));
     expect(cmp.f().errors().length).toBe(1);
     expect(cmp.f().errors()[0]).toEqual(jasmine.objectContaining({kind: 'parse'}));
-  });
-
-  it('should not show parse error if error value is unspecified', async () => {
-    @Component({
-      selector: 'custom-control',
-      template: ``,
-    })
-    class CustomControl implements FormValueControl<string | null> {
-      readonly value = model.required<string | null>();
-      readonly parseErrors = computed(() => [{kind: 'parse'}]);
-    }
-
-    @Component({
-      imports: [CustomControl, FormField],
-      template: `<custom-control [formField]="f" />`,
-    })
-    class TestCmp {
-      state = signal<string | null>('');
-      f = form(this.state);
-    }
-
-    const cmp = await act(() => TestBed.createComponent(TestCmp).componentInstance);
-    expect(cmp.f().errors().length).toBe(0);
-
-    await act(() => cmp.state.set(null));
-    expect(cmp.f().errors().length).toBe(0);
   });
 
   it('should only pass parse errors through to the originating custom control', async () => {
@@ -155,8 +128,9 @@ describe('parse errors', () => {
 
       constructor() {
         this.formField?.registerAsBinding({
-          errorValue: 'ERROR',
-          parseErrors: computed(() => [{kind: 'parse'}]),
+          parseErrors: computed(() =>
+            this.fieldTree()().value() === 'ERROR' ? [{kind: 'parse'}] : [],
+          ),
         });
       }
     }
@@ -191,7 +165,6 @@ describe('parse errors', () => {
 class TestNumberInput implements FormValueControl<number | null> {
   readonly value = model.required<number | null>();
   readonly errors = input<readonly ValidationError[]>([]);
-  readonly errorValue = NaN;
   readonly parseErrors = computed(() => this.parsedResult().errors ?? []);
 
   protected rawValue = linkedSignal(() => this.format(this.value()));
