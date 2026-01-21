@@ -41,7 +41,7 @@ export interface ɵFormFieldDirective<T> {
 
   /**
    * A subset of the field state errors that apply specifically to this binding directive.
-   * While standard validation errors produced by the schema apply to all biding directives that
+   * While standard validation errors produced by the schema apply to all binding directives that
    * bind that particular field, parse errors belong to a specific binding directive.
    */
   readonly errors: Signal<unknown[]>;
