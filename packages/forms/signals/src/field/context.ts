@@ -19,6 +19,7 @@ import {
   FieldContext,
   FieldState,
   FieldTree,
+  PathKind,
   SchemaPath,
   SchemaPathRules,
   SchemaPathTree,
@@ -137,9 +138,13 @@ export class FieldNodeContext implements FieldContext<unknown> {
     return Number(key);
   });
 
-  readonly fieldTreeOf = <TModel>(p: SchemaPathTree<TModel>) => this.resolve<TModel>(p);
-  readonly stateOf = <TModel>(p: SchemaPath<TModel, SchemaPathRules>) => this.resolve<TModel>(p)();
-  readonly valueOf = <TValue>(p: SchemaPath<TValue, SchemaPathRules>) => {
+  readonly fieldTreeOf = <TModel, TPathKind extends PathKind>(
+    p: SchemaPathTree<TModel, TPathKind>,
+  ) => this.resolve<TModel>(p as any) as any;
+  readonly stateOf = <TModel, TSupportsRules extends SchemaPathRules, TPathKind extends PathKind>(
+    p: SchemaPath<TModel, TSupportsRules, TPathKind>,
+  ) => this.resolve<TModel>(p as any)() as any;
+  readonly valueOf = <TValue>(p: SchemaPath<TValue, SchemaPathRules, any>) => {
     const result = this.resolve(p)().value();
 
     if (result instanceof AbstractControl) {

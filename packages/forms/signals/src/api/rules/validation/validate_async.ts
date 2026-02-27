@@ -121,7 +121,7 @@ export function validateAsync<TValue, TParams, TResult, TPathKind extends PathKi
     opts.factory,
   );
   metadata(path, RESOURCE, (ctx) => {
-    const node = ctx.stateOf(path) as FieldNode;
+    const node = ctx.stateOf(path) as unknown as FieldNode;
     const validationState = node.validationState;
     if (validationState.shouldSkipValidation() || !validationState.syncValid()) {
       return undefined;

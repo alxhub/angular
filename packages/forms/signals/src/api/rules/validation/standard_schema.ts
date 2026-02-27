@@ -91,9 +91,7 @@ export function validateStandardSchema<TSchema, TModel extends IgnoreUnknownProp
       return [];
     }
     return (
-      result?.issues?.map((issue) =>
-        standardIssueToFormTreeError(fieldTreeOf<TModel>(path), issue),
-      ) ?? []
+      result?.issues?.map((issue) => standardIssueToFormTreeError(fieldTreeOf(path), issue)) ?? []
     );
   });
 
@@ -114,7 +112,7 @@ export function validateStandardSchema<TSchema, TModel extends IgnoreUnknownProp
       });
     },
     onSuccess: (issues, {fieldTreeOf}) => {
-      return issues.map((issue) => standardIssueToFormTreeError(fieldTreeOf<TModel>(path), issue));
+      return issues.map((issue) => standardIssueToFormTreeError(fieldTreeOf(path), issue));
     },
     onError: () => {},
   });

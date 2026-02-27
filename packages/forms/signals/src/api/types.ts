@@ -724,6 +724,17 @@ export type Validator<TValue, TPathKind extends PathKind = PathKind.Root> = Logi
 >;
 
 /**
+ * Maps a `PathKind` to the corresponding key type for that path.
+ *
+ * @experimental 21.2.0
+ */
+export type KeyForPathKind<TPathKind extends PathKind> = [TPathKind] extends [PathKind.Item]
+  ? number
+  : [TPathKind] extends [PathKind.Child]
+    ? string
+    : string | number;
+
+/**
  * Provides access to the state of the current field as well as functions that can be used to look
  * up state of other fields based on a `FieldPath`.
  *
@@ -748,20 +759,24 @@ export interface RootFieldContext<TValue> {
   /** A signal containing the value of the current field. */
   readonly value: Signal<TValue>;
   /** The state of the current field. */
-  readonly state: FieldState<TValue>;
+  readonly state: FieldState<TValue, string | number>;
   /** The current field. */
-  readonly fieldTree: FieldTree<TValue>;
+  readonly fieldTree: FieldTree<TValue, string | number>;
 
   /** Gets the value of the field represented by the given path. */
-  valueOf<PValue>(p: SchemaPath<PValue, SchemaPathRules>): PValue;
+  valueOf<PValue>(p: SchemaPath<PValue, SchemaPathRules, any>): PValue;
 
   /** Gets the state of the field represented by the given path. */
-  stateOf<PControl extends AbstractControl>(
-    p: CompatSchemaPath<PControl>,
-  ): CompatFieldState<PControl>;
-  stateOf<PValue>(p: SchemaPath<PValue, SchemaPathRules>): FieldState<PValue>;
+  stateOf<PControl extends AbstractControl, PPathKind extends PathKind>(
+    p: CompatSchemaPath<PControl, PPathKind>,
+  ): CompatFieldState<PControl, KeyForPathKind<PPathKind>>;
+  stateOf<PValue, PSupportsRules extends SchemaPathRules, PPathKind extends PathKind>(
+    p: SchemaPath<PValue, PSupportsRules, PPathKind>,
+  ): FieldState<PValue, KeyForPathKind<PPathKind>>;
   /** Gets the field represented by the given path. */
-  fieldTreeOf<PModel>(p: SchemaPathTree<PModel>): FieldTree<PModel>;
+  fieldTreeOf<PModel, PPathKind extends PathKind>(
+    p: SchemaPathTree<PModel, PPathKind>,
+  ): FieldTree<PModel, KeyForPathKind<PPathKind>>;
   /** The list of keys that lead from the root field to the current field. */
   readonly pathKeys: Signal<readonly string[]>;
 }
@@ -773,6 +788,10 @@ export interface RootFieldContext<TValue> {
  * @experimental 21.0.0
  */
 export interface ChildFieldContext<TValue> extends RootFieldContext<TValue> {
+  /** The state of the current field. */
+  readonly state: FieldState<TValue, string>;
+  /** The current field. */
+  readonly fieldTree: FieldTree<TValue, string>;
   /** The key of the current field in its parent field. */
   readonly key: Signal<string>;
 }
@@ -782,7 +801,13 @@ export interface ChildFieldContext<TValue> extends RootFieldContext<TValue> {
  *
  * @experimental 21.0.0
  */
-export interface ItemFieldContext<TValue> extends ChildFieldContext<TValue> {
+export interface ItemFieldContext<TValue> extends RootFieldContext<TValue> {
+  /** The state of the current field. */
+  readonly state: FieldState<TValue, number>;
+  /** The current field. */
+  readonly fieldTree: FieldTree<TValue, number>;
+  /** The key of the current field in its parent field. */
+  readonly key: Signal<string>;
   /** The index of the current field in its parent field. */
   readonly index: Signal<number>;
 }

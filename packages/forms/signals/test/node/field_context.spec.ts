@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.dev/license
  */
 
-import {Injector, signal, WritableSignal} from '@angular/core';
+import {Injector, signal, Signal, WritableSignal} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {
   applyEach,
@@ -19,6 +19,7 @@ import {
   SchemaPathTree,
   validate,
 } from '../../public_api';
+import {FieldState, FieldTree} from '../../src/api/types';
 
 function testContext<T>(
   s: WritableSignal<T>,
@@ -164,7 +165,15 @@ describe('Field Context', () => {
   it('stateOf', () => {
     const cat = signal({name: 'pirojok-the-cat', age: 5});
     testContext(cat, (ctx, p) => {
-      expect(ctx.stateOf(p.name).value()).toEqual('pirojok-the-cat');
+      const nameState = ctx.stateOf(p.name);
+      // Static type assertion to ensure TKey is inferred as string
+      const _assertNameStateKey: Signal<string> = nameState.keyInParent;
+
+      const rootState = ctx.stateOf(p);
+      // Static type assertion to ensure TKey is inferred as string | number for the root
+      const _assertRootStateKey: Signal<string | number> = rootState.keyInParent;
+
+      expect(nameState.value()).toEqual('pirojok-the-cat');
       expect(ctx.stateOf(p.age).value()).toEqual(5);
     });
   });
@@ -172,7 +181,14 @@ describe('Field Context', () => {
   it('fieldTreeOf', () => {
     const cat = signal({name: 'pirojok-the-cat', age: 5});
     testContext(cat, (ctx, p) => {
-      expect(ctx.fieldTreeOf(p.name)().value()).toEqual('pirojok-the-cat');
+      const nameTree = ctx.fieldTreeOf(p.name);
+      // Static type assertion to verify TKey flows
+      const _assertNameTreeKey: Signal<string> = nameTree().keyInParent;
+
+      const rootTree = ctx.fieldTreeOf(p);
+      const _assertRootTreeKey: Signal<string | number> = rootTree().keyInParent;
+
+      expect(nameTree().value()).toEqual('pirojok-the-cat');
       expect(ctx.fieldTreeOf(p.age)().value()).toEqual(5);
     });
   });
