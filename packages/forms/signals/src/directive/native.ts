@@ -56,6 +56,7 @@ export function isTextualFormElement(element: HTMLElement): boolean {
  * @param element The native control element.
  * @param currentValue A function that returns the current value from the control's corresponding
  *   field state.
+ * @param inputType The element's type, cached to avoid repeated DOM reads.
  *
  * The type of the returned value depends on the `type` property of the control, and will attempt to
  * match the current value's type. For example, the value of `<input type="number">` can be read as
@@ -65,19 +66,30 @@ export function isTextualFormElement(element: HTMLElement): boolean {
 export function getNativeControlValue(
   element: NativeFormControl,
   currentValue: () => unknown,
+  inputType: string,
 ): ParseResult<unknown> {
   let modelValue: unknown;
 
-  if (element.validity.badInput) {
+  // We intentionally bypass `validity.badInput` for date-related and number inputs because a partial value
+  // triggers `badInput` but we want to map those smoothly to `null` rather than a parse error.
+  const isBypassedInput =
+    inputType === 'number' ||
+    inputType === 'range' ||
+    inputType === 'date' ||
+    inputType === 'month' ||
+    inputType === 'time' ||
+    inputType === 'week';
+
+  if (!isBypassedInput && element.validity.badInput) {
     return {
       error: new NativeInputParseError() as WithoutFieldTree<NativeInputParseError>,
     };
   }
 
   // Special cases for specific input types.
-  switch (element.type) {
+  switch (inputType) {
     case 'checkbox':
-      return {value: element.checked};
+      return {value: (element as HTMLInputElement).checked};
     case 'number':
     case 'range':
     case 'datetime-local':
@@ -85,7 +97,11 @@ export function getNativeControlValue(
       // with the current type.
       modelValue = untracked(currentValue);
       if (typeof modelValue === 'number' || modelValue === null) {
-        return {value: element.value === '' ? null : element.valueAsNumber};
+        if (element.value === '') {
+          return {value: null};
+        }
+        const num = (element as HTMLInputElement).valueAsNumber;
+        return {value: Number.isNaN(num) ? null : num};
       }
       break;
     case 'date':
@@ -96,9 +112,9 @@ export function getNativeControlValue(
       // is consistent with the current type.
       modelValue = untracked(currentValue);
       if (modelValue === null || modelValue instanceof Date) {
-        return {value: element.valueAsDate};
+        return {value: (element as HTMLInputElement).valueAsDate};
       } else if (typeof modelValue === 'number') {
-        return {value: element.valueAsNumber};
+        return {value: (element as HTMLInputElement).valueAsNumber};
       }
       break;
   }
@@ -112,24 +128,39 @@ export function getNativeControlValue(
  *
  * @param element The native control element.
  * @param value The new value to set.
+ * @param inputType The element's type, cached to avoid repeated DOM reads.
  */
-export function setNativeControlValue(element: NativeFormControl, value: unknown) {
+export function setNativeControlValue(
+  element: NativeFormControl,
+  value: unknown,
+  inputType: string,
+) {
   // Special cases for specific input types.
-  switch (element.type) {
+  switch (inputType) {
     case 'checkbox':
-      element.checked = value as boolean;
+      (element as HTMLInputElement).checked = value as boolean;
       return;
     case 'radio':
       // Although HTML behavior is to clear the input already, we do this just in case. It seems
       // like it might be necessary in certain environments (e.g. Domino).
-      element.checked = value === element.value;
+      (element as HTMLInputElement).checked = value === element.value;
       return;
     case 'number':
     case 'range':
+      if (value === null || value === '') {
+        // If the control thinks it is already empty (which happens during partial input),
+        // skip writing to the DOM to avoid clobbering what the user is typing.
+        if (!Number.isNaN((element as HTMLInputElement).valueAsNumber)) {
+          element.value = '';
+        }
+        return;
+      }
+      setNativeNumberControlValue(element as HTMLInputElement, value as number);
+      return;
     case 'datetime-local':
       // This input type can receive a `number` or a `string`.
       if (typeof value === 'number') {
-        setNativeNumberControlValue(element, value);
+        setNativeNumberControlValue(element as HTMLInputElement, value);
         return;
       } else if (value === null) {
         element.value = '';
@@ -141,13 +172,22 @@ export function setNativeControlValue(element: NativeFormControl, value: unknown
     case 'time':
     case 'week':
       // This input type can receive a `Date | null` or a `number` or a `string`.
-      if (value === null || value instanceof Date) {
-        element.valueAsDate = value;
-        return;
-      } else if (typeof value === 'number') {
-        setNativeNumberControlValue(element, value);
+      if (value === null || value === '') {
+        // If the control thinks it is already empty (which happens during partial input),
+        // skip writing to the DOM to avoid clobbering what the user is typing.
+        if ((element as HTMLInputElement).valueAsDate !== null) {
+          element.value = '';
+        }
         return;
       }
+      if (value instanceof Date) {
+        (element as HTMLInputElement).valueAsDate = value;
+        return;
+      } else if (typeof value === 'number') {
+        setNativeNumberControlValue(element as HTMLInputElement, value);
+        return;
+      }
+      break;
   }
 
   // Default to setting the value as a string.
@@ -159,7 +199,9 @@ export function setNativeNumberControlValue(element: HTMLInputElement, value: nu
   // Writing `NaN` causes a warning in the console, so we instead write `''`.
   // This allows the user to safely use `NaN` as a number value that means "clear the input".
   if (isNaN(value)) {
-    element.value = '';
+    if (!Number.isNaN(element.valueAsNumber)) {
+      element.value = '';
+    }
   } else {
     element.valueAsNumber = value;
   }

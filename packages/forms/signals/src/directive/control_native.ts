@@ -41,7 +41,7 @@ export function nativeControlCreate(
     (rawValue: unknown) => parent.state().controlValue.set(rawValue),
     // Our parse function doesn't care about the raw value that gets passed in,
     // It just reads the newly parsed value directly off the input element.
-    () => getNativeControlValue(input, parent.state().value),
+    () => getNativeControlValue(input, parent.state().value, input.type),
   );
 
   parseErrorsSource.set(parser.errors);
@@ -80,7 +80,7 @@ export function nativeControlCreate(
     const state = parent.state();
     const controlValue = state.controlValue();
     if (bindingUpdated(bindings, 'controlValue', controlValue)) {
-      setNativeControlValue(input, controlValue);
+      setNativeControlValue(input, controlValue, input.type);
     }
 
     for (const name of CONTROL_BINDING_NAMES) {

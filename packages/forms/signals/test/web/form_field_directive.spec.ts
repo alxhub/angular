@@ -4386,6 +4386,62 @@ describe('field directive', () => {
       expect(cmp.f().value()).toBe(newDateTimestamp);
     });
 
+    it('should handle partial input and clearing on date input (string model)', () => {
+      @Component({
+        imports: [FormField],
+        template: `<input type="date" [formField]="f" />`,
+      })
+      class TestCmp {
+        f = form(signal('2024-01-01'));
+      }
+
+      const fix = act(() => TestBed.createComponent(TestCmp));
+      const input = fix.nativeElement.firstChild as HTMLInputElement;
+      const cmp = fix.componentInstance as TestCmp;
+      const patch = patchDateInput(input);
+
+      expect(input.value).toBe('2024-01-01');
+
+      // Simulate partial input (e.g., user deletes the last digit of the year)
+      act(() => {
+        patch.simulateType('2024-01-0', true);
+      });
+
+      // Should treat as cleared, model value becomes empty string, and there should be no parse errors
+      expect(cmp.f().value()).toBe('');
+      expect(cmp.f().errors()).toEqual([]);
+
+      // Act of clearing the model should not have clobbered the underlying partial typing
+      expect(patch.getTypedValue()).toBe('2024-01-0');
+    });
+
+    it('should handle partial input and clearing on date input (date model)', () => {
+      @Component({
+        imports: [FormField],
+        template: `<input type="date" [formField]="f" />`,
+      })
+      class TestCmp {
+        f = form(signal<Date | null>(new Date('2024-01-01T12:00:00Z')));
+      }
+
+      const fix = act(() => TestBed.createComponent(TestCmp));
+      const input = fix.nativeElement.firstChild as HTMLInputElement;
+      const cmp = fix.componentInstance as TestCmp;
+      const patch = patchDateInput(input);
+
+      // Simulate partial input (e.g., user deletes the last digit of the year)
+      act(() => {
+        patch.simulateType('2024-01-0', true);
+      });
+
+      // Should map to null model, with no errors
+      expect(cmp.f().value()).toBeNull();
+      expect(cmp.f().errors()).toEqual([]);
+
+      // Ensure sync hasn't written a blank date back to the DOM
+      expect(patch.getTypedValue()).toBe('2024-01-0');
+    });
+
     it('should sync string field with color type input', () => {
       @Component({
         imports: [FormField],
@@ -4990,6 +5046,55 @@ function act<T>(fn: () => T): T {
   } finally {
     TestBed.tick();
   }
+}
+
+/**
+ * Patch a date input to simulate the browser's native validity capabilities when a user
+ * types an incomplete or un-parseable date string (e.g., '2024-01-0').
+ *
+ * Browsers do not expose raw keystrokes in `.value` for date inputs if the text cannot be
+ * parsed into a fully valid date; instead, they flip `.validity.badInput` to `true`, return
+ * `null` for `.valueAsDate` and `""` for `.value`.
+ *
+ * Automated Karma tests running in a JS context cannot simulate real browser OS-level keyboard
+ * interactions. Setting `input.value = '2024-01-0'` programmatically is rejected by the DOM
+ * spec and does not throw `badInput`. Thus, this utility overrides the property getters to
+ * manually mock browser typing behavior, allowing tests to accurately assert framework logic
+ * during partial user entry.
+ */
+function patchDateInput(input: HTMLInputElement) {
+  let typedValue = input.value;
+  let isBadInput = false;
+
+  Object.defineProperties(input, {
+    value: {
+      get: () => (isBadInput ? '' : typedValue),
+      set: (v) => {
+        typedValue = v;
+        isBadInput = false;
+      },
+    },
+    valueAsDate: {
+      get: () => (isBadInput || !typedValue ? null : new Date(typedValue)),
+      set: (v) => {
+        typedValue = v ? v.toISOString().split('T')[0] : '';
+        isBadInput = false;
+      },
+    },
+  });
+
+  Object.defineProperties(input.validity, {
+    badInput: {get: () => isBadInput},
+  });
+
+  return {
+    simulateType: (text: string, bad: boolean) => {
+      typedValue = text;
+      isBadInput = bad;
+      input.dispatchEvent(new Event('input'));
+    },
+    getTypedValue: () => typedValue,
+  };
 }
 
 /**

@@ -24,23 +24,19 @@ describe('numeric inputs', () => {
 
       const fixture = act(() => TestBed.createComponent(TestCmp));
       const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
-      patchNumberInput(input);
+      const patch = patchNumberInput(input);
 
       expect(input.value).toBe('42');
 
       act(() => {
-        input.value = '42e';
-        input.dispatchEvent(new Event('input'));
+        patch.simulateType('42e', true);
       });
 
-      expect(fixture.componentInstance.f().value()).toBe(42);
-      expect(fixture.componentInstance.f().errors()).toEqual([
-        jasmine.objectContaining({kind: 'parse'}),
-      ]);
+      expect(fixture.componentInstance.f().value()).toBeNull();
+      expect(fixture.componentInstance.f().errors()).toEqual([]);
 
       act(() => {
-        input.value = '42e1';
-        input.dispatchEvent(new Event('input'));
+        patch.simulateType('42e1', false);
       });
 
       expect(fixture.componentInstance.f().value()).toBe(420);
@@ -64,26 +60,24 @@ describe('numeric inputs', () => {
       const fixture = act(() => TestBed.createComponent(TestCmp));
       const input1 = fixture.nativeElement.querySelector('#input1') as HTMLInputElement;
       const input2 = fixture.nativeElement.querySelector('#input2') as HTMLInputElement;
-      patchNumberInput(input1);
-      patchNumberInput(input2);
+      const patch1 = patchNumberInput(input1);
+      const patch2 = patchNumberInput(input2);
 
       expect(input1.value).toBe('5');
       expect(input2.value).toBe('5');
 
-      // Trigger parse error on input1
+      // Trigger NaN (invalid typed value) on input1
       act(() => {
-        input1.value = '5e';
-        input1.dispatchEvent(new Event('input'));
+        patch1.simulateType('5e', true);
       });
 
-      expect(fixture.componentInstance.bindings()[0].errors()).toEqual([
-        jasmine.objectContaining({kind: 'parse'}),
-      ]);
+      // The field maps the NaN to null, which emits no errors
+      expect(fixture.componentInstance.bindings()[0].errors()).toEqual([]);
+      expect(fixture.componentInstance.data()).toBeNull();
 
       // Update model via input2
       act(() => {
-        input2.value = '42';
-        input2.dispatchEvent(new Event('input'));
+        patch2.simulateType('42', false);
       });
 
       expect(fixture.componentInstance.bindings()[0].errors()).toEqual([]);
@@ -143,21 +137,47 @@ describe('numeric inputs', () => {
 
       const fixture = act(() => TestBed.createComponent(TestCmp));
       const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
-      patchNumberInput(input);
+      const patch = patchNumberInput(input);
 
       act(() => {
-        input.value = '4';
-        input.dispatchEvent(new Event('input'));
+        patch.simulateType('4', false);
       });
 
       expect(fixture.componentInstance.f().value()).toBe(4);
 
       act(() => {
-        input.value = '';
-        input.dispatchEvent(new Event('input'));
+        patch.simulateType('', false);
       });
 
       expect(fixture.componentInstance.f().value()).toBeNull();
+    });
+
+    it('should ignore sync clobbering when native control has partial input (badInput)', () => {
+      @Component({
+        imports: [FormField],
+        template: `<input type="number" [formField]="f" />`,
+      })
+      class TestCmp {
+        readonly data = signal<number | null>(4);
+        readonly f = form(this.data);
+      }
+
+      const fixture = act(() => TestBed.createComponent(TestCmp));
+      const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+      const patch = patchNumberInput(input);
+
+      expect(fixture.componentInstance.f().value()).toBe(4);
+
+      // Simulate partial input clearing the value on the DOM (e.g. typing "4-")
+      act(() => {
+        patch.simulateType('4-', true);
+      });
+
+      expect(fixture.componentInstance.f().value()).toBeNull();
+      expect(fixture.componentInstance.f().errors()).toEqual([]);
+
+      // The invalid input should not be wiped away by sync
+      expect(patch.getTypedValue()).toBe('4-');
     });
   });
 });
@@ -171,32 +191,51 @@ function act<T>(fn: () => T): T {
 }
 
 /**
- * Patch a number input to make its validity work as it would if the user was actually typing.
+ * Patch a number input to simulate the browser's native validity capabilities when a user
+ * types an incomplete or un-parseable numeric string (e.g., '4-' or '42e').
  *
- * `validity.badInput` is updated when the user types in the `<input>`, but when we simulate it
- * by setting the value and dispatching an event, that flag is not updated. To work around this
- * we patch the input.
+ * Browsers do not expose raw keystrokes in `.value` for number inputs if the text cannot be
+ * parsed into a number; instead, they flip `.validity.badInput` to `true`, return `NaN`
+ * for `.valueAsNumber` and `""` for `.value`.
+ *
+ * Automated Karma tests running in a JS context cannot simulate real browser OS-level keyboard
+ * interactions. Setting `input.value = '4-'` programmatically is rejected by the DOM
+ * spec and does not throw `badInput`. Thus, this utility overrides the property getters to
+ * manually mock browser typing behavior, allowing tests to accurately assert framework logic
+ * during partial user entry without relying on an actual browser engine validating the DOM element.
  */
 function patchNumberInput(input: HTMLInputElement) {
-  let value = input.value;
+  let typedValue = input.value;
+  let isBadInput = false;
+
   Object.defineProperties(input, {
     value: {
       set: (v) => {
-        value = v;
+        typedValue = v;
+        isBadInput = false;
       },
       get: () => {
-        const num = Number(value);
-        return Number.isNaN(num) ? '' : value;
+        return isBadInput ? '' : typedValue;
       },
     },
     valueAsNumber: {
-      get: () => Number(value),
+      get: () => (isBadInput ? NaN : Number(typedValue)),
       set: (v) => {
-        value = String(v);
+        typedValue = String(v);
+        isBadInput = false;
       },
     },
   });
   Object.defineProperties(input.validity, {
-    badInput: {get: () => Number.isNaN(Number(value))},
+    badInput: {get: () => isBadInput},
   });
+
+  return {
+    simulateType: (text: string, bad: boolean) => {
+      typedValue = text;
+      isBadInput = bad;
+      input.dispatchEvent(new Event('input'));
+    },
+    getTypedValue: () => typedValue,
+  };
 }
