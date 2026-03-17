@@ -719,6 +719,8 @@ export type EnvironmentProviders = {
 export class ErrorHandler {
     // (undocumented)
     handleError(error: any): void;
+    // (undocumented)
+    onViewError?(error: any, details: ErrorDetails): void;
 }
 
 // @public
@@ -2046,12 +2048,14 @@ export abstract class ViewContainerRef {
         projectableNodes?: Node[][];
         directives?: (Type<unknown> | DirectiveWithBindings<unknown>)[];
         bindings?: Binding[];
+        onError?: (error: Error, context: ErrorDetails) => void;
     }): ComponentRef<C>;
     // @deprecated
     abstract createComponent<C>(componentFactory: ComponentFactory<C>, index?: number, injector?: Injector, projectableNodes?: any[][], environmentInjector?: EnvironmentInjector | NgModuleRef<any>, directives?: (Type<unknown> | DirectiveWithBindings<unknown>)[], bindings?: Binding[]): ComponentRef<C>;
     abstract createEmbeddedView<C>(templateRef: TemplateRef<C>, context?: C, options?: {
         index?: number;
         injector?: Injector;
+        onError?: (error: Error, context: ErrorDetails) => void;
     }): EmbeddedViewRef<C>;
     abstract createEmbeddedView<C>(templateRef: TemplateRef<C>, context?: C, index?: number): EmbeddedViewRef<C>;
     abstract detach(index?: number): ViewRef | null;
