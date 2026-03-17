@@ -363,6 +363,7 @@ export function refreshView<T>(
     }
   } catch (e) {
     let handled = false;
+    let errorToHandle = e;
     let currentLView: LView | LContainer | null = lView;
     while (currentLView !== null) {
       if (isLContainer(currentLView)) {
@@ -372,10 +373,17 @@ export function refreshView<T>(
       const onError = currentLView[ON_ERROR];
       if (onError) {
         // We found an error boundary / explicit error handler in the LView chain.
-        const details = {caught: true};
-        onError(encapsulateBoundaryError(e), details);
-        handled = true;
-        break;
+        try {
+          const details = {caught: true};
+          onError(encapsulateBoundaryError(errorToHandle), details);
+          handled = true;
+          break;
+        } catch (boundaryError) {
+          // If the error handler itself throws, capture the new error and
+          // continue propagating it up the tree to the next error boundary.
+          errorToHandle = boundaryError;
+          handled = false;
+        }
       }
       currentLView = currentLView[PARENT];
     }
@@ -388,7 +396,7 @@ export function refreshView<T>(
         // cleared during change detection and we failed to run to completion.
         markAncestorsForTraversal(lView);
       }
-      throw e;
+      throw errorToHandle;
     }
   } finally {
     if (currentConsumer !== null) {

@@ -129,4 +129,94 @@ describe('Error Boundary Runtime Interception', () => {
     expect(interceptedError).toBeInstanceOf(Error);
     expect(interceptedError!.message).toBe('Init Error');
   });
+
+  it('should intercept errors thrown during component constructor via createComponent', () => {
+    let interceptedError: Error | null = null;
+
+    @Component({
+      template: '...',
+      standalone: true,
+    })
+    class ThrowingConstructorComponent {
+      constructor() {
+        throw new Error('Constructor Error');
+      }
+    }
+
+    @Component({
+      template: '<ng-container #vc></ng-container>',
+      standalone: true,
+    })
+    class HostComponent {
+      @ViewChild('vc', {read: ViewContainerRef, static: true}) vc!: ViewContainerRef;
+    }
+
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+
+    const envInjector = TestBed.inject(EnvironmentInjector);
+
+    fixture.componentInstance.vc.createComponent(ThrowingConstructorComponent, {
+      environmentInjector: envInjector,
+      onError: (e: Error) => {
+        interceptedError = e;
+      },
+    });
+
+    expect(interceptedError).toBeDefined();
+    expect(interceptedError).toBeInstanceOf(Error);
+    expect(interceptedError!.message).toBe('Constructor Error');
+  });
+
+  it('should propagate errors thrown by an onError handler up the tree', () => {
+    let topError: Error | null = null;
+
+    @Component({
+      template: '<ng-container #vc></ng-container>',
+      standalone: true,
+    })
+    class MiddleComponent {
+      @ViewChild('vc', {read: ViewContainerRef, static: true}) vc!: ViewContainerRef;
+    }
+
+    @Component({
+      template: '...',
+      standalone: true,
+    })
+    class ThrowChild {
+      ngOnInit() {
+        throw new Error('Initial Error');
+      }
+    }
+
+    @Component({
+      template: '<ng-container #vc></ng-container>',
+      standalone: true,
+    })
+    class HostComponent {
+      @ViewChild('vc', {read: ViewContainerRef, static: true}) vc!: ViewContainerRef;
+    }
+
+    const fixture = TestBed.createComponent(HostComponent);
+    fixture.detectChanges();
+
+    const middleRef = fixture.componentInstance.vc.createComponent(MiddleComponent, {
+      onError: (e: Error) => {
+        topError = e;
+      },
+    });
+    fixture.detectChanges();
+
+    middleRef.instance.vc.createComponent(ThrowChild, {
+      onError: (e: Error) => {
+        throw new Error('Secondary Error');
+      },
+    });
+
+    expect(() => fixture.detectChanges()).not.toThrow();
+
+    expect(topError).toBeDefined();
+    expect(topError).toBeInstanceOf(Error);
+    expect(topError!.message).toBe('Secondary Error');
+  });
 });
