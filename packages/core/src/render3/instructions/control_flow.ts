@@ -31,6 +31,7 @@ import {
   ID,
   INJECTOR,
   LView,
+  ON_ERROR,
   TVIEW,
   TView,
 } from '../interfaces/view';
@@ -38,7 +39,7 @@ import {LiveCollection, reconcile} from '../list_reconciliation';
 import {destroyLView} from '../node_manipulation';
 import {getLView, getSelectedIndex, getTView, nextBindingIndex} from '../state';
 import {NO_CHANGE} from '../tokens';
-import {getConstant, getTNode} from '../util/view_utils';
+import {getConstant, getTNode, markViewForRefresh} from '../util/view_utils';
 import {createAndRenderEmbeddedLView, shouldAddViewToDom} from '../view_manipulation';
 
 import {AnimationLViewData} from '../../animation/interfaces';
@@ -148,6 +149,134 @@ export function ɵɵconditionalBranchCreate(
     localRefExtractor,
   );
   return ɵɵconditionalBranchCreate;
+}
+
+/**
+ * State object representing an @boundary block, allocated in the LView data array.
+ */
+export class LBoundary {
+  error: any = null;
+
+  constructor(private hostLView: LView) {}
+
+  reset() {
+    this.error = null;
+    markViewForRefresh(this.hostLView);
+  }
+}
+
+/**
+ * The error context for an @boundary @error block.
+ */
+export class BoundaryErrorContext {
+  public $error: any;
+  public $reset: () => void;
+
+  constructor(lBoundary: LBoundary) {
+    this.$error = lBoundary.error;
+    this.$reset = () => lBoundary.reset();
+  }
+}
+
+/**
+ * Creates an LBoundary state object in the current LView.
+ */
+export function ɵɵboundaryCreate(index: number) {
+  performanceMarkFeature('NgControlFlow');
+  const lView = getLView();
+  lView[HEADER_OFFSET + index] = new LBoundary(lView);
+}
+
+/**
+ * The boundary update instruction performs conditional view switching and attaches
+ * an ON_ERROR interceptor if it is rendering the primary block.
+ */
+export function ɵɵboundaryUpdate(
+  slotIndex: number,
+  matchingTemplateIndex: number,
+  isPrimary: boolean,
+  contextValue?: any,
+) {
+  performanceMarkFeature('NgControlFlow');
+
+  const hostLView = getLView();
+  const bindingIndex = nextBindingIndex();
+  const prevMatchingTemplateIndex: number =
+    hostLView[bindingIndex] !== NO_CHANGE ? hostLView[bindingIndex] : -1;
+  const prevContainer =
+    prevMatchingTemplateIndex !== -1
+      ? getLContainer(hostLView, HEADER_OFFSET + prevMatchingTemplateIndex)
+      : undefined;
+  const viewInContainerIdx = 0;
+
+  if (bindingUpdated(hostLView, bindingIndex, matchingTemplateIndex)) {
+    const prevConsumer = setActiveConsumer(null);
+    try {
+      if (prevContainer !== undefined) {
+        removeLViewFromLContainer(prevContainer, viewInContainerIdx);
+      }
+
+      if (matchingTemplateIndex !== -1) {
+        const nextLContainerIndex = HEADER_OFFSET + matchingTemplateIndex;
+        const nextContainer = getLContainer(hostLView, nextLContainerIndex);
+        const templateTNode = getExistingTNode(hostLView[TVIEW], nextLContainerIndex);
+
+        const dehydratedView = findAndReconcileMatchingDehydratedViews(
+          nextContainer,
+          templateTNode,
+          hostLView,
+        );
+
+        let embeddedLView: LView<any> | undefined;
+        try {
+          embeddedLView = createAndRenderEmbeddedLView(hostLView, templateTNode, contextValue, {
+            dehydratedView,
+          });
+
+          if (isPrimary) {
+            embeddedLView[ON_ERROR] = (error: Error, details: any) => {
+              const boundary = hostLView[HEADER_OFFSET + slotIndex] as LBoundary;
+              boundary.error = error;
+
+              // Immediately destroy the primary view
+              removeLViewFromLContainer(nextContainer, viewInContainerIdx);
+              destroyLView(embeddedLView![TVIEW], embeddedLView!);
+
+              // Trigger a targeted change detection pass on the host to run the @error block
+              markViewForRefresh(hostLView);
+            };
+          }
+        } catch (e) {
+          if (isPrimary) {
+            const boundary = hostLView[HEADER_OFFSET + slotIndex] as LBoundary;
+            boundary.error = e;
+            markViewForRefresh(hostLView);
+
+            // If the view threw during creation, we do not add it to the DOM.
+            // We swallow the error so that the host can finish its current change detection cycle
+            // and later re-evaluate the boundary switch statement to render the @error block.
+            return;
+          }
+          // If we caught an error inside an @error block, rethrow it to let it bubble naturally.
+          throw e;
+        }
+
+        addLViewToLContainer(
+          nextContainer,
+          embeddedLView,
+          viewInContainerIdx,
+          shouldAddViewToDom(templateTNode, dehydratedView),
+        );
+      }
+    } finally {
+      setActiveConsumer(prevConsumer);
+    }
+  } else if (prevContainer !== undefined) {
+    const lView = getLViewFromLContainer<any>(prevContainer, viewInContainerIdx);
+    if (lView !== undefined) {
+      lView[CONTEXT] = contextValue;
+    }
+  }
 }
 
 /**

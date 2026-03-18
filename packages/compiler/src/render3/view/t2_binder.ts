@@ -18,6 +18,8 @@ import {
   BoundAttribute,
   BoundEvent,
   BoundText,
+  BoundaryBlock,
+  BoundaryErrorBlock,
   Comment,
   Component,
   Content,
@@ -328,6 +330,11 @@ class Scope implements Visitor {
       this.visitVariable(nodeOrNodes.item);
       nodeOrNodes.contextVariables.forEach((v) => this.visitVariable(v));
       nodeOrNodes.children.forEach((node) => node.visit(this));
+    } else if (nodeOrNodes instanceof BoundaryErrorBlock) {
+      if (nodeOrNodes.errorAlias !== null) {
+        this.visitVariable(nodeOrNodes.errorAlias);
+      }
+      nodeOrNodes.children.forEach((node) => node.visit(this));
     } else if (
       nodeOrNodes instanceof SwitchBlockCaseGroup ||
       nodeOrNodes instanceof ForLoopBlockEmpty ||
@@ -335,6 +342,7 @@ class Scope implements Visitor {
       nodeOrNodes instanceof DeferredBlockError ||
       nodeOrNodes instanceof DeferredBlockPlaceholder ||
       nodeOrNodes instanceof DeferredBlockLoading ||
+      nodeOrNodes instanceof BoundaryBlock ||
       nodeOrNodes instanceof Content
     ) {
       nodeOrNodes.children.forEach((node) => node.visit(this));
@@ -385,6 +393,15 @@ class Scope implements Visitor {
   }
 
   visitDeferredBlockLoading(block: DeferredBlockLoading) {
+    this.ingestScopedNode(block);
+  }
+
+  visitBoundaryBlock(block: BoundaryBlock) {
+    this.ingestScopedNode(block);
+    block.errorBlocks.forEach((node) => node.visit(this));
+  }
+
+  visitBoundaryErrorBlock(block: BoundaryErrorBlock) {
     this.ingestScopedNode(block);
   }
 
@@ -577,6 +594,15 @@ class DirectiveBinder<DirectiveT extends DirectiveMeta> implements Visitor {
   }
 
   visitDeferredBlockLoading(block: DeferredBlockLoading): void {
+    block.children.forEach((child) => child.visit(this));
+  }
+
+  visitBoundaryBlock(block: BoundaryBlock): void {
+    block.children.forEach((child) => child.visit(this));
+    block.errorBlocks.forEach((node) => node.visit(this));
+  }
+
+  visitBoundaryErrorBlock(block: BoundaryErrorBlock): void {
     block.children.forEach((child) => child.visit(this));
   }
 
@@ -875,12 +901,19 @@ class TemplateBinder extends CombinedRecursiveAstVisitor {
       this.deferBlocks.push([nodeOrNodes, this.scope]);
       nodeOrNodes.children.forEach((node) => node.visit(this));
       this.nestingLevel.set(nodeOrNodes, this.level);
+    } else if (nodeOrNodes instanceof BoundaryErrorBlock) {
+      if (nodeOrNodes.errorAlias !== null) {
+        this.visitNode(nodeOrNodes.errorAlias);
+      }
+      nodeOrNodes.children.forEach((node) => node.visit(this));
+      this.nestingLevel.set(nodeOrNodes, this.level);
     } else if (
       nodeOrNodes instanceof SwitchBlockCaseGroup ||
       nodeOrNodes instanceof ForLoopBlockEmpty ||
       nodeOrNodes instanceof DeferredBlockError ||
       nodeOrNodes instanceof DeferredBlockPlaceholder ||
       nodeOrNodes instanceof DeferredBlockLoading ||
+      nodeOrNodes instanceof BoundaryBlock ||
       nodeOrNodes instanceof Content
     ) {
       nodeOrNodes.children.forEach((node) => node.visit(this));
@@ -940,6 +973,16 @@ class TemplateBinder extends CombinedRecursiveAstVisitor {
   }
 
   override visitDeferredBlockLoading(block: DeferredBlockLoading) {
+    this.ingestScopedNode(block);
+  }
+
+  override visitBoundaryBlock(block: BoundaryBlock) {
+    this.ingestScopedNode(block);
+    block.errorBlocks.forEach((node) => node.visit(this));
+  }
+
+  override visitBoundaryErrorBlock(block: BoundaryErrorBlock) {
+    block.expression?.visit(this);
     this.ingestScopedNode(block);
   }
 

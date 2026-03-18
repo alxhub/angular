@@ -328,6 +328,48 @@ export class DeferredBlockError extends BlockNode implements Node {
   }
 }
 
+export class BoundaryBlock extends BlockNode implements Node {
+  constructor(
+    public children: Node[],
+    public errorBlocks: BoundaryErrorBlock[],
+    nameSpan: ParseSourceSpan,
+    sourceSpan: ParseSourceSpan,
+    startSourceSpan: ParseSourceSpan,
+    endSourceSpan: ParseSourceSpan | null,
+    public i18n?: I18nMeta,
+  ) {
+    super(nameSpan, sourceSpan, startSourceSpan, endSourceSpan);
+  }
+
+  visit<Result>(visitor: Visitor<Result>): Result {
+    return visitor.visitBoundaryBlock(this);
+  }
+
+  visitAll(visitor: Visitor<unknown>): void {
+    visitAll(visitor, this.children);
+    visitAll(visitor, this.errorBlocks);
+  }
+}
+
+export class BoundaryErrorBlock extends BlockNode implements Node {
+  constructor(
+    public children: Node[],
+    public errorAlias: Variable | null,
+    public expression: AST | null,
+    nameSpan: ParseSourceSpan,
+    sourceSpan: ParseSourceSpan,
+    startSourceSpan: ParseSourceSpan,
+    endSourceSpan: ParseSourceSpan | null,
+    public i18n?: I18nMeta,
+  ) {
+    super(nameSpan, sourceSpan, startSourceSpan, endSourceSpan);
+  }
+
+  visit<Result>(visitor: Visitor<Result>): Result {
+    return visitor.visitBoundaryErrorBlock(this);
+  }
+}
+
 export interface DeferredBlockTriggers {
   when?: BoundDeferredTrigger;
   idle?: IdleDeferredTrigger;
@@ -746,6 +788,8 @@ export interface Visitor<Result = any> {
   visitForLoopBlockEmpty(block: ForLoopBlockEmpty): Result;
   visitIfBlock(block: IfBlock): Result;
   visitIfBlockBranch(block: IfBlockBranch): Result;
+  visitBoundaryBlock(block: BoundaryBlock): Result;
+  visitBoundaryErrorBlock(block: BoundaryErrorBlock): Result;
   visitUnknownBlock(block: UnknownBlock): Result;
   visitLetDeclaration(decl: LetDeclaration): Result;
   visitComponent(component: Component): Result;
@@ -805,6 +849,14 @@ export class RecursiveVisitor implements Visitor<void> {
   visitIfBlockBranch(block: IfBlockBranch): void {
     const blockItems = block.children;
     block.expressionAlias && blockItems.push(block.expressionAlias);
+    visitAll(this, blockItems);
+  }
+  visitBoundaryBlock(block: BoundaryBlock): void {
+    block.visitAll(this);
+  }
+  visitBoundaryErrorBlock(block: BoundaryErrorBlock): void {
+    const blockItems = block.children;
+    block.errorAlias && blockItems.push(block.errorAlias);
     visitAll(this, blockItems);
   }
   visitContent(content: Content): void {
