@@ -1208,6 +1208,20 @@ export function transformExpressionsInOp(
         op.contextValue = transformExpressionsInExpression(op.contextValue, transform, flags);
       }
       break;
+    case OpKind.Boundary:
+      for (const condition of op.conditions) {
+        if (condition.expr === null) {
+          continue;
+        }
+        condition.expr = transformExpressionsInExpression(condition.expr, transform, flags);
+      }
+      if (op.processed !== null) {
+        op.processed = transformExpressionsInExpression(op.processed, transform, flags);
+      }
+      if (op.contextValue !== null) {
+        op.contextValue = transformExpressionsInExpression(op.contextValue, transform, flags);
+      }
+      break;
     case OpKind.Animation:
     case OpKind.AnimationListener:
     case OpKind.Listener:
@@ -1300,6 +1314,7 @@ export function transformExpressionsInOp(
     case OpKind.ConditionalBranchCreate:
     case OpKind.Control:
     case OpKind.ControlCreate:
+    case OpKind.BoundaryCreate:
       // These operations contain no expressions.
       break;
     default:

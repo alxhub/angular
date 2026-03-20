@@ -32,6 +32,8 @@ import {
   TmplAstText,
   TmplAstVariable,
   TmplAstViewportDeferredTrigger,
+  TmplAstBoundaryBlock,
+  TmplAstBoundaryErrorBlock,
 } from '@angular/compiler';
 import ts from 'typescript';
 import {TcbOp} from './base';
@@ -45,6 +47,7 @@ import {TcbBlockImplicitVariableOp, TcbBlockVariableOp, TcbTemplateVariableOp} f
 import {TcbComponentContextCompletionOp} from './completions';
 import {LocalSymbol, TcbInvalidReferenceOp, TcbReferenceOp} from './references';
 import {TcbIfOp} from './if_block';
+import {TcbBoundaryOp} from './boundary';
 import {TcbSwitchOp} from './switch_block';
 import {TcbForOfOp} from './for_block';
 import {TcbLetDeclarationOp} from './let';
@@ -193,6 +196,7 @@ export class Scope {
       | TmplAstIfBlockBranch
       | TmplAstForLoopBlock
       | TmplAstHostElement
+      | TmplAstBoundaryErrorBlock
       | null,
     children: TmplAstNode[] | null,
     guard: ts.Expression | null,
@@ -231,6 +235,22 @@ export class Scope {
             scope,
             tcbExpression(expression, tcb, scope),
             expressionAlias,
+          ),
+        );
+      }
+    } else if (scopedNode instanceof TmplAstBoundaryErrorBlock) {
+      if (scopedNode.errorAlias !== null) {
+        Scope.registerVariable(
+          scope,
+          scopedNode.errorAlias,
+          new TcbBlockVariableOp(
+            tcb,
+            scope,
+            ts.factory.createAsExpression(
+              ts.factory.createIdentifier('err'),
+              ts.factory.createTypeReferenceNode('Error'),
+            ),
+            scopedNode.errorAlias,
           ),
         );
       }
@@ -298,9 +318,21 @@ export class Scope {
    * * `TmplAstLetDeclaration` - retrieve a template `@let` declaration
    * * `TmplAstReference` - retrieve variable created for the local ref
    *
-   * @param directive if present, a directive type on a `TmplAstElement` or `TmplAstTemplate` to
-   * look up instead of the default for an element or template node.
+   * @param directive if present, a directive type on a `TmplAstElement` or `TmplAstTemplate`  /**
+   * Look up a identifier by string name among local variables.
    */
+  resolveByName(name: string): ts.Identifier | ts.NonNullExpression | null {
+    for (const [v] of this.varMap.entries()) {
+      if (v.name === name) {
+        return this.resolve(v);
+      }
+    }
+    if (this.parent !== null) {
+      return this.parent.resolveByName(name);
+    }
+    return null;
+  }
+
   resolve(
     node: LocalSymbol,
     directive?: TypeCheckableDirectiveMeta,
@@ -416,6 +448,7 @@ export class Scope {
       | TmplAstIfBlockBranch
       | TmplAstForLoopBlock
       | TmplAstHostElement
+      | TmplAstBoundaryErrorBlock
       | null,
     children: TmplAstNode[] | null,
     guard: ts.Expression | null,
@@ -537,6 +570,8 @@ export class Scope {
       this.appendDeferredBlock(node);
     } else if (node instanceof TmplAstIfBlock) {
       this.opQueue.push(new TcbIfOp(this.tcb, this, node));
+    } else if (node instanceof TmplAstBoundaryBlock) {
+      this.opQueue.push(new TcbBoundaryOp(this.tcb, this, node));
     } else if (node instanceof TmplAstSwitchBlock) {
       this.opQueue.push(new TcbSwitchOp(this.tcb, this, node));
     } else if (node instanceof TmplAstForLoopBlock) {

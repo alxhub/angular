@@ -85,6 +85,16 @@ export enum OpKind {
   Conditional,
 
   /**
+   * Create a boundary creation instruction op.
+   */
+  BoundaryCreate,
+
+  /**
+   * An op to validate and handle errors in a template.
+   */
+  Boundary,
+
+  /**
    * An operation to re-enable binding, after it was previously disabled.
    */
   EnableBindings,

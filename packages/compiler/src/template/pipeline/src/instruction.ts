@@ -484,6 +484,40 @@ export function conditionalBranchCreate(
   return call(Identifiers.conditionalBranchCreate, args, sourceSpan);
 }
 
+export function boundaryCreate(
+  slot: number,
+  templateFnRef: o.Expression,
+  decls: number,
+  vars: number,
+  tag: string | null,
+  constIndex: number | null,
+  localRefs: number | null,
+  sourceSpan: ParseSourceSpan,
+): ir.CreateOp {
+  return templateBase(
+    Identifiers.boundaryCreate,
+    slot,
+    templateFnRef,
+    decls,
+    vars,
+    tag,
+    constIndex,
+    localRefs,
+    sourceSpan,
+  );
+}
+
+export function boundary(
+  processedExpr: o.Expression,
+  contextValue: o.Expression | null,
+  sourceSpan: ParseSourceSpan | null,
+): ir.UpdateOp {
+  const args = [processedExpr];
+  if (contextValue !== null) {
+    args.push(contextValue);
+  }
+  return call(Identifiers.boundaryUpdate, args, sourceSpan);
+}
 export function repeaterCreate(
   slot: number,
   viewFnName: string,

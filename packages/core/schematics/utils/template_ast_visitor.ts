@@ -89,6 +89,8 @@ export class TemplateAstVisitor implements TmplAstRecursiveVisitor {
   visitComponent(component: TmplAstComponent): void {}
   visitDirective(directive: TmplAstDirective): void {}
   visitSwitchExhaustiveCheck(block: TmplAstSwitchExhaustiveCheck): void {}
+  visitBoundaryBlock(block: any): void {}
+  visitBoundaryErrorBlock(block: any): void {}
 
   /**
    * Visits all the provided nodes in order using this Visitor's visit methods.

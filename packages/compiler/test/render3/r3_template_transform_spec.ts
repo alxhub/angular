@@ -288,8 +288,7 @@ describe('R3 template transform', () => {
         ['Text', 'Specific Error'],
         ['BoundaryErrorBlock', 'err', null],
         ['Element', 'div'],
-        ['Text', 'General Error '],
-        ['BoundText', '{{ err }}'],
+        ['BoundText', 'General Error {{ err }}'],
       ]);
     });
   });

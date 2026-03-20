@@ -145,6 +145,15 @@ export class TcbExpressionTranslator {
           );
         }
       }
+
+      if (targetExpression === null) {
+        const fallback = this.scope.resolveByName(ast.name);
+        if (fallback !== null) {
+          addParseSpanInfo(fallback, ast.sourceSpan);
+          return fallback;
+        }
+      }
+
       return targetExpression;
     } else if (
       ast instanceof Binary &&
