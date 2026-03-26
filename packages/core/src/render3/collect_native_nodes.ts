@@ -24,6 +24,21 @@ export function collectNativeNodes(
   result: any[],
   isProjection: boolean = false,
 ): any[] {
+  if (tView.type === 3) {
+    const headTNode = tView.firstChild!;
+    const tailTNode = headTNode.next!;
+    const head = unwrapRNode(lView[headTNode.index]);
+    const tail = unwrapRNode(lView[tailTNode.index]);
+
+    let current = head;
+    while (current !== null) {
+      result.push(current);
+      if (current === tail) break;
+      current = (current as any).nextSibling;
+    }
+    return result;
+  }
+
   while (tNode !== null) {
     // Let declarations don't have corresponding DOM nodes so we skip over them.
     if (tNode.type === TNodeType.LetDeclaration) {
