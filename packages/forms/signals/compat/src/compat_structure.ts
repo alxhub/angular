@@ -108,7 +108,7 @@ function getControlValueSignal<T>(options: CompatFieldNodeOptions) {
  */
 export class CompatStructure extends FieldNodeStructure {
   override value: WritableSignal<unknown>;
-  override keyInParent: Signal<string>;
+  override keyInParent: Signal<string | number>;
   override root: FieldNode;
   override pathKeys: Signal<readonly string[]>;
   override readonly children = signal([]);
@@ -133,7 +133,7 @@ export class CompatStructure extends FieldNodeStructure {
     this.keyInParent = this.createKeyInParent(options, identityInParent, initialKeyInParent);
 
     this.pathKeys = computed(() =>
-      this.parent ? [...this.parent.structure.pathKeys(), this.keyInParent()] : [],
+      this.parent ? [...this.parent.structure.pathKeys(), this.keyInParent().toString()] : [],
     );
   }
 

@@ -793,7 +793,7 @@ export interface ChildFieldContext<TValue> extends RootFieldContext<TValue> {
   /** The current field. */
   readonly fieldTree: FieldTree<TValue, string>;
   /** The key of the current field in its parent field. */
-  readonly key: Signal<string>;
+  readonly key: Signal<string | number>;
 }
 
 /**
@@ -807,7 +807,7 @@ export interface ItemFieldContext<TValue> extends RootFieldContext<TValue> {
   /** The current field. */
   readonly fieldTree: FieldTree<TValue, number>;
   /** The key of the current field in its parent field. */
-  readonly key: Signal<string>;
+  readonly key: Signal<string | number>;
   /** The index of the current field in its parent field. */
   readonly index: Signal<number>;
 }

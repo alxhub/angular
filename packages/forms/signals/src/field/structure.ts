@@ -57,7 +57,7 @@ export abstract class FieldNodeStructure {
    * The key of this field in its parent field.
    * Attempting to read this for the root field will result in an error being thrown.
    */
-  abstract readonly keyInParent: Signal<string>;
+  abstract readonly keyInParent: Signal<string | number>;
 
   /** The field manager responsible for managing this field. */
   abstract readonly fieldManager: FormFieldManager;
@@ -180,13 +180,14 @@ export abstract class FieldNodeStructure {
     options: FieldNodeOptions,
     identityInParent: TrackingKey | undefined,
     initialKeyInParent: string | undefined,
-  ): Signal<string> {
+  ): Signal<string | number> {
     if (options.kind === 'root') {
       return ROOT_KEY_IN_PARENT;
     }
 
     if (identityInParent === undefined) {
       const key = initialKeyInParent!;
+      const parentIsArray = isArray(untracked(this.parent!.structure.value));
       return computed(() => {
         if (this.parent!.structure.getChild(key) !== this.node) {
           throw new RuntimeError(
@@ -195,7 +196,7 @@ export abstract class FieldNodeStructure {
               `Orphan field, looking for property '${key}' of ${getDebugName(this.parent!)}`,
           );
         }
-        return key;
+        return parentIsArray ? Number(key) : key;
       });
     } else {
       let lastKnownKey = initialKeyInParent!;
@@ -216,15 +217,14 @@ export abstract class FieldNodeStructure {
         }
 
         // Check the parent value at the last known key to avoid a scan.
-        // Note: lastKnownKey is a string, but we pretend to typescript like its a number,
-        // since accessing someArray['1'] is the same as accessing someArray[1]
-        const data = parentValue[lastKnownKey as unknown as number];
+        const lastKnownIndex = Number(lastKnownKey);
+        const data = parentValue[lastKnownIndex];
         if (
           isObject(data) &&
           data.hasOwnProperty(this.parent!.structure.identitySymbol) &&
           data[this.parent!.structure.identitySymbol] === identityInParent
         ) {
-          return lastKnownKey;
+          return lastKnownIndex;
         }
 
         // Otherwise, we need to check all the keys in the parent.
@@ -235,7 +235,8 @@ export abstract class FieldNodeStructure {
             data.hasOwnProperty(this.parent!.structure.identitySymbol) &&
             data[this.parent!.structure.identitySymbol] === identityInParent
           ) {
-            return (lastKnownKey = i.toString());
+            lastKnownKey = i.toString();
+            return i;
           }
         }
 
@@ -383,7 +384,7 @@ export class RootFieldNodeStructure extends FieldNodeStructure {
     return ROOT_PATH_KEYS;
   }
 
-  override get keyInParent(): Signal<string> {
+  override get keyInParent(): Signal<string | number> {
     return ROOT_KEY_IN_PARENT;
   }
 
@@ -417,7 +418,7 @@ export class RootFieldNodeStructure extends FieldNodeStructure {
 export class ChildFieldNodeStructure extends FieldNodeStructure {
   override readonly root: FieldNode;
   override readonly pathKeys: Signal<readonly string[]>;
-  override readonly keyInParent: Signal<string>;
+  override readonly keyInParent: Signal<string | number>;
   override readonly value: WritableSignal<unknown>;
   override readonly childrenMap: Signal<ChildrenData | undefined>;
 
@@ -463,9 +464,9 @@ export class ChildFieldNodeStructure extends FieldNodeStructure {
       initialKeyInParent,
     );
 
-    this.pathKeys = computed(() => [...parent.structure.pathKeys(), this.keyInParent()]);
+    this.pathKeys = computed(() => [...parent.structure.pathKeys(), this.keyInParent().toString()]);
 
-    this.value = deepSignal(this.parent.structure.value, this.keyInParent);
+    this.value = deepSignal(this.parent.structure.value, this.keyInParent as any);
     this.childrenMap = this.createChildrenMap();
     this.fieldManager.structures.add(this);
   }

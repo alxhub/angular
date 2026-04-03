@@ -69,7 +69,7 @@ describe('Field Context', () => {
     const keys: string[] = [];
     const recordKey = ({key}: FieldContext<unknown, PathKind.Child>) => {
       try {
-        keys.push(key());
+        keys.push(key().toString());
       } catch (e) {
         keys.push((e as Error).message);
       }

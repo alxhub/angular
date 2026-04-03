@@ -63,7 +63,9 @@ export abstract class BaseNgValidationError implements ValidationError {
 
 // @public
 export interface ChildFieldContext<TValue> extends RootFieldContext<TValue> {
-    readonly key: Signal<string>;
+    readonly fieldTree: FieldTree<TValue, string>;
+    readonly key: Signal<string | number>;
+    readonly state: FieldState<TValue, string>;
 }
 
 // @public
@@ -285,12 +287,18 @@ export type IgnoreUnknownProperties<T> = T extends Record<PropertyKey, unknown> 
 } : T;
 
 // @public
-export interface ItemFieldContext<TValue> extends ChildFieldContext<TValue> {
+export interface ItemFieldContext<TValue> extends RootFieldContext<TValue> {
+    readonly fieldTree: FieldTree<TValue, number>;
     readonly index: Signal<number>;
+    readonly key: Signal<string | number>;
+    readonly state: FieldState<TValue, number>;
 }
 
 // @public
 export type ItemType<T extends Object> = T extends ReadonlyArray<any> ? T[number] : T[keyof T];
+
+// @public
+export type KeyForPathKind<TPathKind extends PathKind> = [TPathKind] extends [PathKind.Item] ? number : [TPathKind] extends [PathKind.Child] ? string : string | number;
 
 // @public
 export type LogicFn<TValue, TReturn, TPathKind extends PathKind = PathKind.Root> = (ctx: FieldContext<TValue, TPathKind>) => TReturn;
@@ -513,15 +521,15 @@ export class RequiredValidationError extends BaseNgValidationError {
 
 // @public
 export interface RootFieldContext<TValue> {
-    readonly fieldTree: FieldTree<TValue>;
-    fieldTreeOf<PModel>(p: SchemaPathTree<PModel>): FieldTree<PModel>;
+    readonly fieldTree: FieldTree<TValue, string | number>;
+    fieldTreeOf<PModel, PPathKind extends PathKind>(p: SchemaPathTree<PModel, PPathKind>): FieldTree<PModel, KeyForPathKind<PPathKind>>;
     readonly pathKeys: Signal<readonly string[]>;
-    readonly state: FieldState<TValue>;
-    stateOf<PControl extends AbstractControl>(p: CompatSchemaPath<PControl>): CompatFieldState<PControl>;
+    readonly state: FieldState<TValue, string | number>;
+    stateOf<PControl extends AbstractControl, PPathKind extends PathKind>(p: CompatSchemaPath<PControl, PPathKind>): CompatFieldState<PControl, KeyForPathKind<PPathKind>>;
     // (undocumented)
-    stateOf<PValue>(p: SchemaPath<PValue, SchemaPathRules>): FieldState<PValue>;
+    stateOf<PValue, PSupportsRules extends SchemaPathRules, PPathKind extends PathKind>(p: SchemaPath<PValue, PSupportsRules, PPathKind>): FieldState<PValue, KeyForPathKind<PPathKind>>;
     readonly value: Signal<TValue>;
-    valueOf<PValue>(p: SchemaPath<PValue, SchemaPathRules>): PValue;
+    valueOf<PValue>(p: SchemaPath<PValue, SchemaPathRules, any>): PValue;
 }
 
 // @public

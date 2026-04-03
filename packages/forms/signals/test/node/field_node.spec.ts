@@ -704,6 +704,11 @@ describe('FieldNode', () => {
       expect(f().touched()).toBe(false);
     });
 
+    it('should have number type for keyInParent in array items', () => {
+      const f = form(signal([1, 2, 3]), {injector: TestBed.inject(Injector)});
+      expect(typeof f[0]().keyInParent() as any).toBe('number');
+    });
+
     describe('tracking', () => {
       it('maintains identity across value moves', () => {
         const value = signal([{name: 'Alex'}, {name: 'Kirill'}]);
