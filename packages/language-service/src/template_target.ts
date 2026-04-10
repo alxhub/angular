@@ -50,6 +50,8 @@ import {
   TmplAstUnknownBlock,
   TmplAstVariable,
   TmplAstViewportDeferredTrigger,
+  TmplAstBoundaryBlock,
+  TmplAstBoundaryErrorBlock,
   tmplAstVisitAll,
   TmplAstVisitor,
 } from '@angular/compiler';
@@ -699,6 +701,17 @@ class TemplateTargetVisitor implements TmplAstVisitor {
   visitIfBlockBranch(block: TmplAstIfBlockBranch) {
     block.expression && this.visitBinding(block.expression);
     block.expressionAlias && this.visit(block.expressionAlias);
+    this.visitAll(block.children);
+  }
+
+  visitBoundaryBlock(block: TmplAstBoundaryBlock) {
+    this.visitAll(block.children);
+    this.visitAll(block.errorBlocks);
+  }
+
+  visitBoundaryErrorBlock(block: TmplAstBoundaryErrorBlock) {
+    block.expression && this.visitBinding(block.expression);
+    block.errorAlias && this.visit(block.errorAlias);
     this.visitAll(block.children);
   }
 

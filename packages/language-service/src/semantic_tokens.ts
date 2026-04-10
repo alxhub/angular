@@ -38,6 +38,8 @@ import {
   TmplAstUnknownBlock,
   TmplAstVariable,
   TmplAstVisitor,
+  TmplAstBoundaryBlock,
+  TmplAstBoundaryErrorBlock,
 } from '@angular/compiler';
 import {NgCompiler} from '@angular/compiler-cli/src/ngtsc/core';
 import {PotentialDirective} from '@angular/compiler-cli/src/ngtsc/typecheck/api';
@@ -197,6 +199,15 @@ class ClassificationVisitor implements TmplAstVisitor {
   }
 
   visitIfBlockBranch(block: TmplAstIfBlockBranch) {
+    this.visitAll(block.children);
+  }
+
+  visitBoundaryBlock(block: TmplAstBoundaryBlock) {
+    this.visitAll(block.children);
+    this.visitAll(block.errorBlocks);
+  }
+
+  visitBoundaryErrorBlock(block: TmplAstBoundaryErrorBlock) {
     this.visitAll(block.children);
   }
 
